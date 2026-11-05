@@ -26,6 +26,10 @@ OCR noise: each pass reads the other language's lines as low-confidence garbage,
 read as ロ 口 ■ □ (glued or spaced), marks over the print (a stray ✓ or ' by a meaning, a space
 inside a reading), and the neighbouring page's text cut at the photo edge (x <= 0).
 
+Trap pages for the pairing confidence (answers in ground_truth_traps.json, not in the score tables):
+  g21 two words read alike (橋, 箸) on tight rows with furigana, g22 the same far apart,
+  g23 two neighbours with the same printed Korean meaning (橋, 脚: 다리).
+
     python3 tools/synthetic/make_general_pages.py           # write packages/core/test/fixtures/synthetic_general/
     python3 tools/synthetic/make_general_pages.py --check   # exit 1 when the committed files are out of date
 
@@ -61,6 +65,10 @@ LEXICON_NOTE = ("Dictionary facts for every Japanese word on the pages of tools/
                 "form used, uk = some sense is usually written in kana.")
 GLOSS_NOTE = ("A small stand-in for a Japanese-Korean gloss table, made by tools/synthetic/make_general_pages.py: "
               "about half of the words whose Korean meaning does not follow the Sino-Korean reading.")
+
+TRAP_NOTE = (NOTE + " Pages that try to fool the pairing confidence (two words read alike on neighbouring "
+             "rows, the same pair far apart, two neighbours with the same Korean meaning); answers as in "
+             "ground_truth.json.")
 
 W_SIDE = 0.0105  # per-character width of the side column's small type
 
@@ -443,6 +451,55 @@ PageBuilder = Callable[[], GPage]
 PAGES: tuple[PageBuilder, ...] = (page_g01, page_g02, page_g03, page_g04, page_g05, page_g06)
 
 
+# ---------------------------------------------------------------- g21-g23: traps for the pairing confidence
+# Pages built to fool a confidence rule, not to be read well: their answers go to ground_truth_traps.json
+# (kept out of ground_truth.json so the score tables above stay as they are). Their dictionary facts
+# (橋 is in LEXICON; 箸, 脚 are not) live in the core tests' support data, taken from JMdict.
+
+
+def trap_row(p: GPage, head: str, reading: str, meaning: str, y: float, *, furigana: bool) -> None:
+    """A headword, its reading (furigana above it, or to its right on the row), its meaning further right."""
+    x = 0.20
+    if furigana:
+        p.ja_line(reading, x + 0.002, y - 0.0145, per=mp.W_FURI, h=0.0120, c=1.0)
+    else:
+        p.ja_line(reading, x + 0.07, y + 0.002, per=mp.W_READ, h=0.0185, c=1.0)
+    p.ja_line(head, x, y, per=mp.W_HEAD, h=0.0220, c=1.0)
+    p.ko_line(meaning, 0.45, y + 0.004, c=1.0)
+    p.word(head, [reading], meaning)
+
+
+def page_g21() -> GPage:
+    """Two words read alike (橋, 箸) on tight rows with furigana: the lower one's furigana sits right
+    below the upper headword, so each reading would fit both headwords."""
+    p = GPage("g21", "trap-homophones-near", seed=121)
+    p.ko_line("단어", 0.20, 0.120, h=0.018, c=1.0)
+    trap_row(p, "橋", "はし", "다리", 0.200, furigana=True)
+    trap_row(p, "箸", "はし", "젓가락", 0.240, furigana=True)
+    return p
+
+
+def page_g22() -> GPage:
+    """The same two words far apart: each reading fits only its own headword's place."""
+    p = GPage("g22", "trap-homophones-far", seed=122)
+    p.ko_line("단어", 0.20, 0.120, h=0.018, c=1.0)
+    trap_row(p, "橋", "はし", "다리", 0.200, furigana=True)
+    trap_row(p, "箸", "はし", "젓가락", 0.600, furigana=True)
+    return p
+
+
+def page_g23() -> GPage:
+    """Two neighbouring words with the same printed Korean meaning (橋, 脚: 다리)."""
+    p = GPage("g23", "trap-same-meaning", seed=123)
+    p.ko_line("단어", 0.20, 0.120, h=0.018, c=1.0)
+    trap_row(p, "橋", "はし", "다리", 0.200, furigana=False)
+    trap_row(p, "脚", "あし", "다리", 0.235, furigana=False)
+    return p
+
+
+TRAP_PAGES: tuple[PageBuilder, ...] = (page_g21, page_g22, page_g23)
+
+
 # ---------------------------------------------------------------- dictionary facts (JMdict)
 
 # (ent_seq, kanji forms used, readings, pos codes, pri, nf, uk); pri and nf are those of the first
@@ -634,6 +691,12 @@ def render() -> dict[str, str]:
                                               "tools/synthetic/make_pages.py.", "pages": legacy}, 1)
     files["lexicon.json"] = dump(lexicon(), 1)
     files["korean_glosses.json"] = dump({"_note": GLOSS_NOTE, "glosses": KOREAN_GLOSSES}, 1)
+    traps = [make() for make in TRAP_PAGES]
+    for p in traps:
+        for name, data in p.files().items():
+            files[name] = dump(data, 0)
+    files["ground_truth_traps.json"] = dump({"_note": TRAP_NOTE, "format": "general-1",
+                                             "pages": [p.general_answer() for p in traps]}, 1)
     return files
 
 

@@ -1,0 +1,75 @@
+{
+ "_note": "Synthetic pages made by tools/synthetic/make_general_pages.py. Every word, meaning, sentence and translation is invented; no textbook content. Pages that try to fool the pairing confidence (two words read alike on neighbouring rows, the same pair far apart, two neighbours with the same Korean meaning); answers as in ground_truth.json.",
+ "format": "general-1",
+ "pages": [
+  {
+   "page": "g21",
+   "fixture": "g21",
+   "kind": "trap-homophones-near",
+   "vocab": [
+    {
+     "headword": "橋",
+     "readings": [
+      "はし"
+     ],
+     "meaning": "다리"
+    },
+    {
+     "headword": "箸",
+     "readings": [
+      "はし"
+     ],
+     "meaning": "젓가락"
+    }
+   ],
+   "sentence_words": [],
+   "ignore": []
+  },
+  {
+   "page": "g22",
+   "fixture": "g22",
+   "kind": "trap-homophones-far",
+   "vocab": [
+    {
+     "headword": "橋",
+     "readings": [
+      "はし"
+     ],
+     "meaning": "다리"
+    },
+    {
+     "headword": "箸",
+     "readings": [
+      "はし"
+     ],
+     "meaning": "젓가락"
+    }
+   ],
+   "sentence_words": [],
+   "ignore": []
+  },
+  {
+   "page": "g23",
+   "fixture": "g23",
+   "kind": "trap-same-meaning",
+   "vocab": [
+    {
+     "headword": "橋",
+     "readings": [
+      "はし"
+     ],
+     "meaning": "다리"
+    },
+    {
+     "headword": "脚",
+     "readings": [
+      "あし"
+     ],
+     "meaning": "다리"
+    }
+   ],
+   "sentence_words": [],
+   "ignore": []
+  }
+ ]
+}

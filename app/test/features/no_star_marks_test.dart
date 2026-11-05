@@ -135,7 +135,12 @@ void main() {
       final expected = await CapturePipeline.standard().fromScan(
         await recognizer.recognize(PageImage(page)),
       );
-      expect(draft.entries, expected.entries, reason: page);
+      // Values only: a routed template page also carries evidence.
+      expect(
+        [for (final e in draft.entries) e.copyWith(evidence: null)],
+        expected.entries,
+        reason: page,
+      );
     }
   });
 }

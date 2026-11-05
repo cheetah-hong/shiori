@@ -252,7 +252,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                 onEditMeta: _editMeta,
                 onChooseTarget: () => _chooseTarget(shelf),
                 onApproveHigh:
-                    _draft.isGeneral &&
+                    _draft.entries.any((e) => e.evidence != null) &&
                         ref.watch(highConfidenceApprovalProvider)
                     ? _approveHigh
                     : null,
@@ -293,7 +293,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
               separatorBuilder: (_, _) => const SizedBox(height: Space.sm),
               itemBuilder: (_, k) {
                 final i = visible[k];
-                if (entries[i].evidence != null) {
+                if (entries[i].evidence != null && _draft.isGeneral) {
                   return EvidenceEntryTile(
                     key: ValueKey('general-$i'),
                     index: i,
@@ -307,6 +307,8 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                 }
                 return EntryTile(
                   key: ValueKey('entry-${entries[i].no}-$i'),
+                  index: i,
+                  onShowEvidence: (field) => _showEvidence(i, field),
                   entry: entries[i],
                   onTap: () => _edit(i),
                   onToggle: (v) => _toggle(i, v),
@@ -472,6 +474,13 @@ class _Summary extends StatelessWidget {
                 background: t.paper2,
                 foreground: t.ink,
               ),
+              if (draft.entries.any((e) => e.evidence != null))
+                Pill(
+                  '높음 ${draft.entries.where((e) => e.evidence?.isHigh ?? false).length}',
+                  key: const ValueKey('high-count'),
+                  background: t.okBg,
+                  foreground: t.ok,
+                ),
               if (draft.needsReviewCount > 0)
                 Pill(
                   '확인 필요 ${draft.needsReviewCount}',

@@ -51,10 +51,10 @@ class EvidenceEntryTile extends StatelessWidget {
           decoration: BoxDecoration(
             border: Border(
               left: BorderSide(
-                color: confirmed
-                    ? t.ok
-                    : e.needsReview
+                color: e.needsReview
                     ? t.risk
+                    : confirmed
+                    ? t.ok
                     : Colors.transparent,
                 width: 4,
               ),
@@ -88,14 +88,15 @@ class EvidenceEntryTile extends StatelessWidget {
                               foreground: t.ink2,
                             ),
                           const Spacer(),
-                          if (confirmed)
-                            Pill('확인됨', background: t.okBg, foreground: t.ok)
-                          else if (e.needsReview)
+                          // A flag beats an earlier approval.
+                          if (e.needsReview)
                             Pill(
                               '확인 필요',
                               background: t.riskBg,
                               foreground: t.risk,
-                            ),
+                            )
+                          else if (confirmed)
+                            Pill('확인됨', background: t.okBg, foreground: t.ok),
                           IconButton(
                             tooltip: '고치기',
                             visualDensity: VisualDensity.compact,

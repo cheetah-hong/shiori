@@ -19,16 +19,16 @@
 | 항목 | 명령 | 결과 |
 |---|---|---|
 | core 정적 분석 | `cd packages/core && dart analyze` | 문제 없음 |
-| core 테스트 | `cd packages/core && dart test` | **486개 통과**, 교재 세트 15개 건너뜀 (15·16절 반영 뒤. 13·14절 뒤 401개) |
-| core 테스트 (교재 세트 포함) | `SHIORI_PRIVATE_DIR=<로컬 폴더> dart test` | **503개 통과** (15·16절 반영 뒤. 13·14절 뒤 414개) |
+| core 테스트 | `cd packages/core && dart test` | **514개 통과**, 교재 세트 15개 건너뜀 (17절 반영 뒤. 15·16절 뒤 486개) |
+| core 테스트 (교재 세트 포함) | `SHIORI_PRIVATE_DIR=<로컬 폴더> dart test` | **531개 통과** (17절 반영 뒤. 15·16절 뒤 503개) |
 | core 커버리지 | `dart run coverage:test_with_coverage -o coverage` | 줄 커버리지 **97.7%** (1805/1847줄, 교재 세트 없이. `InMemoryLibraryRepository.textbookStats`는 저장 패키지의 계약 테스트가 돌려서 core 숫자에는 안 잡힘) |
 | 사전 패키지 | `cd packages/dict_jmdict && dart analyze && dart test` | 문제 없음, **72개 통과** (테스트 DB 103개 항목, 13절 반영 뒤. 12절 뒤 66개) |
-| 사전 블록 (어댑터) | `cd packages/jmdict_block && dart analyze && dart test` | 문제 없음, **23개 통과** (8절, 12절, 13절) |
+| 사전 블록 (어댑터) | `cd packages/jmdict_block && dart analyze && dart test` | 문제 없음, **23개 통과**, 로컬 세트 4개 건너뜀 (지정 시 27개, 17절 C8 포함) |
 | 사전 asset 스크립트 | `python3 -m unittest discover -s tools/dict -p 'test_*.py'` | **33개 통과** (네트워크 없음. 14절 한국어 뜻 사전 27개 더함, 그 전 6개) |
 | 한국어 뜻 사전 블록 | `cd packages/krdict_block && dart analyze && dart test` | 문제 없음, **74개 통과** (지어낸 견본 30항목, 14절) |
 | 저장 패키지 | `cd packages/storage_drift && dart analyze && dart test` | 문제 없음, **122개 통과** (7절, 9절, 스키마 v2 마이그레이션 10절, 숨김·스키마 v3 16절) |
 | app 정적 분석 | `cd app && flutter analyze` | 문제 없음 |
-| app 테스트 | `cd app && flutter test` (기본 flavor = dev), `flutter test --flavor dev` | **136개 통과** (15·16절 반영 뒤. 14절 뒤 113개, 사전 asset 있음·없음 둘 다) |
+| app 테스트 | `cd app && flutter test` (기본 flavor = dev), `flutter test --flavor dev` | **144개 통과** (17절 반영 뒤. 15·16절 뒤 136개, 사전 asset 있음·없음 둘 다) |
 | iOS 채널 순수 로직 | `cd app/ios && xcodebuild test -workspace Runner.xcworkspace -scheme dev -destination 'id=<시뮬레이터>' -only-testing:RunnerTests` (11절부터 스킴 `dev`) | **5개 통과** (회전 투표·가로세로 바꿈·방향 합성, 6.4절) |
 | Android 채널 순수 로직 | `cd app/android && ./gradlew :app:testDevDebugUnitTest` (JDK 21, 11절부터 flavor 이름이 붙음) | **11개 통과** (조각 자르기·회전·상자 없는 글자, 6.5절) |
 | app 커버리지 | `flutter test --coverage` | 줄 커버리지 **92.2%** (1902/2064줄, 11절 반영 뒤. 10절 뒤 91.6%) |
@@ -43,6 +43,7 @@
 | 범용 추출 점수표 (메모리 사전) | `cd packages/core && dart run tool/eval_extract.dart --template --routed` | 합성 범용 6쪽 찾음 49/49, 읽기 49/49, 뜻 48/48, 문장 단어 45/45, 여분 0 (15절. 13절의 5쪽은 46/46·46/46·46/46·39/39) |
 | 범용 추출 점수표 (JMdict) | `cd packages/jmdict_block && dart run tool/eval_extract_dict.dart --db <JMdict SQLite> [--glossary <한국어 뜻 사전 SQLite>] --template --routed` | 13절·15절 비교표 |
 | 경로 선택 로컬 세트 (실제 사전) | `cd packages/jmdict_block && SHIORI_PRIVATE_DIR=<로컬 폴더> dart test test/routed_capture_local_test.dart` (사전: `SHIORI_JMDICT_DB`·`SHIORI_KO_GLOSSARY_DB`, 없으면 앱 asset을 풀어 씀) | 3개 통과 (15절) |
+| 높음 수·높음인데 틀림 (17절) | `cd packages/core && dart test test/extract/high_confidence_counts_test.dart`, 로컬: `cd packages/jmdict_block && SHIORI_PRIVATE_DIR=<로컬 폴더> dart test test/high_confidence_local_test.dart` | 합성 범용 28·기존 27·ML Kit형 13, 교재 43·ML Kit 40·휜 쪽 6·다른 교재 8, 높음인데 틀림 전 세트 0 |
 | 배포 빌드 (prod) | `flutter build apk --flavor prod --release`, `flutter build appbundle --flavor prod --release`, `flutter build ios --flavor prod --release --no-codesign` | 사전 asset과 서명 키(Android)가 있으면 **성공**, 결과물에 `dev_samples` 없음. 사전 asset이나 `key.properties`가 없으면 **분명한 메시지로 실패** (11절) |
 | 배포 빌드 차단 (dev) | `flutter build apk --flavor dev --release`, `flutter build ios --flavor dev --release --no-codesign` (`--flavor` 없는 release도 dev) | **의도대로 실패**: dev flavor는 개발 샘플을 묶으므로 release로 빌드하지 않음 (11절) |
 | 연구 도구 테스트 | `python3 -m unittest test_tools` (`research/scan/tools`, `research/ocr-android/tools`) | 27개, 16개 통과 |
@@ -1033,3 +1034,94 @@ iPhone 17 Pro (iOS 26.5), dev 앱. 스키마 v2 앱(이 변경 바로 전 커밋
 | 캡처 회귀 | 합성 row 31/35 그대로(이 변경은 캡처를 건드리지 않음), 기준 구현과 다른 칸 0 |
 | 빌드 | `flutter build apk --debug --flavor dev` 성공 (`app-dev-debug.apk`, 195 MB) |
 | 시뮬레이터 | 16.3절 스크린샷 4장, 16.4절 v2 → v3 덮어 설치 데이터 보존 |
+
+## 17. 「높음」 늘리기: 범용 독립 근거, 틀 경로 항목의 근거 (2026-11-06)
+
+규칙은 `docs/extraction.md` 4.4절입니다. 짝짓기·칸 값·가로줄 틀 해석 규칙(`capture/vocab/**`)·경로 선택 기준·저장 스키마는 바꾸지 않았습니다(신뢰도와 근거만).
+
+### 17.1 바꾼 것
+
+| 항목 | 위치 | 내용 |
+|---|---|---|
+| 신뢰도 단계 | `packages/core/lib/src/extract/confidence.dart`, `general_extractor.dart`(연결) | 같은 표제어 합치기가 끝난 뒤 신뢰도를 정함: 내용 근거 하나 + 강한 위치 + 이웃 경쟁 없음 → 높음, 공통 관문(한글 아닌 글자, 읽기 없는 한자 표제어, 사전이 준 표제어)은 높음을 막음 |
+| 틀 경로 근거 | `packages/core/lib/src/capture/template_evidence.dart`(`withTemplateEvidence`), `capture_router.dart`(연결) | 틀로 간 쪽의 항목에 칸별 출처·짝 신뢰도·사진 좌표 상자. 사전·한국어 뜻 사전은 범용 추출기의 것. 값과 문제 표시는 그대로 |
+| 검토 화면 | `app/lib/features/capture/entry_tile.dart`, `review_screen.dart` | 틀 항목은 기존 타일(번호, 표제어 후보, 칸 표시, 고치기)에 출처 배지·신뢰도·근거 조각(누르면 사진 조각)·「확인됨」을 더함. 요약에 「높음 N」, 근거가 있는 쪽이면 틀 쪽에서도 「높음 전체 승인」 |
+| 합성 함정 쪽 | `tools/synthetic/make_general_pages.py`, `synthetic_general/g21~g23.*`, `ground_truth_traps.json` | 같은 읽기 이웃(`橋/箸`, 후리가나 촘촘한 줄), 같은 낱말을 멀리, 이웃의 같은 뜻(`橋/脚`: 다리). 점수표 정답 파일과는 따로 |
+| 테스트 데이터 | `packages/core/test/support/real_dictionary.dart` | 합성 세트 낱말만, JMdict·한국어기초사전 값을 그대로 옮긴 메모리 사전·뜻 사전 |
+
+### 17.2 측정 (규칙을 정하기 전, 실제 JMdict·한국어 뜻 사전, 앱과 같은 경로 선택)
+
+칸마다 근거 조합과 맞음/틀림을 셌습니다(맞음/틀림, 교재 쪽은 숫자만). 「범」은 범용 경로, 「틀」은 가로줄 틀 경로입니다.
+
+| 근거 조합 | 합성 | 로컬 |
+|---|---|---|
+| 범 뜻: 내용 2 (한자음+뜻 사전) | 18/0 | 8/0 |
+| 범 뜻: 내용 1 + 강한 위치(0.85 이상) | 24/0 | 10/0 |
+| 범 뜻: 내용 1 + 약한 위치 | 1/0 | 0/0 |
+| 범 뜻: 내용 1 + 여러 줄 이음 | 2/0 | 0/0 |
+| 범 뜻: 내용 1 + 판독 최저 | 0/0 | 1/0 |
+| 범 뜻: 내용 1 + 한글 아닌 글자 | 0/0 | 1/**1** |
+| 범 뜻: 사전으로 채움 | 1/0 | 0/**2** |
+| 범 뜻: 위치만 | 2/0 | 5/**1** |
+| 범 읽기: 사전 + 강한 위치(0.6 이상) | 10/0 | 4/0 |
+| 범 읽기: 사전 + 약한 위치 | 4/0 | 2/0 |
+| 범 읽기: 사전 + 위치, 판독 최저 | 0/0 | 2/0 |
+| 범 읽기: 사전으로 채움 | 10/0 | 3/0 |
+| 범 읽기: 인라인 괄호 | 18/0 | 8/0 |
+| 틀 뜻: 틀 칸 + 내용 근거 (표제어 글자 보정 포함) | 41/0 | 84/0 |
+| 틀 뜻: 내용 근거 없음 | 4/**1** | 22/**1** |
+| 틀 뜻: 사전으로 채움 | 1/0 | 1/0 |
+| 틀 뜻: 칸 문제 표시(의심) | 0/**1** | 0/**1** |
+| 틀 읽기: 틀 칸 + 사전 일치 (표제어 글자 보정 포함) | 44/0 | 104/0 |
+| 틀 읽기: 사전 일치 + 읽기 칸 보정 | 1/0 | 1/0 |
+
+틀린 칸은 내용 근거가 없거나 사전으로 채운 칸, 판독 잡티가 섞인 뜻에만 있습니다. 더 세게 시험하려고 틀로 가는 쪽까지 범용으로 돌린 변형에서는
+**품사 배지 오독이 붙은 뜻**(`명4, 사` 꼴)이 내용 근거 둘(한자음+뜻 사전)로 **예전 규칙에서도 높음인데 틀림**이었고(1건), 여러 줄 이은 뜻의 잡티,
+읽기 없는 한자 표제어가 뜻만으로 높음이 되는 경우가 나왔습니다. 이것들이 공통 관문(4.4절)의 근거입니다. 그 변형에서도 「사전 + 강한 위치」 읽기(118)와
+「내용 1 + 강한 위치」 뜻(89)은 모두 맞았습니다.
+
+### 17.3 결과 (높음 항목 수, 높음인데 틀림)
+
+| 세트 | 경로 | 높음 전 → 후 | 하한 | 높음인데 틀림 |
+|---|---|---|---|---|
+| 합성 범용 6쪽 (메모리 사전 + 실제 뜻 사전 값) | 범용 | 8 → **28** | 25 | 0 |
+| 　같은 쪽, 뜻 사전 흉내 / 없음 | 범용 | 0 → 15 / 0 → 10 | | 0 |
+| 합성 함정 3쪽 (g21~g23) | 범용 | 0 → 2 (g22의 멀리 떨어진 두 단어) | | 0 |
+| 합성 기존 4쪽 (실제 사전 값) | 틀 | 0 → **27** | 22 | 0 |
+| 합성 ML Kit형 2쪽 (실제 사전 값) | 틀 | 0 → **13** | 10 | 0 |
+| 교재 단어장 5쪽 (로컬, 실제 사전) | 틀 | 0 → **43** | 40 | 0 |
+| 교재 5쪽 ML Kit 조각 (로컬) | 틀 | 0 → **40** | 36 | 0 |
+| 실기기 촬영 휜 쪽 1쪽 (로컬) | 범용 | 0 → **6** | 4 | 0 |
+| 다른 교재 3쪽 (로컬) | 범용 | 2 → **8** | 6 | 0 |
+
+- 값은 전 세트 그대로입니다: 합성 범용 찾음 49/49·읽기 49·뜻 48/48·문장 단어 45/45·38/38·여분 0, 합성 기존 33/35·33·뜻 31(뜻 사전 32)·여분 1,
+  ML Kit형 17/18·17·16·여분 1, 교재 5쪽 57/59·57·56·여분 1, ML Kit 조각 52/59·52·51·여분 4, 휜 쪽 14/15·14·14·여분 1, 다른 교재 15/15·15·11·여분 4.
+  줄 점수 합성 31/35(채움 32/35), ML Kit형 16/18, 교재 Vision 55/59(채움 56/59), ML Kit 조각 51/59, 기준 구현과 다른 칸 0 — 그대로.
+- 틀로 간 쪽은 `CapturePipeline`의 결과와 값이 같고(근거를 뺀 값 비교), 근거만 붙습니다.
+- 함정 쪽: g21(같은 읽기 이웃)과 g23(같은 뜻 이웃)은 값이 맞아도 그 짝이 높음이 되지 않고, g22(멀리)는 읽기 짝이 높음입니다.
+
+### 17.4 테스트 (C1~C9)
+
+| 파일 | 내용 |
+|---|---|
+| `packages/core/test/extract/high_confidence_counts_test.dart` | C1 합성 전 세트(범용·함정·기존·ML Kit형, 뜻 사전 없음·흉내·실제 값) 높음인데 틀림 0, 높음 항목은 짝 칸 모두 높음·확인 필요 아님. C2 하한. C7 값 그대로 |
+| `packages/core/test/extract/confidence_rules_test.dart` | C3 같은 읽기 이웃(g21)/멀리(g22), C4 같은 뜻 이웃(g23), C5 사전에 없는 인쇄 읽기(옆·괄호), 잡티 붙은 뜻(예전 규칙의 높음인데 틀림 회귀), 읽기 없는 한자 표제어, 사전이 준 표제어, 기기 채널의 0.3 |
+| `packages/core/test/capture/template_evidence_test.dart` | C6 틀 쪽 모든 항목에 근거·값은 파이프라인과 같음·표제어 상자, 사전에 없는 표제어, 사전으로 채운 뜻(출처 사전), C5 사전에 없는 읽기는 낮음, 이웃 행 같은 읽기·같은 뜻, 잡티, 문제 표시 |
+| `packages/jmdict_block/test/high_confidence_local_test.dart` | C8 로컬 4세트(실제 사전): 높음인데 틀림 0, 하한, 값 그대로 (숫자만 출력) |
+| `app/test/features/template_review_evidence_test.dart` | C9 틀 경로 초안: 출처 배지·신뢰도 라벨(화면 읽기 포함), 근거 조각, 요약 「높음 N」, 「높음 전체 승인」은 높음만 확인됨·스위치 뒤, 번호·「확인 필요」·칸 표시·표제어 후보·고치기 그대로 |
+| 기존 테스트 수정 | `route_selection_test.dart` E2 두 개와 `app/test/features/no_star_marks_test.dart`의 흐름 비교를 근거를 뺀 값 비교로, `korean_glossary_link_test.dart`의 「사전 없으면 높음 아님」을 「뜻 사전 근거가 쓰이지 않음」으로(새 규칙에서는 한자음 + 강한 위치가 높음) |
+
+결과: core **514개** 통과(교재 세트 포함 **531개**), jmdict_block **23개**(로컬 포함 **27개**), app **144개** 통과, analyze 문제 없음,
+생성기 `--check` 3개 같음.
+
+### 17.5 빌드와 시뮬레이터 (iPhone 17, 합성 샘플만)
+
+`flutter build apk --debug --flavor dev` 성공(`app-dev-debug.apk`, 195 MB).
+`flutter drive -d <iPhone 17> --flavor dev --driver=test_driver/integration_test.dart --target=integration_test/template_evidence_screenshots_test.dart`
+(실제 JMdict·한국어 뜻 사전 asset, 합성 샘플 10쪽):
+
+| 파일 (`docs/screenshots/`) | 화면 |
+|---|---|
+| `34_review_template_evidence.png` | 틀 경로 검토: 요약 「높음 6」, 번호·출처 배지·신뢰도, 못 읽은 표제어의 사전 후보 그대로 |
+| `35_review_template_evidence_piece.png` | 뜻 칸의 근거 조각(사진이 없어 판독 기록으로 그린 쪽) |
+| `36_review_template_approved.png` | 「높음 전체 승인」 뒤: 높음 항목만 「확인됨」 |

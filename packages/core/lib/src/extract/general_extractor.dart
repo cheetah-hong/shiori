@@ -12,6 +12,7 @@
 library;
 
 import 'package:shiori_core/src/capture/correctors/confusables.dart';
+import 'package:shiori_core/src/extract/confidence.dart';
 import 'package:shiori_core/src/extract/deconjugator.dart';
 import 'package:shiori_core/src/extract/extracted_word.dart';
 import 'package:shiori_core/src/extract/fragment.dart';
@@ -141,9 +142,16 @@ final class GeneralExtractor {
         skipped.add(w.headword);
       }
     }
-    final words = koreanGlossary == null
+    final filled = koreanGlossary == null
         ? kept
         : [for (final w in kept) await senses.fill(w)];
+    // After merging: the merge picks between words by their confidence.
+    final words = await settleConfidence(
+      filled,
+      fragments: page.fragments,
+      items: page.confidenceItems(items, readings.slopes),
+      glosses: glosses,
+    );
     final all = page.fragments;
     final used = <int>{
       ...readings.used,
@@ -287,6 +295,18 @@ final class _Item {
 
   /// POS codes of each of [kanjiCandidates].
   final Map<String, List<String>> kanjiPos;
+
+  /// The Korean text spells the headword's kanji in Korean readings (for
+  /// an orphan reading, one of its kanji forms'), as the pairing counts it.
+  bool namesMeaning(String korean) => kanjiCandidates.isNotEmpty
+      ? kanjiNaming(korean) != null
+      : !isKana && hanjaNamesMeaning(headword, korean);
+
+  /// Readings the Korean gloss lookup is asked with, as the pairing asks.
+  List<String> get glossReadings => [
+    ...readingParts(inlineReading?.text ?? ''),
+    ...?entry?.readings,
+  ];
 
   /// Kana the lexicon has only as kanji words' reading, not as a word.
   bool get isOrphanReading => kanjiCandidates.isNotEmpty && lemmas.isEmpty;
@@ -627,6 +647,27 @@ final class _Page {
   bool _splitsIntoWords(String text) {
     final tokens = segmenter.segmentFound(text, lexicon.cached);
     return tokens.length >= 2 && tokens.every((t) => t.known);
+  }
+
+  /// [items] as the confidence step sees them.
+  List<ConfidenceItem> confidenceItems(
+    List<_Item> items,
+    Map<int, double> slopes,
+  ) {
+    final slopeOf = _slopeLookup(items, slopes);
+    return [
+      for (final item in items)
+        ConfidenceItem(
+          fragment: item.fragment,
+          headword: item.headword,
+          isKana: item.isKana,
+          readsAs: item.readsAs,
+          namesMeaning: item.namesMeaning,
+          glossForms: {item.headword, ?item.lemmas.firstOrNull?.base},
+          glossReadings: item.glossReadings,
+          slope: slopeOf(item),
+        ),
+    ];
   }
 
   /// Reading pairs and the row slopes they show.

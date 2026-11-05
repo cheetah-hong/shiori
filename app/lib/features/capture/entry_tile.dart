@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/features/capture/evidence_tile.dart';
+import 'package:shiori/features/capture/evidence_view.dart';
 import 'package:shiori/shared/format.dart';
 import 'package:shiori/shared/widgets.dart';
 import 'package:shiori_core/shiori_core.dart';
@@ -12,6 +14,9 @@ import 'package:shiori_core/shiori_core.dart';
 /// "추정" for a guess. The left
 /// margin follows the strongest of them; a guess alone leaves it clear.
 /// An unread headword offers the dictionary's candidates as chips.
+/// An entry with evidence (a page read with the row template) also names
+/// each cell's source and pairing confidence; tapping those shows the piece
+/// of the page behind the cell.
 class EntryTile extends StatelessWidget {
   const EntryTile({
     super.key,
@@ -19,11 +24,19 @@ class EntryTile extends StatelessWidget {
     required this.onTap,
     required this.onToggle,
     this.onPickCandidate,
+    this.index = 0,
+    this.onShowEvidence,
   });
 
   final CapturedEntry entry;
   final VoidCallback onTap;
   final ValueChanged<bool> onToggle;
+
+  /// Position on the review screen (in the evidence keys tests find).
+  final int index;
+
+  /// Shows a cell's piece of the page; null hides the evidence.
+  final ValueChanged<EntryField>? onShowEvidence;
 
   /// The learner chose a dictionary candidate for the empty headword.
   final ValueChanged<String>? onPickCandidate;
@@ -36,6 +49,42 @@ class EntryTile extends StatelessWidget {
     }
     if (kinds.contains(IssueKind.suspect)) return t.warn;
     return Colors.transparent;
+  }
+
+  /// [field]'s source and pairing confidence, tappable; null without
+  /// evidence for it.
+  Widget? _evidence(EntryField field) {
+    final show = onShowEvidence;
+    final cell = entry.evidence?.of(field);
+    if (show == null || cell == null) return null;
+    return Semantics(
+      button: true,
+      hint: '${fieldLabel(field)} 근거 조각 보기',
+      child: InkWell(
+        key: ValueKey('cell-$index-${field.name}'),
+        borderRadius: BorderRadius.circular(Radii.chip),
+        onTap: () => show(field),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          child: Wrap(
+            spacing: Space.xs,
+            children: [
+              SourceBadge(
+                key: ValueKey('source-$index-${field.name}'),
+                source: cell.source,
+                field: field,
+              ),
+              if (cell.confidence case final level?)
+                ConfidenceChip(
+                  key: ValueKey('confidence-$index-${field.name}'),
+                  level: level,
+                  field: field,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -96,12 +145,16 @@ class EntryTile extends StatelessWidget {
                               ),
                             ),
                             const Spacer(),
+                            // A flag beats an earlier approval: the learner
+                            // may have emptied a cell since.
                             if (needsReview)
                               Pill(
                                 '확인 필요',
                                 background: t.riskBg,
                                 foreground: t.risk,
                               )
+                            else if (e.evidence?.confirmed ?? false)
+                              Pill('확인됨', background: t.okBg, foreground: t.ok)
                             else if (picked != null || corrections.isNotEmpty)
                               // The learner's pick names the badge; the tooltip
                               // still lists every automatic fix on the entry.
@@ -140,6 +193,7 @@ class EntryTile extends StatelessWidget {
                                 style: JpType.gothic(14, t.ink3, height: 1.3),
                               ),
                             ?FieldMark.of(e, EntryField.readings),
+                            ?_evidence(EntryField.readings),
                           ],
                         ),
                         if (e.headword.trim().isEmpty &&
@@ -176,6 +230,7 @@ class EntryTile extends StatelessWidget {
                                       ),
                                     ),
                                   ?FieldMark.of(e, EntryField.meaning),
+                                  ?_evidence(EntryField.meaning),
                                 ],
                               ),
                             ),

@@ -3,6 +3,7 @@
 library;
 
 import 'package:shiori_core/src/capture/capture_pipeline.dart';
+import 'package:shiori_core/src/capture/template_evidence.dart';
 import 'package:shiori_core/src/capture/vocab/anchors.dart';
 import 'package:shiori_core/src/extract/general_extractor.dart';
 import 'package:shiori_core/src/models/capture_draft.dart';
@@ -119,7 +120,8 @@ bool _isKanji(int c) => (c >= 0x4E00 && c <= 0x9FFF) || c == 0x3005;
 /// OCR scan → route → review draft.
 ///
 /// The row template parses every page first (a few ms); its rows decide the
-/// route. Template pages come out exactly as [template] gives them; the
+/// route. Template pages come out with the values [template] gives them,
+/// plus the evidence of each cell (from [general]'s lexicon and glosses); the
 /// others go through [general], minus the headwords the learner already
 /// has.
 final class CaptureRouter {
@@ -144,7 +146,16 @@ final class CaptureRouter {
     );
     if (decision.route == CaptureRoute.template) {
       final draft = await template.finish(scan, attempt);
-      return draft.copyWith(route: decision);
+      // Evidence only: the template's values and flags stay as they are.
+      return draft.copyWith(
+        route: decision,
+        entries: await withTemplateEvidence(
+          draft.entries,
+          lexicon: general.lexicon,
+          glosses: general.koreanGlosses,
+          page: attempt.prepared,
+        ),
+      );
     }
     final known = lookupKnown == null
         ? knownHeadwords

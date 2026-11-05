@@ -107,7 +107,10 @@ void main() {
     final r = await GeneralExtractor(lexicon: testLexicon()).extract(_rows());
 
     expect(_word(r, '部屋').meaning, isNull);
-    expect(_word(r, '運動').meaningLink!.confidence, isNot(PairConfidence.high));
+    expect(
+      _word(r, '運動').meaningLink!.signals,
+      isNot(contains(PairSignal.koreanGloss)),
+    );
   });
 
   test(

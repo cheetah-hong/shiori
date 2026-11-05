@@ -191,7 +191,12 @@ void main() {
             final scan = await set.loadScan(fixture);
             final routed = await syntheticRouter().fromScan(scan);
             final plain = await templatePipeline().fromScan(scan);
-            expect(routed.entries, plain.entries, reason: fixture);
+            // Values only: a routed template page also carries evidence.
+            expect(
+              [for (final e in routed.entries) e.copyWith(evidence: null)],
+              plain.entries,
+              reason: fixture,
+            );
             expect(routed.templateId, plain.templateId, reason: fixture);
             expect(routed.meta, plain.meta, reason: fixture);
           }
@@ -207,7 +212,11 @@ void main() {
           final scan = await set.loadScan(fixture);
           final routed = await syntheticRouter().fromScan(scan);
           final plain = await templatePipeline().fromScan(scan);
-          expect(routed.entries, plain.entries, reason: fixture);
+          expect(
+            [for (final e in routed.entries) e.copyWith(evidence: null)],
+            plain.entries,
+            reason: fixture,
+          );
         }
       }
     }, skip: skipUnlessPresent(recordedTextbook));

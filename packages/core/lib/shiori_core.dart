@@ -46,6 +46,7 @@ export 'src/capture/correctors/reading_lookalike_corrector.dart';
 export 'src/capture/evidence_edits.dart';
 export 'src/capture/fixture_text_recognizer.dart';
 export 'src/capture/learner_edits.dart';
+export 'src/capture/template_evidence.dart';
 export 'src/capture/vocab/entry_template.dart';
 export 'src/capture/vocab/list_template.dart';
 export 'src/capture/template_registry.dart';
