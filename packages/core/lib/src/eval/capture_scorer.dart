@@ -30,6 +30,8 @@ final class PageScore {
     required this.meta,
     required this.metaOk,
     required this.mistakes,
+    required this.entries,
+    required this.extras,
   });
 
   final int page;
@@ -44,8 +46,16 @@ final class PageScore {
   final PageMeta meta;
   final bool metaOk;
 
-  /// One line per wrong or flagged entry (the reference's `--verbose` output).
+  /// One line per wrong or flagged entry (the reference's `--verbose` output),
+  /// then one per extra entry (`DUP 0002 …`, `EXTRA 0009 …`, `EXTRA ---- …`).
   final List<String> mistakes;
+
+  /// Entries the pipeline returned for the page.
+  final int entries;
+
+  /// Entries the answers do not ask for: a number already returned (the later
+  /// one is scored), a number not in the answers, or no number at all.
+  final int extras;
 }
 
 final class CaptureScore {
@@ -66,6 +76,19 @@ final class CaptureScore {
   final int flaggedOk;
 
   Tally total(String key) => totals[key] ?? (ok: 0, of: 0);
+
+  /// [PageScore.extras] over all pages.
+  int get extras => pages.fold(0, (sum, p) => sum + p.extras);
+
+  /// The total and per-page extra entries, kept out of [table] so its summary
+  /// lines stay those of the reference. Its verbose part does list the extra
+  /// entries (`DUP` / `EXTRA` lines from [PageScore.mistakes]), which the
+  /// reference does not.
+  String extrasSummary() => [
+    'extra entries (repeated number, not in the answers or no number): $extras',
+    for (final p in pages)
+      '  page ${p.page}: ${p.entries} entries, ${p.extras} extra',
+  ].join('\n');
 
   /// Fixed-width score table, same columns as the reference.
   String table({bool verbose = false}) {
@@ -195,6 +218,11 @@ Future<CaptureScore> scoreCapture({
       }
     }
 
+    final extras = _extraEntries(draft.entries, {
+      for (final g in pg.entries) g.no,
+    });
+    mistakes.addAll(extras);
+
     final metaOk =
         draft.meta == PageMeta(day: pg.day, title: pg.title, page: pg.page);
     pages.add(
@@ -211,6 +239,8 @@ Future<CaptureScore> scoreCapture({
         meta: draft.meta,
         metaOk: metaOk,
         mistakes: List.unmodifiable(mistakes),
+        entries: draft.entries.length,
+        extras: extras.length,
       ),
     );
   }
@@ -224,4 +254,18 @@ Future<CaptureScore> scoreCapture({
     flaggedWrong: flaggedWrong,
     flaggedOk: flaggedOk,
   );
+}
+
+/// One line per entry beyond the answers: every entry of a number but the last
+/// one (the one scored), and entries whose number the answers lack or that
+/// have none.
+List<String> _extraEntries(List<CapturedEntry> entries, Set<String> answered) {
+  final lastIndex = {for (final (i, e) in entries.indexed) e.no: i};
+  return [
+    for (final (i, e) in entries.indexed)
+      if (e.no == null || !answered.contains(e.no))
+        'EXTRA ${e.no ?? '----'} ${e.headword}'
+      else if (lastIndex[e.no] != i)
+        'DUP ${e.no} ${e.headword}',
+  ];
 }

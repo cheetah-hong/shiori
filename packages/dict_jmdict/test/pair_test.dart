@@ -83,6 +83,12 @@ void main() {
       expect(dict.checkPair('勉強する', 'べんきょうする').dictionaryForm, '勉強');
     });
 
+    test('strips the だ of a な-adjective', () {
+      expect(match('静かだ', 'しずかだ'), PairMatch.affixStripped);
+      expect(match('静かだ', null), PairMatch.affixStripped);
+      expect(match('静か', 'しずか'), PairMatch.exact);
+    });
+
     test('accepts two dictionary words in a row, rendaku included', () {
       final fee = dict.checkPair('材料費', 'ざいりょうひ');
 

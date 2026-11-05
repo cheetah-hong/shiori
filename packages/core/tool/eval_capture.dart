@@ -7,6 +7,8 @@
 // --gt: answers kept elsewhere (default DIR/ground_truth.json), for folders that
 // only hold OCR passes.
 // Same columns as tools/reference/parse_eval.py, so the two can be compared.
+// After the table: entries beyond the answers (repeated number, a number not
+// in the answers, no number), in total and per page.
 import 'dart:convert';
 import 'dart:io';
 
@@ -45,6 +47,7 @@ Future<void> main(List<String> args) async {
     pipeline: CapturePipeline.standard(),
   );
   stdout.writeln(score.table(verbose: verbose));
+  stdout.writeln(score.extrasSummary());
 }
 
 /// The value after [name]; exits with a usage error when it is missing.

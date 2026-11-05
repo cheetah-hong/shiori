@@ -1,5 +1,6 @@
 // The score tool prints the same totals as the regression tests, without a ★
 // column.
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:test/test.dart';
@@ -33,6 +34,57 @@ void main() {
     );
     expect(line, contains('row=16/18'));
     expect(line, isNot(contains('important')));
+  });
+
+  test('prints the extra entries per page and in total', () async {
+    final r = await _evalTool(['--fixtures', synthetic.dir]);
+    expect(r.exitCode, 0, reason: '${r.stdout}\n${r.stderr}');
+    final out = r.stdout as String;
+    expect(
+      out,
+      contains(
+        'extra entries (repeated number, not in the answers or no number): 0\n',
+      ),
+    );
+    expect(out, contains('  page 10: 12 entries, 0 extra'));
+    expect(out, contains('  page 147: 5 entries, 0 extra'));
+  });
+
+  test('an entry missing from the answers shows as extra', () async {
+    // Page 10 scored against answers without its last word (0012).
+    final tmp = Directory.systemTemp.createTempSync('eval_capture_tool');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    for (final name in ['s010.ja.json', 's010.ko.json']) {
+      File('${synthetic.dir}/$name').copySync('${tmp.path}/$name');
+    }
+    final pages = (synthetic.readJson('ground_truth.json')['pages']! as List)
+        .cast<Map<String, Object?>>();
+    final page10 = pages.singleWhere((p) => p['fixture'] == 's010');
+    final entries = (page10['entries']! as List).cast<Map<String, Object?>>();
+    File('${tmp.path}/ground_truth.json').writeAsStringSync(
+      jsonEncode({
+        'pages': [
+          {
+            ...page10,
+            'entries': [
+              for (final e in entries)
+                if (e['no'] != '0012') e,
+            ],
+          },
+        ],
+      }),
+    );
+    final r = await _evalTool(['--fixtures', tmp.path, '--verbose']);
+    expect(r.exitCode, 0, reason: '${r.stdout}\n${r.stderr}');
+    final out = r.stdout as String;
+    expect(out, contains('  10 EXTRA 0012 '));
+    expect(
+      out,
+      contains(
+        'extra entries (repeated number, not in the answers or no number): 1\n',
+      ),
+    );
+    expect(out, contains('  page 10: 12 entries, 1 extra'));
   });
 
   test('a missing ground truth is a usage error', () async {

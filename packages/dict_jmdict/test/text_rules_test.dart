@@ -90,6 +90,17 @@ void main() {
       expect(stripAffixes('勉強（する）', 'べんきょうする'), ('勉強', 'べんきょう'));
       expect(stripAffixes('(お)茶', 'ちゃ'), ('茶', 'ちゃ'));
     });
+
+    test('stripAffixes removes the だ of a な-adjective written with kanji', () {
+      expect(stripAffixes('静かだ', 'しずかだ'), ('静か', 'しずか'));
+      expect(stripAffixes('静かだ', ''), ('静か', ''));
+    });
+
+    test('stripAffixes keeps the だ of a word without kanji', () {
+      expect(stripAffixes('ただ', ''), anyOf(isNull, ('ただ', '')));
+      expect(stripAffixes('まだ', ''), anyOf(isNull, ('まだ', '')));
+      expect(stripAffixes('ただ', 'ただ'), anyOf(isNull, ('ただ', 'ただ')));
+    });
   });
 
   group('WordClass', () {

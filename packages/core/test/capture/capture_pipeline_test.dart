@@ -158,6 +158,47 @@ void main() {
     },
   );
 
+  test('adjective badges misread by OCR become い형 and な형', () async {
+    // Page 11 with its い형 badge read as ⅓형 (the な형 misread, raw OCR
+    // text before NFKC) and page 10 with its い형 badge read as 니형.
+    OcrScan rewrite(OcrScan s, String from, String to) => OcrScan(
+      japanese: s.japanese,
+      korean: OcrPage(
+        lines: [
+          for (final l in s.korean.lines)
+            l.text == from
+                ? OcrLine(
+                    text: to,
+                    x: l.x,
+                    y: l.y,
+                    width: l.width,
+                    height: l.height,
+                    confidence: l.confidence,
+                  )
+                : l,
+        ],
+        engine: s.korean.engine,
+        languages: s.korean.languages,
+        elapsed: s.korean.elapsed,
+      ),
+      turned: s.turned,
+    );
+
+    final na = await pipeline.fromScan(
+      rewrite(await loadScan('s011'), 'い형 아프다', '⅓형 조용하다'),
+    );
+    final e20 = na.entries.singleWhere((e) => e.no == '0020');
+    expect(e20.pos, PartOfSpeech.naAdjective);
+    expect(e20.meaning, '조용하다');
+
+    final i = await pipeline.fromScan(
+      rewrite(await loadScan('s010'), 'い형 덥다', '니형 덥다'),
+    );
+    final e11 = i.entries.singleWhere((e) => e.no == '0011');
+    expect(e11.pos, PartOfSpeech.iAdjective);
+    expect(e11.meaning, '덥다');
+  });
+
   test('a template can be forced by id', () async {
     final draft = await pipeline.fromScan(
       await loadScan('s140'),

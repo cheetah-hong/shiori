@@ -65,6 +65,11 @@ void main() {
       expect(await dict.checkPair('てれび', const []), PairStatus.known);
     });
 
+    test('a な-adjective printed with だ is known', () async {
+      expect(await dict.checkPair('静かだ', ['しずかだ']), PairStatus.known);
+      expect(await dict.checkPair('静かだ', const []), PairStatus.known);
+    });
+
     test('a kana word is checked without a reading', () async {
       expect(await dict.checkPair('テレビ', const []), PairStatus.known);
       expect(await dict.checkPair('てれぶ', const []), PairStatus.notFound);

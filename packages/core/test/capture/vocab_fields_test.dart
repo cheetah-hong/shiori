@@ -37,6 +37,50 @@ void main() {
       expect(splitPos('명사가 아님'), (null, '명사가 아님'));
     });
 
+    test('splitPos reads the い형 badge read as 니형', () {
+      expect(splitPos('니형 바쁘다'), (PartOfSpeech.iAdjective, '바쁘다'));
+    });
+
+    test('splitPos reads the な형 badge read as a fraction (⅓, ⅛)', () {
+      // As OCR returns it, and after NFKC (cleanMeaning): ⅓ → 1⁄3.
+      for (final badge in ['⅓형', '1⁄3형', '⅛형', '1⁄8형']) {
+        expect(splitPos('$badge 조용하다'), (
+          PartOfSpeech.naAdjective,
+          '조용하다',
+        ), reason: badge);
+      }
+    });
+
+    test('a misread badge leaves no badge glyph in the meaning', () {
+      for (final badge in ['니형', '⅓형', '1⁄3형', '⅛형', '1⁄8형']) {
+        final meaning = splitPos('$badge 조용하다').$2;
+        for (final glyph in ['니', '⅓', '1⁄3', '⅛', '1⁄8', '형']) {
+          expect(meaning, isNot(contains(glyph)), reason: '$badge: $glyph');
+        }
+      }
+    });
+
+    test('the known badges read as before', () {
+      expect(splitPos('명 강, 개천'), (PartOfSpeech.noun, '강, 개천'));
+      expect(splitPos('통 불다'), (PartOfSpeech.verb, '불다'));
+      expect(splitPos('몀 산'), (PartOfSpeech.noun, '산'));
+      expect(splitPos('い형 아프다'), (PartOfSpeech.iAdjective, '아프다'));
+      expect(splitPos('な형 조용하다'), (PartOfSpeech.naAdjective, '조용하다'));
+    });
+
+    test('a meaning that only starts like a misread badge keeps no POS', () {
+      for (final meaning in [
+        '니트 짜기',
+        '니 형편',
+        '1⁄3 정도',
+        '⅓ 정도',
+        '1⁄8 크기',
+        '⅛',
+      ]) {
+        expect(splitPos(meaning), (null, meaning), reason: meaning);
+      }
+    });
+
     test('cleanMeaning normalizes width, commas and spaces', () {
       expect(cleanMeaning(' 강，  개천 .'), '강, 개천');
     });

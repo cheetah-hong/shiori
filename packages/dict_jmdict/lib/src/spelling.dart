@@ -51,7 +51,11 @@ bool isOkuriganaVariant(String a, String b) {
 
 final _tilde = RegExp('[〜～~]');
 final _optional = RegExp(r'[（(][^）)]*[）)]');
-const _endings = ['する', 'な'];
+const _endings = ['する', 'な', 'だ'];
+
+/// The だ printed after a な-adjective (静かだ) ends a word only after kanji:
+/// kana words such as ただ and まだ end in だ themselves.
+const _kanjiOnlyEndings = {'だ'};
 
 enum _Ending { none, written, optional }
 
@@ -72,19 +76,21 @@ String _cut(String s, String ending, _Ending how) => switch (how) {
   _Ending.optional => s.substring(0, s.length - ending.length - 2),
 };
 
-/// The pair without 〜 marks, parenthesised parts and a する / な ending
+/// The pair without 〜 marks, parenthesised parts and a する / な / だ ending
 /// (勉強する【べんきょうする】 → 勉強【べんきょう】, 静か(な)【しずかな】 →
-/// 静か【しずか】), or null when nothing was removed. An empty [reading]
-/// stays empty (kana words).
+/// 静か【しずか】, 静かだ【しずかだ】 → 静か【しずか】), or null when nothing
+/// was removed. An empty [reading] stays empty (kana words).
 ///
 /// The ending is removed when the headword has it and the reading has it
 /// too (written or in parentheses), the reading is empty, or the headword
 /// marks it optional. Endings are checked before other parentheses are
-/// dropped, so 静か(な) still counts as ending in な.
+/// dropped, so 静か(な) still counts as ending in な. だ is removed only
+/// from a headword with kanji.
 (String, String)? stripAffixes(String headword, String reading) {
   var h = headword.replaceAll(_tilde, '').trim();
   var r = reading.replaceAll(_tilde, '').trim();
   for (final ending in _endings) {
+    if (_kanjiOnlyEndings.contains(ending) && !hasKanji(h)) continue;
     final inHead = _endingOf(h, ending);
     final inReading = _endingOf(r, ending);
     final strip = switch (inHead) {

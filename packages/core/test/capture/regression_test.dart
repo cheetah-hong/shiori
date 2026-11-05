@@ -37,6 +37,10 @@ void main() {
       expect(score.total('found'), (ok: 35, of: 35));
     });
 
+    test('no entry beyond the answers (repeated or unknown number)', () {
+      expect(score.extras, 0);
+    });
+
     test('per-field totals', () {
       expect(score.total('headword'), (ok: 33, of: 35)); // two unread kanji
       expect(score.total('readings'), (ok: 35, of: 35));
@@ -81,6 +85,10 @@ void main() {
     // parser gets 1/18 rows of these pages (13 words found).
     test('finds every word (18/18)', () {
       expect(score.total('found'), (ok: 18, of: 18));
+    });
+
+    test('no entry beyond the answers (repeated or unknown number)', () {
+      expect(score.extras, 0);
     });
 
     test('per-field totals', () {
@@ -150,6 +158,10 @@ void main() {
 
       test('finds every word (59/59)', () {
         expect(score.total('found'), (ok: 59, of: 59));
+      });
+
+      test('no entry beyond the answers (repeated or unknown number)', () {
+        expect(score.extras, 0);
       });
 
       test('whole rows correct ≥ 55/59', () {

@@ -19,11 +19,11 @@
 | 항목 | 명령 | 결과 |
 |---|---|---|
 | core 정적 분석 | `cd packages/core && dart analyze` | 문제 없음 |
-| core 테스트 | `cd packages/core && dart test` | **302개 통과**, 교재 세트 10개 건너뜀 (10절 ★ 걷어냄 반영 뒤) |
-| core 테스트 (교재 세트 포함) | `SHIORI_PRIVATE_DIR=<로컬 폴더> dart test` | **314개 통과** |
+| core 테스트 | `cd packages/core && dart test` | **317개 통과**, 교재 세트 11개 건너뜀 (12절 반영 뒤. 10절 뒤 302개) |
+| core 테스트 (교재 세트 포함) | `SHIORI_PRIVATE_DIR=<로컬 폴더> dart test` | **330개 통과** (12절 반영 뒤. 그 전 314개) |
 | core 커버리지 | `dart run coverage:test_with_coverage -o coverage` | 줄 커버리지 **97.7%** (1805/1847줄, 교재 세트 없이. `InMemoryLibraryRepository.textbookStats`는 저장 패키지의 계약 테스트가 돌려서 core 숫자에는 안 잡힘) |
-| 사전 패키지 | `cd packages/dict_jmdict && dart analyze && dart test` | 문제 없음, **63개 통과** (테스트 DB 103개 항목) |
-| 사전 블록 (어댑터) | `cd packages/jmdict_block && dart analyze && dart test` | 문제 없음, **19개 통과** (8절) |
+| 사전 패키지 | `cd packages/dict_jmdict && dart analyze && dart test` | 문제 없음, **66개 통과** (테스트 DB 103개 항목, 12절 반영 뒤. 그 전 63개) |
+| 사전 블록 (어댑터) | `cd packages/jmdict_block && dart analyze && dart test` | 문제 없음, **20개 통과** (8절, 12절) |
 | 사전 asset 스크립트 | `python3 -m unittest discover -s tools/dict -p 'test_*.py'` | **6개 통과** (네트워크 없음) |
 | 저장 패키지 | `cd packages/storage_drift && dart analyze && dart test` | 문제 없음, **74개 통과** (7절, 9절, 스키마 v2 마이그레이션 10절) |
 | app 정적 분석 | `cd app && flutter analyze` | 문제 없음 |
@@ -696,3 +696,43 @@ iOS 앱 번들에는 `assets/dict/.gitignore`(71바이트)도 들어갑니다(�
 | Android 에뮬레이터 `Medium_Phone_API_36.1` | `flutter drive --flavor dev … persistence_test.dart --dart-define=SHIORI_PERSISTENCE_STEP=save` | 통과: 합성 샘플 DAY 20 → 저장 6개 → 학습 |
 | 같음 | `flavor_check_test.dart --flavor prod` / `--flavor dev` | 통과 |
 | 같음 | `flow_screenshots_test.dart` | 실패: Android에서 `takeScreenshot` 전에 `convertFlutterSurfaceToImage()`가 필요함(스크린샷 테스트는 원래 iOS 시뮬레이터용, 이번 변경과 무관) |
+
+## 12. 형용사 배지 오독, な형용사 「だ」, 여분 항목 집계 (2026-11-05)
+
+실기기(iPhone)로 찍은 교재 한 쪽에서 나온 문제 중 해석기의 가로줄 배정과 상관없는 세 가지를 고쳤습니다.
+기울어지고 휜 쪽에서 오른쪽 칸이 다음 행으로 밀리는 문제(쪽 전체에 기울기 하나, 옆 쪽 번호가 섞인 행 간격)는 이번에 고치지 않았습니다.
+
+### 12.1 바꾼 것
+
+| 항목 | 위치 | 내용 |
+|---|---|---|
+| 형용사 배지 오독 | `packages/core/lib/src/capture/vocab/fields.dart` | 한국어 판독이 い형을 `니형`, な형을 `⅓형`·`⅛형`(NFKC 뒤 `1⁄3형`·`1⁄8형`)으로 읽은 것을 배지로 받아 품사를 붙이고 뜻에서 뗍니다. 바로 뒤가 「형」이 아니면(`니트 …`, `1⁄3 정도`) 배지로 보지 않습니다 |
+| な형용사 「だ」 | `packages/dict_jmdict/lib/src/spelling.dart` | 사전 대조에서 떼는 어미에 `だ`를 더했습니다(`静かだ`【しずかだ】 → `静か`【しずか】, 읽기 없음도 같음). 한자가 없는 표제어(`ただ`, `まだ`)는 떼지 않습니다. 앱이 타는 사전 블록 경로도 같은 결과입니다 |
+| 여분 항목 집계 | `packages/core/lib/src/eval/capture_scorer.dart`, `tool/eval_capture.dart` | 채점기는 같은 번호가 여러 번 나오면 나중 것만 채점해서, 번호가 겹치거나 정답에 없는 항목이 점수에 드러나지 않았습니다. 쪽마다 항목 수와 여분(같은 번호의 앞 항목 `DUP`, 정답에 없는 번호·번호 없음 `EXTRA`)을 따로 셉니다. 기존 점수와 표는 그대로이고, 도구는 표 뒤에 전체·쪽별 여분을 적습니다 |
+
+### 12.2 테스트
+
+| 파일 | 내용 |
+|---|---|
+| `packages/core/test/capture/vocab_fields_test.dart` | `니형 바쁘다` → い형, `⅓형`·`1⁄3형`·`⅛형`·`1⁄8형` → な형, 뜻에 배지 글자가 남지 않음, 기존 배지 그대로, `니트 짜기`·`1⁄3 정도` 같은 뜻은 품사 없음 |
+| `packages/core/test/capture/capture_pipeline_test.dart` | 합성 쪽의 배지 줄을 `⅓형 …`(NFKC 전 글자)·`니형 …`으로 바꿔 넣으면 파이프라인 결과가 な형·い형 |
+| `packages/core/test/capture/capture_scorer_test.dart` | 중복 번호·정답에 없는 번호·번호 없음을 여분으로 셈, 중복은 나중 항목을 채점, 여분 0이면 점수와 표가 그대로 |
+| `packages/core/test/tool/eval_capture_tool_test.dart` | 도구 출력에 쪽별·전체 여분, `--verbose`에 `EXTRA` 줄 |
+| `packages/core/test/capture/regression_test.dart` | 합성 세트, 합성 ML Kit형, 교재 세트의 여분 0 |
+| `packages/dict_jmdict/test/text_rules_test.dart`, `pair_test.dart` | `stripAffixes`·`checkPair`의 `だ` 처리, 한자 없는 단어는 그대로 |
+| `packages/jmdict_block/test/adapter_test.dart` | 어댑터에서 `静かだ`【しずかだ】가 사전에 있는 단어 |
+
+### 12.3 점수
+
+| 세트 | 줄 | 여분 |
+|---|---|---|
+| 합성 (4쪽 35단어) | 31/35 (그대로) | 0 |
+| 합성, ML Kit형 | 16/18 (그대로) | 0 |
+| 교재 세트, Vision (로컬) | 55/59 (그대로) | 0 |
+| 교재 세트, ML Kit 조각 (로컬) | 51/59 (그대로) | 0 |
+| 교재 세트, 쪽 잘라 펴기 (로컬) | 48/59 (그대로) | 2 (한 쪽에서 번호를 잘못 읽은 두 항목) |
+| 실기기 촬영 1쪽 15단어, 시뮬레이터 Vision 재판독 (로컬) | 6/15 (그대로, 품사 11 → 12) | 3 (밀린 읽기로 생긴 번호 중복 2, 마지막 번호 다음 1) |
+
+- 기준 구현과 다른 칸: 합성·교재 세트 모두 0개(`tool/reference_diff.dart`).
+- 실기기 쪽은 줄 밀림이 그대로라 배지 줄이 버려지는 행이 있어 품사가 하나만 늘었습니다. 사전을 켜면 な형용사 표제어 한 개의 「사전에 없음」이 사라집니다(오탐 2 → 1, 남은 하나는 밀린 읽기 때문).
+
