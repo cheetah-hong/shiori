@@ -1,0 +1,6 @@
+# processed textbook photos: never commit
+out/
+out-*/
+.build/
+.venv/
+__pycache__/

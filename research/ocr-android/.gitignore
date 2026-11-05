@@ -1,0 +1,16 @@
+# photos and upright images of textbook pages (private, never commit)
+work/
+*.jpg
+*.jpeg
+*.JPG
+*.png
+
+# probe build outputs
+mlkit_probe/.gradle/
+mlkit_probe/.kotlin/
+mlkit_probe/build/
+mlkit_probe/app/build/
+mlkit_probe/local.properties
+*.apk
+
+__pycache__/

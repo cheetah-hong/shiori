@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Textbook photos are pushed into external files: keep them out of Auto Backup. -->
+    <application
+        android:allowBackup="false"
+        android:label="mlkit_probe" />
+
+    <!-- Self-instrumentation: `am instrument -w` blocks until the probe finishes, no test libraries needed. -->
+    <instrumentation
+        android:name=".ProbeInstrumentation"
+        android:label="ML Kit OCR probe"
+        android:targetPackage="dev.nihongo.mlkitprobe" />
+</manifest>
