@@ -1,0 +1,52 @@
+# JMdict forms for the dict_jmdict unit-test fixture (test/fixtures/mini_jmdict.sql).
+# Every entry with one of these as a kanji form (keb) or reading (reb) is kept.
+# Only JMdict data goes in the fixture; no textbook content.
+#
+#   python3 tools/dict/build_jmdict_db.py --only tools/dict/test_forms.txt --glosses first \
+#       --sql packages/dict_jmdict/test/fixtures/mini_jmdict.sql
+
+# readings that pull whole homophone sets (ranking tests)
+に
+さん
+はち
+じゅう
+ゆうべ
+
+# numbers and other one-kanji words
+一
+四
+七
+九
+頭
+
+# kanji that OCR confuses with katakana, and real words that mix the two
+夕方
+工事
+工場
+入口
+力
+タ行
+カ所
+ハ長調
+
+# spelling variants, affixes, compounds
+締め切り
+材料
+費
+招待
+状
+本
+棚
+勉強
+静か
+
+# kana words, script folding, reading restrictions, search-only forms
+邪魔
+遣り取り
+テレビ
+コーヒー
+ごみ
+汚す
+円柱
+オシャレ
+お菓子

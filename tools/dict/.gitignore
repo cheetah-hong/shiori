@@ -1,0 +1,7 @@
+# Downloaded sources (JMdict_e.gz, JLPT lists) and built databases are not committed.
+# Rebuild with build_jmdict_db.py; the source sha256 is recorded in docs/dictionary.md.
+.cache/
+out/
+__pycache__/
+.venv/
+*.part

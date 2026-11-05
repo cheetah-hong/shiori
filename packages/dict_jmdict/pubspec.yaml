@@ -1,0 +1,19 @@
+name: dict_jmdict
+description: >-
+  JMdict lookups for Shiori in pure Dart (no Flutter, no shiori_core):
+  headword candidates by reading, headword/reading pair checks and
+  suggestions for OCR glyph confusions, over the SQLite file built by
+  tools/dict/build_jmdict_db.py.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  sqlite3: ^3.8.0
+
+dev_dependencies:
+  coverage: ^1.15.0
+  lints: ^6.0.0
+  test: ^1.30.0
