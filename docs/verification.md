@@ -19,16 +19,16 @@
 | 항목 | 명령 | 결과 |
 |---|---|---|
 | core 정적 분석 | `cd packages/core && dart analyze` | 문제 없음 |
-| core 테스트 | `cd packages/core && dart test` | **514개 통과**, 교재 세트 15개 건너뜀 (17절 반영 뒤. 15·16절 뒤 486개) |
-| core 테스트 (교재 세트 포함) | `SHIORI_PRIVATE_DIR=<로컬 폴더> dart test` | **531개 통과** (17절 반영 뒤. 15·16절 뒤 503개) |
+| core 테스트 | `cd packages/core && dart test` | **565개 통과**, 교재 세트 15개 건너뜀 (18절 반영 뒤. 17절 C7의 합성 범용 합계는 g10·g11을 더한 값으로 갱신, g01~g06 값은 그대로 확인. 17절 뒤 514개) |
+| core 테스트 (교재 세트 포함) | `SHIORI_PRIVATE_DIR=<로컬 폴더> dart test` | **582개 통과** (18절 반영 뒤. 17절 뒤 531개) |
 | core 커버리지 | `dart run coverage:test_with_coverage -o coverage` | 줄 커버리지 **97.7%** (1805/1847줄, 교재 세트 없이. `InMemoryLibraryRepository.textbookStats`는 저장 패키지의 계약 테스트가 돌려서 core 숫자에는 안 잡힘) |
 | 사전 패키지 | `cd packages/dict_jmdict && dart analyze && dart test` | 문제 없음, **72개 통과** (테스트 DB 103개 항목, 13절 반영 뒤. 12절 뒤 66개) |
-| 사전 블록 (어댑터) | `cd packages/jmdict_block && dart analyze && dart test` | 문제 없음, **23개 통과**, 로컬 세트 4개 건너뜀 (지정 시 27개, 17절 C8 포함) |
+| 사전 블록 (어댑터) | `cd packages/jmdict_block && dart analyze && dart test` | 문제 없음, **23개 통과**, 로컬 세트 10개 건너뜀 (지정 시 33개 통과: 17절 C8의 휜 쪽 값은 18절의 15/15·여분 0으로 갱신. 18절 V3·V5·V6 포함) |
 | 사전 asset 스크립트 | `python3 -m unittest discover -s tools/dict -p 'test_*.py'` | **33개 통과** (네트워크 없음. 14절 한국어 뜻 사전 27개 더함, 그 전 6개) |
-| 한국어 뜻 사전 블록 | `cd packages/krdict_block && dart analyze && dart test` | 문제 없음, **74개 통과** (지어낸 견본 30항목, 14절) |
+| 한국어 뜻 사전 블록 | `cd packages/krdict_block && dart analyze && dart test` | 문제 없음, **80개 통과** (지어낸 견본 30항목, 14절. 역조회 6개, 18절) |
 | 저장 패키지 | `cd packages/storage_drift && dart analyze && dart test` | 문제 없음, **122개 통과** (7절, 9절, 스키마 v2 마이그레이션 10절, 숨김·스키마 v3 16절) |
 | app 정적 분석 | `cd app && flutter analyze` | 문제 없음 |
-| app 테스트 | `cd app && flutter test` (기본 flavor = dev), `flutter test --flavor dev` | **144개 통과** (17절 반영 뒤. 15·16절 뒤 136개, 사전 asset 있음·없음 둘 다) |
+| app 테스트 | `cd app && flutter test` (기본 flavor = dev), `flutter test --flavor dev` | **148개 통과** (18절 반영 뒤. 17절 뒤 144개, 사전 asset 있음·없음 둘 다) |
 | iOS 채널 순수 로직 | `cd app/ios && xcodebuild test -workspace Runner.xcworkspace -scheme dev -destination 'id=<시뮬레이터>' -only-testing:RunnerTests` (11절부터 스킴 `dev`) | **5개 통과** (회전 투표·가로세로 바꿈·방향 합성, 6.4절) |
 | Android 채널 순수 로직 | `cd app/android && ./gradlew :app:testDevDebugUnitTest` (JDK 21, 11절부터 flavor 이름이 붙음) | **11개 통과** (조각 자르기·회전·상자 없는 글자, 6.5절) |
 | app 커버리지 | `flutter test --coverage` | 줄 커버리지 **92.2%** (1902/2064줄, 11절 반영 뒤. 10절 뒤 91.6%) |
@@ -1125,3 +1125,71 @@ iPhone 17 Pro (iOS 26.5), dev 앱. 스키마 v2 앱(이 변경 바로 전 커밋
 | `34_review_template_evidence.png` | 틀 경로 검토: 요약 「높음 6」, 번호·출처 배지·신뢰도, 못 읽은 표제어의 사전 후보 그대로 |
 | `35_review_template_evidence_piece.png` | 뜻 칸의 근거 조각(사진이 없어 판독 기록으로 그린 쪽) |
 | `36_review_template_approved.png` | 「높음 전체 승인」 뒤: 높음 항목만 「확인됨」 |
+
+## 18. 단어장 따라잡기: 범용 추출의 단어장 내용 규칙, 못 읽은 표제어 되살리기, 판독 기록 내보내기 (2026-11-06)
+
+규칙은 `docs/extraction.md` 2절·12절입니다. 가로줄 틀 해석 규칙(`capture/vocab/**`)의 동작, 경로 선택 기준(`chooseRoute`), 신뢰도 규칙, 저장 스키마는 바꾸지 않았습니다.
+틀을 걷어내지 않았습니다(틀이 맞는 쪽은 그대로 틀로 읽음).
+
+### 18.1 바꾼 것
+
+| 항목 | 위치 | 내용 |
+|---|---|---|
+| 단어장 표지 공용 표 | `packages/core/lib/src/capture/text/word_list_marks.dart` (새), `capture/vocab/fields.dart` | 품사 배지 표(`posBadges`)·빈 칸 대시(`readingDashes`)를 틀에서 옮겨 함께 씀. 틀 결과 그대로(아래 18.3) |
+| 조각 분류 | `extract/fragment_collector.dart`, `extract/fragment.dart` | 배지 줄은 한국어가 이김, 한글 1자 쓰레기는 가나에 짐, 빈 칸 대시(높이 0.5배 이하), 상자 글자 줄·체크박스 열의 `問`, 표지 줄(`=`·`|`·`[…]`), 후리가나, 배지 뒤 `.`·품사 이름 배지, 조각의 `posBadge` |
+| 표제어 고치기 | `extract/headword_repair.dart` (새) | 띄어 읽힌 표제어 잇기, 가나 표제어의 헷갈리는 글자, 괄호 접두 형태 |
+| 되살리기 | `extract/read_back.dart` (새), `ports/korean_glossary.dart` (`KoreanReverseGlossary`, `GlossedSpelling`), `packages/krdict_block` (`reverseLookup`) | 흔적 + 사전 역조회로 못 읽은 한자 표제어, 흔한 낱말 하나면 그것, 여럿이면 표제어 후보 |
+| 짝짓기 | `extract/general_extractor.dart`, `extract/pairing.dart` | 사전에 없는 한자 조각이 다른 낱말의 읽기를 위치로 못 가져감, 확인 안 된 0.3 표제어의 뜻 비용 +0.2, 문장 아래 번역, 후리가나 크기·0.3 가나 거르기, 배지 품사 |
+| 검토 근거 | `extract/extracted_word.dart` | `headwordCandidates` → `CapturedEntry.headwordCandidates`·표제어 칸 후보·설명 「사전 역조회 후보 N」. 범용 검토 타일(`evidence_tile.dart`)은 표제어 칸 후보 칩을 아직 그리지 않음(설명만 보임) |
+| 판독 기록 내보내기 | `app/lib/features/capture/ocr_export.dart` (새), `review_screen.dart`(상단 버튼 한 줄), `app/pubspec.yaml` (`share_plus` 13.3.1 고정, BSD-3) | release가 아닌 빌드에서만 검토 화면 상단에 버튼. 두 패스를 녹화 판독 형식(`<이름>.ja.json`·`<이름>.ko.json`)으로, 경로 선택 결과(`<이름>.route.json`)와 함께 공유 시트로. 사진은 넣지 않음. 라이선스 페이지에 `share_plus`가 자동으로 실림(APK의 NOTICES 확인) |
+| 합성 세트 | `tools/synthetic/make_general_pages.py`, `synthetic_general/g10.*`·`g11.*` | g10 번호 없는 단어장(배지·오독 배지·배지 줄을 일본어 패스가 이김·빈 칸 대시·보통 높이 `一`·0.3 오독 표제어·가나 표제어·`(お)`·한글 1자 쓰레기·`ニつ`·`交通 事故`·`問`/`コロロ`·범례·꼬리), g11 예문 상자(후리가나·아래 번역·`[문형]`·두 줄 뜻). 메모리 사전 +30항목, 뜻 흉내 +11 |
+
+### 18.2 결과 (표제어 기준, 실제 JMdict·한국어 뜻 사전, 범용 단독 = 경로 선택 없이 범용만)
+
+교재 쪽은 숫자만 적습니다. 「전」은 이 작업 전(main 71b9b94), 「후」는 이 작업 뒤.
+
+| 세트 | 방식 | 찾음 | 읽기 | 뜻 | 여분 | 높음인데 틀림 |
+|---|---|---|---|---|---|---|
+| 교재 단어장 5쪽 (59단어, 로컬) | 범용 단독 전 | 56/59 | 56/56 | 47/56 | 15 | 0 |
+| | **범용 단독 후** | **59/59** | **59/59** | **58/59** | **0** | 0 |
+| | 틀 (그대로) | 57/59 | 57/57 | 55/57 (한국어 뜻 채움 56/57) | 1 (+중복 1) | 0 |
+| 실기기 촬영 휜 쪽 1쪽 (15단어, 로컬) | 범용 전 | 14/15 | 14/14 | 14/14 | 1 | 0 |
+| | **범용 후** (기록 그대로 / 빈 칸 대시를 `一` 0.5로 바꾼 변형) | **15/15 / 15/15** | 15/15 | 15/15 | **0 / 0** | 0 |
+| 다른 교재 3쪽 (15단어, 문장 단어 33, 로컬) | 범용 전 → 후 | 15/15 → 15/15 | 15/15 | 11/15 → 11/15 | 4 → 4 | 0 |
+| 합성 기존 4쪽 (35단어) | 범용 단독 전 → 후 | 28/35 → **32/35** | 28 → 32 | 25/28 → **31/32** | 17 → **4** | 0 |
+| 합성 범용 g01~g06 (49단어) | 범용 전 → 후 | 49/49 → 49/49 | 49/49 | 48/48 | 0 → 0 | 0 |
+| 합성 범용 g10·g11 (21단어, 새) | 범용 전 → 후 | 17/21 → **21/21** | 17 → 21 | 13/16 → **20/20** | 5 → **0** | 0 |
+
+- 교재 5쪽에서 남은 틀림 1개는 판독 오류(뜻의 한 글자를 다른 글자로 읽음)로, 틀도 같은 칸을 틀립니다.
+- 합성 기존 4쪽의 기준선 여분은 15.3절에 19로 적혀 있지만, 같은 코드(main 71b9b94)를 이 측정 조건(`eval_extract_dict.dart --glossary`, 실제 asset)으로 다시 재면 17이라 17을 기준으로 삼았습니다.
+  남은 놓침 3은 표제어 자리에 아무것도 읽히지 않은 행 2(흔적 없음)와 판독 오류 1입니다.
+- 원인별 개수(이 작업 전, 교재 5쪽): 배지 줄을 일본어 패스가 이김 3, 한글 1자 쓰레기 2, 가타카나 오독 표제어 1, 상자 글자 3, 표지 줄 3, 후리가나 8, 두 줄 뜻 1, 빈 칸 대시 2, 판독 오류 1.
+- 쪽당 시간(데스크톱 Dart VM, 교재 5쪽 범용 단독): 65~68 ms(세 번), 이 작업 전 1회 83 ms — 측정 오차 안. 역조회 질의는 색인(`ja_reading`·`ja_key`)을 탑니다(`EXPLAIN QUERY PLAN`).
+- 경로 선택 결과(15.2절)는 그대로입니다. 경로 선택을 거치면 교재 5쪽은 여전히 틀(57/59·56/57)로 갑니다.
+
+### 18.3 회귀 (그대로)
+
+줄 점수 합성 31/35(채움 32/35), 합성 ML Kit형 16/18, 교재 Vision 55/59(채움 56/59), 교재 ML Kit 조각 51/59, 기준 구현과 다른 칸 0, 여분 0,
+경로 선택 결과(15.2절), 합성 범용 g01~g06의 값(찾음·읽기·뜻·문장 단어·여분). 높음인데 틀림은 모든 세트에서 0입니다.
+
+### 18.4 테스트 (V1~V10)
+
+| 파일 | 내용 |
+|---|---|
+| `packages/core/test/extract/vocab_list_test.dart` | g10: 점수(사전 있음 18/18·여분 0, 없음 17/18·여분 1), V1 배지(뜻 칸·낱말·보관함·품사·배지 줄), V7 빈 칸 대시와 보통 높이 `一`, V8 `竹` 0.3 → `箱`(출처 사전·근거), 가나 표제어는 가나, V9 `(お)みやげ`, 한글 1자 쓰레기, `(다`, `ニつ`, `交通 事故`, 상자 글자, 범례·꼬리 |
+| `packages/core/test/extract/word_list_marks_test.dart` | 손으로 만든 판독: 배지 떼기·배지만·`동사무소`, 배지 줄과 한쪽 판독 다툼, 상자 글자, 대시 6종, V8 흔적 3종·흔적 없음·후보 둘·역조회 없음/실패·쪽마다 한 번 |
+| `packages/core/test/extract/example_box_test.dart` | V2 g11: 점수, 예문(원문·아래 번역), 번역은 뜻이 아님, 문장 단어와 예문, 표제어 합치기, 후리가나, 두 줄 뜻, 상자 머리 |
+| `packages/core/test/extract/general_set_holds_test.dart` | V3 g01~g06 값 그대로(메모리 사전) |
+| `packages/krdict_block/test/reverse_lookup_test.dart` | 역조회: 읽기 → 표기·뜻 낱말·유의어, 여러 읽기, 가타카나 읽기, 없음, 닫은 뒤 |
+| `packages/jmdict_block/test/vocab_catchup_local_test.dart` | 로컬·실제 사전: V6 교재 5쪽, 휜 쪽 두 변형, 다른 교재, V5 합성 기존 4쪽, V3 g01~g06, g10·g11 |
+| `app/test/features/ocr_export_test.dart` | V10: release 아님 → 버튼, 내보낸 JSON을 `FixtureTextRecognizer`로 다시 읽으면 같은 줄, route 파일, 사진 없음; release 플래그·판독 기록 없음 → 버튼 없음 |
+
+### 18.5 빌드와 시뮬레이터 (iPhone 17 Pro, 합성 샘플만)
+
+`flutter build apk --debug --flavor dev` 성공.
+`flutter drive -d <iPhone 17 Pro> --flavor dev --driver=test_driver/integration_test.dart --target=integration_test/ocr_export_screenshot_test.dart`:
+
+| 파일 (`docs/screenshots/`) | 화면 |
+|---|---|
+| `40_review_ocr_export.png` | 범용 샘플 쪽의 검토 화면, 상단 오른쪽 「판독 기록 내보내기」 |
+

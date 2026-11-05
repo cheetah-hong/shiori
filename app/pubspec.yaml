@@ -50,6 +50,8 @@ dependencies:
     path: ../packages/krdict_block
   flutter_localizations:
     sdk: flutter
+  # "판독 기록 내보내기" (builds that are not release builds): the share sheet.
+  share_plus: 13.3.1
 
 dev_dependencies:
   flutter_test:

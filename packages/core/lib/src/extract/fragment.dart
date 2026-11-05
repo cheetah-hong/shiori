@@ -52,6 +52,7 @@ final class Fragment {
     this.notes = const [],
     this.corrected = false,
     this.droppedPrefix,
+    this.posBadge,
   });
 
   /// Position in the extractor's fragment list.
@@ -84,6 +85,25 @@ final class Fragment {
   /// A leading 口 or ロ taken off as a checkbox; the extractor puts it back
   /// when only the longer text is a dictionary word (`ロッカー`).
   final String? droppedPrefix;
+
+  /// The POS badge printed before a Korean meaning (`명`, `동`, `い형`,
+  /// `な형`, `부`…), as the row templates name it; null without one.
+  final String? posBadge;
+
+  /// JMdict POS codes the badge stands for (empty when it names none, as
+  /// `형` alone).
+  List<String> get badgeCodes => switch (posBadge) {
+    '명' => const ['n'],
+    '동' => const ['v'],
+    'い형' => const ['adj-i'],
+    'な형' => const ['adj-na'],
+    '부' => const ['adv'],
+    '감' => const ['int'],
+    '접' => const ['conj'],
+    '연' => const ['adj-pn'],
+    '조' => const ['prt'],
+    _ => const [],
+  };
 
   double get cx => x + width / 2;
   double get cy => y + height / 2;
@@ -133,6 +153,7 @@ final class Fragment {
     droppedPrefix: identical(droppedPrefix, _unset)
         ? this.droppedPrefix
         : droppedPrefix as String?,
+    posBadge: posBadge,
   );
 
   @override

@@ -499,6 +499,191 @@
     "61",
     "この"
    ]
+  },
+  {
+   "page": "g10",
+   "fixture": "g10",
+   "kind": "vocablist",
+   "vocab": [
+    {
+     "headword": "箱",
+     "readings": [
+      "はこ"
+     ],
+     "meaning": "상자"
+    },
+    {
+     "headword": "たくさん",
+     "readings": [],
+     "meaning": "많이"
+    },
+    {
+     "headword": "やっと",
+     "readings": [],
+     "meaning": "겨우, 간신히"
+    },
+    {
+     "headword": "きっと",
+     "readings": [],
+     "meaning": "꼭, 분명히"
+    },
+    {
+     "headword": "一",
+     "readings": [
+      "いち"
+     ],
+     "meaning": "하나, 일"
+    },
+    {
+     "headword": "(お)みやげ",
+     "readings": [],
+     "meaning": "선물, 기념품"
+    },
+    {
+     "headword": "細い",
+     "readings": [
+      "ほそい"
+     ],
+     "meaning": "가늘다"
+    },
+    {
+     "headword": "親切だ",
+     "readings": [
+      "しんせつだ"
+     ],
+     "meaning": "친절하다"
+    },
+    {
+     "headword": "開ける",
+     "readings": [
+      "あける"
+     ],
+     "meaning": "열다"
+    },
+    {
+     "headword": "机",
+     "readings": [
+      "つくえ"
+     ],
+     "meaning": "책상"
+    },
+    {
+     "headword": "窓",
+     "readings": [
+      "まど"
+     ],
+     "meaning": "창문"
+    },
+    {
+     "headword": "庭",
+     "readings": [
+      "にわ"
+     ],
+     "meaning": "마당, 뜰"
+    },
+    {
+     "headword": "鏡",
+     "readings": [
+      "かがみ"
+     ],
+     "meaning": "거울"
+    },
+    {
+     "headword": "二つ",
+     "readings": [
+      "ふたつ"
+     ],
+     "meaning": "두 개, 둘"
+    },
+    {
+     "headword": "交通事故",
+     "readings": [
+      "こうつうじこ"
+     ],
+     "meaning": "교통사고"
+    },
+    {
+     "headword": "傘",
+     "readings": [
+      "かさ"
+     ],
+     "meaning": "우산"
+    },
+    {
+     "headword": "閉める",
+     "readings": [
+      "しめる"
+     ],
+     "meaning": "닫다"
+    },
+    {
+     "headword": "整理",
+     "readings": [
+      "せいり"
+     ],
+     "meaning": null
+    }
+   ],
+   "sentence_words": [],
+   "ignore": [
+    "생활 용품",
+    "ロロロ",
+    "■",
+    "口口",
+    "コロロ",
+    "問",
+    "竹",
+    "交通",
+    "事故"
+   ]
+  },
+  {
+   "page": "g11",
+   "fixture": "g11",
+   "kind": "examples",
+   "vocab": [
+    {
+     "headword": "届ける",
+     "readings": [
+      "とどける"
+     ],
+     "meaning": "보내다, 배달하다"
+    },
+    {
+     "headword": "片付ける",
+     "readings": [
+      "かたづける"
+     ],
+     "meaning": "(물건을 제자리에) 정리하다, 치우다"
+    },
+    {
+     "headword": "準備",
+     "readings": [
+      "じゅんび"
+     ],
+     "meaning": "준비"
+    }
+   ],
+   "sentence_words": [
+    "荷物",
+    "友達",
+    "家",
+    "届ける",
+    "部屋",
+    "片付ける",
+    "出かける",
+    "旅行",
+    "準備"
+   ],
+   "ignore": [
+    "主題",
+    "88",
+    "する",
+    "て",
+    "から",
+    "準備する",
+    "ある"
+   ]
   }
  ]
 }

@@ -80,7 +80,7 @@ final _sets = [
     '$_textbook/device-iphone13mini/fixtures',
     '$_textbook/device-iphone13mini/general/ground_truth.json',
     4,
-    const [14, 14, 14, 1],
+    const [15, 15, 15, 0],
   ),
   _Set(
     'other textbook (general)',

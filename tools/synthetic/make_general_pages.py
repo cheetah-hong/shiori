@@ -21,6 +21,19 @@ give it layouts to work on, written as the two OCR passes a device would return 
                  Japanese pass reads as dictionary words at 0.5 and 0.3; a word printed inside it
                  (`学校[がっこう]`) is read by both passes; a small word box has a headword whose 口
                  the Japanese pass read as katakana ロ
+  g10 vocablist  a word list with no number column: checkbox, headword, reading cell, a POS badge and the
+                 meaning. The badges as OCR reads them (`니형`, `⅓형`, `몀.`, `동사`); a badge line the
+                 Japanese pass reads as `8` + odd kanji at full confidence; a blank reading cell printed as
+                 a flat dash (`一`, `ー`, `–`) beside kana headwords and a real `一` headword; a headword the
+                 Japanese pass misread at 0.3 (a dictionary word with another reading) beside its kana and
+                 meaning; a kana headword whose meaning has one kanji spelling in the glossary; `(お)` as an
+                 optional prefix; a headword the Korean pass reads as one syllable over a 0.3 kanji; a
+                 reading the Korean pass reads as `(다`; katakana ニ for 二; a headword read with a space
+                 inside; box glyphs read as 問 and コロロ; a legend line and a footer with `|`; a row whose
+                 meaning the Korean pass missed
+  g11 examples   entries with an example box under each: furigana over the sentence's kanji, the sentence,
+                 its translation on the line below; a meaning on two lines (a bracketed note, then the
+                 meaning) beside the first furigana; a `[문형]` box heading
 
 OCR noise: each pass reads the other language's lines as low-confidence garbage, checkbox glyphs
 read as ロ 口 ■ □ (glued or spaced), marks over the print (a stray ✓ or ' by a meaning, a space
@@ -42,6 +55,7 @@ Japanese-Korean gloss table, holding about half of the native-Korean-meaning wor
 from __future__ import annotations
 
 import json
+import re
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -64,7 +78,8 @@ LEXICON_NOTE = ("Dictionary facts for every Japanese word on the pages of tools/
                 "priority bitmask (news1 news2 ichi1 ichi2 spec1 spec2 gai1 gai2) and nf = nfXX band of the "
                 "form used, uk = some sense is usually written in kana.")
 GLOSS_NOTE = ("A small stand-in for a Japanese-Korean gloss table, made by tools/synthetic/make_general_pages.py: "
-              "about half of the words whose Korean meaning does not follow the Sino-Korean reading.")
+              "about half of the words whose Korean meaning does not follow the Sino-Korean reading, and the "
+              "g10/g11 words a backward lookup (Korean meaning to kanji spelling) needs.")
 
 TRAP_NOTE = (NOTE + " Pages that try to fool the pairing confidence (two words read alike on neighbouring "
              "rows, the same pair far apart, two neighbours with the same Korean meaning); answers as in "
@@ -447,8 +462,141 @@ def page_g06() -> GPage:
     return p
 
 
+# ---------------------------------------------------------------- g10: a word list without numbers
+
+# Columns of g10: checkbox, headword, reading cell, badge and meaning.
+G10_BOX_X, G10_HEAD_X, G10_READ_X, G10_MEAN_X = 0.150, 0.200, 0.420, 0.600
+G10_ROW_H, G10_FLAT_H = 0.0190, 0.0060
+
+G10_ROWS = [
+    # head: what the Japanese pass reads in the headword cell (ko_head: the Korean pass there);
+    # read: the reading cell (None: a blank cell, flat: its dash as read); meaning: the Korean pass's
+    # line (ja_meaning: the Japanese pass on it); truth: (headword, readings, meaning)
+    # a headword misread at the lowest confidence as another dictionary word (竹 is たけ, not はこ)
+    dict(head="竹", head_c=0.3, box="ロロロ", read="はこ", meaning="명 상자", truth=("箱", ["はこ"], "상자")),
+    # kana headwords, blank reading cells printed as a flat dash; 많이 has one kanji spelling (沢山)
+    dict(head="たくさん", box="■口口", flat=("ー", 0.3, "-"), meaning="부 많이", truth=("たくさん", [], "많이")),
+    dict(head="やっと", box="ロロロ", flat=("一", 0.5, None), meaning="부 겨우, 간신히", truth=("やっと", [], "겨우, 간신히")),
+    dict(head="きっと", box="■口口", flat=("–", 0.5, "–"), meaning="부 꼭, 분명히", truth=("きっと", [], "꼭, 분명히")),
+    # a real 一, as tall as the other headwords
+    dict(head="一", box="ロロロ", read="いち", meaning="명 하나, 일", truth=("一", ["いち"], "하나, 일")),
+    # an optional honorific prefix in brackets, with a blank reading cell
+    dict(head="（お）みやげ", box="■口口", flat=("ー", 0.5, None), meaning="명 선물, 기념품",
+         truth=("(お)みやげ", [], "선물, 기념품")),
+    # badges as OCR reads them
+    dict(head="細い", box="ロロロ", read="ほそい", meaning="니형 가늘다", truth=("細い", ["ほそい"], "가늘다")),
+    dict(head="親切だ", box="■口口", read="しんせつだ", meaning="⅓형 친절하다", truth=("親切だ", ["しんせつだ"], "친절하다")),
+    dict(head="開ける", box="ロロロ", read="あける", meaning="동사 열다", truth=("開ける", ["あける"], "열다")),
+    dict(head="机", box="■口口", read="つくえ", meaning="몀. 책상", truth=("机", ["つくえ"], "책상")),
+    # the Japanese pass reads the badge line as 8 and odd kanji, at full confidence
+    dict(head="窓", box="ロロロ", read="まど", meaning="명 창문", ja_meaning=("8叉", 1.0), truth=("窓", ["まど"], "창문")),
+    # the Korean pass reads one syllable over the headword, which the Japanese pass read at 0.3
+    dict(head="庭", head_c=0.3, ko_head=("트", 0.5), box="■口口", read="にわ", meaning="명 마당, 뜰",
+         truth=("庭", ["にわ"], "마당, 뜰")),
+    # the Korean pass reads the reading cell as `(다`, over the Japanese pass's 0.3
+    dict(head="鏡", box="ロロロ", read="かがみ", read_c=0.3, ko_read=("(다", 0.5), meaning="명 거울",
+         truth=("鏡", ["かがみ"], "거울")),
+    # katakana ニ read for the kanji 二
+    dict(head="ニつ", box="■口口", read="ふたつ", meaning="명 두 개, 둘", truth=("二つ", ["ふたつ"], "두 개, 둘")),
+    # a headword read with a space inside
+    dict(head="交通 事故", box="ロロロ", read="こうつうじこ", meaning="명 교통사고", truth=("交通事故", ["こうつうじこ"], "교통사고")),
+    # the checkbox read as 問, glued to the headword with a space
+    dict(head="問 傘", head_x=G10_BOX_X, box=None, read="かさ", meaning="명 우산", truth=("傘", ["かさ"], "우산")),
+    # the checkbox read as コロロ on its own
+    dict(head="閉める", box="コロロ", read="しめる", meaning="동 닫다", truth=("閉める", ["しめる"], "닫다")),
+    # the Korean pass missed the meaning line; the footer is below
+    dict(head="整理", box="■口口", read="せいり", meaning=None, truth=("整理", ["せいり"], None)),
+]
+
+
+def g10_row(p: GPage, r: dict, y: float) -> None:
+    """One row of the word list."""
+    if r["box"] is not None:
+        p.both(r["box"], None, G10_BOX_X, y + 0.010, 0.036, 0.009, 0.3)
+    head = r["head"]
+    ko_head = r.get("ko_head")
+    p.both(head, ko_head[0] if ko_head else p.junk_latin(), r.get("head_x", G10_HEAD_X), y,
+           mp.text_width(head, mp.W_HEAD), G10_ROW_H, r.get("head_c", 0.5),
+           ko_head[1] if ko_head else 0.3)
+    if "flat" in r:
+        ja_dash, c, ko_dash = r["flat"]
+        p.both(ja_dash, ko_dash, G10_READ_X, y + 0.008, 0.014, G10_FLAT_H, c, 0.5)
+    else:
+        ko_read = r.get("ko_read")
+        p.both(r["read"], ko_read[0] if ko_read else p.junk_latin(), G10_READ_X, y,
+               mp.text_width(r["read"], mp.W_READ), 0.0160, r.get("read_c", 0.5),
+               ko_read[1] if ko_read else 0.3)
+    if r["meaning"] is not None:
+        ja_meaning = r.get("ja_meaning")
+        p.both(ja_meaning[0] if ja_meaning else None, r["meaning"], G10_MEAN_X, y + 0.002,
+               mp.text_width(r["meaning"], mp.W_KO), 0.0135, ja_meaning[1] if ja_meaning else 0.3, 0.5)
+    headword, readings, meaning = r["truth"]
+    p.word(headword, readings, meaning)
+
+
+def page_g10() -> GPage:
+    """A word list with no number column: checkbox, headword, reading cell, badge and meaning."""
+    p = GPage("g10", "vocablist", seed=110)
+    p.ko_line("* 표시 = 시험에 자주 나오는 단어", 0.55, 0.060, h=0.012, c=0.5)
+    p.ko_line("생활 용품", 0.20, 0.060, h=0.022, c=1.0)
+    for i, r in enumerate(G10_ROWS):
+        g10_row(p, r, 0.100 + 0.046 * i + p.jitter(0.001))
+    p.ko_line("단어 | 3과 생활 용품", 0.62, 0.940, h=0.012, c=1.0)
+    p.ignore = ["생활 용품", "ロロロ", "■", "口口", "コロロ", "問", "竹", "交通", "事故"]
+    return p
+
+
+# ---------------------------------------------------------------- g11: entries with example boxes
+
+G11_ENTRIES = [
+    # (headword, reading, meaning lines as the Korean pass reads them, furigana (text, characters before it),
+    #  sentence, translation, truth meaning, words of the sentence)
+    ("届ける", "とどける", ["동 보내다, 배달하다"], [("にもつ", 0), ("ともだち", 3)],
+     "荷物を友達の家に届けました。", "짐을 친구 집에 보냈습니다.", "보내다, 배달하다", ["荷物", "友達", "家", "届ける"]),
+    ("片付ける", "かたづける", ["동 (물건을 제자리에)", "정리하다, 치우다"], [("へや", 0)],
+     "部屋を片付けてから出かけます。", "방을 정리하고 나서 외출합니다.", "(물건을 제자리에) 정리하다, 치우다",
+     ["部屋", "片付ける", "出かける"]),
+    ("準備", "じゅんび", ["명 준비"], [("りょこう", 0), ("じゅんび", 3)],
+     "旅行の準備をしました。", "여행 준비를 했습니다.", "준비", ["旅行", "準備"]),
+]
+
+
+def g11_entry(p: GPage, e: tuple, y: float) -> float:
+    """One entry and its example box; returns the y of the next entry."""
+    head, reading, meanings, furigana, ja, ko, truth_meaning, words = e
+    p.ja_line(head, 0.16, y, per=mp.W_HEAD, h=0.022, c=1.0)
+    p.ja_line(reading, 0.36, y + 0.003, per=mp.W_READ, h=0.016, c=0.5)
+    for k, t in enumerate(meanings):
+        p.ko_line(t, 0.58, y + 0.004 + 0.026 * k, c=0.5)
+    sy = y + 0.060
+    for text, before in furigana:
+        p.both(text, None, 0.18 + before * mp.W_SENT, sy - 0.012, mp.text_width(text, mp.W_FURI) * 0.9, 0.0100,
+               c_ja=0.5)
+    p.ja_line(ja, 0.18, sy, c=1.0)
+    p.ko_line(ko, 0.18, sy + 0.030, c=1.0)
+    p.word(head, [reading], truth_meaning)
+    p.sentence(words)
+    return sy + 0.090
+
+
+def page_g11() -> GPage:
+    """Entries, each with an example box: furigana, the sentence, its translation below."""
+    p = GPage("g11", "examples", seed=111)
+    p.ko_line("주제별 단어 | 생활", 0.55, 0.040, h=0.012, c=1.0)
+    y = 0.090
+    for k, e in enumerate(G11_ENTRIES):
+        y = g11_entry(p, e, y)
+        if k == 0:
+            # a box heading under the first example, read by the Korean pass
+            p.ko_line("[문형] 동사 て형 + から ~하고 나서", 0.18, y - 0.040, c=0.5, ja_rate=0.0)
+    p.both("88", "88", 0.88, 0.955, 0.025, 0.012, 1.0, 1.0)
+    p.ignore = ["主題", "88", "する", "て", "から", "準備する", "ある"]
+    return p
+
+
 PageBuilder = Callable[[], GPage]
-PAGES: tuple[PageBuilder, ...] = (page_g01, page_g02, page_g03, page_g04, page_g05, page_g06)
+PAGES: tuple[PageBuilder, ...] = (page_g01, page_g02, page_g03, page_g04, page_g05, page_g06,
+                                   page_g10, page_g11)
 
 
 # ---------------------------------------------------------------- g21-g23: traps for the pairing confidence
@@ -638,6 +786,37 @@ LEXICON: tuple[tuple[int, list[str], list[str], str, int, int | None, bool], ...
     (1280770, ["紅茶"], ["こうちゃ"], "n", 5, 13, False),
     (1499320, ["部屋"], ["へや"], "n", 5, 2, False),
     (1381820, ["静か"], ["しずか"], "adj-na", 5, 5, False),
+    # g10
+    (1585650, ["箱"], ["はこ"], "n suf ctr", 5, 9, False),
+    (1422230, ["竹"], ["たけ"], "n", 5, 4, False),
+    (1415870, ["沢山"], ["たくさん"], "adj-no adj-na n adv n-suf", 6, 43, True),
+    (1012800, [], ["やっと"], "adv", 4, None, True),
+    (1003430, [], ["きっと"], "adv", 4, None, True),
+    (1160790, ["一"], ["いち"], "num pref adj-no suf n n-pref", 6, 33, False),
+    (1445360, ["土産"], ["みやげ"], "n", 5, 11, False),
+    (1002500, ["お土産"], ["おみやげ"], "n", 4, None, False),
+    (1295510, ["細い"], ["ほそい"], "adj-i", 5, 16, False),
+    (1365250, ["親切"], ["しんせつ"], "adj-na n", 5, 15, False),
+    (1202450, ["開ける"], ["あける"], "v1 vt vi", 4, None, False),
+    (1508590, ["閉める"], ["しめる"], "v1 vt", 6, 25, False),
+    (1220210, ["机"], ["つくえ"], "n", 5, 7, False),
+    (1401400, ["窓"], ["まど"], "n", 5, 4, False),
+    (1436130, ["庭"], ["にわ"], "n", 5, 6, False),
+    (1238550, ["鏡"], ["かがみ"], "n", 5, 6, False),
+    (1461160, ["二つ"], ["ふたつ"], "num", 5, 2, False),
+    (1272350, ["交通事故"], ["こうつうじこ"], "n", 5, 7, False),
+    (1272280, ["交通"], ["こうつう"], "n vs", 5, 2, False),
+    (1313850, ["事故"], ["じこ"], "n", 5, 1, False),
+    (1376250, ["整理"], ["せいり"], "n vs vt", 5, 5, False),
+    (1634040, ["問"], ["もん"], "suf ctr", 1, 9, False),
+    # g11
+    (1457210, ["届ける"], ["とどける"], "v1 vt", 4, None, False),
+    (1195430, ["荷物"], ["にもつ"], "n", 5, 9, False),
+    (1540170, ["友達"], ["ともだち"], "n", 5, 5, False),
+    (1191730, ["家"], ["いえ"], "n", 4, None, False),
+    (1511790, ["片付ける"], ["かたづける"], "v1 vt", 6, 37, False),
+    (1598550, ["出かける"], ["でかける"], "v1 vi", 16, None, False),
+    (1341670, ["準備"], ["じゅんび"], "n vs vt", 5, 2, False),
 )
 
 # Words whose Korean meaning does not follow the Sino-Korean reading (about half of them).
@@ -653,6 +832,19 @@ KOREAN_GLOSSES: dict[str, list[str]] = {
     "混む": ["붐비다", "혼잡하다"],
     "畑": ["밭"],
     "叔父": ["삼촌", "숙부"],
+    # g10: kanji words for the backward lookup (상자 → 箱, 많이 → 沢山) and kana words
+    "箱": ["상자"],
+    "沢山": ["많이"],
+    "やっと": ["겨우", "간신히"],
+    "みやげ": ["선물", "기념품"],
+    "細い": ["가늘다"],
+    "開ける": ["열다"],
+    "閉める": ["닫다"],
+    "庭": ["마당", "뜰"],
+    "鏡": ["거울"],
+    # g11
+    "届ける": ["보내다", "배달하다"],
+    "片付ける": ["정리하다", "치우다"],
 }
 
 
@@ -666,7 +858,9 @@ def check_lexicon(pages: list[GPage]) -> None:
     """Every word of the answers must be in the lexicon (a な-adjective headword without its だ)."""
     forms = {f for _, k, r, *_ in LEXICON for f in (*k, *r)}
     wanted = {w for p in pages for w in (*(v["headword"] for v in p.vocab), *p.sentence_words)}
-    missing = sorted(w for w in wanted if w not in forms and w.removesuffix("だ") not in forms)
+    # `(お)みやげ`: an optional prefix in brackets; the dictionary has the word without it
+    bare = {w: re.sub(r"[(（][^)）]*[)）]", "", w) for w in wanted}
+    missing = sorted(w for w in wanted if bare[w] not in forms and bare[w].removesuffix("だ") not in forms)
     if missing:
         raise SystemExit(f"words missing from LEXICON: {missing}")
 

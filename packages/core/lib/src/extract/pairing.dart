@@ -26,6 +26,7 @@ final class PairWeights {
     this.rowTolerance = 6.0,
     this.translationPosition = 0.8,
     this.translationUnmatched = 0.7,
+    this.unconfirmedPenalty = 0.2,
   });
 
   final double readingDictionary;
@@ -48,6 +49,10 @@ final class PairWeights {
 
   final double translationPosition;
   final double translationUnmatched;
+
+  /// Added to the meaning cost of a kanji headword read at the engine's
+  /// lowest confidence that no reading confirms (placement only).
+  final double unconfirmedPenalty;
 }
 
 double _xOverlap(Fragment a, Fragment b) =>
@@ -110,10 +115,15 @@ double meaningPlacement(
 }
 
 /// How well [korean] sits as the translation of the Japanese [sentence]
-/// (0..1): to its right on the same row, or on the next row to the right
-/// (a translation that wrapped).
+/// (0..1): to its right on the same row, on the next row to the right (a
+/// translation that wrapped), or on the line right below, starting where
+/// the sentence starts (an example box).
 double translationPlacement(Fragment sentence, Fragment korean) {
   final h = sentence.height;
+  final below = (korean.y - sentence.bottom) / h;
+  if ((korean.x - sentence.x).abs() <= 2 * h && below >= -0.3 && below <= 1.5) {
+    return 0.6 - 0.1 * math.max(0.0, below - 0.5);
+  }
   if (korean.x < sentence.x + 0.3 * sentence.width) return 0;
   final dy = (korean.cy - sentence.cy) / h;
   if (dy.abs() <= 0.8) return 1 - dy.abs() / 0.8 * 0.3;

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/data.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/features/capture/ocr_export.dart';
 import 'package:shiori/features/capture/entry_editor_sheet.dart';
 import 'package:shiori/features/capture/entry_tile.dart';
 import 'package:shiori/features/capture/evidence_tile.dart';
@@ -233,7 +234,10 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
         .length;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('검토')),
+      appBar: AppBar(
+        title: const Text('검토'),
+        actions: [OcrExportButton(scan: widget.scan, route: _draft.route)],
+      ),
       body: CustomScrollView(
         slivers: [
           SliverPadding(

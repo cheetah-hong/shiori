@@ -136,10 +136,26 @@ void main() {
 
   test('C7 the general pages\' values stay as they were (only the confidence '
       'changes)', () async {
-    for (final (name, glossary) in [
-      ('none', null),
-      ('stand-in', generalGlossary()),
-      ('real senses', realGlossary()),
+    List<int> values(ExtractScore s) => [
+      s.found,
+      s.readingsOk,
+      s.meanings.ok,
+      s.meanings.of,
+      s.sentenceWords.ok,
+      s.sentencePredicted.ok,
+      s.sentencePredicted.of,
+      s.extras,
+      s.duplicates,
+    ];
+    // g01–g06 as when the confidence rules were set; the whole set also has
+    // the word-list pages g10–g11. Only the gloss stand-in is read backwards
+    // (it knows the readings of its words): without it the misread 箱 is not
+    // read back (one word fewer, its kana an extra).
+    const firstPages = {'g01', 'g02', 'g03', 'g04', 'g05', 'g06'};
+    for (final (name, glossary, whole) in [
+      ('none', null, [69, 69, 67, 67, 54, 44, 44, 1, 0]),
+      ('stand-in', generalGlossary(), [70, 70, 68, 68, 54, 44, 44, 0, 0]),
+      ('real senses', realGlossary(), [69, 69, 67, 67, 54, 44, 44, 1, 0]),
     ]) {
       final s = await _score(
         _general,
@@ -147,20 +163,16 @@ void main() {
         confidenceRouter(generalLexicon(), glossary: glossary),
       );
       expect(
-        [
-          s.found,
-          s.readingsOk,
-          s.meanings.ok,
-          s.meanings.of,
-          s.sentenceWords.ok,
-          s.sentencePredicted.ok,
-          s.sentencePredicted.of,
-          s.extras,
-          s.duplicates,
-        ],
+        values(
+          ExtractScore([
+            for (final p in s.pages)
+              if (firstPages.contains(p.page)) p,
+          ]),
+        ),
         [49, 49, 48, 48, 45, 38, 38, 0, 0],
-        reason: name,
+        reason: '$name, g01–g06',
       );
+      expect(values(s), whole, reason: name);
     }
     final traps = await _score(
       trapTruth(),

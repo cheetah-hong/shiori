@@ -8,14 +8,33 @@ import '../../support/fixtures.dart';
 import 'extract_fixtures.dart';
 
 /// A Korean glossary held in memory: headword → senses, each a list of
-/// Korean words (first sense first).
-final class MemoryKoreanGlossary implements KoreanGlossary {
-  MemoryKoreanGlossary(this.senses);
+/// Korean words (first sense first). [readings] (headword → kana) let it be
+/// read backwards: the spellings of a reading with their senses' words.
+final class MemoryKoreanGlossary
+    implements KoreanGlossary, KoreanReverseGlossary {
+  MemoryKoreanGlossary(this.senses, {this.readings = const {}});
 
   final Map<String, List<List<String>>> senses;
+  final Map<String, List<String>> readings;
 
   /// Headwords asked for, in order (to check what the extractor looks up).
   final List<String> asked = [];
+
+  /// The readings of each backward lookup, in order.
+  final List<List<String>> askedBackwards = [];
+
+  @override
+  Future<List<GlossedSpelling>> reverseLookup(Iterable<String> readings) async {
+    final wanted = readings.toList();
+    askedBackwards.add(wanted);
+    return [
+      for (final MapEntry(key: written, value: kana) in this.readings.entries)
+        for (final r in kana)
+          if (wanted.contains(r))
+            for (final words in senses[written] ?? const <List<String>>[])
+              GlossedSpelling(written: written, reading: r, words: words),
+    ];
+  }
 
   @override
   Future<List<KoreanSense>> lookup(
@@ -44,12 +63,25 @@ final class MemoryKoreanGlossary implements KoreanGlossary {
 MemoryKoreanGlossary generalGlossary() {
   final table = (readGeneralJson('korean_glosses.json')['glosses'] as Map)
       .cast<String, Object?>();
-  return MemoryKoreanGlossary({
-    for (final MapEntry(:key, :value) in table.entries)
-      key: [
-        [for (final w in value! as List) w as String],
-      ],
-  });
+  final entries = [
+    for (final e in readGeneralJson('lexicon.json')['entries']! as List)
+      LexiconWord.fromJson((e as Map).cast<String, Object?>()),
+  ];
+  return MemoryKoreanGlossary(
+    {
+      for (final MapEntry(:key, :value) in table.entries)
+        key: [
+          [for (final w in value! as List) w as String],
+        ],
+    },
+    // The kanji words of the table with their readings, for the backward
+    // lookup (kana words are not read back).
+    readings: {
+      for (final key in table.keys)
+        for (final e in entries)
+          if (e.kanji.contains(key)) key: e.readings,
+    },
+  );
 }
 
 /// The row-template pipeline the reference scores were measured with.

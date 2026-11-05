@@ -18,9 +18,11 @@ import 'package:shiori_core/src/extract/extracted_word.dart';
 import 'package:shiori_core/src/extract/fragment.dart';
 import 'package:shiori_core/src/extract/fragment_collector.dart';
 import 'package:shiori_core/src/extract/hanja.dart';
+import 'package:shiori_core/src/extract/headword_repair.dart';
 import 'package:shiori_core/src/extract/hungarian.dart';
 import 'package:shiori_core/src/extract/lattice.dart';
 import 'package:shiori_core/src/extract/pairing.dart';
+import 'package:shiori_core/src/extract/read_back.dart';
 import 'package:shiori_core/src/extract/script_runs.dart';
 import 'package:shiori_core/src/models/ocr.dart';
 import 'package:shiori_core/src/ports/korean_glossary.dart';
@@ -106,7 +108,9 @@ final class GeneralExtractor {
     final glosses =
         _givenGlosses ?? (koreanGlossary == null ? null : senses.words);
     await page.prefetch();
-    page.restoreBoxPrefixes();
+    page
+      ..restoreBoxPrefixes()
+      ..mendHeadwords();
     final heads = page.headwords();
     final readings = page.pairReadings(heads, weights);
     final items = [...heads.values, ...page.kanaWords(readings.used)];
@@ -115,15 +119,17 @@ final class GeneralExtractor {
       readings.slopes,
       glosses,
       weights,
+      withReading: readings.links.keys.toSet(),
     );
     final sentenceWords = page.sentenceWords(meanings.used, weights);
-    final found = [
+    var found = [
       for (final item in items)
         if (item.isWord(
           page.hasLexicon,
           meanings.links[item.fragment.id],
           reading: readings.links[item.fragment.id],
           inKoreanParagraph: page.inKoreanParagraph(item.fragment),
+          lineHeight: page.lineHeight,
         ))
           item.toWord(
             readings.links[item.fragment.id],
@@ -132,6 +138,21 @@ final class GeneralExtractor {
           ),
       ...sentenceWords.words,
     ];
+    var traces = const <int>{};
+    if (koreanGlossary case final KoreanReverseGlossary backwards) {
+      (words: found, traces: traces) = await readBackHeadwords(
+        found,
+        fragments: page.fragments,
+        used: {
+          ...readings.used,
+          ...meanings.used,
+          ...sentenceWords.used,
+          for (final w in found) ?w.headwordFragmentId,
+        },
+        glossary: backwards,
+        lexicon: page.lexicon,
+      );
+    }
     final merged = _merge(found);
     final skipped = <String>[];
     final kept = <ExtractedWord>[];
@@ -146,12 +167,13 @@ final class GeneralExtractor {
         ? kept
         : [for (final w in kept) await senses.fill(w)];
     // After merging: the merge picks between words by their confidence.
-    final words = await settleConfidence(
+    final settled = await settleConfidence(
       filled,
       fragments: page.fragments,
       items: page.confidenceItems(items, readings.slopes),
       glosses: glosses,
     );
+    final words = [for (final w in settled) _unsettledHeadword(w)];
     final all = page.fragments;
     final used = <int>{
       ...readings.used,
@@ -162,6 +184,9 @@ final class GeneralExtractor {
       for (final w in found) ?w.headwordFragmentId,
       for (final f in all)
         if (f.inlineReadingOf != null) f.id,
+      // What OCR left of a headword that was read back.
+      ...traces,
+      ...page.strayOverWords({for (final w in found) ?w.headwordFragmentId}),
     };
     return ExtractionResult(
       words: List.unmodifiable(words),
@@ -214,7 +239,12 @@ final class _SenseCache {
     // Only words the lexicon knows: a meaning for a misread one would look
     // checked.
     if (w.partsOfSpeech.isEmpty) return w;
-    final found = await of(w.headword, w.readings);
+    var found = await of(w.headword, w.readings);
+    // `(お)みやげ`: the word without its optional prefix's brackets.
+    for (final form in optionalPrefixForms(w.headword)) {
+      if (found.isNotEmpty) break;
+      found = await of(form, w.readings);
+    }
     if (found.isEmpty) return w;
     final meaning = w.meaning;
     if (meaning == null) {
@@ -352,6 +382,7 @@ final class _Item {
     PairLink? meaning, {
     PairLink? reading,
     bool inKoreanParagraph = false,
+    double? lineHeight,
   }) {
     if (isOrphanReading) return meaning != null;
     final alone = meaning == null && reading == null && inlineReading == null;
@@ -359,6 +390,25 @@ final class _Item {
     if (inKoreanParagraph && alone) return false;
     // One kana with nothing paired is a stray glyph, not a word.
     if (isKana && fragment.text.runes.length == 1 && alone) return false;
+    // Kana in furigana size with nothing paired: a stray reading, not a
+    // headword (headwords are printed in the page's type).
+    if (isKana &&
+        alone &&
+        lineHeight != null &&
+        fragment.height <= furiganaSize * lineHeight) {
+      return false;
+    }
+    // Kana no dictionary has, read at the engine's lowest confidence and
+    // paired by place only: garbage beside some Korean line.
+    if (hasLexicon &&
+        isKana &&
+        !known &&
+        atLowestConfidence(fragment.confidence) &&
+        reading == null &&
+        (meaning == null ||
+            meaning.signals.every((s) => s == PairSignal.position))) {
+      return false;
+    }
     // Read at the engine's lowest confidence and paired with nothing: the
     // Japanese pass's garbage over Korean text more often than a word.
     if (hasLexicon &&
@@ -430,7 +480,9 @@ final class _Item {
       ],
       meaning: meaningFragment?.text,
       meaningNotes: meaningFragment?.notes ?? const [],
-      partsOfSpeech: entry?.partsOfSpeech ?? const [],
+      // No dictionary entry: the badge before the meaning, if printed.
+      partsOfSpeech:
+          entry?.partsOfSpeech ?? meaningFragment?.badgeCodes ?? const [],
       readingSource: readingFragment != null
           ? FieldSource.photo
           : (dictionaryReading == null ? null : FieldSource.dictionary),
@@ -492,6 +544,19 @@ final class _Page {
   final SentenceSegmenter segmenter;
   final Deconjugator deconjugator = Deconjugator.standard;
 
+  /// Median height of the Japanese lines of two letters or more (the
+  /// page's type size); null when there is none.
+  late final double? lineHeight = () {
+    final heights = [
+      for (final f in fragments)
+        if (f.pass == OcrPass.japanese &&
+            f.isJapanese &&
+            f.text.runes.where((c) => isKana(c) || isKanji(c)).length >= 2)
+          f.height,
+    ]..sort();
+    return heights.isEmpty ? null : heights[heights.length ~/ 2];
+  }();
+
   /// Fragments that turned out to be sentences (unknown kanji runs the
   /// lattice splits into words).
   final Set<int> _asSentence = {};
@@ -515,8 +580,14 @@ final class _Page {
             for (final d in deconjugator.deconjugate(v)) d.base,
         if (f.droppedPrefix case final prefix?)
           for (final d in deconjugator.deconjugate('$prefix${f.text}')) d.base,
+        if (f.kind == FragmentKind.kana)
+          for (final v in kanaLookalikeVariants(f.text))
+            for (final d in deconjugator.deconjugate(v)) d.base,
+        ...optionalPrefixForms(f.text),
         ...readingParts(f.text),
       ],
+      for (final joined in splitHeadwordForms(fragments))
+        for (final d in deconjugator.deconjugate(joined)) d.base,
       for (final f in fragments)
         if (f.kind == FragmentKind.japaneseSentence ||
             f.kind == FragmentKind.kanjiWord)
@@ -565,7 +636,7 @@ final class _Page {
     };
     final out = <int, _Item>{};
     for (final f in fragments.where((f) => f.kind == FragmentKind.kanjiWord)) {
-      final lemmas = hasLexicon ? _lemmas(f.text) : const <Lemma>[];
+      final lemmas = hasLexicon ? _lemmasWithPrefix(f.text) : const <Lemma>[];
       if (lemmas.isEmpty && hasLexicon) {
         final fix = _lookalikeFix(f);
         if (fix != null) {
@@ -585,9 +656,91 @@ final class _Page {
         _asSentence.add(f.id);
         continue;
       }
-      out[f.id] = _Item(f, lemmas, inlineReading: inline[f.id]);
+      out[f.id] = _Item(
+        f,
+        lemmas,
+        inlineReading: inline[f.id],
+        headwordNote: _mendNotes[f.id],
+      );
     }
     return out;
+  }
+
+  /// Why a mended fragment differs from what OCR read, by fragment id.
+  final Map<int, String> _mendNotes = {};
+
+  /// Joins kanji words a space split and mends kana-only headwords with a
+  /// look-alike glyph, when a kana on the row reads the mended word.
+  void mendHeadwords() {
+    if (!hasLexicon) return;
+    fragments = List.unmodifiable(joinSplitHeadwords(fragments, reads: _reads));
+    final mends = mendKanaLookalikes(
+      fragments,
+      known: (t) => _lemmas(t).isNotEmpty || lexicon.cached(t).isNotEmpty,
+      reads: _reads,
+    );
+    if (mends.isEmpty) return;
+    fragments = List.unmodifiable([
+      for (final f in fragments) mends[f.id]?.fragment ?? f,
+    ]);
+    for (final MapEntry(:key, :value) in mends.entries) {
+      _mendNotes[key] = value.note;
+    }
+  }
+
+  /// [_lemmas], or for a word printed with an optional prefix in brackets
+  /// (`(ご)飯`) those of its forms without the brackets.
+  List<Lemma> _lemmasWithPrefix(String text) {
+    final lemmas = _lemmas(text);
+    if (lemmas.isNotEmpty) return lemmas;
+    for (final form in optionalPrefixForms(text)) {
+      final found = _lemmas(form);
+      if (found.isNotEmpty) return found;
+    }
+    return lemmas;
+  }
+
+  /// One-syllable Korean-pass reads over the headword of a word (`트` over a
+  /// headword both passes read): the Korean pass's garbage, not text left
+  /// for the tray.
+  Set<int> strayOverWords(Set<int> headwordIds) {
+    final heads = [
+      for (final id in headwordIds)
+        if (id >= 0 && id < fragments.length) fragments[id],
+    ];
+    bool over(Fragment k, Fragment h) {
+      final w =
+          (k.right < h.right ? k.right : h.right) - (k.x > h.x ? k.x : h.x);
+      final v =
+          (k.bottom < h.bottom ? k.bottom : h.bottom) - (k.y > h.y ? k.y : h.y);
+      return w > 0.5 * k.width && v > 0.5 * k.height;
+    }
+
+    return {
+      for (final f in fragments)
+        if (f.pass == OcrPass.korean &&
+            f.kind == FragmentKind.hangul &&
+            f.text.runes.where(isHangul).length <= 1 &&
+            heads.any((h) => over(f, h)))
+          f.id,
+    };
+  }
+
+  /// The dictionary reads [headword] as every reading [kana] prints.
+  bool _reads(String headword, String kana) {
+    final lemmas = _lemmas(headword);
+    if (lemmas.isEmpty) return false;
+    final probe = Fragment(
+      id: -1,
+      text: headword,
+      kind: FragmentKind.kanjiWord,
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0,
+      pass: OcrPass.japanese,
+    );
+    return _Item(probe, lemmas).readsAs(kana);
   }
 
   /// An unknown headword that a look-alike glyph explains (`人ロ` read for
@@ -728,12 +881,20 @@ final class _Page {
     final dict = h.known && h.readsAs(k.text);
     // The dictionary reads the headword otherwise.
     if (h.known && !dict) return double.infinity;
+    // A kanji run no dictionary has (a misread headword) does not take, by
+    // place alone, a kana the dictionary reads as other kanji words: that
+    // kana is the reading of the headword OCR did not read.
+    if (hasLexicon && !h.known && _readsOtherKanji(k)) return double.infinity;
     final placement = readingPlacement(h.fragment, k);
     if (!dict && placement < w.minReadingPosition) return double.infinity;
     return 1 -
         w.readingDictionary * (dict ? 1 : 0) -
         w.readingPosition * placement;
   }
+
+  bool _readsOtherKanji(Fragment k) =>
+      !isKatakana(k.text.runes.first) &&
+      _kanjiWithReadings(readingParts(k.text)).isNotEmpty;
 
   /// Kana fragments that are words of their own (not a used reading).
   List<_Item> kanaWords(Set<int> usedReadings) => [
@@ -746,6 +907,14 @@ final class _Page {
 
   _Item? _kanaItem(Fragment f) {
     if (!hasLexicon) return _Item(f, const []);
+    // `(お)みやげ`: a kana headword as printed, looked up without brackets.
+    final optional = optionalPrefixForms(f.text);
+    if (optional.isNotEmpty) {
+      return _Item(
+        f,
+        [for (final form in optional) ..._lemmas(form)].take(1).toList(),
+      );
+    }
     final lemmas = _lemmas(f.text);
     final asWord = lemmas
         // A kana word: an entry with no kanji or usually written in kana
@@ -799,8 +968,9 @@ final class _Page {
     List<_Item> items,
     Map<int, double> slopes,
     KoreanGlossLookup? glosses,
-    PairWeights w,
-  ) async {
+    PairWeights w, {
+    Set<int> withReading = const {},
+  }) async {
     final korean = fragments
         .where((f) => f.kind == FragmentKind.hangul)
         .toList();
@@ -811,8 +981,13 @@ final class _Page {
           ...readingParts(item.inlineReading?.text ?? ''),
           ...?item.entry?.readings,
         ];
-        // The printed form and its dictionary form (`丈夫だ` → `丈夫`).
-        final forms = {item.headword, ?item.lemmas.firstOrNull?.base};
+        // The printed form and its dictionary form (`丈夫だ` → `丈夫`), and
+        // a word printed with an optional prefix without its brackets.
+        final forms = {
+          item.headword,
+          ?item.lemmas.firstOrNull?.base,
+          ...optionalPrefixForms(item.headword),
+        };
         glossOf[item.fragment.id] = [
           for (final h in forms) ...await glosses(h, readings),
         ];
@@ -831,6 +1006,7 @@ final class _Page {
               glossOf[item.fragment.id],
               w,
               (s) => signals[(item.fragment.id, k.id)] = s,
+              unconfirmed: _unconfirmed(item, withReading),
             ),
         ],
     ];
@@ -883,14 +1059,26 @@ final class _Page {
     };
   }
 
+  /// A kanji headword read at the engine's lowest confidence that no
+  /// reading on the page confirms: often a misread of the real headword
+  /// (`竹` read for `箱` beside はこ), so a kana beside it wins a tie for the
+  /// meaning.
+  bool _unconfirmed(_Item item, Set<int> withReading) =>
+      hasLexicon &&
+      !item.isKana &&
+      item.inlineReading == null &&
+      atLowestConfidence(item.fragment.confidence) &&
+      !withReading.contains(item.fragment.id);
+
   double _meaningCost(
     _Item item,
     Fragment k,
     double slope,
     List<String>? glosses,
     PairWeights w,
-    void Function(Set<PairSignal>) record,
-  ) {
+    void Function(Set<PairSignal>) record, {
+    bool unconfirmed = false,
+  }) {
     final hanja = item.kanjiCandidates.isNotEmpty
         ? item.kanjiNaming(k.text) != null
         : !item.isKana &&
@@ -925,7 +1113,8 @@ final class _Page {
     return 1 -
         w.meaningHanja * (hanja ? 1 : 0) -
         w.meaningGloss * (gloss ? 1 : 0) -
-        w.meaningPosition * placement;
+        w.meaningPosition * placement +
+        (unconfirmed && content == 0 ? w.unconfirmedPenalty : 0);
   }
 
   /// Words of every sentence, with the sentence and its translation.
@@ -1130,4 +1319,24 @@ ExtractedWord _better(ExtractedWord a, ExtractedWord b) {
       w.pairConfidence.index +
       (w.readingSource == FieldSource.photo ? 1 : 0);
   return score(b) > score(a) ? b : a;
+}
+
+/// A word whose headword the page did not settle (several dictionary
+/// spellings for its kana, offered as candidates) is never high: the
+/// learner picks the headword.
+ExtractedWord _unsettledHeadword(ExtractedWord w) {
+  if (w.headwordCandidates.isEmpty) return w;
+  PairLink? belowHigh(PairLink? link) =>
+      link == null || link.confidence != PairConfidence.high
+      ? link
+      : PairLink(
+          confidence: PairConfidence.medium,
+          signals: link.signals,
+          fragmentId: link.fragmentId,
+          note: '표제어 후보 ${w.headwordCandidates.length}',
+        );
+  return w.copyWith(
+    readingLink: belowHigh(w.readingLink),
+    meaningLink: belowHigh(w.meaningLink),
+  );
 }

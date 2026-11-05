@@ -22,6 +22,49 @@ abstract interface class KoreanGlossary {
   List<GlossarySourceInfo> get sources;
 }
 
+/// Block slot, optional: the glossary read backwards. A glossary that has it
+/// implements this next to [KoreanGlossary]; one that does not is only read
+/// forwards.
+abstract interface class KoreanReverseGlossary {
+  /// Japanese spellings the glossary has with one of [readings] (kana), each
+  /// with the Korean words of one sense. The word extractor asks once a page
+  /// for every kana whose headword OCR did not read, then keeps the
+  /// spellings whose Korean words name the meaning printed beside it.
+  Future<List<GlossedSpelling>> reverseLookup(Iterable<String> readings);
+}
+
+/// A Japanese spelling of a reading and the Korean words of one sense.
+final class GlossedSpelling {
+  const GlossedSpelling({
+    required this.written,
+    required this.reading,
+    required this.words,
+  });
+
+  /// How the word is written (kanji, or the kana for a kana word).
+  final String written;
+
+  /// The reading in kana.
+  final String reading;
+
+  /// The sense's Korean words, closest first.
+  final List<String> words;
+
+  @override
+  bool operator ==(Object other) =>
+      other is GlossedSpelling &&
+      other.written == written &&
+      other.reading == reading &&
+      listEquals(other.words, words);
+
+  @override
+  int get hashCode => Object.hash(written, reading, Object.hashAll(words));
+
+  @override
+  String toString() =>
+      'GlossedSpelling($written【$reading】 ${words.join(', ')})';
+}
+
 /// Dictionaries a [KoreanSense] can come from.
 enum GlossarySource {
   /// 한국어기초사전 (National Institute of Korean Language), CC BY-SA 2.0 KR.

@@ -1,5 +1,5 @@
 {
- "_note": "A small stand-in for a Japanese-Korean gloss table, made by tools/synthetic/make_general_pages.py: about half of the words whose Korean meaning does not follow the Sino-Korean reading.",
+ "_note": "A small stand-in for a Japanese-Korean gloss table, made by tools/synthetic/make_general_pages.py: about half of the words whose Korean meaning does not follow the Sino-Korean reading, and the g10/g11 words a backward lookup (Korean meaning to kanji spelling) needs.",
  "glosses": {
   "走る": [
    "달리다",
@@ -40,6 +40,44 @@
   "叔父": [
    "삼촌",
    "숙부"
+  ],
+  "箱": [
+   "상자"
+  ],
+  "沢山": [
+   "많이"
+  ],
+  "やっと": [
+   "겨우",
+   "간신히"
+  ],
+  "みやげ": [
+   "선물",
+   "기념품"
+  ],
+  "細い": [
+   "가늘다"
+  ],
+  "開ける": [
+   "열다"
+  ],
+  "閉める": [
+   "닫다"
+  ],
+  "庭": [
+   "마당",
+   "뜰"
+  ],
+  "鏡": [
+   "거울"
+  ],
+  "届ける": [
+   "보내다",
+   "배달하다"
+  ],
+  "片付ける": [
+   "정리하다",
+   "치우다"
   ]
  }
 }

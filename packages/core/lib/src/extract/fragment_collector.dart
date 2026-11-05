@@ -8,11 +8,13 @@
 ///    (on a tie, Japanese with kana in it).
 /// 3. Lines cut off at the photo's edge (the facing page) become noise.
 /// 4. Runs are cleaned (checkboxes, POS badges, stray marks) and classified;
-///    `漢字(かな)` gives a headword and its reading.
+///    `漢字(かな)` gives a headword and its reading. Blank-cell dashes, box
+///    glyphs, legend and footer lines, and furigana over a sentence are noise.
 /// 5. Korean lines that continue the line above and Japanese sentences that
 ///    wrap are joined.
 library;
 
+import 'package:shiori_core/src/capture/text/word_list_marks.dart';
 import 'package:shiori_core/src/extract/fragment.dart';
 import 'package:shiori_core/src/extract/script_runs.dart';
 import 'package:shiori_core/src/models/ocr.dart';
@@ -26,6 +28,15 @@ const int sentenceLength = 12;
 /// Korean text longer than this is a sentence, not a meaning.
 const int koreanSentenceLength = 26;
 
+/// A dash alone in a cell at most this share of the page's line height is
+/// an empty reading cell (measured: 0.15–0.45; the kanji 一 is as tall as
+/// the other words).
+const double blankMarkHeight = 0.5;
+
+/// Kana at most this share of a sentence's line height, right above it, are
+/// its furigana.
+const double furiganaSize = 0.8;
+
 /// Cuts every line of both passes into runs of one script, keeps Japanese
 /// from the Japanese pass and Korean from the Korean pass, drops what one
 /// pass read twice, and classifies the pieces.
@@ -37,10 +48,13 @@ List<Fragment> collectFragments(OcrScan scan) {
   final kept = _resolve(runs);
   final pieces = <_Piece>[];
   final checkboxColumns = _checkboxColumns(kept);
+  final lineHeight = _japaneseLineHeight(kept);
   for (final r in kept) {
-    pieces.addAll(_clean(r, checkboxColumns: checkboxColumns));
+    pieces.addAll(
+      _clean(r, checkboxColumns: checkboxColumns, lineHeight: lineHeight),
+    );
   }
-  final merged = _joinJapanese(_joinKorean(pieces));
+  final merged = _joinJapanese(_joinKorean(_markFurigana(pieces)));
   merged.sort(_readingOrder);
   return _number(merged);
 }
@@ -176,6 +190,21 @@ bool _overlaps(_Run a, _Run b) {
 
 int _kanaCount(String s) => s.runes.where(isKana).length;
 
+int _hangulCount(String s) => s.runes.where(isHangul).length;
+
+/// Median height of the Japanese pass's lines of two letters or more (the
+/// page's type size), or null when there is none.
+double? _japaneseLineHeight(List<_Run> runs) {
+  final heights = [
+    for (final r in runs)
+      if (r.pass == OcrPass.japanese &&
+          r.script == Script.japanese &&
+          _letters(r.text) >= 2)
+        r.y1 - r.y0,
+  ]..sort();
+  return heights.isEmpty ? null : heights[heights.length ~/ 2];
+}
+
 String _letterText(String s) => String.fromCharCodes(
   s.runes.where((c) => isKana(c) || isKanji(c) || isHangul(c)),
 );
@@ -214,6 +243,22 @@ List<_Run> _resolve(List<_Run> runs) {
       if (_letters(j.text) >= 2 &&
           _letterText(k.text).contains(_letterText(j.text))) {
         continue;
+      }
+      // A meaning line with its POS badge in front is Korean, whatever the
+      // Japanese pass made of it (`8叉` at full confidence over `명 창문`).
+      if (_badgeLine.hasMatch(k.text.trim())) {
+        dropped.add(j);
+        continue;
+      }
+      // One Korean syllable over Japanese: the Korean pass reading a
+      // headword or a reading as garbage (`트`, `(다`). Over kana it loses;
+      // over one kanji both stay and the dictionary decides.
+      if (_hangulCount(k.text) <= 1 && !_posBadgeOnly(k.text)) {
+        if (_kanaCount(j.text) >= 2) {
+          dropped.add(k);
+          continue;
+        }
+        if (_letters(j.text) == 1) continue;
       }
       // The Japanese pass's lowest confidence over Korean text: garbage.
       if (atLowestConfidence(j.conf) && k.conf > j.conf) {
@@ -275,6 +320,7 @@ final class _Piece {
     this.notes = const [],
     this.corrected = false,
     this.droppedPrefix,
+    this.posBadge,
   });
 
   final String text;
@@ -291,6 +337,7 @@ final class _Piece {
   final List<String> notes;
   final bool corrected;
   final String? droppedPrefix;
+  final String? posBadge;
 
   double get cy => y + height / 2;
   double get right => x + width;
@@ -307,6 +354,7 @@ final class _Piece {
     List<String>? notes,
     bool? corrected,
     String? droppedPrefix,
+    String? posBadge,
   }) => _Piece(
     text: text ?? this.text,
     kind: kind ?? this.kind,
@@ -320,10 +368,17 @@ final class _Piece {
     notes: notes ?? this.notes,
     corrected: corrected ?? this.corrected,
     droppedPrefix: droppedPrefix ?? this.droppedPrefix,
+    posBadge: posBadge ?? this.posBadge,
   );
 }
 
 const String _checkboxGlyphs = '□■☐☑☒口ロ';
+
+/// Glyphs OCR reads for a row of checkboxes (also the dash after them).
+final Set<int> _boxRowGlyphs = '□■☐☑☒口ロコー'.runes.toSet();
+
+/// Kanji OCR reads for a lone checkbox.
+const Set<String> _boxKanji = {'問', '目'};
 final RegExp _leadingCheckbox = RegExp('^[□■☐☑☒|｜]+\\s*');
 final RegExp _leadingLookalikeBox = RegExp('^[口ロ](?:\\s+|(?=[^\\s]))');
 
@@ -385,10 +440,32 @@ final RegExp _inlineReadingNoOpen = RegExp(
 final RegExp _japaneseSentenceMark = RegExp('[。？！?!、〜～]');
 final RegExp _digitsOnly = RegExp(r'^[0-9０-９\s.,:/-]+$');
 
-/// POS badges the old word lists print before a meaning, as OCR reads them.
-final RegExp _posBadge = RegExp(
-  r'^\[?(?:명|몀|동|통|형|い형|니형|な형|⅓형|⅛형|1⁄3형|1⁄8형|부|접|감|연|조)\]?(?:\s+|$)',
+/// Parts of speech spelled out as a badge (`동사 열다`).
+const Set<String> _spelledBadges = {'명사', '동사', '형용사', '부사'};
+
+final String _badges = badgeAlternation({...posBadges.keys, ..._spelledBadges});
+
+/// The POS badge word lists print before a meaning, as OCR reads them
+/// (shared with the row templates), maybe in brackets.
+final RegExp _posBadge = RegExp('^\\[?($_badges)\\]?$badgeSeparator');
+
+/// The badge [read] is, spelled-out names folded to the badge.
+String? _badgeOf(String read) =>
+    posBadges[read] ??
+    const {'명사': '명', '동사': '동', '형용사': '형', '부사': '부'}[read];
+
+/// A badge, then the Korean meaning (maybe after a number: `명 3, 셋`).
+final RegExp _badgeLine = RegExp(
+  '^\\[?(?:$_badges)\\]?\\s*[.:·]?\\s+[0-9,.\\s]*[가-힣]',
 );
+
+final RegExp _badgeAlone = RegExp('^\\[?(?:$_badges)\\]?\$');
+
+bool _posBadgeOnly(String text) => _badgeAlone.hasMatch(text.trim());
+
+/// Korean lines that label rather than mean: a legend (`* 표시 = …`), a
+/// footer (`단어 | DAY 10`), a box heading (`[문형] …`).
+final RegExp _markerLine = RegExp(r'[=|｜]|^\s*[\[［【〈<]');
 
 final RegExp _strayMarks = RegExp('^[\'‘’`´ˇ✓✔,.]+|[\'‘’`´ˇ✓✔]+\$');
 final RegExp _leadingNote = RegExp(r'^\(([^()]*)\)\s*');
@@ -396,7 +473,11 @@ final RegExp _trailingNote = RegExp(r'\s*\(([^()]*)\)$');
 final RegExp _supplement = RegExp(r'\s+\*\s*(.+)$');
 final RegExp _koreanSentenceEnd = RegExp(r'[.?!。？！][)"\x27’”]*$');
 
-List<_Piece> _clean(_Run r, {required List<double> checkboxColumns}) {
+List<_Piece> _clean(
+  _Run r, {
+  required List<double> checkboxColumns,
+  double? lineHeight,
+}) {
   final base = _Piece(
     text: r.text,
     kind: FragmentKind.noise,
@@ -409,16 +490,31 @@ List<_Piece> _clean(_Run r, {required List<double> checkboxColumns}) {
   );
   if (r.edge) return [base];
   return switch (r.script) {
-    Script.japanese => _cleanJapanese(base, checkboxColumns: checkboxColumns),
+    Script.japanese => _cleanJapanese(
+      base,
+      checkboxColumns: checkboxColumns,
+      lineHeight: lineHeight,
+    ),
     Script.korean => [_cleanKorean(base)],
     Script.digits => [base.copy(kind: FragmentKind.number)],
     Script.other => [base],
   };
 }
 
-List<_Piece> _cleanJapanese(_Piece p, {required List<double> checkboxColumns}) {
+List<_Piece> _cleanJapanese(
+  _Piece p, {
+  required List<double> checkboxColumns,
+  double? lineHeight,
+}) {
   var text = p.text;
   var corrected = false;
+  // A dash alone in a cell, much lower than the page's type: an empty
+  // reading cell, not the kanji 一 or the long vowel mark.
+  if (lineHeight != null &&
+      blankCellMarks.contains(text.trim()) &&
+      p.height <= blankMarkHeight * lineHeight) {
+    return [p.copy(kind: FragmentKind.noise, corrected: true)];
+  }
   final box = _leadingCheckbox.firstMatch(text);
   if (box != null) {
     text = text.substring(box.end);
@@ -428,13 +524,28 @@ List<_Piece> _cleanJapanese(_Piece p, {required List<double> checkboxColumns}) {
       text.runes.every((c) => _checkboxGlyphs.runes.contains(c))) {
     return [p.copy(kind: FragmentKind.noise)];
   }
-  // A 口 or ロ at the checkbox column's x (or set off by a space) is a box.
-  final lookalike = _leadingLookalikeBox.firstMatch(text);
   // Within one glyph of the column: the glyph width is measured along the
   // line (x), so a tall or wide photo gives the same tolerance.
   final atColumn = checkboxColumns.any(
     (c) => (p.x - c).abs() <= _em(p.width, p.text),
   );
+  // A row of boxes read as box-like glyphs (`コロロ`, `ロロー`), or one box
+  // read as a kanji (`問`), where the boxes are or at the lowest confidence.
+  final bare = text.replaceAll(RegExp(r'\s'), '');
+  final boxes = bare.runes.where(
+    (c) => _boxRowGlyphs.contains(c) && c != 0x30FC,
+  );
+  if ((atColumn || atLowestConfidence(p.confidence)) &&
+      bare.isNotEmpty &&
+      bare.runes.every(_boxRowGlyphs.contains) &&
+      boxes.length >= 2) {
+    return [p.copy(kind: FragmentKind.noise, corrected: true)];
+  }
+  if (atColumn && _boxKanji.contains(bare)) {
+    return [p.copy(kind: FragmentKind.noise, corrected: true)];
+  }
+  // A 口 or ロ at the checkbox column's x (or set off by a space) is a box.
+  final lookalike = _leadingLookalikeBox.firstMatch(text);
   String? droppedPrefix;
   if (lookalike != null &&
       text.length > 1 &&
@@ -504,10 +615,12 @@ _Piece _cleanKorean(_Piece p) {
     text = text.substring(badge.end);
     corrected = true;
   }
+  final posBadge = badge == null ? p.posBadge : _badgeOf(badge.group(1)!);
   final stray = text.replaceAll(_strayMarks, '').trim();
   if (stray != text.trim()) corrected = true;
   text = stray;
   if (text.isEmpty) return p.copy(kind: FragmentKind.noise, corrected: true);
+  if (_markerLine.hasMatch(text)) return p.copy(kind: FragmentKind.noise);
   final sentence =
       _koreanSentenceEnd.hasMatch(text) ||
       text.runes.where(isHangul).length > koreanSentenceLength;
@@ -533,7 +646,48 @@ _Piece _cleanKorean(_Piece p) {
     kind: sentence ? FragmentKind.koreanSentence : FragmentKind.hangul,
     notes: notes,
     corrected: corrected,
+    posBadge: posBadge,
   );
+}
+
+/// Furigana over a sentence's kanji: kana well below the sentence's size,
+/// right above it and inside its width, with no headword to their left on
+/// their row (whose reading they would be). They are the readings the
+/// sentence prints, not words of their own.
+List<_Piece> _markFurigana(List<_Piece> pieces) {
+  final sentences = [
+    for (final p in pieces)
+      if (p.pass == OcrPass.japanese && p.kind == FragmentKind.japaneseSentence)
+        p,
+  ];
+  final headwords = [
+    for (final p in pieces)
+      if (p.pass == OcrPass.japanese && p.kind == FragmentKind.kanjiWord) p,
+  ];
+  // A kanji word to the left on the row: the kana is its reading.
+  bool readsHeadword(_Piece k) =>
+      headwords.any((h) => h.right <= k.x + 0.5 * k.height && _sameRow(h, k));
+  bool over(_Piece k, _Piece s) {
+    final gap = s.y - k.bottom;
+    final cx = k.x + k.width / 2;
+    return k.height <= furiganaSize * s.height &&
+        gap >= -0.4 * s.height &&
+        gap <= 0.8 * s.height &&
+        cx >= s.x &&
+        cx <= s.right;
+  }
+
+  return [
+    for (final p in pieces)
+      if (p.pass == OcrPass.japanese &&
+          p.kind == FragmentKind.kana &&
+          p.readingOf == null &&
+          sentences.any((s) => over(p, s)) &&
+          !readsHeadword(p))
+        p.copy(kind: FragmentKind.noise, corrected: true)
+      else
+        p,
+  ];
 }
 
 bool _sameRow(_Piece a, _Piece b) {
@@ -707,6 +861,7 @@ List<Fragment> _number(List<_Piece> pieces) {
         notes: p.notes,
         corrected: p.corrected,
         droppedPrefix: p.droppedPrefix,
+        posBadge: p.posBadge,
       ),
   ];
 }

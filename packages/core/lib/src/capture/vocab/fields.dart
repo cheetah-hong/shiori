@@ -3,6 +3,7 @@ library;
 
 import 'package:shiori_core/src/capture/text/chars.dart';
 import 'package:shiori_core/src/capture/text/py.dart';
+import 'package:shiori_core/src/capture/text/word_list_marks.dart';
 import 'package:shiori_core/src/models/part_of_speech.dart';
 
 /// The legend at the top (`★ 표시 = …`), the DAY tab and the mp3 note are not words.
@@ -44,32 +45,9 @@ String cleanHead(String s, {bool overCheckbox = false}) {
   return out.replaceAll('★', '').replaceAll(' ', '').trim();
 }
 
-// OCR misreads: 통 → 동, 몀 → 명; the い of い형 read as 니, the な of な형
-// read as a fraction (⅓, ⅛; 1⁄3, 1⁄8 after NFKC).
-const Map<String, String> _posBadges = {
-  '명': '명',
-  '몀': '명',
-  '동': '동',
-  '통': '동',
-  '형': '형',
-  'い형': 'い형',
-  '니형': 'い형',
-  'な형': 'な형',
-  '⅓형': 'な형',
-  '1⁄3형': 'な형',
-  '⅛형': 'な형',
-  '1⁄8형': 'な형',
-  '부': '부',
-  '접': '접',
-  '감': '감',
-  '연': '연',
-  '조': '조',
-};
-
 /// Longest badge first, so `い형` is not read as `형`.
 final RegExp _posPrefix = RegExp(
-  '^(${(_posBadges.keys.toList()..sort((a, b) => b.length - a.length)).join('|')})'
-  r'(?:\s*[.:·]?\s+|$)',
+  '^(${badgeAlternation(posBadges.keys)})$badgeSeparator',
 );
 
 /// First letters of the POS badges (a badge glued to the meaning starts with one).
@@ -80,7 +58,7 @@ const String badgeGlyphs = '명몀동통형부접감연조';
   final m = _posPrefix.firstMatch(meaning);
   if (m == null) return (null, meaning);
   return (
-    PartOfSpeech.fromBadge(_posBadges[m.group(1)]),
+    PartOfSpeech.fromBadge(posBadges[m.group(1)]),
     meaning.substring(m.end).trim(),
   );
 }
@@ -113,9 +91,6 @@ String readingText(String s) =>
     _withoutBar(s).replaceAll(_spacedSlash, '/').trim().split(_space).first;
 
 String _withoutBar(String s) => nfkc(s).replaceFirst(_leadingBarSpaced, '');
-
-/// The dash printed in the reading column of a kana word.
-const Set<String> readingDashes = {'-', '–', '—', '−', '一'};
 
 /// Whether a cell looks like a reading: kana, or the dash of a kana word.
 /// [firstToken]: judge only the text before the first space.

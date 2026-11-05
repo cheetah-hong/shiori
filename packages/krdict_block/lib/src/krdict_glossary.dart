@@ -34,7 +34,7 @@ final class KrdictFormatException implements Exception {
 /// is looked up again without it (お皿 → 皿).
 ///
 /// Calls are synchronous and take well under a millisecond.
-final class KrdictGlossary implements KoreanGlossary {
+final class KrdictGlossary implements KoreanGlossary, KoreanReverseGlossary {
   KrdictGlossary._(this._db, this.sources);
 
   /// Opens the database at [path] read-only.
@@ -95,6 +95,42 @@ final class KrdictGlossary implements KoreanGlossary {
     List<String> readings = const [],
     int limit = 3,
   }) async => lookupSync(headword, readings: readings, limit: limit);
+
+  @override
+  Future<List<GlossedSpelling>> reverseLookup(
+    Iterable<String> readings,
+  ) async => reverseLookupSync(readings);
+
+  /// [reverseLookup] without the Future: every kanji word read as one of
+  /// [readings] (katakana folded to hiragana) and every kana word written
+  /// so, one result per sense, in file order. Both go through an index
+  /// (`ja_reading`, `ja_key`).
+  List<GlossedSpelling> reverseLookupSync(Iterable<String> readings) {
+    _ensureOpen();
+    final out = <GlossedSpelling>[];
+    for (final reading in {for (final r in readings) toHiragana(r.trim())}) {
+      if (reading.isEmpty) continue;
+      for (final row in _select(_spellingsSql, [reading, reading])) {
+        final key = row.columnAt(0) as String;
+        final read = row.columnAt(1) as String;
+        final word = row.columnAt(2) as String;
+        final synonyms = row.columnAt(3) as String;
+        out.add(
+          GlossedSpelling(
+            written: key,
+            reading: read.isEmpty ? key : read,
+            words: List.unmodifiable([
+              word,
+              if (synonyms.isNotEmpty)
+                for (final s in synonyms.split('|'))
+                  if (s != word) s,
+            ]),
+          ),
+        );
+      }
+    }
+    return out;
+  }
 
   /// [lookup] without the Future.
   List<KoreanSense> lookupSync(
@@ -244,6 +280,17 @@ final class KrdictGlossary implements KoreanGlossary {
       'FROM ja j JOIN sense s ON s.id = j.sense_id';
 
   static const _byKeySql = 'SELECT $_columns WHERE j.key = ? LIMIT $_rowLimit';
+
+  /// Kanji words read as `?1`, then kana words written `?2`.
+  static const _spellingsSql =
+      'SELECT j.key, j.reading, s.word, s.synonyms '
+      'FROM ja j JOIN sense s ON s.id = j.sense_id '
+      'WHERE j.reading = ?1 AND j.kind = $_pair '
+      'UNION ALL '
+      'SELECT j.key, j.reading, s.word, s.synonyms '
+      'FROM ja j JOIN sense s ON s.id = j.sense_id '
+      'WHERE j.key = ?2 AND j.kind = $_kana '
+      'LIMIT $_rowLimit';
 
   static const _byReadingSql =
       'SELECT $_columns WHERE j.reading = ? AND j.kind = $_pair '

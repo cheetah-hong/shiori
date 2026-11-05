@@ -108,6 +108,7 @@ final class ExtractedWord {
     this.headwordFragmentId,
     this.headwordNote,
     this.meaningCandidates = const [],
+    this.headwordCandidates = const [],
   });
 
   /// Dictionary form: kanji (with okurigana) or, for kana words, the kana.
@@ -146,6 +147,10 @@ final class ExtractedWord {
   /// Other meanings to offer: the glossary's other senses.
   final List<String> meaningCandidates;
 
+  /// Headwords to offer when OCR did not read the printed one and the
+  /// glossary read backwards gives more than one spelling for its kana.
+  final List<String> headwordCandidates;
+
   /// The weakest pairing of the word; [PairConfidence.low] when nothing is
   /// paired with the headword at all.
   PairConfidence get pairConfidence {
@@ -169,6 +174,7 @@ final class ExtractedWord {
     WordOrigin? origin,
     Object? example = _unset,
     List<String>? meaningCandidates,
+    List<String>? headwordCandidates,
   }) => ExtractedWord(
     headword: headword,
     origin: origin ?? this.origin,
@@ -197,6 +203,9 @@ final class ExtractedWord {
     headwordNote: headwordNote,
     meaningCandidates: List.unmodifiable(
       meaningCandidates ?? this.meaningCandidates,
+    ),
+    headwordCandidates: List.unmodifiable(
+      headwordCandidates ?? this.headwordCandidates,
     ),
   );
 
@@ -230,6 +239,11 @@ final class ExtractedWord {
       issues: [
         if (headwordNote != null)
           EntryIssue.corrected(EntryField.headword, note: headwordNote),
+        if (headwordNote == null && headwordCandidates.isNotEmpty)
+          EntryIssue.suspect(
+            EntryField.headword,
+            note: '사전 역조회 후보 ${headwordCandidates.length}',
+          ),
         if (meaning == null) const EntryIssue.missing(EntryField.meaning),
         if (meaning != null && fromDictionary)
           const EntryIssue.inferred(EntryField.meaning, note: '사전 뜻'),
@@ -244,13 +258,19 @@ final class ExtractedWord {
           const EntryIssue.inferred(EntryField.readings, note: 'dictionary'),
       ],
       ocrHeadword: headword,
+      headwordCandidates: headwordCandidates,
       evidence: EntryEvidence(
         origin: origin,
         fields: {
           EntryField.headword: FieldEvidence(
             source: headwordSource,
             boxes: boxes([headwordFragmentId]),
-            note: headwordNote,
+            candidates: headwordCandidates,
+            note:
+                headwordNote ??
+                (headwordCandidates.isEmpty
+                    ? null
+                    : '사전 역조회 후보 ${headwordCandidates.length}'),
           ),
           if (readings.isNotEmpty)
             EntryField.readings: FieldEvidence(
