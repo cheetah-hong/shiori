@@ -9,7 +9,6 @@ CapturedEntry _entry(
   List<String> readings = const ['よみ'],
   PartOfSpeech? pos = PartOfSpeech.noun,
   String meaning = '뜻',
-  bool important = false,
   Example? example,
   List<EntryIssue> issues = const [],
   List<String> candidates = const [],
@@ -19,7 +18,6 @@ CapturedEntry _entry(
   readings: readings,
   pos: pos,
   meaning: meaning,
-  important: important,
   example: example,
   issues: issues,
   headwordCandidates: candidates,
@@ -33,7 +31,6 @@ CapturedEntry _saveUnchanged(CapturedEntry e, {bool checksExample = false}) =>
       readings: e.readings,
       pos: e.pos,
       meaning: e.meaning,
-      important: e.important,
       example: e.example,
       checksExample: checksExample,
     );
@@ -153,7 +150,6 @@ void main() {
         readings: e.readings,
         pos: e.pos,
         meaning: e.meaning,
-        important: e.important,
       );
       expect(out.headword, '二日');
       expect(_codes(out), ['pos:inferred']);
@@ -178,7 +174,6 @@ void main() {
         readings: const ['よみ'],
         pos: PartOfSpeech.noun,
         meaning: '',
-        important: false,
       );
       expect(_codes(cleared), ['meaning:missing']);
     });
@@ -191,26 +186,6 @@ void main() {
       );
       expect(_codes(_saveUnchanged(e, checksExample: true)), isEmpty);
       expect(_codes(_saveUnchanged(e)), ['example:missing']);
-    });
-
-    test('a guessed star stays when the learner leaves it on', () {
-      final e = _entry(
-        '0010',
-        '海',
-        important: true,
-        issues: const [EntryIssue.inferred(EntryField.important)],
-      );
-      expect(_codes(_saveUnchanged(e)), ['important:inferred']);
-      final off = applyLearnerEdits(
-        e,
-        headword: e.headword,
-        readings: e.readings,
-        pos: e.pos,
-        meaning: e.meaning,
-        important: false,
-      );
-      expect(off.important, isFalse);
-      expect(off.issues, isEmpty);
     });
   });
 }

@@ -96,7 +96,6 @@ final class _Cols {
   /// End of the headword, start of the reading and of the example column.
   double get column => 0.15 * s;
   double get readingTo => 0.32 * s;
-  double get star => 0.2 * s;
   double get meaningFrom => 0.36 * s;
 
   /// A headword line (found without its number) starts near the number's x.
@@ -296,7 +295,6 @@ CapturedEntry _entry(
     readings: reading == null ? const [] : parseReadings(reading.text),
     pos: pos,
     meaning: meaning,
-    important: b.row.any((l) => l.x < ax + cols.star && l.text.contains('★')),
     example: example,
     issues: example == null
         ? const [EntryIssue.missing(EntryField.example)]

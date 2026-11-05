@@ -1,20 +1,17 @@
-import CoreImage
 import Flutter
 import ImageIO
 import Vision
 
 /// Apple Vision OCR behind the `TextRecognizer` port (Dart: PlatformTextRecognizer).
 ///
-/// `recognize(path, starPass)` reads the photo Japanese-first and Korean-first and returns
-/// `{"ja": OcrPage, "ko": OcrPage, "star"?: OcrPage, "turned": degrees, "timing": {...}}` as JSON.
+/// `recognize(path)` reads the photo Japanese-first and Korean-first and returns
+/// `{"ja": OcrPage, "ko": OcrPage, "turned": degrees, "timing": {...}}` as JSON.
 /// Each OcrPage has the shape the research probe (tools/reference/vision_ocr.swift) recorded:
 /// lines with t, c, x, y, w, h, normalized, origin at the top-left of the upright image.
 ///
 /// - Upright: EXIF first; then the reading direction of the first Japanese pass votes. A photo
 ///   taken from above often has no rotation in EXIF. When the text is not upright the image is
 ///   read again turned the right way, so an upright photo costs nothing extra.
-/// - Star pass (optional): a third Japanese pass over a binarized copy of the same frame. Vision
-///   misses some ★ marks on the colour photo and reads them there; Dart takes only its ★ glyphs.
 ///
 /// Runs on device, no network.
 final class OcrChannel: NSObject, FlutterPlugin {
@@ -39,11 +36,10 @@ final class OcrChannel: NSObject, FlutterPlugin {
       result(FlutterError(code: "bad_args", message: "path is required", details: nil))
       return
     }
-    let starPass = args["starPass"] as? Bool ?? false
     queue.async {
       let outcome: Any
       do {
-        outcome = try Self.recognize(path: path, starPass: starPass)
+        outcome = try Self.recognize(path: path)
       } catch let error as OcrError {
         outcome = FlutterError(code: error.code, message: error.message, details: nil)
       } catch {
@@ -53,7 +49,7 @@ final class OcrChannel: NSObject, FlutterPlugin {
     }
   }
 
-  static func recognize(path: String, starPass: Bool) throws -> String {
+  static func recognize(path: String) throws -> String {
     let url = URL(fileURLWithPath: path) as CFURL
     guard let source = CGImageSourceCreateWithURL(url, nil) else {
       throw OcrError(code: "bad_image", message: "cannot open \(path)")
@@ -83,27 +79,12 @@ final class OcrChannel: NSObject, FlutterPlugin {
     }
     let ko = try read(image, orientation: orientation, languages: korean)
 
-    var pages: [String: Any] = [
+    let pages: [String: Any] = [
       "ja": page(ja, languages: japanese),
       "ko": page(ko, languages: korean),
       "turned": turned,
+      "timing": timing,
     ]
-    if starPass {
-      let started = Date()
-      // The two main passes are good on their own; a failed star pass only loses the ★ help.
-      if let binary = binarized(image, orientation: orientation) {
-        timing["star_binarize"] = milliseconds(since: started)
-        do {
-          let stars = try read(binary, orientation: .up, languages: japanese)
-          pages["star"] = page(stars, languages: japanese)
-        } catch {
-          NSLog("[Shiori] star pass skipped: \(error.localizedDescription)")
-        }
-      } else {
-        NSLog("[Shiori] star pass skipped: could not binarize the image")
-      }
-    }
-    pages["timing"] = timing
     let data = try JSONSerialization.data(withJSONObject: pages)
     return String(decoding: data, as: UTF8.self)
   }
@@ -162,43 +143,6 @@ final class OcrChannel: NSObject, FlutterPlugin {
   private static func milliseconds(since start: Date) -> Int {
     Int((Date().timeIntervalSince(start) * 1000).rounded())
   }
-
-  // MARK: - star pass image
-
-  /// Non-linear sRGB working space: the threshold reads like an 8-bit value.
-  private static let context: CIContext = {
-    let sRGB = CGColorSpace(name: CGColorSpace.sRGB)!
-    return CIContext(options: [.workingColorSpace: sRGB, .outputColorSpace: sRGB])
-  }()
-
-  /// Upright gray copy divided by a small-radius paper estimate, thresholded at 0.80:
-  /// strokes black, paper and colour bands white. Same frame as the oriented photo.
-  static func binarized(_ image: CGImage, orientation: CGImagePropertyOrientation) -> CGImage? {
-    autoreleasepool { binarizedImage(image, orientation: orientation) }
-  }
-
-  private static func binarizedImage(_ image: CGImage, orientation: CGImagePropertyOrientation) -> CGImage? {
-    let upright = CIImage(cgImage: image).oriented(orientation)
-    let page = upright.transformed(by: CGAffineTransform(translationX: -upright.extent.minX,
-                                                         y: -upright.extent.minY))
-    let extent = page.extent
-    let gray = page.applyingFilter("CIColorControls", parameters: [kCIInputSaturationKey: 0])
-    // Paper estimate: a max filter erases strokes, a blur smooths it; computed at 1/8 scale.
-    let down = 8.0
-    let radius = Double(max(extent.width, extent.height)) * OcrOrientation.starPassRadius / down
-    let paper = gray.applyingFilter("CILanczosScaleTransform", parameters: [kCIInputScaleKey: 1 / down,
-                                                                             kCIInputAspectRatioKey: 1])
-      .clampedToExtent()
-      .applyingFilter("CIMorphologyMaximum", parameters: [kCIInputRadiusKey: radius])
-      .applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: radius])
-      .transformed(by: CGAffineTransform(scaleX: down, y: down))
-      .cropped(to: extent)
-    // CIDivideBlendMode computes background / input: gray / paper.
-    let binary = paper.applyingFilter("CIDivideBlendMode", parameters: [kCIInputBackgroundImageKey: gray])
-      .cropped(to: extent)
-      .applyingFilter("CIColorThreshold", parameters: ["inputThreshold": OcrOrientation.starPassThreshold])
-    return context.createCGImage(binary, from: extent)
-  }
 }
 
 /// Pure geometry for the OCR channel (unit tested in RunnerTests).
@@ -207,10 +151,6 @@ enum OcrOrientation {
   static let minShare = 0.6
   /// Fewer characters than this: no text to tell the direction from.
   static let minCharacters = 20
-
-  /// Star pass: paper-estimate radius (share of the long side) and black threshold.
-  static let starPassRadius = 0.006
-  static let starPassThreshold = 0.80
 
   struct Quad {
     let topLeft: CGPoint

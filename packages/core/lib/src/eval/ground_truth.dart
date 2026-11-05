@@ -45,7 +45,6 @@ final class GroundTruthEntry {
     required this.readings,
     required this.pos,
     required this.meaning,
-    required this.important,
     this.example,
   });
 
@@ -57,7 +56,6 @@ final class GroundTruthEntry {
       readings: [for (final r in json['readings']! as List) r as String],
       pos: json['pos'] as String?,
       meaning: json['meaning']! as String,
-      important: json['important']! as bool,
       example: ex is Map
           ? Example(ja: ex['ja'] as String, ko: ex['ko'] as String)
           : null,
@@ -71,7 +69,6 @@ final class GroundTruthEntry {
   /// POS badge, for example `명`.
   final String? pos;
   final String meaning;
-  final bool important;
 
   /// Only entry-layout (N3) pages have examples.
   final Example? example;

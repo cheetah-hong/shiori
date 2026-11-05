@@ -56,20 +56,4 @@ class OcrOrientationTests: XCTestCase {
     XCTAssertTrue(OcrOrientation.swapsSides(.right))
     XCTAssertTrue(OcrOrientation.swapsSides(.leftMirrored))
   }
-
-  func testBinarizedKeepsTheFrame() throws {
-    // A 40 × 20 white image with a black bar: the star pass image has the oriented size.
-    let width = 40, height = 20
-    var pixels = [UInt8](repeating: 255, count: width * height * 4)
-    for y in 8..<12 { for x in 5..<35 { for c in 0..<3 { pixels[(y * width + x) * 4 + c] = 0 } } }
-    let provider = CGDataProvider(data: Data(pixels) as CFData)!
-    let image = CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4,
-                        space: CGColorSpace(name: CGColorSpace.sRGB)!,
-                        bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue),
-                        provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)!
-    let up = try XCTUnwrap(OcrChannel.binarized(image, orientation: .up))
-    XCTAssertEqual([up.width, up.height], [40, 20])
-    let turned = try XCTUnwrap(OcrChannel.binarized(image, orientation: .right))
-    XCTAssertEqual([turned.width, turned.height], [20, 40])
-  }
 }

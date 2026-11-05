@@ -35,14 +35,11 @@ void main() {
       expect(word('m011', '0021').headword, '指');
     });
 
-    test('a ★ glued to the reading or read as * still marks the word', () {
+    test('a ★ glued to the reading or read as * stays out of the cells', () {
       expect(word('m011', '0015').readings, ['かわ']);
-      expect(word('m011', '0015').important, isTrue);
-      expect(word('m011', '0019').important, isTrue);
-    });
-
-    test('a ★ that was not returned cannot be recovered', () {
-      expect(word('m011', '0013').important, isFalse);
+      expect(word('m011', '0015').headword, '川');
+      expect(word('m011', '0019').headword, '星');
+      expect(word('m011', '0019').readings, ['ほし']);
     });
 
     test('a glyph glued after the reading is dropped', () {

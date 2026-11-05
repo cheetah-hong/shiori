@@ -43,7 +43,6 @@ class Words extends Table {
   TextColumn get readings => text().map(const StringListConverter())();
   TextColumn get pos => textEnum<PartOfSpeech>().nullable()();
   TextColumn get meaning => text()();
-  BoolColumn get important => boolean()();
 
   /// The example sentence and its translation come as a pair or not at all.
   TextColumn get exampleJa => text().nullable()();

@@ -12,7 +12,6 @@ CapturedEntry entry(
   readings: readings,
   pos: pos,
   meaning: meaning,
-  important: false,
 );
 
 final class _FakeDictionary implements Dictionary {

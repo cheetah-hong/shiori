@@ -74,7 +74,6 @@ final class Word {
     this.day,
     this.no,
     this.pos,
-    this.important = false,
     this.example,
     this.page,
   });
@@ -89,7 +88,6 @@ final class Word {
   final List<String> readings;
   final PartOfSpeech? pos;
   final String meaning;
-  final bool important;
   final Example? example;
 
   /// Page the word was captured from.
@@ -107,7 +105,6 @@ final class Word {
       listEquals(other.readings, readings) &&
       other.pos == pos &&
       other.meaning == meaning &&
-      other.important == important &&
       other.example == example &&
       other.page == page &&
       other.createdAt == createdAt;
@@ -122,7 +119,6 @@ final class Word {
     Object.hashAll(readings),
     pos,
     meaning,
-    important,
     example,
     page,
     createdAt,

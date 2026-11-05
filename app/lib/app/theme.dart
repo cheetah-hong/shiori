@@ -79,7 +79,7 @@ final class ShioriTokens extends ThemeExtension<ShioriTokens> {
   final Color marker;
   final Color markerInk;
 
-  /// Red pen: capture action, streaks, ★.
+  /// Red pen: capture action, streaks.
   final Color pen;
 
   /// Auto-corrected cells.

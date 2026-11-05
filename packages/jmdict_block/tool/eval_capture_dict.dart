@@ -2,11 +2,11 @@
 // pipeline, next to the same table without a dictionary.
 //
 //   dart run tool/eval_capture_dict.dart --db FILE [--fixtures DIR] [--gt FILE]
-//       [--stars STAR_DIR] [--verbose]
+//       [--verbose]
 //
 // --db: a JMdict SQLite file (tools/dict/build_jmdict_db.py; the app's asset is
 // full-lean). Without it only the no-dictionary table is printed.
-// --fixtures, --gt, --stars: as in packages/core/tool/eval_capture.dart. The
+// --fixtures, --gt: as in packages/core/tool/eval_capture.dart. The
 // recorded textbook pages are local only, under "$SHIORI_PRIVATE_DIR/textbook".
 // --verbose prints one line per affected entry; those quote the pages, so keep
 // them out of anything committed.
@@ -18,10 +18,20 @@ import 'package:shiori_core/eval.dart';
 import 'package:shiori_core/shiori_core.dart';
 
 Future<void> main(List<String> args) async {
+  final removed = [
+    for (final o in const ['--stars', '--star-ratios'])
+      if (args.contains(o)) o,
+  ];
+  if (removed.isNotEmpty) {
+    stderr.writeln(
+      '${removed.join(', ')}: removed (the textbook ★ is no longer read)',
+    );
+    exitCode = 2;
+    return;
+  }
   final verbose = args.contains('--verbose');
   final dir = _option(args, '--fixtures') ?? '../core/test/fixtures/synthetic';
   final truthFile = File(_option(args, '--gt') ?? '$dir/ground_truth.json');
-  final starDir = _option(args, '--stars');
   final dbPath = _option(args, '--db');
   if (!truthFile.existsSync()) {
     stderr.writeln('ground truth not found: ${truthFile.path}');
@@ -31,7 +41,7 @@ Future<void> main(List<String> args) async {
   final truth = GroundTruth.fromJson(
     (jsonDecode(truthFile.readAsStringSync()) as Map).cast<String, Object?>(),
   );
-  final load = _scanLoader(dir, starDir);
+  final load = _scanLoader(dir);
 
   JmdictDictionaryAdapter? jmdict;
   if (dbPath != null) {
@@ -74,22 +84,11 @@ Future<void> main(List<String> args) async {
   }
 }
 
-Future<OcrScan> Function(String) _scanLoader(String dir, String? starDir) {
+Future<OcrScan> Function(String) _scanLoader(String dir) {
   final recognizer = FixtureTextRecognizer(
     (name) => File('$dir/$name').readAsString(),
   );
-  return (fixture) async {
-    final scan = await recognizer.recognize(PageImage(fixture));
-    if (starDir == null) return scan;
-    final starFile = File('$starDir/$fixture.ja.json');
-    if (!starFile.existsSync()) {
-      throw FileSystemException('no star pass for $fixture', starFile.path);
-    }
-    final stars = OcrPage.fromJson(
-      (jsonDecode(starFile.readAsStringSync()) as Map).cast<String, Object?>(),
-    );
-    return OcrScan(japanese: scan.japanese, korean: scan.korean, stars: stars);
-  };
+  return (fixture) => recognizer.recognize(PageImage(fixture));
 }
 
 /// What the dictionary did, entry by entry, against the answers.

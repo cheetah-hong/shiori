@@ -669,20 +669,6 @@ class $WordsTable extends Words with TableInfo<$WordsTable, WordRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _importantMeta = const VerificationMeta(
-    'important',
-  );
-  @override
-  late final GeneratedColumn<bool> important = GeneratedColumn<bool>(
-    'important',
-    aliasedName,
-    false,
-    type: DriftSqlType.bool,
-    requiredDuringInsert: true,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("important" IN (0, 1))',
-    ),
-  );
   static const VerificationMeta _exampleJaMeta = const VerificationMeta(
     'exampleJa',
   );
@@ -733,7 +719,6 @@ class $WordsTable extends Words with TableInfo<$WordsTable, WordRow> {
     readings,
     pos,
     meaning,
-    important,
     exampleJa,
     exampleKo,
     page,
@@ -788,14 +773,6 @@ class $WordsTable extends Words with TableInfo<$WordsTable, WordRow> {
       );
     } else if (isInserting) {
       context.missing(_meaningMeta);
-    }
-    if (data.containsKey('important')) {
-      context.handle(
-        _importantMeta,
-        important.isAcceptableOrUnknown(data['important']!, _importantMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_importantMeta);
     }
     if (data.containsKey('example_ja')) {
       context.handle(
@@ -860,10 +837,6 @@ class $WordsTable extends Words with TableInfo<$WordsTable, WordRow> {
         DriftSqlType.string,
         data['${effectivePrefix}meaning'],
       )!,
-      important: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}important'],
-      )!,
       exampleJa: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}example_ja'],
@@ -911,7 +884,6 @@ class WordRow extends DataClass implements Insertable<WordRow> {
   final List<String> readings;
   final PartOfSpeech? pos;
   final String meaning;
-  final bool important;
 
   /// The example sentence and its translation come as a pair or not at all.
   final String? exampleJa;
@@ -927,7 +899,6 @@ class WordRow extends DataClass implements Insertable<WordRow> {
     required this.readings,
     this.pos,
     required this.meaning,
-    required this.important,
     this.exampleJa,
     this.exampleKo,
     this.page,
@@ -954,7 +925,6 @@ class WordRow extends DataClass implements Insertable<WordRow> {
       map['pos'] = Variable<String>($WordsTable.$converterposn.toSql(pos));
     }
     map['meaning'] = Variable<String>(meaning);
-    map['important'] = Variable<bool>(important);
     if (!nullToAbsent || exampleJa != null) {
       map['example_ja'] = Variable<String>(exampleJa);
     }
@@ -982,7 +952,6 @@ class WordRow extends DataClass implements Insertable<WordRow> {
       readings: Value(readings),
       pos: pos == null && nullToAbsent ? const Value.absent() : Value(pos),
       meaning: Value(meaning),
-      important: Value(important),
       exampleJa: exampleJa == null && nullToAbsent
           ? const Value.absent()
           : Value(exampleJa),
@@ -1010,7 +979,6 @@ class WordRow extends DataClass implements Insertable<WordRow> {
         serializer.fromJson<String?>(json['pos']),
       ),
       meaning: serializer.fromJson<String>(json['meaning']),
-      important: serializer.fromJson<bool>(json['important']),
       exampleJa: serializer.fromJson<String?>(json['exampleJa']),
       exampleKo: serializer.fromJson<String?>(json['exampleKo']),
       page: serializer.fromJson<int?>(json['page']),
@@ -1029,7 +997,6 @@ class WordRow extends DataClass implements Insertable<WordRow> {
       'readings': serializer.toJson<List<String>>(readings),
       'pos': serializer.toJson<String?>($WordsTable.$converterposn.toJson(pos)),
       'meaning': serializer.toJson<String>(meaning),
-      'important': serializer.toJson<bool>(important),
       'exampleJa': serializer.toJson<String?>(exampleJa),
       'exampleKo': serializer.toJson<String?>(exampleKo),
       'page': serializer.toJson<int?>(page),
@@ -1046,7 +1013,6 @@ class WordRow extends DataClass implements Insertable<WordRow> {
     List<String>? readings,
     Value<PartOfSpeech?> pos = const Value.absent(),
     String? meaning,
-    bool? important,
     Value<String?> exampleJa = const Value.absent(),
     Value<String?> exampleKo = const Value.absent(),
     Value<int?> page = const Value.absent(),
@@ -1060,7 +1026,6 @@ class WordRow extends DataClass implements Insertable<WordRow> {
     readings: readings ?? this.readings,
     pos: pos.present ? pos.value : this.pos,
     meaning: meaning ?? this.meaning,
-    important: important ?? this.important,
     exampleJa: exampleJa.present ? exampleJa.value : this.exampleJa,
     exampleKo: exampleKo.present ? exampleKo.value : this.exampleKo,
     page: page.present ? page.value : this.page,
@@ -1078,7 +1043,6 @@ class WordRow extends DataClass implements Insertable<WordRow> {
       readings: data.readings.present ? data.readings.value : this.readings,
       pos: data.pos.present ? data.pos.value : this.pos,
       meaning: data.meaning.present ? data.meaning.value : this.meaning,
-      important: data.important.present ? data.important.value : this.important,
       exampleJa: data.exampleJa.present ? data.exampleJa.value : this.exampleJa,
       exampleKo: data.exampleKo.present ? data.exampleKo.value : this.exampleKo,
       page: data.page.present ? data.page.value : this.page,
@@ -1097,7 +1061,6 @@ class WordRow extends DataClass implements Insertable<WordRow> {
           ..write('readings: $readings, ')
           ..write('pos: $pos, ')
           ..write('meaning: $meaning, ')
-          ..write('important: $important, ')
           ..write('exampleJa: $exampleJa, ')
           ..write('exampleKo: $exampleKo, ')
           ..write('page: $page, ')
@@ -1116,7 +1079,6 @@ class WordRow extends DataClass implements Insertable<WordRow> {
     readings,
     pos,
     meaning,
-    important,
     exampleJa,
     exampleKo,
     page,
@@ -1134,7 +1096,6 @@ class WordRow extends DataClass implements Insertable<WordRow> {
           other.readings == this.readings &&
           other.pos == this.pos &&
           other.meaning == this.meaning &&
-          other.important == this.important &&
           other.exampleJa == this.exampleJa &&
           other.exampleKo == this.exampleKo &&
           other.page == this.page &&
@@ -1150,7 +1111,6 @@ class WordsCompanion extends UpdateCompanion<WordRow> {
   final Value<List<String>> readings;
   final Value<PartOfSpeech?> pos;
   final Value<String> meaning;
-  final Value<bool> important;
   final Value<String?> exampleJa;
   final Value<String?> exampleKo;
   final Value<int?> page;
@@ -1165,7 +1125,6 @@ class WordsCompanion extends UpdateCompanion<WordRow> {
     this.readings = const Value.absent(),
     this.pos = const Value.absent(),
     this.meaning = const Value.absent(),
-    this.important = const Value.absent(),
     this.exampleJa = const Value.absent(),
     this.exampleKo = const Value.absent(),
     this.page = const Value.absent(),
@@ -1181,7 +1140,6 @@ class WordsCompanion extends UpdateCompanion<WordRow> {
     required List<String> readings,
     this.pos = const Value.absent(),
     required String meaning,
-    required bool important,
     this.exampleJa = const Value.absent(),
     this.exampleKo = const Value.absent(),
     this.page = const Value.absent(),
@@ -1192,7 +1150,6 @@ class WordsCompanion extends UpdateCompanion<WordRow> {
        headword = Value(headword),
        readings = Value(readings),
        meaning = Value(meaning),
-       important = Value(important),
        createdAt = Value(createdAt);
   static Insertable<WordRow> custom({
     Expression<String>? id,
@@ -1203,7 +1160,6 @@ class WordsCompanion extends UpdateCompanion<WordRow> {
     Expression<String>? readings,
     Expression<String>? pos,
     Expression<String>? meaning,
-    Expression<bool>? important,
     Expression<String>? exampleJa,
     Expression<String>? exampleKo,
     Expression<int>? page,
@@ -1219,7 +1175,6 @@ class WordsCompanion extends UpdateCompanion<WordRow> {
       if (readings != null) 'readings': readings,
       if (pos != null) 'pos': pos,
       if (meaning != null) 'meaning': meaning,
-      if (important != null) 'important': important,
       if (exampleJa != null) 'example_ja': exampleJa,
       if (exampleKo != null) 'example_ko': exampleKo,
       if (page != null) 'page': page,
@@ -1237,7 +1192,6 @@ class WordsCompanion extends UpdateCompanion<WordRow> {
     Value<List<String>>? readings,
     Value<PartOfSpeech?>? pos,
     Value<String>? meaning,
-    Value<bool>? important,
     Value<String?>? exampleJa,
     Value<String?>? exampleKo,
     Value<int?>? page,
@@ -1253,7 +1207,6 @@ class WordsCompanion extends UpdateCompanion<WordRow> {
       readings: readings ?? this.readings,
       pos: pos ?? this.pos,
       meaning: meaning ?? this.meaning,
-      important: important ?? this.important,
       exampleJa: exampleJa ?? this.exampleJa,
       exampleKo: exampleKo ?? this.exampleKo,
       page: page ?? this.page,
@@ -1293,9 +1246,6 @@ class WordsCompanion extends UpdateCompanion<WordRow> {
     if (meaning.present) {
       map['meaning'] = Variable<String>(meaning.value);
     }
-    if (important.present) {
-      map['important'] = Variable<bool>(important.value);
-    }
     if (exampleJa.present) {
       map['example_ja'] = Variable<String>(exampleJa.value);
     }
@@ -1327,7 +1277,6 @@ class WordsCompanion extends UpdateCompanion<WordRow> {
           ..write('readings: $readings, ')
           ..write('pos: $pos, ')
           ..write('meaning: $meaning, ')
-          ..write('important: $important, ')
           ..write('exampleJa: $exampleJa, ')
           ..write('exampleKo: $exampleKo, ')
           ..write('page: $page, ')
@@ -2928,7 +2877,6 @@ typedef $$WordsTableCreateCompanionBuilder =
       required List<String> readings,
       Value<PartOfSpeech?> pos,
       required String meaning,
-      required bool important,
       Value<String?> exampleJa,
       Value<String?> exampleKo,
       Value<int?> page,
@@ -2945,7 +2893,6 @@ typedef $$WordsTableUpdateCompanionBuilder =
       Value<List<String>> readings,
       Value<PartOfSpeech?> pos,
       Value<String> meaning,
-      Value<bool> important,
       Value<String?> exampleJa,
       Value<String?> exampleKo,
       Value<int?> page,
@@ -3018,11 +2965,6 @@ class $$WordsTableFilterComposer
 
   ColumnFilters<String> get meaning => $composableBuilder(
     column: $table.meaning,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<bool> get important => $composableBuilder(
-    column: $table.important,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3115,11 +3057,6 @@ class $$WordsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<bool> get important => $composableBuilder(
-    column: $table.important,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<String> get exampleJa => $composableBuilder(
     column: $table.exampleJa,
     builder: (column) => ColumnOrderings(column),
@@ -3194,9 +3131,6 @@ class $$WordsTableAnnotationComposer
   GeneratedColumn<String> get meaning =>
       $composableBuilder(column: $table.meaning, builder: (column) => column);
 
-  GeneratedColumn<bool> get important =>
-      $composableBuilder(column: $table.important, builder: (column) => column);
-
   GeneratedColumn<String> get exampleJa =>
       $composableBuilder(column: $table.exampleJa, builder: (column) => column);
 
@@ -3269,7 +3203,6 @@ class $$WordsTableTableManager
                 Value<List<String>> readings = const Value.absent(),
                 Value<PartOfSpeech?> pos = const Value.absent(),
                 Value<String> meaning = const Value.absent(),
-                Value<bool> important = const Value.absent(),
                 Value<String?> exampleJa = const Value.absent(),
                 Value<String?> exampleKo = const Value.absent(),
                 Value<int?> page = const Value.absent(),
@@ -3284,7 +3217,6 @@ class $$WordsTableTableManager
                 readings: readings,
                 pos: pos,
                 meaning: meaning,
-                important: important,
                 exampleJa: exampleJa,
                 exampleKo: exampleKo,
                 page: page,
@@ -3301,7 +3233,6 @@ class $$WordsTableTableManager
                 required List<String> readings,
                 Value<PartOfSpeech?> pos = const Value.absent(),
                 required String meaning,
-                required bool important,
                 Value<String?> exampleJa = const Value.absent(),
                 Value<String?> exampleKo = const Value.absent(),
                 Value<int?> page = const Value.absent(),
@@ -3316,7 +3247,6 @@ class $$WordsTableTableManager
                 readings: readings,
                 pos: pos,
                 meaning: meaning,
-                important: important,
                 exampleJa: exampleJa,
                 exampleKo: exampleKo,
                 page: page,

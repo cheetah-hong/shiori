@@ -100,18 +100,6 @@ class _WordCardState extends State<WordCard> {
                         textAlign: TextAlign.center,
                       ),
                     ),
-                    if (w.important)
-                      Padding(
-                        padding: const EdgeInsets.only(top: Space.xs),
-                        child: Text(
-                          '★ 기출',
-                          style: TextStyle(
-                            color: t.pen,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
                     const SizedBox(height: Space.md),
                     _Covered(
                       visible: _showMeaning,

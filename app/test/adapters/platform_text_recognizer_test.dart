@@ -47,13 +47,12 @@ void main() {
     });
     final scan = await recognizer.recognize(const PageImage('/tmp/page.jpg'));
     expect(seen?.method, 'recognize');
-    expect(seen?.arguments, {'path': '/tmp/page.jpg', 'starPass': true});
+    expect(seen?.arguments, {'path': '/tmp/page.jpg'});
     expect(scan.japanese.lines.single.text, '0015 □□□ 川');
-    expect(scan.stars, isNull);
     expect(scan.elapsed, const Duration(milliseconds: 1240));
   });
 
-  test('parses the star pass and ignores the diagnostics keys', () async {
+  test('ignores an old "star" pass and the diagnostics keys', () async {
     MethodCall? seen;
     Map<String, Object?> page(int ms, List<Object> lines) => {
       'engine': 'apple-vision',
@@ -73,11 +72,12 @@ void main() {
         'timing': {'orient_pass': 610, 'star_binarize': 40},
       });
     });
-    const noStars = PlatformTextRecognizer(starPass: false);
-    final scan = await noStars.recognize(const PageImage('/tmp/side.jpg'));
-    expect(seen?.arguments, {'path': '/tmp/side.jpg', 'starPass': false});
-    expect(scan.stars?.lines.single.text, '★ かわ');
-    expect(scan.elapsed, const Duration(milliseconds: 1550));
+    final scan = await recognizer.recognize(const PageImage('/tmp/side.jpg'));
+    expect(seen?.arguments, {'path': '/tmp/side.jpg'});
+    expect(scan.japanese.lines, isEmpty);
+    expect(scan.turned, 90);
+    expect(scan.toJson(), isNot(contains('star')));
+    expect(scan.elapsed, const Duration(milliseconds: 1100));
   });
 
   test(

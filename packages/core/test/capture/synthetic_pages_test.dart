@@ -30,7 +30,6 @@ void main() {
     test('a row whose number was not read is numbered from the next row', () {
       final e = word('s010', '0001');
       expect(e.headword, '雨', reason: 'checkbox glyph 問 removed');
-      expect(e.important, isTrue);
     });
 
     test('checkbox glyphs under the number never reach the headword', () {
@@ -108,11 +107,6 @@ void main() {
       expect(codes(e), ['meaning:missing']);
     });
 
-    test('★ is read where printed and missed where OCR dropped it', () {
-      expect(word('s011', '0015').important, isTrue);
-      expect(word('s011', '0013').important, isFalse);
-    });
-
     test('page meta: DAY header and page line, or a footer with DAY 이', () {
       expect(
         drafts['s010']!.meta,
@@ -138,14 +132,9 @@ void main() {
       expect(word('s147', '1274').headword, '包む');
     });
 
-    test('★ glued to the headword or on its own line', () {
+    test('a ★ glued to the headword or on its own line stays out', () {
       expect(word('s140', '1211').headword, '乗り換える');
-      expect(
-        [
-          for (final no in ['1211', '1215']) word('s140', no).important,
-        ],
-        [isTrue, isTrue],
-      );
+      expect(word('s140', '1215').headword, '揺れる');
       expect(word('s147', '1272').headword, '売り場');
     });
 

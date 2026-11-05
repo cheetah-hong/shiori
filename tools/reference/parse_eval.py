@@ -226,7 +226,6 @@ def parse_list(ja, ko):
             jl, kl = buckets[i]
             head_parts = [l for l in jl if l.x < ax + 0.17 and l.x + l.w > ax + 0.02]
             head = "".join(clean_head(l.t, over_checkbox=l.x < ax + 0.03) for l in sorted(head_parts, key=lambda l: l.x))
-            important = any("★" in l.t for l in jl if l.x < ax + 0.23)
             rd = [l for l in jl if is_reading(l, ax)]
             readings = parse_readings(min(rd, key=lambda l: l.x).t) if rd else []
             mparts = [l for l in kl if ax + 0.34 <= l.x <= ax + 0.56]
@@ -235,7 +234,7 @@ def parse_list(ja, ko):
             if not rd:
                 continue  # cut-off neighbour rows: no reading column visible
             entries.append(correct({"no": no, "headword": head, "readings": readings, "pos": pos,
-                                    "meaning": meaning, "important": important, "example": None, "issues": []}))
+                                    "meaning": meaning, "example": None, "issues": []}))
     return entries
 
 # ---------------------------------------------------------------- template B: entry block with example
@@ -251,7 +250,6 @@ def parse_entry(ja, ko):
         row = inblk(ja, top + 0.002, top + 0.05)
         heads = [l for l in row if ax - 0.02 <= l.x < ax + 0.15 and not ID_RE.match(l.t)]
         head = "".join(clean_head(l.t) for l in sorted(heads, key=lambda l: l.x))
-        important = any("★" in l.t for l in row if l.x < ax + 0.2)
         rds = [l for l in row if ax + 0.15 <= l.x <= ax + 0.32 and l.h >= 0.012]
         rd = min(rds, key=lambda l: l.cy) if rds else None
         readings = parse_readings(rd.t) if rd else []
@@ -278,7 +276,7 @@ def parse_entry(ja, ko):
         ex_ko = " ".join(trans)
         example = {"ja": ex_ja, "ko": ex_ko} if ex_ja else None
         e = {"no": no, "headword": head, "readings": readings, "pos": pos, "meaning": meaning,
-             "important": important, "example": example, "issues": []}
+             "example": example, "issues": []}
         if example is None: e["issues"].append("example:missing")
         entries.append(correct(e))
     return entries
@@ -300,7 +298,7 @@ def main():
     if not (DATA / "ground_truth.json").is_file():
         sys.exit(f"ground truth not found: {DATA / 'ground_truth.json'} (set SHIORI_PRIVATE_DIR or pass --data DIR)")
     gt = json.load(open(DATA / "ground_truth.json"))
-    fields = ["headword", "readings", "pos", "meaning", "important"]
+    fields = ["headword", "readings", "pos", "meaning"]
     tot = {f: [0, 0] for f in fields + ["ex_ja", "ex_ko", "row", "found"]}
     silent = flagged_wrong = flagged_ok = 0
     report = []
@@ -319,8 +317,7 @@ def main():
                 continue
             found += 1; tot["found"][0] += 1
             ok = {"headword": e["headword"] == g["headword"], "readings": e["readings"] == g["readings"],
-                  "pos": e["pos"] == g["pos"], "meaning": norm_m(e["meaning"]) == norm_m(g["meaning"]),
-                  "important": e["important"] == g["important"]}
+                  "pos": e["pos"] == g["pos"], "meaning": norm_m(e["meaning"]) == norm_m(g["meaning"])}
             for f in fields:
                 tot[f][1] += 1; tot[f][0] += ok[f]; per[f] += ok[f]
             row_ok = all(ok.values())
@@ -337,15 +334,15 @@ def main():
             if core_ok and flagged: flagged_ok += 1
             if VERBOSE and (not row_ok or e["issues"]):
                 bad = [f for f in fields if not ok[f]]
-                print(f'  {pg["page"]} {g["no"]} bad={bad} issues={e["issues"]} got={e["headword"]}|{"/".join(e["readings"])}|{e["pos"]}|{e["meaning"]}|{"★" if e["important"] else ""}')
+                print(f'  {pg["page"]} {g["no"]} bad={bad} issues={e["issues"]} got={e["headword"]}|{"/".join(e["readings"])}|{e["pos"]}|{e["meaning"]}')
         n = len(pg["entries"])
         report.append((pg["page"], tpl, n, found, per, rows_ok, ex_ja_ok, ex_ko_ok,
                        (day, title, page) == (pg["day"], pg["title"], pg["page"]), (day, title, page)))
-    print("page tpl  n found head read pos  mean star row  exJA exKO meta")
+    print("page tpl  n found head read pos  mean row  exJA exKO meta")
     for p, tpl, n, found, per, rows_ok, exj, exk, meta_ok, meta in report:
         exs = f"{exj:>4} {exk:>4}" if tpl == "entry" else "   -    -"
         print(f"{p:>4} {tpl:<5}{n:>2} {found:>5} {per['headword']:>4} {per['readings']:>4} {per['pos']:>4} "
-              f"{per['meaning']:>4} {per['important']:>4} {rows_ok:>4} {exs} {'ok' if meta_ok else meta}")
+              f"{per['meaning']:>4} {rows_ok:>4} {exs} {'ok' if meta_ok else meta}")
     print("\nTOTAL  " + "  ".join(f"{k}={v[0]}/{v[1]}" for k, v in tot.items()))
     print(f"core fields wrong but NOT flagged (silent errors): {silent}")
     print(f"core fields wrong and flagged for review: {flagged_wrong};  flagged but actually correct: {flagged_ok}")

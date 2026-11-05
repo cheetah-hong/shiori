@@ -173,7 +173,6 @@ void main() {
         readings: ['あめ'],
         pos: PartOfSpeech.noun,
         meaning: '비',
-        important: false,
       );
       const draft = CaptureDraft(
         templateId: 'vocab.list',

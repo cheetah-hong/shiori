@@ -8,20 +8,17 @@ import 'package:shiori_core/shiori_core.dart';
 /// with `ground_truth.json` and `reference_output.json`.
 ///
 /// [truthDir]: where `ground_truth.json` is, when the folder only holds OCR
-/// passes (other image variants of the same pages). [starDir]: a folder of
-/// star passes (`<page>.ja.json` read on a binarized copy of the photo).
+/// passes (other image variants of the same pages).
 final class FixtureSet {
-  const FixtureSet(this.name, this.dir, {this.truthDir, this.starDir});
+  const FixtureSet(this.name, this.dir, {this.truthDir});
 
   final String name;
   final String dir;
   final String? truthDir;
-  final String? starDir;
 
   bool get exists =>
       File('${truthDir ?? dir}/ground_truth.json').existsSync() &&
-      File('$dir/${_firstPage()}.ja.json').existsSync() &&
-      (starDir == null || Directory(starDir!).existsSync());
+      File('$dir/${_firstPage()}.ja.json').existsSync();
 
   String _firstPage() {
     final truth = File('${truthDir ?? dir}/ground_truth.json');
@@ -46,20 +43,8 @@ final class FixtureSet {
 
   FixtureTextRecognizer get recognizer => FixtureTextRecognizer(readText);
 
-  Future<OcrScan> loadScan(String fixture) async {
-    final scan = await recognizer.recognize(PageImage(fixture));
-    final stars = starDir;
-    if (stars == null) return scan;
-    final starPage = OcrPage.fromJson(
-      (jsonDecode(File('$stars/$fixture.ja.json').readAsStringSync()) as Map)
-          .cast<String, Object?>(),
-    );
-    return OcrScan(
-      japanese: scan.japanese,
-      korean: scan.korean,
-      stars: starPage,
-    );
-  }
+  Future<OcrScan> loadScan(String fixture) =>
+      recognizer.recognize(PageImage(fixture));
 }
 
 /// Made-up pages laid out like the textbook, with the OCR mistakes the rules
@@ -98,14 +83,6 @@ final FixtureSet recordedPageCrop = FixtureSet(
   'recorded textbook pages, page crop',
   '$_textbook/scan/fixtures/a-persp-page',
   truthDir: '$_textbook/vocab_n5n3',
-);
-
-/// Local only: the recorded Vision passes plus a star pass over a binarized
-/// copy of each photo.
-final FixtureSet recordedWithStars = FixtureSet(
-  'recorded textbook pages + star pass',
-  '$_textbook/vocab_n5n3',
-  starDir: '$_textbook/scan/fixtures-nowarp/d-binary-page',
 );
 
 String privateDir() {

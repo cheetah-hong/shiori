@@ -2,8 +2,10 @@ import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:drift/internal/versioned_schema.dart';
 import 'package:shiori_core/shiori_core.dart' show Answer, PartOfSpeech;
 import 'package:shiori_storage_drift/src/converters.dart';
+import 'package:shiori_storage_drift/src/database.steps.dart';
 import 'package:shiori_storage_drift/src/tables.dart';
 
 part 'database.g.dart';
@@ -26,17 +28,28 @@ final class ShioriDatabase extends _$ShioriDatabase {
   factory ShioriDatabase.memory() => ShioriDatabase(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) => m.createAll(),
-    // Version 2 plugs in here: `stepByStep(from1To2: ...)` from the generated
-    // steps file. Until then any other version is a file this build cannot
-    // read (for example one written by a newer app); fail instead of guessing.
-    onUpgrade: (m, from, to) async => throw UnsupportedError(
-      'database schema $from cannot be opened by schema $to',
-    ),
+    onUpgrade: (m, from, to) async {
+      // A newer schema (a file written by a newer app) is not guessed at.
+      if (from > to) {
+        throw UnsupportedError(
+          'database schema $from cannot be opened by schema $to',
+        );
+      }
+      // All steps or none: a step that fails leaves the old file as it was.
+      await transaction(
+        () => VersionedSchema.runMigrationSteps(
+          migrator: m,
+          from: from,
+          to: to,
+          steps: migrationSteps(from1To2: _from1To2),
+        ),
+      );
+    },
     // Journal mode and sync level stay at SQLite's defaults (rollback journal,
     // FULL): writes are small and durability matters more than speed.
     beforeOpen: (details) async {
@@ -44,3 +57,8 @@ final class ShioriDatabase extends _$ShioriDatabase {
     },
   );
 }
+
+/// v2: `words.important` (the textbook's ★) is gone. The table is rebuilt
+/// without it; every other column and row is copied as it was.
+Future<void> _from1To2(Migrator m, Schema2 schema) =>
+    m.alterTable(TableMigration(schema.words));

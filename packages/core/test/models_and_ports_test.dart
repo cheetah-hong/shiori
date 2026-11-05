@@ -15,7 +15,6 @@ void main() {
         readings: const ['かわ'],
         pos: PartOfSpeech.noun,
         meaning: meaning,
-        important: true,
         example: const Example(ja: '川で泳ぐ。', ko: '강에서 헤엄치다.'),
         page: 11,
         createdAt: t0,
@@ -78,7 +77,6 @@ void main() {
         readings: ['くち'],
         pos: PartOfSpeech.noun,
         meaning: '입',
-        important: false,
         issues: [EntryIssue.corrected(EntryField.headword, note: 'ロ → 口')],
       );
       expect(e(), e());

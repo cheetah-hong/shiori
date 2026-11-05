@@ -102,8 +102,8 @@ void main() {
       await expectLater(
         db.customStatement(
           'INSERT INTO words (id, textbook_id, headword, readings, meaning, '
-          "important, example_ja, created_at) VALUES ('tb:9', 'tb', 'x', "
-          "'[]', '', 0, 'ja only', 0)",
+          "example_ja, created_at) VALUES ('tb:9', 'tb', 'x', "
+          "'[]', '', 'ja only', 0)",
         ),
         throwsA(isA<SqliteException>()),
       );
@@ -121,8 +121,7 @@ void main() {
     test('broken readings fail loudly instead of reading as empty', () async {
       await db.customStatement(
         'INSERT INTO words (id, textbook_id, headword, readings, meaning, '
-        "important, created_at) VALUES ('tb:9', 'tb', 'x', '{\"a\":1}', '', "
-        '0, 0)',
+        "created_at) VALUES ('tb:9', 'tb', 'x', '{\"a\":1}', '', 0)",
       );
       await expectLater(library.word('tb:9'), throwsFormatException);
     });
@@ -196,7 +195,7 @@ void main() {
     test('a file from an unknown schema version is refused', () async {
       final file = File('${dir.path}/newer.sqlite');
       final newer = ShioriDatabase(
-        NativeDatabase(file, setup: (raw) => raw.userVersion = 2),
+        NativeDatabase(file, setup: (raw) => raw.userVersion = 3),
       );
       await expectLater(
         newer.customSelect('SELECT 1').get(),

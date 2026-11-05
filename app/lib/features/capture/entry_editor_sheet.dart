@@ -36,7 +36,6 @@ class _EntryEditorSheetState extends State<EntryEditorSheet> {
   late final TextEditingController _exampleJa;
   late final TextEditingController _exampleKo;
   late PartOfSpeech? _pos;
-  late bool _important;
 
   CapturedEntry get _e => widget.entry;
 
@@ -49,7 +48,6 @@ class _EntryEditorSheetState extends State<EntryEditorSheet> {
     _exampleJa = TextEditingController(text: _e.example?.ja ?? '');
     _exampleKo = TextEditingController(text: _e.example?.ko ?? '');
     _pos = _e.pos;
-    _important = _e.important;
   }
 
   @override
@@ -70,7 +68,6 @@ class _EntryEditorSheetState extends State<EntryEditorSheet> {
       readings: parseReadingInput(_readings.text),
       pos: _pos,
       meaning: _meaning.text.trim(),
-      important: _important,
       example: exJa.isEmpty
           ? null
           : Example(ja: exJa, ko: _exampleKo.text.trim()),
@@ -175,12 +172,6 @@ class _EntryEditorSheetState extends State<EntryEditorSheet> {
               controller: _meaning,
               decoration: const InputDecoration(labelText: '뜻'),
               textInputAction: TextInputAction.next,
-            ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('★ 기출 중요 단어'),
-              value: _important,
-              onChanged: (v) => setState(() => _important = v),
             ),
             if (_showExample) ...[
               TextField(

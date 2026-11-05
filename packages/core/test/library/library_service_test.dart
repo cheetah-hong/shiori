@@ -13,7 +13,6 @@ void main() {
         readings: const ['よみ'],
         pos: PartOfSpeech.noun,
         meaning: '뜻',
-        important: false,
         included: included,
       );
 

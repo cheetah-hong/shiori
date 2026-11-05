@@ -133,7 +133,6 @@ final class LibraryService {
           readings: List.unmodifiable(e.readings),
           pos: e.pos,
           meaning: e.meaning.trim(),
-          important: e.important,
           example: e.example,
           page: meta.page,
           createdAt: previous?.createdAt ?? now,

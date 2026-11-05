@@ -17,7 +17,6 @@ CapturedEntry entry(
   readings: readings,
   pos: pos,
   meaning: '뜻',
-  important: false,
   issues: issues,
   ocrHeadword: ocrHeadword ?? headword,
 );

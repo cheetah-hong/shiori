@@ -18,7 +18,6 @@
      ],
      "pos": "명",
      "meaning": "비",
-     "important": true,
      "example": null,
      "issues": []
     },
@@ -30,7 +29,6 @@
      ],
      "pos": "명",
      "meaning": "해, 날",
-     "important": false,
      "example": null,
      "issues": [
       "headword:missing"
@@ -44,7 +42,6 @@
      ],
      "pos": "명",
      "meaning": "하늘",
-     "important": false,
      "example": null,
      "issues": [
       "headword:missing"
@@ -58,7 +55,6 @@
      ],
      "pos": "명",
      "meaning": "바람",
-     "important": true,
      "example": null,
      "issues": []
     },
@@ -70,7 +66,6 @@
      ],
      "pos": "명",
      "meaning": "구룸",
-     "important": false,
      "example": null,
      "issues": []
     },
@@ -82,7 +77,6 @@
      ],
      "pos": "명",
      "meaning": "맑음",
-     "important": true,
      "example": null,
      "issues": []
     },
@@ -94,7 +88,6 @@
      ],
      "pos": "명",
      "meaning": "눈",
-     "important": false,
      "example": null,
      "issues": []
     },
@@ -106,7 +99,6 @@
      ],
      "pos": "명",
      "meaning": "입",
-     "important": false,
      "example": null,
      "issues": [
       "headword:corrected"
@@ -121,7 +113,6 @@
      ],
      "pos": "명",
      "meaning": "내일",
-     "important": false,
      "example": null,
      "issues": []
     },
@@ -133,7 +124,6 @@
      ],
      "pos": "명",
      "meaning": "일기 예보",
-     "important": false,
      "example": null,
      "issues": []
     },
@@ -145,7 +135,6 @@
      ],
      "pos": "い형",
      "meaning": "덥다",
-     "important": true,
      "example": null,
      "issues": []
     },
@@ -155,7 +144,6 @@
      "readings": [],
      "pos": "부",
      "meaning": "조금, 잠깐",
-     "important": false,
      "example": null,
      "issues": []
     }
@@ -178,7 +166,6 @@
      ],
      "pos": "명",
      "meaning": "바다",
-     "important": false,
      "example": null,
      "issues": []
     },
@@ -190,7 +177,6 @@
      ],
      "pos": "명",
      "meaning": "산",
-     "important": false,
      "example": null,
      "issues": []
     },
@@ -202,7 +188,6 @@
      ],
      "pos": "명",
      "meaning": "강, 개천",
-     "important": true,
      "example": null,
      "issues": []
     },
@@ -214,7 +199,6 @@
      ],
      "pos": "명",
      "meaning": "석양, 저녁 해",
-     "important": false,
      "example": null,
      "issues": [
       "headword:corrected"
@@ -228,7 +212,6 @@
      ],
      "pos": "동",
      "meaning": "빛나다",
-     "important": false,
      "example": null,
      "issues": [
       "headword:corrected"
@@ -242,7 +225,6 @@
      ],
      "pos": "명",
      "meaning": "힘",
-     "important": false,
      "example": null,
      "issues": [
       "headword:corrected"
@@ -256,7 +238,6 @@
      ],
      "pos": "명",
      "meaning": "별",
-     "important": true,
      "example": null,
      "issues": []
     },
@@ -268,7 +249,6 @@
      ],
      "pos": "い형",
      "meaning": "아프다",
-     "important": true,
      "example": null,
      "issues": []
     },
@@ -280,7 +260,6 @@
      ],
      "pos": "명",
      "meaning": "손가락",
-     "important": false,
      "example": null,
      "issues": []
     },
@@ -292,7 +271,6 @@
      ],
      "pos": "명",
      "meaning": "",
-     "important": false,
      "example": null,
      "issues": [
       "meaning:missing"
@@ -306,7 +284,6 @@
      ],
      "pos": "동",
      "meaning": "불다",
-     "important": false,
      "example": null,
      "issues": []
     },
@@ -316,7 +293,6 @@
      "readings": [],
      "pos": "부",
      "meaning": "느긋하게, 한가로이",
-     "important": false,
      "example": null,
      "issues": []
     }
@@ -339,7 +315,6 @@
      ],
      "pos": "동",
      "meaning": "갈아타다, 환승하다",
-     "important": true,
      "example": {
       "ja": "次の駅で急行に乗り換えてください。",
       "ko": "다음 역에서 급행으로 갈아타 주세요."
@@ -354,7 +329,6 @@
      ],
      "pos": "명",
      "meaning": "표, 승차권",
-     "important": false,
      "example": {
       "ja": "窓口で大阪までの切符を二枚買いました。",
       "ko": "창구에서 오사카까지 가는 표를 두 장 샀습니다."
@@ -369,7 +343,6 @@
      ],
      "pos": "명",
      "meaning": "도착",
-     "important": false,
      "example": {
       "ja": "飛行機は予定より三十分早く空港に到着しました。",
       "ko": "비행기는 예정보다 30분 일찍 공항에 도착했습니다."
@@ -384,7 +357,6 @@
      ],
      "pos": "명",
      "meaning": "(교통) 정체",
-     "important": false,
      "example": {
       "ja": "朝の高速道路はいつも渋滞しています。",
       "ko": "아침 고속도로는 늘 차가 막혀 있습니다."
@@ -399,7 +371,6 @@
      ],
      "pos": "동",
      "meaning": "흔들리다",
-     "important": true,
      "example": {
       "ja": "バスがひどく揺れたので、立っていられなかった。",
       "ko": "버스가 심하게 흔들려서 서 있을 수 없었다."
@@ -414,7 +385,6 @@
      ],
      "pos": "동",
      "meaning": "내리다",
-     "important": false,
      "example": {
       "ja": "忘れ物をしないように気をつけて降りてください。",
       "ko": "잊은 물건이 없도록 조심해서 내려 주세요."
@@ -440,7 +410,6 @@
      ],
      "pos": "명",
      "meaning": "가격, 값",
-     "important": false,
      "example": {
       "ja": "この店の野菜は値段が安くて新鮮です。",
       "ko": "가게의 채소는 가격이 싸고 신선합니다."
@@ -455,7 +424,6 @@
      ],
      "pos": "명",
      "meaning": "매장",
-     "important": true,
      "example": {
       "ja": "靴の売り場は三階にございます。",
       "ko": "신발 매장은 3층에 있습니다."
@@ -470,7 +438,6 @@
      ],
      "pos": "명",
      "meaning": "(옷을) 입어 봄",
-     "important": false,
      "example": null,
      "issues": [
       "example:missing"
@@ -484,7 +451,6 @@
      ],
      "pos": "동",
      "meaning": "싸다, 포장하다",
-     "important": false,
      "example": {
       "ja": "プレゼントなので、きれいに包んでいただけますか。",
       "ko": "선물이라서 예쁘게 포장해 주실 수 있나요?"
@@ -497,7 +463,6 @@
      "readings": [],
      "pos": "명",
      "meaning": "영수증",
-     "important": false,
      "example": {
       "ja": "返品するときはレシートが必要です。",
       "ko": "반품할 때는 영수증이 필요합니다."

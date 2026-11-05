@@ -5,17 +5,21 @@ import kotlin.math.abs
 /**
  * Pure geometry of the ML Kit channel, kept free of Android types so it runs in JVM unit tests.
  *
- * ML Kit joins table columns into one line (headword, ★ and reading come back together). The channel
- * returns "pieces" instead: a line cut where two elements are far apart and around a ★, with x taken
+ * ML Kit joins table columns into one line (headword, a printed ★ and reading come back together). The
+ * channel returns "pieces" instead: a line cut where two elements are far apart and around a noise
+ * symbol (★ and its misreads, which the Dart side drops), with x taken
  * from the glyph boxes. It also turns the boxes of a photo whose text lies sideways.
  */
 object OcrGeometry {
     /** Element gap, in line heights, that separates two columns (words in a cell are <= 0.98 apart). */
     const val COLUMN_GAP = 1.1
 
-    /** Glyphs ML Kit returns for the printed ★ mark; each becomes a piece of its own. */
-    const val STARS = "★*☆＊"
-    private val starTexts = STARS.map { it.toString() }.toSet()
+    /**
+     * Symbols that are noise in a cell (the textbook's ★ and how ML Kit misreads it). Each becomes a
+     * piece of its own so the Dart clean-up can drop it without cutting into a word.
+     */
+    const val NOISE_SYMBOLS = "★*☆＊"
+    private val noiseTexts = NOISE_SYMBOLS.map { it.toString() }.toSet()
 
     /** A line angle further than this from a quarter turn says nothing about the page direction. */
     private const val ANGLE_TOLERANCE = 20.0
@@ -96,9 +100,9 @@ object OcrGeometry {
         return Triple(out, w, h)
     }
 
-    private data class Run(val text: String, val box: Box, val star: Boolean, val confidences: List<Double?>)
+    private data class Run(val text: String, val box: Box, val noise: Boolean, val confidences: List<Double?>)
 
-    /** An element as runs of symbols; a star symbol is a run of its own. Pieces without a box are dropped. */
+    /** An element as runs of symbols; a noise symbol is a run of its own. Pieces without a box are dropped. */
     private fun runs(e: Element): List<Run> {
         val boxed = e.symbols.mapNotNull { s -> s.box?.let { s to it } }
         if (boxed.isEmpty()) {
@@ -106,12 +110,12 @@ object OcrGeometry {
         }
         val out = mutableListOf<MutableRun>()
         for ((s, box) in boxed) {
-            val star = s.text in starTexts
+            val noise = s.text in noiseTexts
             val last = out.lastOrNull()
-            if (last != null && !star && !last.star) {
+            if (last != null && !noise && !last.noise) {
                 last.add(s.text, box, s.confidence)
             } else {
-                out.add(MutableRun(s.text, box, star, s.confidence))
+                out.add(MutableRun(s.text, box, noise, s.confidence))
             }
         }
         return out.map { it.toRun() }
@@ -132,7 +136,7 @@ object OcrGeometry {
         }
     }
 
-    private class MutableRun(text: String, box: Box, val star: Boolean, confidence: Double?) {
+    private class MutableRun(text: String, box: Box, val noise: Boolean, confidence: Double?) {
         private val text = StringBuilder(text)
         private val boxes = mutableListOf(box)
         private val confidences = mutableListOf(confidence)
@@ -143,11 +147,11 @@ object OcrGeometry {
             confidences.add(c)
         }
 
-        fun toRun() = Run(text.toString(), Box.union(boxes), star, confidences.toList())
+        fun toRun() = Run(text.toString(), Box.union(boxes), noise, confidences.toList())
     }
 
     /**
-     * [line] cut at element gaps wider than [COLUMN_GAP] line heights and around star glyphs.
+     * [line] cut at element gaps wider than [COLUMN_GAP] line heights and around noise symbols.
      * Pieces take x from their glyph boxes and y from the line box (the parser's height rules were
      * set on line boxes); confidence is the mean glyph confidence. A line that needs no cut comes back
      * as it is.
@@ -161,8 +165,8 @@ object OcrGeometry {
             for ((k, r) in runs(e).withIndex()) {
                 val wideGap = k == 0 && prevRight != null && r.box.left - prevRight > COLUMN_GAP * lineHeight
                 val last = segs.lastOrNull()
-                if (last == null || r.star || last.star || wideGap) {
-                    segs.add(Segment(StringBuilder(r.text), mutableListOf(r.box), r.confidences.toMutableList(), r.star))
+                if (last == null || r.noise || last.noise || wideGap) {
+                    segs.add(Segment(StringBuilder(r.text), mutableListOf(r.box), r.confidences.toMutableList(), r.noise))
                 } else {
                     last.text.append(if (k == 0) " " else "").append(r.text)
                     last.boxes.add(r.box)
@@ -187,7 +191,7 @@ object OcrGeometry {
         val text: StringBuilder,
         val boxes: MutableList<Box>,
         val confidences: MutableList<Double?>,
-        val star: Boolean,
+        val noise: Boolean,
     )
 
     private fun median(values: List<Double>): Double {

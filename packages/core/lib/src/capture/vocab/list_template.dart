@@ -1,6 +1,6 @@
 /// Layout A (N5·N4 PART 1): one row per word (rules 3–9).
 ///
-/// `0015 □□□  川 ★  かわ  [명] 강, 개천`
+/// `0015 □□□  川  かわ  [명] 강, 개천`
 library;
 
 import 'package:shiori_core/src/capture/vocab/anchors.dart';
@@ -65,7 +65,6 @@ final class _Cols {
   double get headFrom => 0.02 * s;
   double get headTo => 0.17 * s;
   double get checkbox => 0.03 * s;
-  double get star => 0.23 * s;
   double get readingFrom => 0.195 * s;
   double get readingTo => 0.33 * s;
   double get meaningFrom => 0.34 * s;
@@ -289,7 +288,6 @@ List<_Row> _findRows(
 typedef _Cells = ({
   _Row row,
   String headword,
-  bool important,
   OcrLine? reading,
   String meaning,
 
@@ -314,7 +312,6 @@ _Cells _readCells(_Row row, List<OcrLine> ja, List<OcrLine> ko, _Cols cols) {
     headword: headParts
         .map((l) => cleanHead(l.text, overCheckbox: l.x < ax + cols.checkbox))
         .join(),
-    important: ja.any((l) => l.x < ax + cols.star && l.text.contains('★')),
     reading: minBy(ja.where((l) => cols.isReading(l, ax)), (l) => l.x),
     meaning: cleanMeaning(meaningParts.map((l) => l.text).join(' ')),
     meaningX: meaningParts.firstOrNull?.x,
@@ -339,7 +336,6 @@ CapturedEntry? _entryOf(_Cells c, {required bool keepUnread}) {
     readings: reading == null ? const [] : parseReadings(reading.text),
     pos: pos,
     meaning: meaning,
-    important: c.important,
     ocrHeadword: c.headword,
   );
 }
@@ -360,7 +356,6 @@ List<_Cells> _unglueBadges(List<_Cells> rows, _Cols cols) {
         (
           row: r.row,
           headword: r.headword,
-          important: r.important,
           reading: r.reading,
           meaning:
               '${String.fromCharCode(r.meaning.runes.first)} '

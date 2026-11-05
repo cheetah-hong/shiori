@@ -9,7 +9,7 @@ import 'package:shiori_core/shiori_core.dart';
 /// Each flagged cell carries a small mark: the red pen for "사전에 없음" (and
 /// the missing-cell highlight), amber "의심" for a cell that looks cut, green
 /// "고침" for a fixed cell (or one the learner picked), and a quiet grey
-/// "추정" for a guess, including a ★ found by the star check. The left
+/// "추정" for a guess. The left
 /// margin follows the strongest of them; a guess alone leaves it clear.
 /// An unread headword offers the dictionary's candidates as chips.
 class EntryTile extends StatelessWidget {
@@ -95,21 +95,6 @@ class EntryTile extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            if (e.important) ...[
-                              const SizedBox(width: 6),
-                              Semantics(
-                                label: '기출 중요 단어',
-                                child: Text(
-                                  '★',
-                                  style: TextStyle(color: t.pen, fontSize: 13),
-                                ),
-                              ),
-                              if (FieldMark.of(e, EntryField.important)
-                                  case final mark?) ...[
-                                const SizedBox(width: Space.xs),
-                                mark,
-                              ],
-                            ],
                             const Spacer(),
                             if (needsReview)
                               Pill(

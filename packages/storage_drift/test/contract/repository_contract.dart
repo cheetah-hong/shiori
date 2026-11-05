@@ -158,7 +158,6 @@ void _libraryContract(LibraryRepository Function() lib) {
         readings: const ['りょこう', 'たび'],
         pos: PartOfSpeech.noun,
         meaning: '여행',
-        important: true,
         example: const Example(ja: '旅行に行く。', ko: '여행을 간다.'),
         page: 140,
         createdAt: _t0,
@@ -482,7 +481,6 @@ void _useCaseContract(
             readings: const ['よみ'],
             pos: PartOfSpeech.noun,
             meaning: meaning,
-            important: false,
           ),
       ],
     );

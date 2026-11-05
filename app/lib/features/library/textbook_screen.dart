@@ -241,11 +241,6 @@ class _WordList extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            if (w.important)
-                              Text(
-                                ' ★',
-                                style: TextStyle(color: t.pen, fontSize: 12),
-                              ),
                             const SizedBox(width: Space.sm),
                             Text(
                               readingsLabel(w.readings),

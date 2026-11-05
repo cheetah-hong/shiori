@@ -44,6 +44,44 @@ void main() {
     expect(again.japanese.lines.first.cy, s.japanese.lines.first.cy);
   });
 
+  test('an old payload with a "star" pass reads; the pass is ignored', () {
+    Map<String, Object?> page(String t) => {
+      'engine': appleVisionEngine,
+      'lines': [
+        {'t': t, 'c': 0.5, 'x': 0.1, 'y': 0.2, 'w': 0.1, 'h': 0.02},
+      ],
+    };
+    final scan = OcrScan.fromJson({
+      'ja': page('かわ'),
+      'ko': page('강'),
+      'star': page('★'),
+      'turned': 90,
+    });
+    expect(scan.japanese.lines.single.text, 'かわ');
+    expect(scan.korean.lines.single.text, '강');
+    expect(scan.turned, 90);
+    expect(scan.toJson().keys, unorderedEquals(['ja', 'ko', 'turned']));
+    // A broken "star" value is ignored too: nothing reads it any more.
+    expect(
+      OcrScan.fromJson({
+        'ja': page('かわ'),
+        'ko': page('강'),
+        'star': 1,
+      }).japanese.lines,
+      hasLength(1),
+    );
+  });
+
+  test('review flags name the five cells, none for ★', () {
+    expect(EntryField.values.map((f) => f.name), [
+      'headword',
+      'readings',
+      'pos',
+      'meaning',
+      'example',
+    ]);
+  });
+
   test(
     'a line with a missing or non-numeric box is rejected, not placed at 0,0',
     () {
@@ -168,7 +206,6 @@ void main() {
       readings: ['あめ'],
       pos: PartOfSpeech.noun,
       meaning: '비',
-      important: true,
       example: Example(ja: '雨の日', ko: '비 오는 날'),
     );
     final cleared = e.copyWith(no: null, pos: null, example: null);

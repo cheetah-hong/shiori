@@ -2,33 +2,27 @@
 ///
 /// 1. ML Kit only: drop lines read with very low confidence. They are one
 ///    language's pass reading the other language (Korean read as Japanese).
-/// 2. Add the ★ glyphs of the optional star pass to the Japanese pass.
-/// 3. Split a ★ (or `*`) glued to its neighbour (`★かわ`, `乗り換える*のりかえる`)
-///    into a line of its own, so the reading cell stays kana only.
+/// 2. Symbol noise: cut ★ ☆ * ＊ out of the Japanese lines and drop them
+///    (`★かわ`, `乗り換える*のりかえる`, a lone `*`). The textbook prints a ★
+///    beside some words; it means nothing to the learner, and left in a line
+///    it would end up in a headword or a reading.
 library;
 
 import 'package:shiori_core/src/models/ocr.dart';
 
-/// Glyphs OCR returns for the printed ★ mark.
-const String starGlyphs = '★*☆＊';
+/// Symbols that are noise in a cell: the textbook's ★ and how OCR misreads it.
+const String symbolNoiseGlyphs = '★*☆＊';
 
 /// ML Kit lines below this confidence are garbage (other-language passes).
 const double mlKitLowConfidence = 0.2;
-
-/// Stars taken from the star pass: ★ and ☆ only (`*` is common noise there).
-final RegExp _starPassGlyph = RegExp('[★☆]');
-
-/// The legend at the top of a page (`★ 표시 = …`) also prints a ★.
-final RegExp _starLegend = RegExp(r'표시|[=＝]|[0-9]{4}');
 
 OcrScan prepareScan(OcrScan scan) {
   var ja = scan.japanese.lines;
   var ko = scan.korean.lines;
   if (scan.japanese.isMlKit) {
-    // A lone star scores low but is placed by position; keep it.
     ja = [
       for (final l in ja)
-        if (l.confidence >= mlKitLowConfidence || _isLoneStar(l.text)) l,
+        if (l.confidence >= mlKitLowConfidence) l,
     ];
   }
   if (scan.korean.isMlKit) {
@@ -37,69 +31,37 @@ OcrScan prepareScan(OcrScan scan) {
         if (l.confidence >= mlKitLowConfidence) l,
     ];
   }
-  if (scan.stars case final stars?) {
-    ja = [...ja, ...starPassMarks(stars.lines)];
-  }
-  // The star pass is merged now; dropping it keeps a second call from adding
-  // its marks twice.
   return OcrScan(
-    japanese: scan.japanese.withLines(splitGluedStars(ja)),
+    japanese: scan.japanese.withLines(dropSymbolNoise(ja)),
     korean: scan.korean.withLines(ko),
     turned: scan.turned,
   );
 }
 
-bool _isLoneStar(String text) {
-  final t = text.trim();
-  return t.runes.length == 1 && starGlyphs.contains(t);
-}
+final RegExp _symbolSplit = RegExp('([${RegExp.escape(symbolNoiseGlyphs)}])');
 
-/// Every ★ / ☆ of the star pass as a `★` line at its estimated place
-/// (characters are taken as equally wide; the pass gives no glyph boxes).
-List<OcrLine> starPassMarks(List<OcrLine> lines) => [
-  for (final l in lines)
-    if (!_starLegend.hasMatch(l.text))
-      for (final m in _starPassGlyph.allMatches(l.text))
-        OcrLine(
-          text: '★',
-          confidence: l.confidence,
-          x: l.x + _runeIndex(l.text, m.start) * _charWidth(l),
-          y: l.y,
-          width: _charWidth(l),
-          height: l.height,
-        ),
-];
+bool _isSymbol(String piece) =>
+    piece.runes.length == 1 && symbolNoiseGlyphs.contains(piece);
 
-double _charWidth(OcrLine l) {
-  final n = l.text.runes.length;
-  return l.width / (n == 0 ? 1 : n);
-}
-
-int _runeIndex(String s, int codeUnitIndex) =>
-    s.substring(0, codeUnitIndex).runes.length;
-
-final RegExp _starSplit = RegExp('([${RegExp.escape(starGlyphs)}])');
-
-/// Lines with a star glyph and other text become one line per piece, with x and
-/// width shared out by character count. A lone `*` / `☆` becomes `★`.
-List<OcrLine> splitGluedStars(List<OcrLine> lines) {
+/// Lines without a noise symbol stay as they are. The others are cut at each
+/// symbol into the pieces between them, with x and width shared out by
+/// character count; the symbols and blank pieces are dropped.
+List<OcrLine> dropSymbolNoise(List<OcrLine> lines) {
   final out = <OcrLine>[];
   for (final l in lines) {
-    final runes = l.text.runes.toList();
-    final hasStar = runes.any((c) => starGlyphs.runes.contains(c));
-    if (!hasStar || l.text.trim().runes.length <= 1) {
-      out.add(_isLoneStar(l.text) ? _withText(l, '★') : l);
+    if (!_symbolSplit.hasMatch(l.text)) {
+      out.add(l);
       continue;
     }
-    final cw = l.width / runes.length;
+    final cw = l.width / l.text.runes.length;
     var pos = 0;
     for (final piece in _pieces(l.text)) {
       final body = piece.trim();
-      if (body.isNotEmpty) {
+      if (body.isNotEmpty && !_isSymbol(body)) {
         final lead = piece.runes.length - piece.trimLeft().runes.length;
         out.add(
           OcrLine(
-            text: _isLoneStar(body) ? '★' : body,
+            text: body,
             confidence: l.confidence,
             x: l.x + (pos + lead) * cw,
             y: l.y,
@@ -118,7 +80,7 @@ List<OcrLine> splitGluedStars(List<OcrLine> lines) {
 List<String> _pieces(String s) {
   final out = <String>[];
   var start = 0;
-  for (final m in _starSplit.allMatches(s)) {
+  for (final m in _symbolSplit.allMatches(s)) {
     out
       ..add(s.substring(start, m.start))
       ..add(m.group(0)!);
@@ -127,12 +89,3 @@ List<String> _pieces(String s) {
   out.add(s.substring(start));
   return out;
 }
-
-OcrLine _withText(OcrLine l, String text) => OcrLine(
-  text: text,
-  confidence: l.confidence,
-  x: l.x,
-  y: l.y,
-  width: l.width,
-  height: l.height,
-);

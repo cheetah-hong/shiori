@@ -15,8 +15,7 @@
       "うみ"
      ],
      "pos": "명",
-     "meaning": "바다",
-     "important": true
+     "meaning": "바다"
     },
     {
      "no": "0014",
@@ -25,8 +24,7 @@
       "やま"
      ],
      "pos": "명",
-     "meaning": "산",
-     "important": false
+     "meaning": "산"
     },
     {
      "no": "0015",
@@ -35,8 +33,7 @@
       "かわ"
      ],
      "pos": "명",
-     "meaning": "강, 개천",
-     "important": true
+     "meaning": "강, 개천"
     },
     {
      "no": "0016",
@@ -45,8 +42,7 @@
       "ゆうひ"
      ],
      "pos": "명",
-     "meaning": "석양, 저녁 해",
-     "important": false
+     "meaning": "석양, 저녁 해"
     },
     {
      "no": "0017",
@@ -55,8 +51,7 @@
       "ひかる"
      ],
      "pos": "동",
-     "meaning": "빛나다",
-     "important": false
+     "meaning": "빛나다"
     },
     {
      "no": "0018",
@@ -65,8 +60,7 @@
       "ちから"
      ],
      "pos": "명",
-     "meaning": "힘",
-     "important": false
+     "meaning": "힘"
     },
     {
      "no": "0019",
@@ -75,8 +69,7 @@
       "ほし"
      ],
      "pos": "명",
-     "meaning": "별",
-     "important": true
+     "meaning": "별"
     },
     {
      "no": "0020",
@@ -85,8 +78,7 @@
       "いたい"
      ],
      "pos": "い형",
-     "meaning": "아프다",
-     "important": true
+     "meaning": "아프다"
     },
     {
      "no": "0021",
@@ -95,8 +87,7 @@
       "ゆび"
      ],
      "pos": "명",
-     "meaning": "손가락",
-     "important": false
+     "meaning": "손가락"
     },
     {
      "no": "0022",
@@ -105,8 +96,7 @@
       "はな"
      ],
      "pos": "명",
-     "meaning": "코",
-     "important": false
+     "meaning": "코"
     },
     {
      "no": "0023",
@@ -115,16 +105,14 @@
       "ふく"
      ],
      "pos": "동",
-     "meaning": "불다",
-     "important": false
+     "meaning": "불다"
     },
     {
      "no": "0024",
      "headword": "のんびり",
      "readings": [],
      "pos": "부",
-     "meaning": "느긋하게, 한가로이",
-     "important": false
+     "meaning": "느긋하게, 한가로이"
     }
    ]
   },
@@ -143,7 +131,6 @@
      ],
      "pos": "동",
      "meaning": "갈아타다, 환승하다",
-     "important": true,
      "example": {
       "ja": "次の駅で急行に乗り換えてください。",
       "ko": "다음 역에서 급행으로 갈아타 주세요."
@@ -157,7 +144,6 @@
      ],
      "pos": "명",
      "meaning": "표, 승차권",
-     "important": false,
      "example": {
       "ja": "窓口で大阪までの切符を二枚買いました。",
       "ko": "창구에서 오사카까지 가는 표를 두 장 샀습니다."
@@ -171,7 +157,6 @@
      ],
      "pos": "명",
      "meaning": "도착",
-     "important": false,
      "example": {
       "ja": "飛行機は予定より三十分早く空港に到着しました。",
       "ko": "비행기는 예정보다 30분 일찍 공항에 도착했습니다."
@@ -185,7 +170,6 @@
      ],
      "pos": "명",
      "meaning": "(교통) 정체",
-     "important": false,
      "example": {
       "ja": "朝の高速道路はいつも渋滞しています。",
       "ko": "아침 고속도로는 늘 차가 막혀 있습니다."
@@ -199,7 +183,6 @@
      ],
      "pos": "동",
      "meaning": "흔들리다",
-     "important": true,
      "example": {
       "ja": "バスがひどく揺れたので、立っていられなかった。",
       "ko": "버스가 심하게 흔들려서 서 있을 수 없었다."
@@ -213,7 +196,6 @@
      ],
      "pos": "동",
      "meaning": "내리다",
-     "important": false,
      "example": {
       "ja": "忘れ物をしないように気をつけて降りてください。",
       "ko": "잊은 물건이 없도록 조심해서 내려 주세요."

@@ -12,13 +12,7 @@ import 'package:shiori_core/src/models/ocr.dart';
 /// Examples count as correct at similarity ≥ [exampleThreshold] (difflib ratio).
 const double exampleThreshold = 0.9;
 
-const List<String> scoredFields = [
-  'headword',
-  'readings',
-  'pos',
-  'meaning',
-  'important',
-];
+const List<String> scoredFields = ['headword', 'readings', 'pos', 'meaning'];
 
 typedef Tally = ({int ok, int of});
 
@@ -83,9 +77,7 @@ final class CaptureScore {
         }
       }
     }
-    b.writeln(
-      'page tpl    n found head read  pos mean star  row exJA exKO meta',
-    );
+    b.writeln('page tpl    n found head read  pos mean  row exJA exKO meta');
     for (final p in pages) {
       final tpl = p.templateId.replaceFirst('vocab.', '');
       final ex = p.hasExamples
@@ -118,18 +110,10 @@ String _normMeaning(String s) =>
     nfkc(s).replaceAll(_spaces, '').replaceAll('，', ',');
 double _similarity(String a, String b) => sequenceRatio(nfkc(a), nfkc(b));
 
-/// [refine]: a step after the pipeline (the ★ check), given the scan and the
-/// fixture name.
 Future<CaptureScore> scoreCapture({
   required GroundTruth truth,
   required Future<OcrScan> Function(String fixture) loadScan,
   required CapturePipeline pipeline,
-  Future<CaptureDraft> Function(
-    CaptureDraft draft,
-    OcrScan scan,
-    String fixture,
-  )?
-  refine,
 }) async {
   final keys = [...scoredFields, 'ex_ja', 'ex_ko', 'row', 'found'];
   final ok = {for (final k in keys) k: 0};
@@ -139,10 +123,7 @@ Future<CaptureScore> scoreCapture({
 
   for (final pg in truth.pages) {
     final scan = await loadScan(pg.fixture);
-    final parsed = await pipeline.fromScan(scan);
-    final draft = refine == null
-        ? parsed
-        : await refine(parsed, scan, pg.fixture);
+    final draft = await pipeline.fromScan(scan);
     // Later entries with the same number win, as in the reference dict.
     final byNo = <String?, CapturedEntry>{
       for (final e in draft.entries) e.no: e,
@@ -166,7 +147,6 @@ Future<CaptureScore> scoreCapture({
         'readings': listEquals(e.readings, g.readings),
         'pos': e.pos?.badge == g.pos,
         'meaning': _normMeaning(e.meaning) == _normMeaning(g.meaning),
-        'important': e.important == g.important,
       };
       for (final f in scoredFields) {
         of[f] = of[f]! + 1;
@@ -210,7 +190,7 @@ Future<CaptureScore> scoreCapture({
         ];
         mistakes.add(
           '${g.no} bad=$bad issues=${e.issues.map((i) => i.code).toList()} '
-          'got=${e.headword}|${e.readings.join('/')}|${e.pos?.badge}|${e.meaning}|${e.important ? '★' : ''}',
+          'got=${e.headword}|${e.readings.join('/')}|${e.pos?.badge}|${e.meaning}',
         );
       }
     }

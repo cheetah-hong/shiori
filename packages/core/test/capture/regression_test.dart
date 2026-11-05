@@ -42,8 +42,12 @@ void main() {
       expect(score.total('readings'), (ok: 35, of: 35));
       expect(score.total('pos'), (ok: 35, of: 35));
       expect(score.total('meaning'), (ok: 33, of: 35)); // misread + unread
-      expect(score.total('important'), (ok: 34, of: 35)); // one ★ not read
-      expect(score.total('row'), (ok: 30, of: 35));
+      expect(score.total('row'), (ok: 31, of: 35));
+    });
+
+    test('a whole row is headword, readings, POS and meaning only', () {
+      expect(scoredFields, ['headword', 'readings', 'pos', 'meaning']);
+      expect(score.totals.keys, isNot(contains('important')));
     });
 
     test('examples: all read except the one OCR missed (10/11)', () {
@@ -84,8 +88,7 @@ void main() {
       expect(score.total('readings'), (ok: 18, of: 18));
       expect(score.total('pos'), (ok: 18, of: 18)); // 8, glued, inferred
       expect(score.total('meaning'), (ok: 17, of: 18)); // cut after a comma
-      expect(score.total('important'), (ok: 16, of: 18)); // two ★ not returned
-      expect(score.total('row'), (ok: 14, of: 18));
+      expect(score.total('row'), (ok: 16, of: 18));
       expect(score.total('ex_ja'), (ok: 6, of: 6));
       expect(score.total('ex_ko'), (ok: 6, of: 6));
     });
@@ -113,26 +116,11 @@ void main() {
       late CaptureScore score;
       setUpAll(() async => score = await _score(recordedMlKit));
 
-      test('the Dart rule chain reads at least 38/59 rows', () {
+      test('the Dart rule chain reads at least 51/59 rows', () {
         expect(score.total('found'), (ok: 59, of: 59));
-        expect(score.total('row').ok, greaterThanOrEqualTo(38));
+        expect(score.total('row').ok, greaterThanOrEqualTo(51));
         expect(score.total('ex_ja'), (ok: 12, of: 12));
         expect(score.total('ex_ko'), (ok: 12, of: 12));
-        expect(score.silentErrors, lessThanOrEqualTo(1));
-      });
-    },
-  );
-
-  group(
-    'recorded textbook pages + star pass (local only)',
-    skip: skipUnlessPresent(recordedWithStars),
-    () {
-      late CaptureScore score;
-      setUpAll(() async => score = await _score(recordedWithStars));
-
-      test('the star pass brings back ★ marks (≥ 54/59 rows, ★ ≥ 58)', () {
-        expect(score.total('row').ok, greaterThanOrEqualTo(54));
-        expect(score.total('important').ok, greaterThanOrEqualTo(58));
         expect(score.silentErrors, lessThanOrEqualTo(1));
       });
     },
@@ -164,8 +152,8 @@ void main() {
         expect(score.total('found'), (ok: 59, of: 59));
       });
 
-      test('whole rows correct ≥ 52/59', () {
-        expect(score.total('row').ok, greaterThanOrEqualTo(52));
+      test('whole rows correct ≥ 55/59', () {
+        expect(score.total('row').ok, greaterThanOrEqualTo(55));
       });
 
       test('examples read in Japanese and Korean (12/12)', () {
@@ -186,7 +174,6 @@ void main() {
         expect(score.total('readings').ok, greaterThanOrEqualTo(59));
         expect(score.total('pos').ok, greaterThanOrEqualTo(59));
         expect(score.total('meaning').ok, greaterThanOrEqualTo(57));
-        expect(score.total('important').ok, greaterThanOrEqualTo(56));
       });
 
       test('picks the list or entry layout as the ground truth says', () {

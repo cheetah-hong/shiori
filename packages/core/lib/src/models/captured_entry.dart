@@ -2,7 +2,7 @@ import 'package:shiori_core/src/models/list_equality.dart';
 import 'package:shiori_core/src/models/part_of_speech.dart';
 
 /// Editable fields of a captured entry, used to attach review flags.
-enum EntryField { headword, readings, pos, meaning, important, example }
+enum EntryField { headword, readings, pos, meaning, example }
 
 enum IssueKind {
   /// The field could not be read. The review screen asks the learner to check it.
@@ -100,7 +100,6 @@ final class CapturedEntry {
     required this.readings,
     required this.pos,
     required this.meaning,
-    required this.important,
     this.example,
     this.issues = const [],
     this.headwordCandidates = const [],
@@ -116,9 +115,6 @@ final class CapturedEntry {
   final List<String> readings;
   final PartOfSpeech? pos;
   final String meaning;
-
-  /// `★`: appeared in past JLPT exams.
-  final bool important;
   final Example? example;
   final List<EntryIssue> issues;
 
@@ -172,7 +168,6 @@ final class CapturedEntry {
     List<String>? readings,
     Object? pos = _unset,
     String? meaning,
-    bool? important,
     Object? example = _unset,
     List<EntryIssue>? issues,
     List<String>? headwordCandidates,
@@ -184,7 +179,6 @@ final class CapturedEntry {
     readings: List.unmodifiable(readings ?? this.readings),
     pos: identical(pos, _unset) ? this.pos : pos as PartOfSpeech?,
     meaning: meaning ?? this.meaning,
-    important: important ?? this.important,
     example: identical(example, _unset) ? this.example : example as Example?,
     issues: List.unmodifiable(issues ?? this.issues),
     headwordCandidates: List.unmodifiable(
@@ -206,7 +200,6 @@ final class CapturedEntry {
     List<String>? readings,
     Object? pos = _unset,
     String? meaning,
-    bool? important,
     Object? example = _unset,
   }) {
     final touched = <EntryField>{
@@ -214,7 +207,6 @@ final class CapturedEntry {
       if (readings != null) EntryField.readings,
       if (!identical(pos, _unset)) EntryField.pos,
       if (meaning != null) EntryField.meaning,
-      if (important != null) EntryField.important,
       if (!identical(example, _unset)) EntryField.example,
     };
     return copyWith(
@@ -222,7 +214,6 @@ final class CapturedEntry {
       readings: readings,
       pos: pos,
       meaning: meaning,
-      important: important,
       example: example,
       issues: [
         for (final i in issues)
@@ -239,7 +230,6 @@ final class CapturedEntry {
       listEquals(other.readings, readings) &&
       other.pos == pos &&
       other.meaning == meaning &&
-      other.important == important &&
       other.example == example &&
       listEquals(other.issues, issues) &&
       listEquals(other.headwordCandidates, headwordCandidates) &&
@@ -253,7 +243,6 @@ final class CapturedEntry {
     Object.hashAll(readings),
     pos,
     meaning,
-    important,
     example,
     Object.hashAll(issues),
     Object.hashAll(headwordCandidates),
@@ -264,5 +253,5 @@ final class CapturedEntry {
   @override
   String toString() =>
       'CapturedEntry($no $headword|${readings.join('/')}|${pos?.badge}|$meaning'
-      '${important ? '|★' : ''} issues=$issues)';
+      ' issues=$issues)';
 }

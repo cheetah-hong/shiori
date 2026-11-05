@@ -21,7 +21,6 @@ CapturedEntry _word(
   readings: readings,
   pos: PartOfSpeech.noun,
   meaning: meaning,
-  important: false,
   issues: issues,
   headwordCandidates: candidates,
   ocrHeadword: headword,
@@ -60,7 +59,7 @@ final _draft = CaptureDraft(
 );
 
 /// A page with one automatic fix, an unread headword, a suspect meaning and a
-/// star found by the star check (not printed in the OCR text).
+/// word without flags.
 CaptureDraft _page({ColumnScale? scale}) => CaptureDraft(
   templateId: 'vocab.list',
   meta: const PageMeta(day: 2, title: '날씨', page: 20),
@@ -94,8 +93,6 @@ CaptureDraft _page({ColumnScale? scale}) => CaptureDraft(
       readings: const ['はれ'],
       pos: PartOfSpeech.noun,
       meaning: '맑음',
-      important: true,
-      issues: const [EntryIssue.inferred(EntryField.important)],
     ),
   ],
 );
@@ -204,21 +201,6 @@ void main() {
     expect(find.text('직접 고름 → 日'), findsOneWidget);
     expect(_mark(EntryField.headword, FieldStatus.corrected), findsNWidgets(2));
     expect(find.text('확인 필요 1'), findsWidgets);
-  });
-
-  testWidgets('a star found by the star check is marked as a guess', (
-    tester,
-  ) async {
-    usePhoneSize(tester);
-    await tester.pumpWidget(screen(TestBlocks(), ReviewScreen(draft: _page())));
-    await tester.pumpAndSettle();
-    final mark = _mark(EntryField.important, FieldStatus.inferred);
-    expect(mark, findsOneWidget);
-    expect(
-      find.descendant(of: mark, matching: find.text('추정')),
-      findsOneWidget,
-    );
-    expect(find.text('★'), findsOneWidget);
   });
 
   group('the page notice for columns read at the default frame', () {

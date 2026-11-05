@@ -27,7 +27,6 @@ CapturedEntry applyLearnerEdits(
   required List<String> readings,
   required PartOfSpeech? pos,
   required String meaning,
-  required bool important,
   Example? example,
   bool checksExample = false,
 }) {
@@ -38,7 +37,6 @@ CapturedEntry applyLearnerEdits(
   }
   if (pos != entry.pos) e = e.edit(pos: pos);
   if (meaning != entry.meaning) e = e.edit(meaning: meaning);
-  if (important != entry.important) e = e.edit(important: important);
   if (checksExample &&
       (example != entry.example ||
           entry.statusOf(EntryField.example) == FieldStatus.needsReview)) {

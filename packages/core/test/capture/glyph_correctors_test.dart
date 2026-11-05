@@ -16,7 +16,6 @@ CapturedEntry entry({
   readings: readings,
   pos: pos,
   meaning: meaning,
-  important: false,
 );
 
 void main() {

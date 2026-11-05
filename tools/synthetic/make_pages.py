@@ -30,6 +30,9 @@ mistakes the parsing and correction rules exist for, so the tests exercise them 
   a missing meaning, furigana over examples, two-line examples, the 관련어 and 문형 boxes,
   garbage glued in front of a translation, an example OCR did not read, DAY misread in the footer,
   and a page with no footer (DAY header and page line instead).
+
+The ★ printed beside some words (`star=True` on a row) is only noise for the parser: it is cut out of the
+OCR lines and dropped, so the answers carry no ★.
 """
 from __future__ import annotations
 
@@ -87,9 +90,8 @@ class Page:
             self.ko.append(box(t_ko, x, y, w, h, c_ko))
 
     def truth(self, no: str, headword: str, readings: list[str], pos: str, meaning: str,
-              important: bool = False, example: tuple[str, str] | None = None) -> None:
-        e = {"no": no, "headword": headword, "readings": readings, "pos": pos, "meaning": meaning,
-             "important": important}
+              example: tuple[str, str] | None = None) -> None:
+        e = {"no": no, "headword": headword, "readings": readings, "pos": pos, "meaning": meaning}
         if example:
             e["example"] = {"ja": example[0], "ko": example[1]}
         self.entries.append(e)
@@ -147,7 +149,7 @@ def list_row(p: Page, i: int, r: dict, *, ax0: float, ay0: float, gap: float, dr
         x = ax + dx
         p.both(t, ko_head or None, x, y_at(x) - 0.0004, text_width(t, W_HEAD) + (0.03 if dx < 0.01 else 0), 0.0192,
                r.get("c_head", 0.5), 0.3)
-    if r.get("star_ocr", r.get("important", False)):
+    if r.get("star_ocr", r.get("star", False)):
         x = ax + 0.187
         p.both("★", "*", x, y_at(x) + 0.0042, 0.0145, 0.0108, 1.0, 0.5)
 
@@ -163,7 +165,7 @@ def list_row(p: Page, i: int, r: dict, *, ax0: float, ay0: float, gap: float, dr
                0.3, 0.5)
         r = {**r, "ja_meaning": None}  # the Japanese pass reads one garbage line per meaning
 
-    p.truth(no, r["headword"], r["readings"], r["pos"], r["meaning"], r.get("important", False))
+    p.truth(no, r["headword"], r["readings"], r["pos"], r["meaning"])
 
 
 def page_s010() -> Page:
@@ -178,16 +180,16 @@ def page_s010() -> Page:
         p.both(t, t, x, y, 0.0136, 0.0145, 0.5, 0.5)
     rows = [
         # 0001: number not read; the headword is read together with a checkbox glyph
-        dict(no="0001", headword="雨", readings=["あめ"], pos="명", meaning="비", important=True,
+        dict(no="0001", headword="雨", readings=["あめ"], pos="명", meaning="비", star=True,
              id=None, box=None, head_ocr=[("問 雨", -0.002)], ko_head="000 초"),
         # 0002, 0003: OCR skipped a simple one-kanji headword
         dict(no="0002", headword="日", readings=["ひ"], pos="명", meaning="해, 날", head_ocr=[], box="■口口"),
         dict(no="0003", headword="空", readings=["そら"], pos="명", meaning="하늘", head_ocr=[], ko_reading="3<"),
-        dict(no="0004", headword="風", readings=["かぜ"], pos="명", meaning="바람", important=True, box="LDD"),
+        dict(no="0004", headword="風", readings=["かぜ"], pos="명", meaning="바람", star=True, box="LDD"),
         # 0005: the Korean pass misread the meaning (wrong and not flagged: a silent error)
         dict(no="0005", headword="雲", readings=["くも"], pos="명", meaning="구름",
              meaning_ocr=[("명 구룸", 0.0)], box="コロロ"),
-        dict(no="0006", headword="晴れ", readings=["はれ"], pos="명", meaning="맑음", important=True),
+        dict(no="0006", headword="晴れ", readings=["はれ"], pos="명", meaning="맑음", star=True),
         dict(no="0007", headword="雪", readings=["ゆき"], pos="명", meaning="눈", box="■口口"),
         # 0008: 口 read as katakana ロ
         dict(no="0008", headword="口", readings=["くち"], pos="명", meaning="입", head_ocr=[("ロ", 0.05)]),
@@ -196,7 +198,7 @@ def page_s010() -> Page:
         # 0010: one headword read as two lines
         dict(no="0010", headword="天気予報", readings=["てんきよほう"], pos="명", meaning="일기 예보",
              head_ocr=[("天気", 0.040), ("予報", 0.086)]),
-        dict(no="0011", headword="暑い", readings=["あつい"], pos="い형", meaning="덥다", important=True),
+        dict(no="0011", headword="暑い", readings=["あつい"], pos="い형", meaning="덥다", star=True),
         # 0012: kana word, its "no reading" dash read as 一
         dict(no="0012", headword="ちょっと", readings=[], pos="부", meaning="조금, 잠깐", reading_ocr="一",
              box="ロロレ"),
@@ -223,11 +225,11 @@ def page_s011() -> Page:
     p.both("mp3は豆", "mp3 듣기", 0.0338, 0.2003, 0.0782, 0.0186, 0.3, 1.0)
     rows = [
         # 0013: the ★ was not read
-        dict(no="0013", headword="海", readings=["うみ"], pos="명", meaning="바다", important=True, star_ocr=False),
+        dict(no="0013", headword="海", readings=["うみ"], pos="명", meaning="바다", star=True, star_ocr=False),
         # 0014: badge 명 misread as 몀
         dict(no="0014", headword="山", readings=["やま"], pos="명", meaning="산", meaning_ocr=[("몀. 산", 0.0)]),
         # 0015: badge on its own line, left of the meaning
-        dict(no="0015", headword="川", readings=["かわ"], pos="명", meaning="강, 개천", important=True,
+        dict(no="0015", headword="川", readings=["かわ"], pos="명", meaning="강, 개천", star=True,
              meaning_ocr=[("명", 0.0), ("강, 개천", 0.0213)], box="■口口"),
         # 0016: katakana タ inside a kanji word
         dict(no="0016", headword="夕日", readings=["ゆうひ"], pos="명", meaning="석양, 저녁 해",
@@ -237,8 +239,8 @@ def page_s011() -> Page:
         # 0018: a one-kanji word read as katakana カ
         dict(no="0018", headword="力", readings=["ちから"], pos="명", meaning="힘", head_ocr=[("カ", 0.05)],
              box="LDD"),
-        dict(no="0019", headword="星", readings=["ほし"], pos="명", meaning="별", important=True),
-        dict(no="0020", headword="痛い", readings=["いたい"], pos="い형", meaning="아프다", important=True,
+        dict(no="0019", headword="星", readings=["ほし"], pos="명", meaning="별", star=True),
+        dict(no="0020", headword="痛い", readings=["いたい"], pos="い형", meaning="아프다", star=True,
              box="コロロ"),
         # 0021: a 1 in the number read as l
         dict(no="0021", headword="指", readings=["ゆび"], pos="명", meaning="손가락", id="002l"),
@@ -292,7 +294,7 @@ def entry_block(p: Page, e: dict, *, ax: float, ty: float) -> None:
         p.both(ja_t, ko_t, ax + 0.21, y, text_width(ko_t, 0.0098), 0.0199, 0.3, 0.5)
         y += 0.0200
     ex = e["example"]
-    p.truth(e["no"], e["headword"], e["readings"], e["pos"], e["meaning"], e.get("important", False),
+    p.truth(e["no"], e["headword"], e["readings"], e["pos"], e["meaning"],
             (ex[0] if len(ex) == 2 else "".join(ex[:-1]), ex[-1]))
 
 
@@ -313,7 +315,7 @@ def page_s140() -> Page:
     entries = [
         # ★ glued to the headword; badge 동 misread as 통
         dict(no="1211", headword="乗り換える", readings=["のりかえる"], pos="동", meaning="갈아타다, 환승하다",
-             important=True, head_ocr="乗り換える★", meaning_ocr=[("통 갈아타다, 환승하다", 0.0)],
+             star=True, head_ocr="乗り換える★", meaning_ocr=[("통 갈아타다, 환승하다", 0.0)],
              furigana=[("つぎ", 0.0), ("えき", 0.032), ("きゅうこう", 0.066), ("の か", 0.12)],
              example=("次の駅で急行に乗り換えてください。", "다음 역에서 급행으로 갈아타 주세요.")),
         # badge read as its own `명:` line; Japanese garbage glued in front of the translation
@@ -333,7 +335,7 @@ def page_s140() -> Page:
              id_ko="121 0.0", furigana=[("あさ", 0.0), ("こうそくどうろ", 0.035), ("じゅうたい", 0.17)],
              example=("朝の高速道路はいつも渋滞しています。", "아침 고속도로는 늘 차가 막혀 있습니다.")),
         # ★ on its own line; the 문형 box ends the example
-        dict(no="1215", headword="揺れる", readings=["ゆれる"], pos="동", meaning="흔들리다", important=True,
+        dict(no="1215", headword="揺れる", readings=["ゆれる"], pos="동", meaning="흔들리다", star=True,
              star_line=True, furigana=[("ゆ", 0.09), ("た", 0.17)],
              boxes=[("【文型】動詞て形+いられない", "[문형] 동사 て형 + いられない ~(하)고 있을 수 없다")],
              example=("バスがひどく揺れたので、立っていられなかった。", "버스가 심하게 흔들려서 서 있을 수 없었다.")),
@@ -359,7 +361,7 @@ def page_s147() -> Page:
         dict(no="1271", headword="値段", readings=["ねだん"], pos="명", meaning="가격, 값",
              furigana=[("みせ", 0.05), ("やさい", 0.1), ("ねだん", 0.17), ("やす しんせん", 0.24)],
              example=("この店の野菜は値段が安くて新鮮です。", "이 가게의 채소는 가격이 싸고 신선합니다.")),
-        dict(no="1272", headword="売り場", readings=["うりば"], pos="명", meaning="매장", important=True,
+        dict(no="1272", headword="売り場", readings=["うりば"], pos="명", meaning="매장", star=True,
              head_ocr="売り場 ★", furigana=[("くつ", 0.0), ("う ば", 0.03), ("さんがい", 0.1)],
              example=("靴の売り場は三階にございます。", "신발 매장은 3층에 있습니다.")),
         # the example sentence was not read (only its furigana and the translation)
@@ -410,7 +412,7 @@ def mk_list_row(p: Page, i: int, r: dict, *, ax0: float, ay0: float, gap: float,
     for t, dx in r.get("head_ocr", [(r["headword"], 0.045)]):
         x = ax + dx
         p.ja.append(box(t, x, y_at(x) + 0.001, text_width(t, W_HEAD) * MK_W, 0.0192 * MK_H, mk_conf(p)))
-    star = r.get("star_ocr", r.get("important", False))  # True | "*" | "glued" | False
+    star = r.get("star_ocr", r.get("star", False))  # True | "*" | "glued" | False
     reading = r.get("reading_ocr", "/".join(r["readings"]) or "–")
     rx = reading_x + p.jitter(0.0006)
     sx = ax + 0.187
@@ -429,7 +431,7 @@ def mk_list_row(p: Page, i: int, r: dict, *, ax0: float, ay0: float, gap: float,
         t, dx = r["ko_junk"]
         x = ax + dx
         p.ko.append(box(t, x, y_at(x) + 0.0045, 0.008, 0.0133 * MK_H, 0.12))
-    p.truth(r["no"], r["headword"], r["readings"], r["pos"], r["meaning"], r.get("important", False))
+    p.truth(r["no"], r["headword"], r["readings"], r["pos"], r["meaning"])
 
 
 def page_m011() -> Page:
@@ -440,11 +442,11 @@ def page_m011() -> Page:
     p.ko.append(box("DAY", 0.8430, 0.2064, 0.0155, 0.0198, 0.9))
     rows = [
         # the ★ was not returned at all
-        dict(no="0013", headword="海", readings=["うみ"], pos="명", meaning="바다", important=True, star_ocr=False),
+        dict(no="0013", headword="海", readings=["うみ"], pos="명", meaning="바다", star=True, star_ocr=False),
         # 0 of the number read as O
         dict(no="0014", headword="山", readings=["やま"], pos="명", meaning="산", id="OO14"),
         # the ★ and the reading came back as one piece
-        dict(no="0015", headword="川", readings=["かわ"], pos="명", meaning="강, 개천", important=True,
+        dict(no="0015", headword="川", readings=["かわ"], pos="명", meaning="강, 개천", star=True,
              star_ocr="glued"),
         # look-alike katakana in the headword; a comma between Korean words read as a period
         dict(no="0016", headword="夕日", readings=["ゆうひ"], pos="명", meaning="석양, 저녁 해",
@@ -456,9 +458,9 @@ def page_m011() -> Page:
         dict(no="0018", headword="力", readings=["ちから"], pos="명", meaning="힘", id="0018O",
              head_ocr=[("カ", 0.05)]),
         # ★ read as *; the badge glued to the meaning
-        dict(no="0019", headword="星", readings=["ほし"], pos="명", meaning="별", important=True, star_ocr="*",
+        dict(no="0019", headword="星", readings=["ほし"], pos="명", meaning="별", star=True, star_ocr="*",
              meaning_ocr=[("명별", 0.0)]),
-        dict(no="0020", headword="痛い", readings=["いたい"], pos="い형", meaning="아프다", important=True),
+        dict(no="0020", headword="痛い", readings=["いたい"], pos="い형", meaning="아프다", star=True),
         # 0 read as D and 1 as l in the number; the checkbox edge read as | before the headword
         dict(no="0021", headword="指", readings=["ゆび"], pos="명", meaning="손가락", id="D02l",
              head_ocr=[("|指", 0.043)]),
@@ -485,7 +487,7 @@ def mk_entry_block(p: Page, e: dict, *, ax: float, ty: float) -> None:
     p.ja.append(box(head, ax + 0.0115, ty + 0.0208, text_width(head, W_HEAD) * MK_W, 0.0219 * MK_H, mk_conf(p)))
     # The Korean pass reads the headword as the same garbage glyph every time.
     p.ko.append(box("슴", ax + 0.0115, ty + 0.0208, 0.02, 0.0186, 0.11))
-    if e.get("important") and e.get("star_ocr", True):
+    if e.get("star") and e.get("star_ocr", True):
         p.ja.append(box("★", ax + 0.146, ty + 0.0275, 0.0138, 0.0111, mk_conf(p, 0.25, 0.6)))
     reading = e.get("reading_ocr", "/".join(e["readings"]) or "–")
     p.ja.append(box(reading, ax + 0.182, ty + 0.0163, text_width(reading, W_READ) * MK_W, 0.0162 * MK_H,
@@ -520,7 +522,7 @@ def mk_entry_block(p: Page, e: dict, *, ax: float, ty: float) -> None:
         p.ko.append(box(ko_t, ax + 0.21, y, text_width(ko_t, 0.0098) * MK_W, 0.0199 * MK_H, mk_conf(p)))
         y += 0.0200
     ex = e["example"]
-    p.truth(e["no"], e["headword"], e["readings"], e["pos"], e["meaning"], e.get("important", False),
+    p.truth(e["no"], e["headword"], e["readings"], e["pos"], e["meaning"],
             (ex[0] if len(ex) == 2 else "".join(ex[:-1]), ex[-1]))
 
 
@@ -531,7 +533,7 @@ def page_m140() -> Page:
     entries = [
         # ri of the reading read as katakana リ
         dict(no="1211", headword="乗り換える", readings=["のりかえる"], pos="동", meaning="갈아타다, 환승하다",
-             important=True, reading_ocr="のリかえる",
+             star=True, reading_ocr="のリかえる",
              furigana=[("つぎ", 0.0), ("えき", 0.032), ("きゅうこう", 0.066)],
              example=("次の駅で急行に乗り換えてください。", "다음 역에서 급행으로 갈아타 주세요.")),
         # the small number line was not returned; a comma read as a period
@@ -548,7 +550,7 @@ def page_m140() -> Page:
         dict(no="1214", headword="渋滞", readings=["じゅうたい"], pos="명", meaning="(교통) 정체", id_missing=True,
              stray="送", example=("朝の高速道路はいつも渋滞しています。", "아침 고속도로는 늘 차가 막혀 있습니다.")),
         # the ★ not returned; | in front of the headword; badge 동 read as 8
-        dict(no="1215", headword="揺れる", readings=["ゆれる"], pos="동", meaning="흔들리다", important=True,
+        dict(no="1215", headword="揺れる", readings=["ゆれる"], pos="동", meaning="흔들리다", star=True,
              star_ocr=False, head_ocr="|揺れる", meaning_ocr=[("8 흔들리다", 0.0)],
              example=("バスがひどく揺れたので、立っていられなかった。", "버스가 심하게 흔들려서 서 있을 수 없었다.")),
         # number line not returned; a headword kanji read as a look-alike kanji (wrong, not flagged);

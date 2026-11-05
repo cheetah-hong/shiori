@@ -119,8 +119,7 @@ final class OcrPage {
   };
 }
 
-/// The passes a page gets: Japanese-first and Korean-first, and optionally a
-/// third Japanese pass that only contributes ★ marks.
+/// The two passes a page gets: Japanese-first and Korean-first.
 ///
 /// Japanese text (headwords, readings, examples) is read from [japanese];
 /// Korean text (meanings, translations, footer) from [korean].
@@ -128,38 +127,30 @@ final class OcrScan {
   const OcrScan({
     required this.japanese,
     required this.korean,
-    this.stars,
     this.turned = 0,
   });
 
-  /// Accepts `{"ja": OcrPage, "ko": OcrPage, "star"?: OcrPage, "turned"?: 90}`,
-  /// the native channel payload.
+  /// Accepts `{"ja": OcrPage, "ko": OcrPage, "turned"?: 90}`, the native
+  /// channel payload. Other keys are ignored (older payloads carried a third
+  /// `"star"` pass).
   factory OcrScan.fromJson(Map<String, Object?> json) => OcrScan(
     japanese: OcrPage.fromJson(_map(json['ja'])),
     korean: OcrPage.fromJson(_map(json['ko'])),
-    stars: json['star'] == null ? null : OcrPage.fromJson(_map(json['star'])),
     turned: _optionalNum(json, 'turned').round(),
   );
 
   final OcrPage japanese;
   final OcrPage korean;
 
-  /// Japanese pass over a binarized copy of the same image (same frame).
-  /// Vision misses some ★ marks on the colour photo and reads them here; only
-  /// its ★ glyphs are used, everything else comes from [japanese].
-  final OcrPage? stars;
-
   /// Clockwise degrees the channel turned the page after the photo's EXIF
   /// rotation, because the text still lay sideways (0, 90, 180 or 270).
   final int turned;
 
-  Duration get elapsed =>
-      japanese.elapsed + korean.elapsed + (stars?.elapsed ?? Duration.zero);
+  Duration get elapsed => japanese.elapsed + korean.elapsed;
 
   Map<String, Object?> toJson() => {
     'ja': japanese.toJson(),
     'ko': korean.toJson(),
-    if (stars case final s?) 'star': s.toJson(),
     if (turned != 0) 'turned': turned,
   };
 }

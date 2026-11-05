@@ -1,7 +1,8 @@
 // The parser reads a page the same way whatever the image frame: the whole
 // photo, a scanner crop of the page or a closer photo (column positions are
 // measured from the content), and it survives the OCR slips that used to break
-// whole pages (a lone number in the meaning column, a ★ glued to the reading).
+// whole pages (a lone number in the meaning column, a symbol glued to the
+// reading).
 import 'package:shiori_core/shiori_core.dart';
 import 'package:shiori_core/src/capture/scan_preparation.dart';
 import 'package:shiori_core/src/capture/vocab/anchors.dart';
@@ -45,7 +46,7 @@ String _describe(CaptureDraft d) => [
   d.templateId,
   for (final e in d.entries)
     '${e.no} ${e.headword}|${e.readings.join('/')}|${e.pos?.badge}|'
-        '${e.meaning}|${e.important}|${e.example}|${e.issues.map((i) => i.code)}',
+        '${e.meaning}|${e.example}|${e.issues.map((i) => i.code)}',
 ].join('\n');
 
 void main() {
@@ -133,11 +134,9 @@ void main() {
       expect(draft.templateId, 'vocab.list');
     });
 
-    test('a ★ glued to the reading is split off and kept', () async {
+    test('a ★ glued to the reading is dropped like a lone one', () async {
       final scan = await loadScan('s011');
       final before = await pipeline.fromScan(scan);
-      final river = before.entries.singleWhere((e) => e.no == '0015');
-      expect(river.important, isTrue);
       // Join the ★ line and the reading line of 0015 into one `★かわ` line.
       final glued = withJapanese(scan, (ja) {
         final star = ja.singleWhere(
@@ -159,7 +158,6 @@ void main() {
       final after = await pipeline.fromScan(glued);
       final got = after.entries.singleWhere((e) => e.no == '0015');
       expect(got.readings, ['かわ']);
-      expect(got.important, isTrue);
       expect(_describe(after), _describe(before));
     });
   });
@@ -225,25 +223,43 @@ void main() {
     OcrLine l(String t, {double x = 0.1, double c = 1.0}) =>
         OcrLine(text: t, confidence: c, x: x, y: 0.5, width: 0.1, height: 0.02);
 
-    test('splits a glued star by character count', () {
-      final out = splitGluedStars([l('乗り換える*のりかえる')]);
-      expect(out.map((o) => o.text), ['乗り換える', '★', 'のりかえる']);
-      expect(out[1].x, closeTo(0.1 + 5 * 0.1 / 11, 1e-9));
-      expect(out[2].width, closeTo(5 * 0.1 / 11, 1e-9));
+    test('cuts a glued symbol out by character count and drops it', () {
+      final out = dropSymbolNoise([l('乗り換える*のりかえる')]);
+      expect(out.map((o) => o.text), ['乗り換える', 'のりかえる']);
+      expect(out[0].x, closeTo(0.1, 1e-9));
+      expect(out[0].width, closeTo(5 * 0.1 / 11, 1e-9));
+      expect(out[1].x, closeTo(0.1 + 6 * 0.1 / 11, 1e-9));
+      expect(out[1].width, closeTo(5 * 0.1 / 11, 1e-9));
     });
 
-    test('a lone * or ☆ becomes ★; plain lines stay as they are', () {
+    test('drops lone ★ ☆ * ＊; plain lines stay as they are', () {
       final plain = l('かわ');
-      final out = splitGluedStars([l(' * '), l('☆'), plain]);
-      expect(out.map((o) => o.text), ['★', '★', 'かわ']);
-      expect(identical(out[2], plain), isTrue);
+      final out = dropSymbolNoise([
+        l(' * '),
+        l('☆'),
+        l('★'),
+        l('＊'),
+        l('★ ☆'),
+        plain,
+      ]);
+      expect(out.map((o) => o.text), ['かわ']);
+      expect(identical(out.single, plain), isTrue);
     });
 
-    test('drops low-confidence ML Kit lines but keeps a lone star', () {
+    test('the legend line keeps its text without the symbol', () {
+      expect(dropSymbolNoise([l('★三人=試験')]).map((o) => o.text), ['三人=試験']);
+    });
+
+    test('drops low-confidence ML Kit lines and lone symbols', () {
       final scan = OcrScan(
         japanese: OcrPage(
           engine: mlKitEngine,
-          lines: [l('問大', c: 0.1), l('★', c: 0.05), l('かわ', c: 0.7)],
+          lines: [
+            l('問大', c: 0.1),
+            l('★', c: 0.05),
+            l('*', c: 0.9),
+            l('かわ', c: 0.7),
+          ],
         ),
         korean: OcrPage(
           engine: mlKitEngine,
@@ -251,7 +267,7 @@ void main() {
         ),
       );
       final out = prepareScan(scan);
-      expect(out.japanese.lines.map((o) => o.text), ['★', 'かわ']);
+      expect(out.japanese.lines.map((o) => o.text), ['かわ']);
       expect(out.korean.lines.map((o) => o.text), ['강']);
     });
 
@@ -265,22 +281,18 @@ void main() {
       expect(out.korean.lines, hasLength(1));
     });
 
-    test('adds the star pass ★ marks, not its text or the legend', () {
+    test('is idempotent', () {
       final scan = OcrScan(
-        japanese: OcrPage(lines: [l('川')]),
+        japanese: OcrPage(lines: [l('川 ★かわ'), l('*')]),
         korean: const OcrPage(lines: []),
-        stars: OcrPage(
-          lines: [
-            l('川 ★かわ', x: 0.2),
-            l('★ 표시 = 시험에 자주 나온 단어'),
-            l('★三人=試験'),
-            l('山 やま'),
-          ],
-        ),
       );
-      final out = prepareScan(scan).japanese.lines;
-      expect(out.map((o) => o.text), ['川', '★']);
-      expect(out[1].x, closeTo(0.2 + 2 * 0.1 / 5, 1e-9));
+      final once = prepareScan(scan);
+      final twice = prepareScan(once);
+      expect(
+        twice.japanese.lines.map((o) => (o.text, o.x, o.width)),
+        once.japanese.lines.map((o) => (o.text, o.x, o.width)),
+      );
+      expect(once.japanese.lines.map((o) => o.text), ['川', 'かわ']);
     });
   });
 }
