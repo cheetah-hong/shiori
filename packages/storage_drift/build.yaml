@@ -1,0 +1,13 @@
+targets:
+  $default:
+    builders:
+      drift_dev:
+        options:
+          databases:
+            shiori_database: lib/src/database.dart
+          schema_dir: drift_schemas/
+          test_dir: test/migrations/
+      # Generated code is not counted in test coverage (docs/verification.md).
+      source_gen:combining_builder:
+        options:
+          preamble: "// coverage:ignore-file"

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:shiori_core/shiori_core.dart';
 import 'package:test/test.dart';
 
@@ -92,6 +94,68 @@ void main() {
       ]);
     });
 
+    test('a failed transaction leaves the library as it was', () async {
+      final repo = InMemoryLibraryRepository();
+      await repo.saveWords([word('a', no: '0001')]);
+      await expectLater(
+        repo.transaction(() async {
+          await repo.saveDay(
+            const TextbookDay(textbookId: 'tb', number: 1, title: '하나'),
+          );
+          await repo.saveWords([word('a', no: '0002'), word('b')]);
+          expect((await repo.words()).length, 2, reason: 'sees its writes');
+          throw StateError('disk full');
+        }),
+        throwsStateError,
+      );
+      expect(await repo.days('tb'), isEmpty);
+      expect((await repo.words()).single.no, '0001');
+    });
+
+    test('a transaction returns its value and keeps its writes', () async {
+      final repo = InMemoryLibraryRepository();
+      final n = await repo.transaction(() async {
+        await repo.saveWords([word('a'), word('b')]);
+        return (await repo.words()).length;
+      });
+      expect(n, 2);
+      expect((await repo.words()).length, 2);
+    });
+
+    test('a nested transaction that fails undoes only its writes', () async {
+      final repo = InMemoryLibraryRepository();
+      await repo.transaction(() async {
+        await repo.saveWords([word('a')]);
+        try {
+          await repo.transaction(() async {
+            await repo.saveWords([word('b')]);
+            throw StateError('inner');
+          });
+        } on StateError {
+          // The outer action goes on.
+        }
+      });
+      expect((await repo.words()).map((w) => w.id), ['a']);
+    });
+
+    test('calls from outside wait for a running transaction', () async {
+      final repo = InMemoryLibraryRepository();
+      final gate = Completer<void>();
+      final tx = repo.transaction(() async {
+        await repo.saveWords([word('a')]);
+        await gate.future;
+        throw StateError('rolled back');
+      });
+      final outsideWrite = repo.saveWords([word('b')]);
+      final outsideRead = repo.words();
+      gate.complete();
+      await expectLater(tx, throwsStateError);
+      await outsideWrite;
+      // Queued behind the transaction: never sees the rolled-back word.
+      expect((await outsideRead).map((w) => w.id), ['b']);
+      expect((await repo.words()).map((w) => w.id), ['b']);
+    });
+
     test('returned lists cannot be changed by callers', () async {
       final repo = InMemoryLibraryRepository();
       await repo.saveWords([word('a')]);
@@ -112,6 +176,31 @@ void main() {
       expect((await repo.card('a'))?.level, 3);
       expect((await repo.cards()).keys, unorderedEquals(['a', 'b']));
       expect((await repo.cards(wordIds: ['b', 'zz'])).keys, ['b']);
+    });
+
+    test('a failed transaction keeps neither the card nor the log', () async {
+      final repo = InMemoryReviewRepository();
+      await repo.saveCard(card('a'));
+      await expectLater(
+        repo.transaction(() async {
+          await repo.saveCard(card('a').copyWith(level: 4));
+          await repo.saveCard(card('b'));
+          await repo.addLog(
+            ReviewLog(
+              wordId: 'a',
+              answer: Answer.known,
+              at: t0,
+              levelBefore: 1,
+              levelAfter: 4,
+              retriesInSession: 0,
+            ),
+          );
+          throw StateError('disk full');
+        }),
+        throwsStateError,
+      );
+      expect((await repo.cards()).values, [card('a')]);
+      expect(await repo.logs(), isEmpty);
     });
 
     test('logs filter by time', () async {

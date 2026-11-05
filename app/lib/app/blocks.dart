@@ -19,6 +19,7 @@ import 'package:shiori/adapters/dev_samples.dart';
 import 'package:shiori/adapters/image_picker_source.dart';
 import 'package:shiori/adapters/platform_text_recognizer.dart';
 import 'package:shiori_core/shiori_core.dart';
+import 'package:shiori_storage_drift/shiori_storage_drift.dart';
 
 // ---------------------------------------------------------------- block slots
 
@@ -54,14 +55,23 @@ final entryCorrectorsProvider = Provider<List<EntryCorrector>>(
   (ref) => standardCorrectors(ref.watch(dictionaryProvider)),
 );
 
-/// Content storage. Next: drift (SQLite).
-final libraryRepositoryProvider = Provider<LibraryRepository>(
-  (ref) => InMemoryLibraryRepository(),
+/// The SQLite file behind both storage blocks. `main.dart` opens it (the app
+/// support folder is only known asynchronously) and overrides this provider.
+/// Tests override the repositories, or this with `ShioriDatabase.memory()`.
+final appDatabaseProvider = Provider<ShioriDatabase>(
+  (ref) => throw StateError(
+    'appDatabaseProvider is not set: open the database in main.dart',
+  ),
 );
 
-/// Learning state storage. Next: drift (SQLite).
+/// Content storage: SQLite (drift). Tests: `InMemoryLibraryRepository`.
+final libraryRepositoryProvider = Provider<LibraryRepository>(
+  (ref) => DriftLibraryRepository(ref.watch(appDatabaseProvider)),
+);
+
+/// Learning state storage: SQLite (drift). Tests: `InMemoryReviewRepository`.
 final reviewRepositoryProvider = Provider<ReviewRepository>(
-  (ref) => InMemoryReviewRepository(),
+  (ref) => DriftReviewRepository(ref.watch(appDatabaseProvider)),
 );
 
 /// Intervals, day start hour, session size.

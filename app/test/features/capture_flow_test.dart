@@ -76,6 +76,10 @@ final class _FailingLibrary implements LibraryRepository {
 
   @override
   Future<Word?> word(String id) => _inner.word(id);
+
+  @override
+  Future<T> transaction<T>(Future<T> Function() action) =>
+      _inner.transaction(action);
 }
 
 final class _BrokenCamera implements ImageSource {

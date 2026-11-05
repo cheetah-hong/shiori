@@ -72,14 +72,22 @@ final class StudyService {
     );
   }
 
-  /// Applies [answer] to the current card, stores the new card and the log,
-  /// and returns the next session state.
+  /// Applies [answer] to the current card, stores the new card and the log
+  /// in one transaction, and returns the next session state.
   Future<StudySession> answer(StudySession session, Answer answer) async {
     final item = session.current;
     if (item == null) throw StateError('the session is finished');
     final now = clock.now();
-    final wordId = item.word.id;
+    return reviews.transaction(() => _record(session, item, answer, now));
+  }
 
+  Future<StudySession> _record(
+    StudySession session,
+    SessionItem item,
+    Answer answer,
+    DateTime now,
+  ) async {
+    final wordId = item.word.id;
     switch (answer) {
       case Answer.known:
         final card = scheduler.known(

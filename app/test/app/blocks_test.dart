@@ -4,6 +4,7 @@ import 'package:shiori/adapters/image_picker_source.dart';
 import 'package:shiori/adapters/platform_text_recognizer.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori_core/shiori_core.dart';
+import 'package:shiori_storage_drift/shiori_storage_drift.dart';
 
 final class _FakeRecognizer implements TextRecognizer {
   @override
@@ -20,7 +21,11 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test('every slot starts with its first block', () {
-    final c = ProviderContainer.test();
+    final db = ShioriDatabase.memory();
+    addTearDown(db.close);
+    final c = ProviderContainer.test(
+      overrides: [appDatabaseProvider.overrideWithValue(db)],
+    );
     expect(c.read(clockProvider), isA<SystemClock>());
     expect(c.read(textRecognizerProvider), isA<PlatformTextRecognizer>());
     expect(c.read(sampleRecognizerProvider), isA<FixtureTextRecognizer>());
@@ -36,8 +41,8 @@ void main() {
       'dictionary-candidates',
       'missing-fields',
     ]);
-    expect(c.read(libraryRepositoryProvider), isA<InMemoryLibraryRepository>());
-    expect(c.read(reviewRepositoryProvider), isA<InMemoryReviewRepository>());
+    expect(c.read(libraryRepositoryProvider), isA<DriftLibraryRepository>());
+    expect(c.read(reviewRepositoryProvider), isA<DriftReviewRepository>());
     expect(c.read(reviewSchedulerProvider), isA<LeitnerFourStepScheduler>());
     expect(c.read(speechProvider), isA<SilentSpeech>());
   });
@@ -52,8 +57,11 @@ void main() {
 
   test('composed services follow the swapped blocks', () {
     final clock = FixedClock(DateTime(2026, 11, 5));
+    final db = ShioriDatabase.memory();
+    addTearDown(db.close);
     final c = ProviderContainer.test(
       overrides: [
+        appDatabaseProvider.overrideWithValue(db),
         clockProvider.overrideWithValue(clock),
         studySettingsProvider.overrideWithValue(
           const StudySettings(intervals: [Duration(minutes: 1)], dailyGoal: 3),
@@ -63,5 +71,38 @@ void main() {
     expect(c.read(studyServiceProvider).clock, same(clock));
     expect(c.read(reviewSchedulerProvider).maxLevel, 1);
     expect(c.read(capturePipelineProvider).correctors.length, 4);
+  });
+
+  test('storage needs the database opened by main', () {
+    final c = ProviderContainer.test();
+    expect(
+      () => c.read(libraryRepositoryProvider),
+      throwsA(
+        predicate((e) => '$e'.contains('open the database in main.dart')),
+      ),
+    );
+  });
+
+  test('the storage blocks share one database and keep words', () async {
+    final db = ShioriDatabase.memory();
+    addTearDown(db.close);
+    final c = ProviderContainer.test(
+      overrides: [appDatabaseProvider.overrideWithValue(db)],
+    );
+    final at = DateTime(2026, 11, 5);
+    final library = c.read(libraryRepositoryProvider);
+    await library.saveTextbook(Textbook(id: 'tb', title: '단어장', createdAt: at));
+    await c
+        .read(reviewRepositoryProvider)
+        .saveCard(
+          ReviewCard(
+            wordId: 'tb:0001',
+            level: 1,
+            dueAt: at,
+            lastReviewedAt: at,
+          ),
+        );
+    expect((await library.textbooks()).single.id, 'tb');
+    expect(await c.read(reviewRepositoryProvider).card('tb:0001'), isNotNull);
   });
 }

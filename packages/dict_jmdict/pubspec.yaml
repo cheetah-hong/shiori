@@ -11,7 +11,9 @@ environment:
   sdk: ^3.11.0
 
 dependencies:
-  sqlite3: ^3.8.0
+  # Same constraint as packages/storage_drift. Below 3.6: sqlite3 3.6+ needs
+  # hooks 2.2 → meta 1.19, and Flutter 3.41 pins meta 1.17.
+  sqlite3: ">=3.4.0 <3.6.0"
 
 dev_dependencies:
   coverage: ^1.15.0

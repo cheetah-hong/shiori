@@ -67,24 +67,31 @@ final class LibraryService {
     final clean = title.trim();
     if (clean.isEmpty) throw const LibraryException('교재 이름이 비어 있습니다');
     final now = clock.now();
-    final textbook = Textbook(
-      id: await _freshTextbookId(now),
-      title: clean,
-      createdAt: now,
-      templateId: templateId,
-    );
-    await library.saveTextbook(textbook);
-    return textbook;
+    // Checking the id and saving it in one transaction: two books created at
+    // the same instant cannot both take the same free id.
+    return library.transaction(() async {
+      final textbook = Textbook(
+        id: await _freshTextbookId(now),
+        title: clean,
+        createdAt: now,
+        templateId: templateId,
+      );
+      await library.saveTextbook(textbook);
+      return textbook;
+    });
   }
 
   /// Saves the included entries of [draft] as words of [textbookId].
   ///
   /// Word ids are `textbookId:number`, so capturing a page again updates the
-  /// same words instead of adding duplicates.
+  /// same words instead of adding duplicates. The DAY and the words are saved
+  /// in one transaction: if either fails, neither is kept.
   Future<SaveResult> saveDraft(
     CaptureDraft draft, {
     required String textbookId,
-  }) async {
+  }) => library.transaction(() => _saveDraft(draft, textbookId));
+
+  Future<SaveResult> _saveDraft(CaptureDraft draft, String textbookId) async {
     if (await library.textbook(textbookId) == null) {
       throw const LibraryException('교재를 찾지 못했어요. 다시 골라 주세요');
     }

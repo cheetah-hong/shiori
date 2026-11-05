@@ -180,4 +180,58 @@ void main() {
       (2, 1),
     ]);
   });
+
+  test('a failed word write keeps neither the DAY nor any word', () async {
+    final failing = _FailingWords();
+    final service = LibraryService(library: failing, clock: FixedClock(now));
+    final tb = await service.createTextbook('단어장');
+    await expectLater(
+      service.saveDraft(draft([entry('0001', '雨')]), textbookId: tb.id),
+      throwsA(isA<StateError>()),
+    );
+    expect(await failing.days(tb.id), isEmpty);
+    expect(await failing.words(), isEmpty);
+  });
+}
+
+/// Fails on writing words after the DAY was written (a full disk, say).
+final class _FailingWords extends _Delegating {
+  @override
+  Future<void> saveWords(List<Word> words) async {
+    await super.saveWords(words);
+    throw StateError('disk full');
+  }
+}
+
+base class _Delegating implements LibraryRepository {
+  final _inner = InMemoryLibraryRepository();
+
+  @override
+  Future<List<Textbook>> textbooks() => _inner.textbooks();
+
+  @override
+  Future<Textbook?> textbook(String id) => _inner.textbook(id);
+
+  @override
+  Future<void> saveTextbook(Textbook textbook) => _inner.saveTextbook(textbook);
+
+  @override
+  Future<List<TextbookDay>> days(String textbookId) => _inner.days(textbookId);
+
+  @override
+  Future<void> saveDay(TextbookDay day) => _inner.saveDay(day);
+
+  @override
+  Future<List<Word>> words({String? textbookId, int? day}) =>
+      _inner.words(textbookId: textbookId, day: day);
+
+  @override
+  Future<Word?> word(String id) => _inner.word(id);
+
+  @override
+  Future<void> saveWords(List<Word> words) => _inner.saveWords(words);
+
+  @override
+  Future<T> transaction<T>(Future<T> Function() action) =>
+      _inner.transaction(action);
 }

@@ -37,6 +37,10 @@ dependencies:
   image_picker: ^1.2.4
   shiori_core:
     path: ../packages/core
+  # Storage: SQLite (drift) in the app support folder (path_provider).
+  path_provider: ^2.1.6
+  shiori_storage_drift:
+    path: ../packages/storage_drift
   flutter_localizations:
     sdk: flutter
 
@@ -54,6 +58,8 @@ dev_dependencies:
     sdk: flutter
   flutter_driver:
     sdk: flutter
+  path_provider_platform_interface: ^2.1.2
+  plugin_platform_interface: ^2.1.8
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

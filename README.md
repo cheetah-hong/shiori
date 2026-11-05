@@ -4,6 +4,7 @@
 
 - `packages/core/` 순수 Dart: 모델, 포트, 캡처 파이프라인, 학습 로직
 - `packages/dict_jmdict/` 사전 블록(JMdict, SQLite)
+- `packages/storage_drift/` 저장 블록(SQLite, drift): 교재·DAY·단어와 복습 카드·기록을 기기에 저장
 - `app/` Flutter (iOS·Android): 화면, 기기 어댑터, 블록 지도(`app/lib/app/blocks.dart`)
 - `research/` OCR·스캔 실험 기록, `tools/` 기준 구현·합성 페이지·사전 빌드 도구
 - 구조: [docs/architecture.md](docs/architecture.md) · 검증: [docs/verification.md](docs/verification.md) · 사전: [docs/dictionary.md](docs/dictionary.md)

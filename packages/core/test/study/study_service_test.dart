@@ -141,4 +141,46 @@ void main() {
     final session = await service.startSession();
     expect(service.previewKnown(session.current!), const Duration(days: 21));
   });
+
+  test('a failed log write keeps the card as it was', () async {
+    final failing = _FailingLog();
+    final service = StudyService(
+      library: library,
+      reviews: failing,
+      scheduler: const LeitnerFourStepScheduler(),
+      clock: FixedClock(start),
+    );
+    final session = await service.startSession();
+    await expectLater(
+      service.answer(session, Answer.known),
+      throwsA(isA<StateError>()),
+    );
+    expect(await failing.cards(), isEmpty);
+    expect(await failing.logs(), isEmpty);
+  });
+}
+
+/// Writes the card, then fails on the log.
+final class _FailingLog implements ReviewRepository {
+  final _inner = InMemoryReviewRepository();
+
+  @override
+  Future<ReviewCard?> card(String wordId) => _inner.card(wordId);
+
+  @override
+  Future<Map<String, ReviewCard>> cards({Iterable<String>? wordIds}) =>
+      _inner.cards(wordIds: wordIds);
+
+  @override
+  Future<void> saveCard(ReviewCard card) => _inner.saveCard(card);
+
+  @override
+  Future<void> addLog(ReviewLog log) => Future.error(StateError('disk full'));
+
+  @override
+  Future<List<ReviewLog>> logs({DateTime? since}) => _inner.logs(since: since);
+
+  @override
+  Future<T> transaction<T>(Future<T> Function() action) =>
+      _inner.transaction(action);
 }

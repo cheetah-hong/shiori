@@ -5,12 +5,15 @@
 //     --target=integration_test/flow_screenshots_test.dart
 //
 // Screenshots land in docs/screenshots/ (see test_driver/integration_test.dart).
-// Uses the synthetic sample pages (assets/dev_samples/), so no camera is needed.
+// Uses the synthetic sample pages (assets/dev_samples/), so no camera is needed,
+// and an in-memory database (see persistence_test.dart for the real file).
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:shiori/app/app.dart';
+import 'package:shiori/app/blocks.dart';
+import 'package:shiori_storage_drift/shiori_storage_drift.dart';
 
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -41,7 +44,15 @@ void main() {
   }
 
   testWidgets('sample page → review → save → study', (tester) async {
-    await tester.pumpWidget(const ProviderScope(child: ShioriApp()));
+    // A fresh in-memory database, so every run starts from an empty home.
+    final database = ShioriDatabase.memory();
+    addTearDown(database.close);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appDatabaseProvider.overrideWithValue(database)],
+        child: const ShioriApp(),
+      ),
+    );
     await waitFor(tester, find.text('먼저 교재 페이지를 등록해 주세요'));
     await shot(tester, '01_home_empty');
 

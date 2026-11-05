@@ -3,7 +3,7 @@ import 'package:shiori_core/src/models/review.dart';
 
 /// Block slot: textbooks, days and words (content).
 ///
-/// First block: `InMemoryLibraryRepository`. Next: drift (SQLite).
+/// Blocks: `InMemoryLibraryRepository` (tests), `DriftLibraryRepository` (app).
 abstract interface class LibraryRepository {
   /// Oldest first.
   Future<List<Textbook>> textbooks();
@@ -24,16 +24,24 @@ abstract interface class LibraryRepository {
 
   /// Inserts or replaces by id.
   Future<void> saveWords(List<Word> words);
-}
 
-// TODO(drift): the use cases write in two steps (day then words, card then
-// log). The in-memory blocks cannot fail half way; before the SQLite block
-// lands, add a transaction to these ports so a failed write cannot leave a
-// DAY without words or a card without its log.
+  /// Runs [action] so that its writes land together or not at all.
+  ///
+  /// When [action] throws, every write it made through this repository is
+  /// undone and the error is rethrown. Calls made inside [action] see its
+  /// writes; calls from elsewhere wait until it ends. A nested call is a
+  /// savepoint: if it throws and the outer action catches the error, only the
+  /// nested writes are undone.
+  ///
+  /// The use cases write in two steps (DAY then words, card then log); this
+  /// keeps a failed write from leaving a DAY without its words or a card
+  /// without its log. Write only to this repository inside [action].
+  Future<T> transaction<T>(Future<T> Function() action);
+}
 
 /// Block slot: learning state (cards) and the press log, kept apart from content.
 ///
-/// First block: `InMemoryReviewRepository`. Next: drift (SQLite).
+/// Blocks: `InMemoryReviewRepository` (tests), `DriftReviewRepository` (app).
 abstract interface class ReviewRepository {
   Future<ReviewCard?> card(String wordId);
 
@@ -44,6 +52,10 @@ abstract interface class ReviewRepository {
 
   Future<void> addLog(ReviewLog log);
 
-  /// Oldest first, optionally only presses at or after [since].
+  /// Oldest first (presses at the same instant in the order they were
+  /// added), optionally only presses at or after [since].
   Future<List<ReviewLog>> logs({DateTime? since});
+
+  /// Same meaning as [LibraryRepository.transaction].
+  Future<T> transaction<T>(Future<T> Function() action);
 }

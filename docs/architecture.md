@@ -15,10 +15,11 @@ nihongo-app/
 │   ├── lib/src/capture/    캡처 파이프라인: 교재 템플릿 A(목록형)·B(항목형), 보정기 체인, 템플릿 자동 판별
 │   ├── lib/src/study/      라이트너 4단계 스케줄러, 세션 빌더, 세션, 학습 일 경계, StudyService
 │   ├── lib/src/library/    LibraryService (검토 초안 저장, 교재 › DAY 보기)
-│   ├── lib/src/storage/    InMemory 저장소 (첫 저장 블록)
+│   ├── lib/src/storage/    InMemory 저장소 (테스트용 블록, 트랜잭션 포함)
 │   ├── lib/src/eval/       채점기 (lib/eval.dart로만 공개, 앱은 쓰지 않음)
 │   ├── test/               단위·회귀 테스트, fixtures/synthetic/ (합성 페이지 판독 기록·정답)
 │   └── tool/eval_capture.dart   점수표 출력
+├── packages/storage_drift/ 순수 Dart, SQLite 저장 블록 (drift): 테이블, 저장소 두 개, 스키마 덤프 drift_schemas/
 ├── app/                    Flutter (iOS·Android)
 │   ├── lib/app/blocks.dart 블록 지도: 끼우는 자리를 모두 이 파일 하나에
 │   ├── lib/app/theme.dart  디자인 토큰 (기획 페이지 팔레트)
@@ -56,8 +57,8 @@ nihongo-app/
 | `EntryCorrector` (체인) | `ConfusableGlyphCorrector` → `KanaOkuriganaCorrector` → `DictionaryCandidateCorrector` → `MissingFieldFlagger` | `entryCorrectorsProvider` | JMdict 읽기 검증 |
 | `Dictionary` | `EmptyDictionary` | `dictionaryProvider` | JMdict (SQLite, CC BY-SA 4.0) |
 | `ImageSource` | `ImagePickerSource` (카메라·앨범, 판독 뒤 임시 파일 `discard`) | `imageSourceProvider` | 문서 스캐너(cunning_document_scanner), 굽은 페이지 펴기 |
-| `LibraryRepository` | `InMemoryLibraryRepository` | `libraryRepositoryProvider` | drift (SQLite) |
-| `ReviewRepository` | `InMemoryReviewRepository` | `reviewRepositoryProvider` | drift (SQLite) |
+| `LibraryRepository` | `DriftLibraryRepository` (SQLite, `packages/storage_drift`). 테스트: `InMemoryLibraryRepository` | `libraryRepositoryProvider` (DB: `appDatabaseProvider`) | 백업·동기화 |
+| `ReviewRepository` | `DriftReviewRepository` (같은 DB 파일). 테스트: `InMemoryReviewRepository` | `reviewRepositoryProvider` | 백업·동기화 |
 | `ReviewScheduler` | `LeitnerFourStepScheduler` (30분·3일·7일·21일) | `reviewSchedulerProvider` | FSRS |
 | `Clock` | `SystemClock` (테스트: `FixedClock`) | `clockProvider` | |
 | `Speech` (선택) | `SilentSpeech` (발음 버튼 숨김) | `speechProvider` | flutter_tts, 클라우드 음성 |
@@ -137,7 +138,7 @@ runApp(ProviderScope(
 
 | 순서 | 블록 | 끼울 자리 | 메모 |
 |---|---|---|---|
-| 1 | drift 저장소 | `LibraryRepository`, `ReviewRepository` | 지금은 앱을 끄면 단어가 사라집니다. 가장 먼저 필요. 포트에 트랜잭션을 함께 넣기(`repositories.dart` TODO) |
+| 1 | ~~drift 저장소~~ (완료) | `LibraryRepository`, `ReviewRepository` | 앱을 꺼도 단어와 학습 상태가 남습니다. 포트에 트랜잭션 추가. 남은 일: 백업(3단계), 스키마 v2부터는 마이그레이션 단계 추가(verification.md 6절) |
 | 2 | 기기 판독 고정 데이터 | 로컬 전용 회귀 세트 | 실제 iPhone·Android에서 같은 쪽을 판독해 `$SHIORI_PRIVATE_DIR/textbook/`의 회귀 세트에 추가 (verification.md 4절) |
 | 3 | 문서 스캐너 | `ImageSource` | 사진이 옆으로 누워 있으면 지금은 해석이 안 됩니다. 스캐너가 똑바로 세운 이미지를 줌 |
 | 4 | JMdict | `Dictionary` | OCR이 건너뛴 단순한 한자 표제어를 읽기로 후보 제시 (`DictionaryCandidateCorrector`가 이미 연결됨, `docs/dictionary.md`) |
