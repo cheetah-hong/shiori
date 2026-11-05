@@ -11,8 +11,8 @@
 nihongo-app/
 ├── packages/core/          순수 Dart (Flutter 의존 없음)
 │   ├── lib/src/models/     OcrScan, CapturedEntry, CaptureDraft, Textbook·TextbookDay·Word, ReviewCard·ReviewLog
-│   ├── lib/src/ports/      포트 9개 (아래 블록 지도)
-│   ├── lib/src/capture/    캡처 파이프라인: 줄 정리, 교재 템플릿 A(목록형)·B(항목형), 보정기 체인, 템플릿 자동 판별
+│   ├── lib/src/ports/      포트 10개 (아래 블록 지도)
+│   ├── lib/src/capture/    캡처 파이프라인: 줄 정리, 교재 템플릿 A(목록형)·B(항목형), 보정기 체인, 템플릿 자동 판별, ★ 칸 검사(star_check.dart)
 │   ├── lib/src/study/      라이트너 4단계 스케줄러, 세션 빌더, 세션, 학습 일 경계, StudyService
 │   ├── lib/src/library/    LibraryService (검토 초안 저장, 교재 › DAY 보기)
 │   ├── lib/src/storage/    InMemory 저장소 (테스트용 블록, 트랜잭션 포함)
@@ -30,7 +30,8 @@ nihongo-app/
 │   ├── lib/adapters/       기기 블록: OCR 채널, image_picker, 개발용 샘플, 사전 asset 풀기(bundled_dictionary.dart)
 │   ├── lib/features/       home · capture(등록·검토) · library(교재) · study(학습) · about(정보: 사전 출처·라이선스)
 │   ├── ios/Runner/OcrChannel.swift                         Apple Vision 채널 (회전 판별, ★ 보조 판독)
-│   ├── android/app/src/main/kotlin/.../OcrChannel.kt       ML Kit 채널 (조각 단위, 회전), OcrGeometry.kt (순수 로직)
+│   ├── android/app/src/main/kotlin/.../OcrChannel.kt       ML Kit 채널 (조각 단위, 회전, ★ 칸 픽셀 검사 measureStars),
+│   │                                                       OcrGeometry.kt·StarPixels.kt (순수 로직)
 │   ├── assets/dev_samples/ 합성 샘플 페이지의 판독 기록 (개발용, 배포 빌드에서 막음, 5절)
 │   ├── assets/dict/        JMdict full-lean gzip + 판 표시 파일 (빌드해서 만듦, git 제외, 5절)
 │   └── integration_test/   시뮬레이터 흐름 스크린샷, 실제 OCR 채널 탐침
@@ -60,6 +61,7 @@ nihongo-app/
 |---|---|---|---|
 | `TextRecognizer` | iOS `OcrChannel.swift` (Apple Vision, ja·ko 두 번 + ★ 보조 판독, 글 방향으로 회전 판별), Android `OcrChannel.kt` (ML Kit japanese → korean, 조각 단위, 줄 각도로 회전 판별) → `PlatformTextRecognizer` | `textRecognizerProvider` | Cloud Vision, Claude |
 | `TextRecognizer` (샘플) | `FixtureTextRecognizer` + `assets/dev_samples/` (합성 페이지) | `sampleRecognizerProvider` | (개발용 전용) |
+| `StarMeter` (★ 칸 검사) | `PlatformStarMeter` → Android `OcrChannel.kt`의 `measureStars` (ML Kit 쪽의 목록형 줄 중 ★ 없는 줄마다 ★ 칸의 붉은 픽셀 비율). iOS 채널에는 이 메서드가 없어 아무것도 재지 않음. 끄기: `NoStarMeter` | `starMeterProvider` | 색이 없는 ★(모양 검사), 다른 교재의 ★ 색 |
 | `TextbookTemplate` | `ListPageTemplate`(A 목록형), `EntryPageTemplate`(B 항목형) + `TemplateRegistry` 자동 판별 | `templateRegistryProvider` | 다른 교재 템플릿 |
 | `EntryCorrector` (체인) | `ConfusableGlyphCorrector` → `KanaOkuriganaCorrector` → `ReadingLookalikeCorrector` → `BadgeMisreadCorrector` → `MeaningPunctuationCorrector` → `PosInferenceCorrector` → `CutMeaningFlagger` → `DictionaryCandidateCorrector`(표제어 빈 줄에 후보, 품사 힌트) → `DictionaryPairCorrector`(표제어·읽기 짝 확인: 규칙이 망친 단어 되돌리기, 헷갈리는 글자 고치기, "사전에 없음") → `MissingFieldFlagger` (`standardCorrectors()`) | `entryCorrectorsProvider` | |
 | `Dictionary` (`byReading(pos:)`, `byHeadword`, `checkPair` → `PairStatus`, `fixHeadword`) | `JmdictDictionaryAdapter` (`packages/jmdict_block`, JMdict full-lean SQLite, CC BY-SA 4.0). 사전 asset이 없거나 열지 못하면 `EmptyDictionary` | `dictionaryProvider` (열기: `bundledDictionaryProvider`) | 데이터 정기 갱신 자동화 |
@@ -105,6 +107,9 @@ runApp(ProviderScope(
                                          TextbookTemplate.parse → 원본 항목 + PageMeta(DAY·제목·쪽)
                                                              ▼
                                          EntryCorrector 체인 (사전 포함) → CaptureDraft (칸별 상태: 정상·추정·자동 보정됨·사전에 없음·의심·확인 필요)
+                                                             ▼
+                                         ★ 칸 검사 (ML Kit 쪽, ★ 설정이 있는 템플릿만): starCells → StarMeter → applyStarRatios
+                                                             │ 문턱 이상인 줄만 ★ + `important:inferred`, 실패·5초 초과면 그대로
                                                              ▼
                                          검토 화면(수정·제외·교재 선택) → LibraryService.saveDraft
                                                              ▼                    (단어 id = 교재id:번호, 다시 찍으면 갱신)

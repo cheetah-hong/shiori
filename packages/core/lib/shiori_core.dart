@@ -21,6 +21,7 @@ export 'src/ports/image_source.dart';
 export 'src/ports/repositories.dart';
 export 'src/ports/review_scheduler.dart';
 export 'src/ports/speech.dart';
+export 'src/ports/star_meter.dart';
 export 'src/ports/text_recognizer.dart';
 export 'src/ports/textbook_template.dart';
 
@@ -38,6 +39,7 @@ export 'src/capture/correctors/pos_inference_corrector.dart';
 export 'src/capture/correctors/reading_lookalike_corrector.dart';
 export 'src/capture/fixture_text_recognizer.dart';
 export 'src/capture/learner_edits.dart';
+export 'src/capture/star_check.dart';
 export 'src/capture/vocab/entry_template.dart';
 export 'src/capture/vocab/list_template.dart';
 export 'src/capture/template_registry.dart';

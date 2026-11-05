@@ -18,6 +18,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/adapters/bundled_dictionary.dart';
 import 'package:shiori/adapters/dev_samples.dart';
 import 'package:shiori/adapters/image_picker_source.dart';
+import 'package:shiori/adapters/platform_star_meter.dart';
 import 'package:shiori/adapters/platform_text_recognizer.dart';
 import 'package:shiori_core/shiori_core.dart';
 import 'package:shiori_storage_drift/shiori_storage_drift.dart';
@@ -30,6 +31,13 @@ final clockProvider = Provider<Clock>((ref) => const SystemClock());
 /// Device OCR: Apple Vision (iOS) / ML Kit (Android). Next: Cloud Vision, Claude.
 final textRecognizerProvider = Provider<TextRecognizer>(
   (ref) => const PlatformTextRecognizer(),
+);
+
+/// ★ check on the photo after ML Kit: red pixels in the ★ cell of each row
+/// read without ★ (Android channel). iOS has no `measureStars`: it measures
+/// nothing. `NoStarMeter` turns the check off.
+final starMeterProvider = Provider<StarMeter>(
+  (ref) => const PlatformStarMeter(),
 );
 
 /// "샘플 페이지로 해 보기": recorded OCR from assets (development builds only).

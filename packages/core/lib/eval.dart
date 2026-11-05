@@ -6,3 +6,4 @@ library;
 export 'package:shiori_core/src/eval/capture_scorer.dart';
 export 'package:shiori_core/src/eval/ground_truth.dart';
 export 'package:shiori_core/src/eval/reference_diff.dart';
+export 'package:shiori_core/src/eval/recorded_stars.dart';

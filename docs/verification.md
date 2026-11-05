@@ -19,18 +19,19 @@
 | 항목 | 명령 | 결과 |
 |---|---|---|
 | core 정적 분석 | `cd packages/core && dart analyze` | 문제 없음 |
-| core 테스트 | `cd packages/core && dart test` | **295개 통과**, 교재 세트 11개 건너뜀 (9절 반영 뒤) |
-| core 테스트 (교재 세트 포함) | `SHIORI_PRIVATE_DIR=<로컬 폴더> dart test` | **308개 통과** |
+| core 테스트 | `cd packages/core && dart test` | **320개 통과**, 교재 세트 11개 건너뜀 (6.7절·9절 반영 뒤) |
+| core 테스트 (교재 세트 포함) | `SHIORI_PRIVATE_DIR=<로컬 폴더> dart test` | **333개 통과** |
 | core 커버리지 | `dart run coverage:test_with_coverage -o coverage` | 줄 커버리지 **97.8%** (교재 세트 없이. `InMemoryLibraryRepository.textbookStats`는 저장 패키지의 계약 테스트가 돌려서 core 숫자에는 안 잡힘) |
 | 사전 패키지 | `cd packages/dict_jmdict && dart analyze && dart test` | 문제 없음, **63개 통과** (테스트 DB 103개 항목) |
 | 사전 블록 (어댑터) | `cd packages/jmdict_block && dart analyze && dart test` | 문제 없음, **19개 통과** (8절) |
 | 사전 asset 스크립트 | `python3 -m unittest discover -s tools/dict -p 'test_*.py'` | **6개 통과** (네트워크 없음) |
 | 저장 패키지 | `cd packages/storage_drift && dart analyze && dart test` | 문제 없음, **72개 통과** (7절, 9절) |
 | app 정적 분석 | `cd app && flutter analyze` | 문제 없음 |
-| app 테스트 | `cd app && flutter test` | **73개 통과** (사전 asset 있음·없음 둘 다) |
+| app 테스트 | `cd app && flutter test` | **84개 통과** (사전 asset 있음·없음 둘 다) |
 | iOS 채널 순수 로직 | `cd app/ios && xcodebuild test -workspace Runner.xcworkspace -scheme Runner -destination 'id=<시뮬레이터>' -only-testing:RunnerTests` | **6개 통과** (회전 투표·가로세로 바꿈·방향 합성·이진화 크기, 6.4절) |
-| Android 채널 순수 로직 | `cd app/android && ./gradlew :app:testDebugUnitTest` (JDK 21) | **11개 통과** (조각 자르기·회전·상자 없는 글자, 6.5절) |
-| app 커버리지 | `flutter test --coverage` | 줄 커버리지 **91.6%** (1730/1888줄, 9절 반영 뒤 다시 잼. 반영 전 같은 방법으로 91.5%) |
+| Android 채널 순수 로직 | `cd app/android && ./gradlew :app:testDebugUnitTest` (JDK 21) | **25개 통과** (조각 자르기·회전·상자 없는 글자 11개, 6.5절 + ★ 칸 픽셀 14개, 6.7절) |
+| ★ 칸 검사 테스트 (6.7절) | core `dart test`, app `flutter test` | core 25개·app 11개 추가 (위 core·app 숫자에 포함) |
+| app 커버리지 | `flutter test --coverage` | 줄 커버리지 **91.8%** (1773/1932줄, 6.7절·9절 반영 뒤 다시 잼. 반영 전 같은 방법으로 91.5%) |
 | iOS 흐름 | `flutter drive ... integration_test/flow_screenshots_test.dart` | 통과, 스크린샷 15장 (3절, 시뮬레이터 디버그 빌드) |
 | Android 빌드 | `flutter build apk --debug` | 성공 (Kotlin ML Kit 채널 컴파일, 디버그 APK 약 186MB = 177MiB, 빌드 환경에 따라 조금 다름) |
 | 합성 세트 점수표 | `cd packages/core && dart run tool/eval_capture.dart` | 30/35, 기준 구현과 다른 칸 0개 (2.1절) |
@@ -338,20 +339,51 @@ core fields wrong and flagged for review: 16;  flagged but actually correct: 20
 - 새 표시 종류: `IssueKind.inferred`(→ `FieldStatus.inferred`), `IssueKind.suspect`(→ `FieldStatus.suspect`, 항목은 "확인 필요"로 셈).
   지금 검토 화면은 `needsReview`(빨간 여백)만 보고 두 상태를 따로 그리지 않습니다.
 
-### 6.7 Android ★ 칸 픽셀 검사 (시험만, 앱에는 넣지 않음)
+### 6.7 Android ★ 칸 픽셀 검사 (적용됨)
 
-ML Kit는 ★ 30개 중 13개를 출력하지 않습니다(조각 판독에서 ★ 46/59). 판독 결과로는 되살릴 수 없어 사진 픽셀로 시험했습니다(로컬 스크립트, 교재 사진).
+ML Kit는 ★ 30개 중 13개를 출력하지 않습니다(조각 판독에서 ★ 46/59). 판독 결과로는 되살릴 수 없어 사진 픽셀로 봅니다.
+처음에는 로컬 스크립트로 시험했고(아래 "시험"), 지금은 앱에 들어 있습니다.
 
-- 방법: 목록형 3쪽의 각 줄에서 "표제어 칸 끝(번호 x + 0.165) ~ 읽기 칸 시작, 읽기 줄 높이 ± 0.006" 상자를 잘라, 붉은 픽셀
-  (R > 120, R − max(G, B) > 45) 비율을 셉니다. 이 교재의 ★는 붉은색이고 칸의 바탕 띠는 베이지라 섞이지 않습니다.
-- 결과(줄 45개, 정답 ★ 24개): 비율 ≥ 0.002로 판정하면 **★ 22/24를 찾고, ★ 없는 21줄은 하나도 잘못 표시하지 않았습니다.**
-  ≥ 0.0005면 23/24(잘못 표시 0), ≥ 0.01이면 18/24. 놓친 2개는 69쪽의 기울어진 줄에서 상자가 ★를 벗어난 경우입니다.
-- 설계(다음 단계):
-  1. Dart가 해석을 마친 뒤, ML Kit 쪽의 `important == false`인 목록형 줄마다 ★ 칸 상자(정규화 좌표, 줄 기울기 반영)를 만듭니다.
-  2. 채널에 `measureStars(path, cells)`를 더합니다. Kotlin이 같은 사진을 작게(긴 변 1600px) 디코드해 칸마다 붉은 픽셀 비율을 돌려줍니다.
-  3. 문턱을 넘은 줄은 ★로 바꾸고 `important:inferred`로 표시합니다(검토 화면에서 가볍게).
-  4. ★ 색은 교재마다 다르므로 템플릿의 설정값으로 둡니다. 색이 없는 교재는 모양(어두운 별 모양 덩어리) 검사가 필요합니다.
-- 주의: 사진 5장 중 목록형 3장으로 본 결과입니다. 조명이 붉거나 사진이 바랜 경우, 다른 교재의 색을 더 재야 합니다.
+**시험 (로컬 스크립트, 교재 사진).** 목록형 3쪽의 각 줄에서 "표제어 칸 끝(번호 x + 0.165) ~ 읽기 칸 시작, 읽기 줄 높이 ± 0.006" 상자를 잘라
+붉은 픽셀(R > 120, R − max(G, B) > 45) 비율을 셌습니다. 이 교재의 ★는 붉은색이고 칸의 바탕 띠는 베이지라 섞이지 않습니다.
+줄 45개, 정답 ★ 24개에서 비율 ≥ 0.002로 **★ 22/24, ★ 없는 21줄 잘못 표시 0**(≥ 0.0005면 23/24, ≥ 0.01이면 18/24)이었습니다.
+
+**앱에 넣은 것.**
+
+| 자리 | 내용 |
+|---|---|
+| core `capture/star_check.dart` | `starCells`: 해석이 끝난 쪽에서 ★ 설정이 있는 템플릿(지금은 `vocab.list`만)의 `important == false`인 줄마다 칸 하나. 번호 앵커(`findAnchors`), 칸 배율(`columnScale`, 호출은 한 곳), 읽기 줄로 위 시험과 같은 상자를 만듭니다(정규화 좌표, 세운 쪽 기준). 읽기 줄을 못 찾은 줄은 쪽의 읽기 줄 위치·높이 중앙값으로, 번호가 읽히지 않은 줄은 읽기 글자로 번호 열을 찾습니다. `applyStarRatios`: 비율이 문턱 이상인 줄만 `important = true` + `important:inferred`(검토 화면 "추정"), 비율 수가 칸 수와 다르거나 없으면 쪽 그대로. `checkStars`: ML Kit 판독(`OcrPage.engine == "mlkit"`)일 때만 잽니다 |
+| core `ports/star_meter.dart` | 포트 `StarMeter`(칸·색 설정·`turned` → 비율 목록), 기본 블록 `NoStarMeter`(아무것도 재지 않음) |
+| 설정값 | `vocab.list`: 붉은 픽셀 = R > 120 그리고 R − max(G, B) > 45, 문턱 비율 ≥ 0.002(`listStarColor`). 항목형과 설정이 없는 템플릿은 재지 않습니다 |
+| Android `OcrChannel.kt` `measureStars` | 인자 `path`, `cells`(정규화 상자, 최대 400개), `color`(`minRed`, `minRedLead`), `turned`. 같은 사진을 긴 변 1600px로 디코드(2의 거듭제곱 표본 + 보간 축소)하고, EXIF 회전 + `turned`를 되돌려 칸을 저장된 픽셀 사각형으로 바꿉니다. 응답 `{"ratios": [...], "ms": n}`. 오류는 `bad_args`·`bad_image`·`ocr_failed` |
+| Android `StarPixels.kt` | 순수 로직(JVM 테스트 14개): 붉은 픽셀 판정과 비율, 칸 → 픽셀 사각형(회전 0·90·180·270, 가장자리 자르기), 원래 바이트에서 ARGB 읽기 |
+| app | `PlatformStarMeter`(채널이 없거나 `notImplemented`·`PlatformException`·형식 오류면 로그를 남기고 `null`), `starMeterProvider`. 캡처 흐름은 `fromScan` 뒤에 검사하고, 블록이 예외를 던지거나 5초 안에 답하지 않으면 로그를 남기고 쪽을 그대로 씁니다. iOS 채널은 바꾸지 않았습니다(Vision이고 메서드도 없음) |
+| `OcrScan.turned` | 채널이 EXIF 뒤에 더 돌린 각도를 보존합니다(없으면 0). 같은 좌표계에서 칸을 찾기 위해서입니다 |
+| 도구 | `eval_capture.dart --star-ratios <폴더>`(`<page>.ratios.json`을 번호로 맞춰 재생, 더한 ★를 정답 기준으로 셈), `--stars`는 탐침 출력 이름 `<page>.star.json`도 읽음. 탐침 `SHIORI_PROBE_MEASURE_STARS=true` |
+
+**색 값은 사진에 저장된 값 그대로 셉니다.** 교재 사진은 Display P3이고, `Bitmap.getPixels()`는 sRGB로 바꿔 돌려줍니다.
+바꾼 값으로 세면 그늘진 베이지 띠의 차이가 45를 넘어 ★ 없는 줄 하나가 ★가 되었습니다(69쪽 마지막 줄, 비율 0.0079).
+시험이 저장된 값으로 문턱을 정했으므로 채널은 `copyPixelsToBuffer`로 원래 바이트를 읽습니다.
+
+**에뮬레이터 측정** (`Medium_Phone_API_36.1`, 교재 사진 5장 원본, 12·13쪽 돌리지 않음, 앱 내부 저장소에 넣고 끝난 뒤 지움):
+
+```
+검사 전  TOTAL  ... important=50/59 ... row=36/59  found=59/59
+검사 후  TOTAL  ... important=55/59 ... row=39/59  found=59/59
+★ check: added 5 where the truth has ★, 0 where it has none []
+```
+
+- 목록형 3쪽에서 ML Kit가 놓친 ★ 7개 중 5개를 찾았고, ★ 없는 줄을 ★로 바꾼 것은 0개입니다. 남은 ★ 2개(69쪽 위쪽 두 줄)는 상자 안에 ★가 있지만
+  조명으로 색이 옅어 저장된 값으로는 차이 45를 넘지 못합니다(시험에서 놓친 2개와 같은 줄). 항목형 2쪽의 ★ 미출력은 검사하지 않습니다.
+- 시간(쪽당, 에뮬레이터, 두 번 잰 범위): 채널 59~251 ms(디코드 포함), 칸 계산 포함 77~297 ms. 칸 8~13개.
+- 같은 비율 기록으로 연구 조각 판독(`fixtures_segment`, 같은 사진의 다른 판독)을 다시 채점: 38/59 → **41/59**, important 46 → 49, 잘못 ★ 0.
+  기록은 에뮬레이터 판독이 ★를 놓친 줄만 쟀으므로 조각 판독이 놓친 줄 일부만 덮습니다.
+  추정 ★ 표시도 "검토 화면에 표시된 줄"로 세므로 조용한 오류 수가 1 → 0으로 바뀝니다(뜻·표제어가 틀린 줄에 추정 ★가 붙은 경우).
+- 문턱 여유(로컬 분석, 목록형 3쪽 모든 줄 47칸·★ 25개, 연구 조각 판독의 칸 위치에 안드로이드 디코드를 흉내 냄):
+  저장된 값·차이 45는 22/25·잘못 0(시험과 같음), 차이 40이면 25/25·잘못 0, 차이 35면 잘못 1. sRGB로 바꾼 값은 차이 50이 25/25·잘못 0, 45면 잘못 1.
+  여유가 한쪽 5 정도뿐이라 시작값을 그대로 두었습니다.
+- 주의: 사진 5장 중 목록형 3장(한 교재, 한 기기)으로 본 결과입니다. 조명이 붉거나 사진이 바랜 경우, 다른 교재의 색을 더 재야 합니다.
+  색이 없는 ★는 모양(어두운 별 모양 덩어리) 검사가 필요합니다.
 
 ## 7. 저장소 (SQLite, drift)
 

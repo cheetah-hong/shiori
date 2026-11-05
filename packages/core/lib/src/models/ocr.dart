@@ -125,14 +125,20 @@ final class OcrPage {
 /// Japanese text (headwords, readings, examples) is read from [japanese];
 /// Korean text (meanings, translations, footer) from [korean].
 final class OcrScan {
-  const OcrScan({required this.japanese, required this.korean, this.stars});
+  const OcrScan({
+    required this.japanese,
+    required this.korean,
+    this.stars,
+    this.turned = 0,
+  });
 
-  /// Accepts `{"ja": OcrPage, "ko": OcrPage, "star"?: OcrPage}`, the native
-  /// channel payload.
+  /// Accepts `{"ja": OcrPage, "ko": OcrPage, "star"?: OcrPage, "turned"?: 90}`,
+  /// the native channel payload.
   factory OcrScan.fromJson(Map<String, Object?> json) => OcrScan(
     japanese: OcrPage.fromJson(_map(json['ja'])),
     korean: OcrPage.fromJson(_map(json['ko'])),
     stars: json['star'] == null ? null : OcrPage.fromJson(_map(json['star'])),
+    turned: _optionalNum(json, 'turned').round(),
   );
 
   final OcrPage japanese;
@@ -143,6 +149,10 @@ final class OcrScan {
   /// its ★ glyphs are used, everything else comes from [japanese].
   final OcrPage? stars;
 
+  /// Clockwise degrees the channel turned the page after the photo's EXIF
+  /// rotation, because the text still lay sideways (0, 90, 180 or 270).
+  final int turned;
+
   Duration get elapsed =>
       japanese.elapsed + korean.elapsed + (stars?.elapsed ?? Duration.zero);
 
@@ -150,6 +160,7 @@ final class OcrScan {
     'ja': japanese.toJson(),
     'ko': korean.toJson(),
     if (stars case final s?) 'star': s.toJson(),
+    if (turned != 0) 'turned': turned,
   };
 }
 

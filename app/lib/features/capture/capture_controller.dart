@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:developer' as developer;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/adapters/dev_samples.dart';
@@ -36,7 +39,11 @@ final class CaptureFailed extends CaptureState {
   final String message;
 }
 
-/// Photo (or sample) → `TextRecognizer` block → `CapturePipeline` → review draft.
+/// How long the capture waits for the ★ check before going on without it.
+const Duration starCheckTimeout = Duration(seconds: 5);
+
+/// Photo (or sample) → `TextRecognizer` block → `CapturePipeline` → ★ check
+/// (ML Kit pages, `StarMeter` block) → review draft.
 final class CaptureController extends Notifier<CaptureState> {
   @override
   CaptureState build() => const CaptureIdle();
@@ -66,7 +73,9 @@ final class CaptureController extends Notifier<CaptureState> {
     state = CaptureReading(image);
     try {
       final scan = await recognizer.recognize(image);
-      final draft = await ref.read(capturePipelineProvider).fromScan(scan);
+      final parsed = await ref.read(capturePipelineProvider).fromScan(scan);
+      if (!ref.mounted) return;
+      final draft = await _checkStars(parsed, scan, image);
       if (!ref.mounted) return;
       state = draft.entries.isEmpty
           ? const CaptureFailed(
@@ -87,6 +96,41 @@ final class CaptureController extends Notifier<CaptureState> {
       _unexpected(e, stack);
     }
   }
+
+  /// The ★ check is an extra: when it fails or takes too long the page goes
+  /// on with the ★ marks OCR read, and the reason goes to the log.
+  Future<CaptureDraft> _checkStars(
+    CaptureDraft draft,
+    OcrScan scan,
+    PageImage image,
+  ) async {
+    final meter = ref.read(starMeterProvider);
+    try {
+      return await checkStars(
+        draft: draft,
+        scan: scan,
+        image: image,
+        meter: meter,
+      ).timeout(starCheckTimeout);
+    } on TimeoutException catch (e) {
+      _starCheckFailed('★ check (${meter.id}) took too long', e, null);
+    } on Exception catch (e, stack) {
+      _starCheckFailed('★ check (${meter.id}) failed', e, stack);
+    } on Error catch (e, stack) {
+      // A bug in the block must not cost the learner the page.
+      _starCheckFailed('★ check (${meter.id}) failed with a bug', e, stack);
+    }
+    return draft;
+  }
+
+  void _starCheckFailed(String message, Object error, StackTrace? stack) =>
+      developer.log(
+        message,
+        name: 'shiori.stars',
+        error: error,
+        stackTrace: stack,
+        level: 900, // warning
+      );
 
   void _unexpected(Object error, StackTrace stack) {
     FlutterError.reportError(

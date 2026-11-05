@@ -45,6 +45,7 @@ OcrScan prepareScan(OcrScan scan) {
   return OcrScan(
     japanese: scan.japanese.withLines(splitGluedStars(ja)),
     korean: scan.korean.withLines(ko),
+    turned: scan.turned,
   );
 }
 
