@@ -16,6 +16,9 @@ dependencies:
     path: ../core
 
 dev_dependencies:
+  # The local test of the routed capture uses the Korean glossary too.
+  krdict_block:
+    path: ../krdict_block
   lints: ^6.0.0
   # Same constraint as dict_jmdict: tests load the SQL fixture in memory.
   sqlite3: ">=3.4.0 <3.6.0"

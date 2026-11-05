@@ -7,6 +7,7 @@ import 'package:shiori/adapters/bundled_glossary.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/theme.dart';
 import 'package:shiori/features/about/crash_log_screen.dart';
+import 'package:shiori/features/about/extract_licenses.dart';
 import 'package:shiori/shared/widgets.dart';
 
 const _projectUrl =
@@ -20,6 +21,10 @@ const _notice =
     "and are used in conformance with the Group's licence.";
 
 const _krdictUrl = 'https://krdict.korean.go.kr';
+
+const _jlUrl = 'https://github.com/rampaa/JL';
+const _jlCommit = 'd8011e289eb4cd265fd4e3beb3fd155e8a764004';
+const _unihanUrl = 'https://www.unicode.org/Public/18.0.0/ucd/Unihan.zip';
 
 /// 정보: where the app's data comes from (the JMdict notice the EDRDG licence
 /// asks for on a screen of its own, the credit line of the Basic Korean
@@ -60,6 +65,9 @@ class AboutScreen extends ConsumerWidget {
               _ => const _Preparing(),
             },
             const SizedBox(height: Space.section),
+            const SectionLabel('단어 추출 데이터'),
+            const _ExtractorCard(),
+            const SizedBox(height: Space.section),
             const SectionLabel('오류 기록'),
             _Card(
               child: ListTile(
@@ -90,6 +98,48 @@ class AboutScreen extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The data the word extractor ships with, credited as their licences ask.
+class _ExtractorCard extends StatelessWidget {
+  const _ExtractorCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    Widget source(String title, String body) => Padding(
+      padding: const EdgeInsets.only(top: Space.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: context.text.titleSmall),
+          const SizedBox(height: Space.xs),
+          Text(body, style: context.text.bodySmall?.copyWith(height: 1.5)),
+        ],
+      ),
+    );
+    return _Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '배치가 다른 쪽에서 단어를 뽑을 때 아래 데이터를 씁니다.',
+            style: context.text.bodySmall?.copyWith(color: t.ink2),
+          ),
+          source(
+            'JL 활용 되돌리기 규칙 · $_jlUrl',
+            '문장 속 활용형을 원형으로 되돌리는 규칙, Apache License 2.0. '
+                '규칙은 Nazeka(Apache License 2.0)에서 왔습니다.',
+          ),
+          source(
+            'Unihan (Unicode Han Database) 18.0.0',
+            '한자의 한국 한자음(뜻과 표제어를 짝짓는 데 씀). Unicode, Inc., '
+                'Unicode License v3. $_unihanUrl',
+          ),
+        ],
       ),
     );
   }
@@ -411,5 +461,35 @@ https://creativecommons.org/licenses/by-sa/2.0/kr/
 The converted data is distributed under the same licence.''',
       ),
     ),
+  );
+}
+
+bool _extractorLicensesRegistered = false;
+
+/// Adds the word extractor's data (JL's deconjugation rules, the Unicode Han
+/// Database) to the licences page. Call once at start.
+void registerExtractorLicenses() {
+  if (_extractorLicensesRegistered) return;
+  _extractorLicensesRegistered = true;
+  LicenseRegistry.addLicense(
+    () => Stream.fromIterable([
+      const LicenseEntryWithLineBreaks(
+        ['JL deconjugation rules'],
+        '''Deconjugation rules (deconjugation_rules.json) from JL,
+$_jlUrl (commit $_jlCommit), unchanged.
+JL credits Nazeka (https://github.com/wareya/nazeka, Apache License 2.0) for
+the rules. The deconjugator that reads them was written for this app.
+
+$apacheLicense20''',
+      ),
+      const LicenseEntryWithLineBreaks(
+        ['Unihan'],
+        '''Korean readings of kanji from the Unicode Han Database (Unihan) 18.0.0:
+kHangul and the variant fields, for the Joyo and Jinmeiyo kanji.
+$_unihanUrl
+
+$unicodeLicenseV3''',
+      ),
+    ]),
   );
 }

@@ -11,6 +11,7 @@
 /// 6. One word per headword; known headwords dropped; leftovers kept.
 library;
 
+import 'package:shiori_core/src/capture/correctors/confusables.dart';
 import 'package:shiori_core/src/extract/deconjugator.dart';
 import 'package:shiori_core/src/extract/extracted_word.dart';
 import 'package:shiori_core/src/extract/fragment.dart';
@@ -21,6 +22,7 @@ import 'package:shiori_core/src/extract/lattice.dart';
 import 'package:shiori_core/src/extract/pairing.dart';
 import 'package:shiori_core/src/extract/script_runs.dart';
 import 'package:shiori_core/src/models/ocr.dart';
+import 'package:shiori_core/src/ports/korean_glossary.dart';
 import 'package:shiori_core/src/ports/lexicon.dart';
 
 /// Korean words a dictionary gives for a headword (a Korean gloss block
@@ -28,13 +30,36 @@ import 'package:shiori_core/src/ports/lexicon.dart';
 typedef KoreanGlossLookup =
     Future<List<String>> Function(String headword, List<String> readings);
 
+/// The words of every sense [glossary] gives, as a [KoreanGlossLookup]. A
+/// glossary that fails (a damaged file) gives none: the page still pairs on
+/// the Korean readings of the kanji and placement.
+KoreanGlossLookup glossLookupOf(KoreanGlossary glossary) =>
+    (headword, readings) async {
+      try {
+        return [
+          for (final s in await glossary.lookup(
+            headword,
+            readings: readings,
+            limit: glossarySenses,
+          ))
+            ...s.words,
+        ];
+      } on Exception {
+        return const [];
+      }
+    };
+
+/// Senses asked of the glossary per word: the first is the meaning, the
+/// others candidates.
+const int glossarySenses = 3;
+
 /// A kanji readings match needs this many Korean syllables (one syllable
 /// matches by chance too often).
 const int minHanjaSyllables = 2;
 
 /// Japanese sentences read at this OCR confidence or lower give no words
 /// (Apple Vision gives 0.3 to lines it barely made out).
-const double lowestSentenceConfidence = 0.3;
+const double lowestSentenceConfidence = lowestOcrConfidence;
 
 /// OCR scan → fragments → headword, reading and meaning pairing → words.
 ///
@@ -42,12 +67,25 @@ const double lowestSentenceConfidence = 0.3;
 final class GeneralExtractor {
   GeneralExtractor({
     this.lexicon = const EmptyLexicon(),
-    this.koreanGlosses,
+    KoreanGlossLookup? koreanGlosses,
+    this.koreanGlossary,
     this.weights = const PairWeights(),
-  });
+  }) : _givenGlosses = koreanGlosses;
+
+  final KoreanGlossLookup? _givenGlosses;
 
   final Lexicon lexicon;
-  final KoreanGlossLookup? koreanGlosses;
+
+  /// Korean words for a headword: a pairing signal. Given, or made from
+  /// [koreanGlossary].
+  KoreanGlossLookup? get koreanGlosses =>
+      _givenGlosses ??
+      (koreanGlossary == null ? null : glossLookupOf(koreanGlossary!));
+
+  /// The Korean glossary block: its words are a pairing signal (through
+  /// [koreanGlosses]) and its first sense the meaning of a dictionary word
+  /// the page gives none; the other senses are offered as candidates.
+  final KoreanGlossary? koreanGlossary;
   final PairWeights weights;
 
   /// Words on the page. Headwords in [knownHeadwords] (already in the
@@ -63,6 +101,9 @@ final class GeneralExtractor {
       _CachingLexicon(lexicon),
       hasLexicon: lexicon is! EmptyLexicon,
     );
+    final senses = _SenseCache(koreanGlossary);
+    final glosses =
+        _givenGlosses ?? (koreanGlossary == null ? null : senses.words);
     await page.prefetch();
     page.restoreBoxPrefixes();
     final heads = page.headwords();
@@ -71,45 +112,120 @@ final class GeneralExtractor {
     final meanings = await page.pairMeanings(
       items,
       readings.slopes,
-      koreanGlosses,
+      glosses,
       weights,
     );
     final sentenceWords = page.sentenceWords(meanings.used, weights);
-    final words = _merge([
+    final found = [
       for (final item in items)
         if (item.isWord(
           page.hasLexicon,
           meanings.links[item.fragment.id],
           reading: readings.links[item.fragment.id],
+          inKoreanParagraph: page.inKoreanParagraph(item.fragment),
         ))
           item.toWord(
             readings.links[item.fragment.id],
             meanings.links[item.fragment.id],
-            fragments,
+            page.fragments,
           ),
       ...sentenceWords.words,
-    ]).where((w) => !_isKnown(w.headword, knownHeadwords)).toList();
+    ];
+    final merged = _merge(found);
+    final skipped = <String>[];
+    final kept = <ExtractedWord>[];
+    for (final w in merged) {
+      if (!_isKnown(w.headword, knownHeadwords)) {
+        kept.add(w);
+      } else if (!skipped.contains(w.headword)) {
+        skipped.add(w.headword);
+      }
+    }
+    final words = koreanGlossary == null
+        ? kept
+        : [for (final w in kept) await senses.fill(w)];
+    final all = page.fragments;
     final used = <int>{
       ...readings.used,
       ...meanings.used,
       ...sentenceWords.used,
-      for (final w in words) ?w.headwordFragmentId,
-      for (final f in fragments)
+      // Every word found, also one merged into another of the same
+      // headword or left out as known: its fragment is not unpaired.
+      for (final w in found) ?w.headwordFragmentId,
+      for (final f in all)
         if (f.inlineReadingOf != null) f.id,
     };
-    // Heads of known words that were dropped still count as used.
-    for (final item in items) {
-      if (_isKnown(item.headword, knownHeadwords)) used.add(item.fragment.id);
-    }
     return ExtractionResult(
       words: List.unmodifiable(words),
       unpaired: List.unmodifiable([
-        for (final f in fragments)
-          if (f.isContent && !used.contains(f.id)) f,
+        for (final f in all)
+          if (f.isContent && !used.contains(f.id) && !page.isGarbage(f)) f,
       ]),
-      fragments: List.unmodifiable(fragments),
+      fragments: List.unmodifiable(all),
       elapsed: watch.elapsed,
+      skippedKnown: List.unmodifiable(skipped),
     );
+  }
+}
+
+/// Korean senses per word, asked once; a glossary that fails gives none.
+final class _SenseCache {
+  _SenseCache(this.glossary);
+
+  final KoreanGlossary? glossary;
+  final Map<String, List<KoreanSense>> _found = {};
+
+  Future<List<KoreanSense>> of(String headword, List<String> readings) async {
+    final g = glossary;
+    if (g == null) return const [];
+    final key = '$headword|${readings.join('/')}';
+    final known = _found[key];
+    if (known != null) return known;
+    List<KoreanSense> found;
+    try {
+      found = await g.lookup(
+        headword,
+        readings: readings,
+        limit: glossarySenses,
+      );
+    } on Exception {
+      // A damaged glossary file: the page still pairs on content and place.
+      found = const [];
+    }
+    return _found[key] = found;
+  }
+
+  /// As a [KoreanGlossLookup]: the words of every sense.
+  Future<List<String>> words(String headword, List<String> readings) async => [
+    for (final s in await of(headword, readings)) ...s.words,
+  ];
+
+  /// A dictionary word with no meaning on the page takes the first sense
+  /// (source: dictionary, never high); the other senses become candidates.
+  Future<ExtractedWord> fill(ExtractedWord w) async {
+    // Only words the lexicon knows: a meaning for a misread one would look
+    // checked.
+    if (w.partsOfSpeech.isEmpty) return w;
+    final found = await of(w.headword, w.readings);
+    if (found.isEmpty) return w;
+    final meaning = w.meaning;
+    if (meaning == null) {
+      return w.copyWith(
+        meaning: found.first.text,
+        meaningSource: FieldSource.dictionary,
+        meaningLink: const PairLink(
+          confidence: PairConfidence.medium,
+          signals: {PairSignal.koreanGloss},
+          note: 'dictionary meaning',
+        ),
+        meaningCandidates: [for (final s in found.skip(1)) s.text],
+      );
+    }
+    final others = [
+      for (final s in found)
+        if (_bare(s.text) != _bare(meaning)) s.text,
+    ];
+    return others.isEmpty ? w : w.copyWith(meaningCandidates: others);
   }
 }
 
@@ -153,9 +269,13 @@ final class _Item {
     this.inlineReading,
     this.kanjiCandidates = const [],
     this.kanjiPos = const {},
+    this.headwordNote,
   });
 
   final Fragment fragment;
+
+  /// Why the headword is not what OCR read (a look-alike glyph fixed).
+  final String? headwordNote;
 
   /// Dictionary forms the lexicon confirms, best first (empty: unknown).
   final List<Lemma> lemmas;
@@ -207,12 +327,22 @@ final class _Item {
     return parts.isNotEmpty && parts.every((r) => known.contains(_hiragana(r)));
   }
 
-  bool isWord(bool hasLexicon, PairLink? meaning, {PairLink? reading}) {
+  bool isWord(
+    bool hasLexicon,
+    PairLink? meaning, {
+    PairLink? reading,
+    bool inKoreanParagraph = false,
+  }) {
     if (isOrphanReading) return meaning != null;
+    final alone = meaning == null && reading == null && inlineReading == null;
+    // The Japanese pass read a line of a Korean explanation as words.
+    if (inKoreanParagraph && alone) return false;
+    // One kana with nothing paired is a stray glyph, not a word.
+    if (isKana && fragment.text.runes.length == 1 && alone) return false;
     // Read at the engine's lowest confidence and paired with nothing: the
     // Japanese pass's garbage over Korean text more often than a word.
     if (hasLexicon &&
-        fragment.confidence <= lowestSentenceConfidence &&
+        atLowestConfidence(fragment.confidence) &&
         meaning == null &&
         reading == null &&
         inlineReading == null) {
@@ -294,6 +424,7 @@ final class _Item {
         corrected: parts.any((f) => f.corrected),
       ),
       headwordFragmentId: fragment.id,
+      headwordNote: headwordNote,
     );
   }
 
@@ -359,6 +490,9 @@ final class _Page {
     await lexicon.lookup({
       for (final f in _words) ...[
         for (final d in deconjugator.deconjugate(f.text)) d.base,
+        if (f.kind == FragmentKind.kanjiWord)
+          for (final v in lookalikeVariants(f.text))
+            for (final d in deconjugator.deconjugate(v)) d.base,
         if (f.droppedPrefix case final prefix?)
           for (final d in deconjugator.deconjugate('$prefix${f.text}')) d.base,
         ...readingParts(f.text),
@@ -412,6 +546,18 @@ final class _Page {
     final out = <int, _Item>{};
     for (final f in fragments.where((f) => f.kind == FragmentKind.kanjiWord)) {
       final lemmas = hasLexicon ? _lemmas(f.text) : const <Lemma>[];
+      if (lemmas.isEmpty && hasLexicon) {
+        final fix = _lookalikeFix(f);
+        if (fix != null) {
+          out[f.id] = _Item(
+            fix.fragment,
+            fix.lemmas,
+            inlineReading: inline[f.id],
+            headwordNote: fix.note,
+          );
+          continue;
+        }
+      }
       if (hasLexicon &&
           lemmas.isEmpty &&
           inline[f.id] == null &&
@@ -423,6 +569,60 @@ final class _Page {
     }
     return out;
   }
+
+  /// An unknown headword that a look-alike glyph explains (`人ロ` read for
+  /// `人口`): the dictionary word, only when the dictionary has it.
+  ({Fragment fragment, List<Lemma> lemmas, String note})? _lookalikeFix(
+    Fragment f,
+  ) {
+    for (final v in lookalikeVariants(f.text)) {
+      final lemmas = _lemmas(v);
+      if (lemmas.isEmpty) continue;
+      final fixed = f.copyWith(text: v, corrected: true);
+      fragments = List.unmodifiable([
+        for (final g in fragments) g.id == f.id ? fixed : g,
+      ]);
+      return (
+        fragment: fixed,
+        lemmas: lemmas,
+        note: '${f.text} → $v (글자 보정+사전)',
+      );
+    }
+    return null;
+  }
+
+  /// [f] is the Japanese pass reading a Korean explanation paragraph: read
+  /// below full confidence, not a bracketed word, inside (or just above or
+  /// below) a Korean sentence box at least two lines tall in the same column.
+  bool inKoreanParagraph(Fragment f) {
+    if (f.pass != OcrPass.japanese || f.confidence >= 1.0 - 1e-6) return false;
+    if (f.inlineReadingOf != null || _bracketed.contains(f.id)) return false;
+    final reach = paragraphReach * f.height;
+    return _paragraphs.any(
+      (k) =>
+          k.height >= paragraphMinLines * f.height &&
+          f.cx >= k.x &&
+          f.cx <= k.right &&
+          f.cy >= k.y - reach &&
+          f.cy <= k.bottom + reach,
+    );
+  }
+
+  /// Fragments that are OCR garbage, not text to place by hand.
+  bool isGarbage(Fragment f) =>
+      f.pass == OcrPass.japanese &&
+      f.isJapanese &&
+      (atLowestConfidence(f.confidence) || inKoreanParagraph(f));
+
+  late final List<Fragment> _paragraphs = [
+    for (final f in fragments)
+      if (f.pass == OcrPass.korean && f.kind == FragmentKind.koreanSentence) f,
+  ];
+
+  /// Headwords printed with a bracketed reading (`学校[がっこう]`).
+  late final Set<int> _bracketed = {
+    for (final f in fragments) ?f.inlineReadingOf,
+  };
 
   bool _splitsIntoWords(String text) {
     final tokens = segmenter.segmentFound(text, lexicon.cached);
@@ -697,7 +897,10 @@ final class _Page {
     // translations are assigned, so it takes none.
     final sentences = [
       for (final s in _sentences)
-        if (s.confidence > lowestSentenceConfidence) s,
+        if (!atLowestConfidence(s.confidence) &&
+            !inKoreanParagraph(s) &&
+            !isPattern(s.text))
+          s,
     ];
     final korean = fragments
         .where(
@@ -725,9 +928,12 @@ final class _Page {
     for (final (i, s) in sentences.indexed) {
       final translation = assigned[i] == null ? null : korean[assigned[i]!];
       final tokens = hasLexicon
-          ? SentenceSegmenter.onlyContent(
-              segmenter.segmentFound(s.text, lexicon.cached),
-            )
+          ? [
+              for (final t in SentenceSegmenter.onlyContent(
+                segmenter.segmentFound(s.text, lexicon.cached),
+              ))
+                if (_isSentenceWord(t, s.text)) t,
+            ]
           : const <LatticeToken>[];
       if (tokens.isEmpty) continue;
       used.add(s.id);
@@ -764,6 +970,67 @@ final class _Page {
     return (words: words, used: used);
   }
 }
+
+/// A word of a sentence the learner would study: not one kana (a stray
+/// glyph or an ending), not a reading printed in brackets (`［がっこう］`).
+bool _isSentenceWord(LatticeToken t, String sentence) {
+  final kana = t.surface.runes.every(isKana);
+  if (kana && t.base.runes.length == 1) return false;
+  if (!kana) return true;
+  final runes = sentence.runes.toList();
+  final before = t.start > 0 ? runes[t.start - 1] : null;
+  final after = t.end < runes.length ? runes[t.end] : null;
+  return !(_openers.contains(before) || _closers.contains(after));
+}
+
+final Set<int> _openers = '[［【「『(（'.runes.toSet();
+final Set<int> _closers = ']］】」』)）'.runes.toSet();
+
+/// A pattern line (`〜は〜です。`): its words are placeholders, not text.
+bool isPattern(String text) =>
+    text.contains('〜') || text.contains('～') || text.contains('~');
+
+/// Korean sentence boxes at least this many of the fragment's lines tall
+/// are a paragraph (one box over several lines).
+const double paragraphMinLines = 1.8;
+
+/// How far above or below a paragraph box, in the fragment's line heights,
+/// a line still belongs to it (the Korean pass missed its last lines).
+const double paragraphReach = 2.0;
+
+/// [text] with each lone look-alike katakana inside a kanji word swapped for
+/// its kanji (`人ロ` → `人口`), fewest changes first; empty when there is
+/// nothing to swap. Katakana next to katakana is a word (`ローマ字`).
+List<String> lookalikeVariants(String text) {
+  final runes = text.runes.toList();
+  if (!runes.any(isKanji)) return const [];
+  bool lone(int i) =>
+      (i == 0 || !isKatakana(runes[i - 1])) &&
+      (i == runes.length - 1 || !isKatakana(runes[i + 1]));
+  final spots = [
+    for (var i = 0; i < runes.length; i++)
+      if (confusableInKanji.containsKey(runes[i]) && lone(i)) i,
+  ];
+  if (spots.isEmpty || spots.length > maxLookalikes) return const [];
+  final out = <List<int>>[];
+  for (var mask = 1; mask < 1 << spots.length; mask++) {
+    final v = [...runes];
+    for (var b = 0; b < spots.length; b++) {
+      if (mask & (1 << b) != 0) {
+        v[spots[b]] = confusableInKanji[runes[spots[b]]]!;
+      }
+    }
+    out.add(v);
+  }
+  int changes(List<int> v) => [
+    for (var i = 0; i < v.length; i++) v[i] != runes[i],
+  ].where((c) => c).length;
+  out.sort((a, b) => changes(a).compareTo(changes(b)));
+  return [for (final v in out) String.fromCharCodes(v)];
+}
+
+/// More look-alike glyphs than this in one headword: not a misread word.
+const int maxLookalikes = 3;
 
 bool _glossMatches(List<String> glosses, String korean) {
   final parts = korean

@@ -20,6 +20,7 @@ Future<void> main() async {
   installCrashHandlers(crashLog);
   registerDictionaryLicense();
   registerGlossaryLicense();
+  registerExtractorLicenses();
   // Unpacking the dictionaries starts now and runs while the app starts.
   final dictionary = bundledDictionaryOverride();
   final glossary = bundledGlossaryOverride();

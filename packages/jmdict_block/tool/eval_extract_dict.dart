@@ -2,7 +2,13 @@
 // to the extractor without a dictionary and the textbook row templates.
 //
 //   dart run tool/eval_extract_dict.dart --db FILE [--fixtures DIR] [--gt FILE]
-//       [--glosses FILE] [--template] [--verbose]
+//       [--glosses FILE] [--glossary FILE] [--template] [--routed] [--verbose]
+//
+// --glossary: the Korean glossary SQLite file (tools/dict/build_ko_glossary.py;
+// the app's asset app/assets/dict/ko-glossary.sqlite.gz, unzipped), plugged
+// into the extractor as a pairing signal and for meanings the page lacks.
+// --routed also scores CaptureRouter (row template when it fits, general
+// extractor otherwise), as the app reads pages.
 //
 // --db: a JMdict SQLite file (tools/dict/build_jmdict_db.py; the app's asset
 // app/assets/dict/jmdict-full-lean.sqlite.gz, unzipped). Not committed.
@@ -14,6 +20,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:jmdict_block/jmdict_block.dart';
+import 'package:krdict_block/krdict_block.dart';
 import 'package:shiori_core/eval.dart';
 import 'package:shiori_core/shiori_core.dart';
 
@@ -42,22 +49,41 @@ Future<void> main(List<String> args) async {
       recognizer.recognize(PageImage(fixture));
   final verbose = args.contains('--verbose');
   final jmdict = JmdictDictionary.open(dbPath);
+  final glossaryPath = _option(args, '--glossary');
+  final glossary = glossaryPath == null
+      ? null
+      : KrdictGlossary.open(glossaryPath);
   try {
     stdout.writeln(
       'dictionary: ${jmdict.info.entries}/${jmdict.info.glosses} '
       'JMdict ${jmdict.info.jmdictCreated}',
     );
     final runs = {
-      'general, JMdict${glossPath == null ? '' : ', glosses'}': generalRun(
+      'general, JMdict${glossPath == null ? '' : ', glosses'}'
+          '${glossary == null ? '' : ', glossary'}': generalRun(
         GeneralExtractor(
           lexicon: JmdictLexiconAdapter(jmdict),
           koreanGlosses: glosses,
+          koreanGlossary: glossary,
         ),
       ),
       'general, no dictionary': generalRun(GeneralExtractor()),
       if (args.contains('--template'))
         'template (row templates, JMdict)': templateRun(
           CapturePipeline.standard(dictionary: JmdictDictionaryAdapter(jmdict)),
+        ),
+      if (args.contains('--routed'))
+        'routed (template when it fits, else general)': routedRun(
+          CaptureRouter(
+            template: CapturePipeline.standard(
+              dictionary: JmdictDictionaryAdapter(jmdict),
+              glossary: glossary,
+            ),
+            general: GeneralExtractor(
+              lexicon: JmdictLexiconAdapter(jmdict),
+              koreanGlossary: glossary,
+            ),
+          ),
         ),
     };
     for (final MapEntry(key: name, value: run) in runs.entries) {
@@ -72,6 +98,7 @@ Future<void> main(List<String> args) async {
         ..writeln(score.table(verbose: verbose));
     }
   } finally {
+    glossary?.close();
     jmdict.close();
   }
 }

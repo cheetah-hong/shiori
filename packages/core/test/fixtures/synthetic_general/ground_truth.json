@@ -456,6 +456,49 @@
     "昼寝",
     "する"
    ]
+  },
+  {
+   "page": "g06",
+   "fixture": "g06",
+   "kind": "paragraph",
+   "vocab": [
+    {
+     "headword": "学校",
+     "readings": [
+      "がっこう"
+     ],
+     "meaning": null
+    },
+    {
+     "headword": "人口",
+     "readings": [
+      "じんこう"
+     ],
+     "meaning": "인구"
+    },
+    {
+     "headword": "図書館",
+     "readings": [
+      "としょかん"
+     ],
+     "meaning": "도서관"
+    }
+   ],
+   "sentence_words": [
+    "兄",
+    "夜",
+    "紅茶",
+    "飲む",
+    "部屋",
+    "静か"
+   ],
+   "ignore": [
+    "〜",
+    "문형 정리",
+    "단어",
+    "61",
+    "この"
+   ]
   }
  ]
 }

@@ -216,7 +216,7 @@ List<_Run> _resolve(List<_Run> runs) {
         continue;
       }
       // The Japanese pass's lowest confidence over Korean text: garbage.
-      if (j.conf <= 0.3 && k.conf > j.conf) {
+      if (atLowestConfidence(j.conf) && k.conf > j.conf) {
         dropped.add(j);
         continue;
       }
@@ -330,12 +330,27 @@ final RegExp _leadingLookalikeBox = RegExp('^[口ロ](?:\\s+|(?=[^\\s]))');
 /// Where the checkbox columns are: three or more Japanese runs whose left
 /// edges line up (within a line height) start with a box glyph; each such
 /// group is a column at its median x. Empty when the page has none.
+/// A box printed on its own (`□`, read apart from the word after it).
+bool _onlyBoxes(String text) {
+  final t = text.trim();
+  return t.isNotEmpty && t.runes.every(_printedBoxes.contains);
+}
+
+final Set<int> _printedBoxes = '□■☐☑☒'.runes.toSet();
+
+/// Width of one full-width glyph of [text] set in [width] (page-width units).
+double _em(double width, String text) {
+  final units = text.runes.fold(0.0, (n, c) => n + charWidth(c));
+  return width / (units < 1 ? 1 : units);
+}
+
 List<double> _checkboxColumns(List<_Run> runs) {
   final boxed = [
     for (final r in runs)
       if (r.script == Script.japanese &&
-          r.text.length > 1 &&
-          _checkboxGlyphs.contains(r.text[0]))
+              r.text.length > 1 &&
+              _checkboxGlyphs.contains(r.text[0]) ||
+          _onlyBoxes(r.text))
         r,
   ]..sort((a, b) => a.x0.compareTo(b.x0));
   final columns = <double>[];
@@ -346,7 +361,9 @@ List<double> _checkboxColumns(List<_Run> runs) {
   }
 
   for (final r in boxed) {
-    if (group.isNotEmpty && r.x0 - group.last.x0 > (r.y1 - r.y0)) close();
+    if (group.isNotEmpty && r.x0 - group.last.x0 > _em(r.x1 - r.x0, r.text)) {
+      close();
+    }
     group.add(r);
   }
   close();
@@ -413,7 +430,11 @@ List<_Piece> _cleanJapanese(_Piece p, {required List<double> checkboxColumns}) {
   }
   // A 口 or ロ at the checkbox column's x (or set off by a space) is a box.
   final lookalike = _leadingLookalikeBox.firstMatch(text);
-  final atColumn = checkboxColumns.any((c) => (p.x - c).abs() <= p.height);
+  // Within one glyph of the column: the glyph width is measured along the
+  // line (x), so a tall or wide photo gives the same tolerance.
+  final atColumn = checkboxColumns.any(
+    (c) => (p.x - c).abs() <= _em(p.width, p.text),
+  );
   String? droppedPrefix;
   if (lookalike != null &&
       text.length > 1 &&

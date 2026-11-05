@@ -45,6 +45,13 @@ const List<DevSample> devSamples = [
   DevSample(id: 's147', page: 147, detail: 'DAY 21 쇼핑', layout: '항목형 · 예문'),
 ];
 
+/// Synthetic pages for the general extractor (tools/synthetic/make_general_pages.py):
+/// laid out unlike the word book, so the row template does not fit them.
+const List<DevSample> generalDevSamples = [
+  DevSample(id: 'g06', page: 61, detail: '범용 · 문형과 설명 단락', layout: '범용'),
+  DevSample(id: 'g01', page: 38, detail: '범용 · 대화와 단어 상자', layout: '범용'),
+];
+
 /// Replays a sample page through the same pipeline as a real photo; refuses
 /// every page when [enabled] is false.
 TextRecognizer devSampleRecognizer(

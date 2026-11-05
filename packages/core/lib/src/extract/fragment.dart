@@ -26,6 +26,14 @@ enum FragmentKind {
   noise,
 }
 
+/// The lowest confidence Apple Vision gives (lines it barely made out).
+const double lowestOcrConfidence = 0.3;
+
+/// [confidence] is the engine's lowest or below. The device channel passes
+/// Vision's 32-bit 0.3 on as 0.30000001192092896, so this allows for that.
+bool atLowestConfidence(double confidence) =>
+    confidence <= lowestOcrConfidence + 1e-6;
+
 /// Which OCR pass a fragment's text came from.
 enum OcrPass { japanese, korean }
 

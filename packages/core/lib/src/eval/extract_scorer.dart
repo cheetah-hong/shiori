@@ -1,4 +1,5 @@
 import 'package:shiori_core/src/capture/capture_pipeline.dart';
+import 'package:shiori_core/src/capture/capture_router.dart';
 import 'package:shiori_core/src/capture/text/chars.dart';
 import 'package:shiori_core/src/eval/extract_truth.dart';
 import 'package:shiori_core/src/extract/extracted_word.dart';
@@ -25,11 +26,14 @@ final class ScoredWord {
     origin: w.origin,
   );
 
-  /// A template entry: printed word, no pairing confidence.
+  /// A review entry: a template's has no pairing confidence; a general
+  /// extractor's carries it (and its origin) in its evidence.
   factory ScoredWord.fromCaptured(CapturedEntry e) => ScoredWord(
     headword: e.headword,
     readings: e.readings,
     meaning: e.meaning.trim().isEmpty ? null : e.meaning,
+    confidence: e.evidence?.confidence,
+    origin: e.evidence?.origin ?? WordOrigin.wordList,
   );
 
   final String headword;
@@ -339,6 +343,13 @@ Future<List<ScoredWord>> Function(OcrScan) generalRun(GeneralExtractor e) =>
     (scan) async => [
       for (final w in (await e.extract(scan)).words)
         ScoredWord.fromExtracted(w),
+    ];
+
+/// [scoreExtractor]'s `run` for the routed capture (what the app does).
+Future<List<ScoredWord>> Function(OcrScan) routedRun(CaptureRouter r) =>
+    (scan) async => [
+      for (final e in (await r.fromScan(scan)).entries)
+        ScoredWord.fromCaptured(e),
     ];
 
 /// [scoreExtractor]'s `run` for the textbook templates.

@@ -4,23 +4,11 @@ library;
 
 import 'package:shiori_core/src/extract/fragment.dart';
 import 'package:shiori_core/src/models/captured_entry.dart';
+import 'package:shiori_core/src/models/evidence.dart';
 import 'package:shiori_core/src/models/part_of_speech.dart';
 
-/// Where a field's value came from.
-enum FieldSource {
-  /// Read from the photo.
-  photo,
-
-  /// Filled in from the dictionary (the photo did not print it).
-  dictionary,
-
-  /// From a translation (not produced yet).
-  translation,
-}
-
-/// How sure a pairing is, from independent content evidence:
-/// two or more content signals agree → [high], one → [medium], position only → [low].
-enum PairConfidence { low, medium, high }
+export 'package:shiori_core/src/models/evidence.dart'
+    show FieldSource, PairConfidence, WordOrigin;
 
 /// Evidence that two fragments belong together.
 enum PairSignal {
@@ -83,15 +71,6 @@ final class ReadQuality {
       'read ${ocrConfidence.toStringAsFixed(2)}${corrected ? ' corrected' : ''}';
 }
 
-/// How a word got on the list.
-enum WordOrigin {
-  /// Printed as a word (word list, word box, side column, heading).
-  wordList,
-
-  /// A dictionary form of a word inside a Japanese sentence.
-  sentence,
-}
-
 /// Example sentence a word came from, with its translation when one was
 /// printed beside it.
 final class WordExample {
@@ -127,6 +106,8 @@ final class ExtractedWord {
     this.readQuality = const ReadQuality(ocrConfidence: 1.0),
     this.example,
     this.headwordFragmentId,
+    this.headwordNote,
+    this.meaningCandidates = const [],
   });
 
   /// Dictionary form: kanji (with okurigana) or, for kana words, the kana.
@@ -159,6 +140,12 @@ final class ExtractedWord {
   /// The fragment the headword was read from (sentence words: the sentence).
   final int? headwordFragmentId;
 
+  /// Why the headword differs from what OCR read (`人ロ → 人口 (글자 보정+사전)`).
+  final String? headwordNote;
+
+  /// Other meanings to offer: the glossary's other senses.
+  final List<String> meaningCandidates;
+
   /// The weakest pairing of the word; [PairConfidence.low] when nothing is
   /// paired with the headword at all.
   PairConfidence get pairConfidence {
@@ -181,6 +168,7 @@ final class ExtractedWord {
     ReadQuality? readQuality,
     WordOrigin? origin,
     Object? example = _unset,
+    List<String>? meaningCandidates,
   }) => ExtractedWord(
     headword: headword,
     origin: origin ?? this.origin,
@@ -206,34 +194,92 @@ final class ExtractedWord {
         ? this.example
         : example as WordExample?,
     headwordFragmentId: headwordFragmentId,
+    headwordNote: headwordNote,
+    meaningCandidates: List.unmodifiable(
+      meaningCandidates ?? this.meaningCandidates,
+    ),
   );
 
   /// The review-draft entry the capture screens use. No word number (the
   /// extractor does not know one); fields the photo did not give are flagged
-  /// missing, and the meaning is flagged for review unless its pairing is
-  /// [PairConfidence.high].
-  CapturedEntry toCapturedEntry() => CapturedEntry(
-    no: null,
-    headword: headword,
-    readings: readings,
-    pos: partOfSpeechOf(partsOfSpeech),
-    meaning: meaning ?? '',
-    example: switch (example) {
-      WordExample(:final ja, :final ko) => Example(ja: ja, ko: ko ?? ''),
-      null => null,
-    },
-    issues: [
-      if (meaning == null) const EntryIssue.missing(EntryField.meaning),
-      if (meaning != null && meaningLink?.confidence != PairConfidence.high)
-        EntryIssue.suspect(
-          EntryField.meaning,
-          note: 'pair ${meaningLink?.confidence.name ?? 'none'}',
-        ),
-      if (readingSource == FieldSource.dictionary)
-        const EntryIssue.inferred(EntryField.readings, note: 'dictionary'),
-    ],
-    ocrHeadword: headword,
-  );
+  /// missing, and a meaning paired below [PairConfidence.high] is flagged for
+  /// review. [fragments] (the extraction's) give the photo boxes behind each
+  /// cell.
+  CapturedEntry toCapturedEntry({List<Fragment> fragments = const []}) {
+    List<PhotoBox> boxes(Iterable<int?> ids) => [
+      for (final id in ids)
+        if (id != null && id >= 0 && id < fragments.length)
+          PhotoBox(
+            x: fragments[id].x,
+            y: fragments[id].y,
+            width: fragments[id].width,
+            height: fragments[id].height,
+          ),
+    ];
+    final fromDictionary = meaningSource == FieldSource.dictionary;
+    return CapturedEntry(
+      no: null,
+      headword: headword,
+      readings: readings,
+      pos: partOfSpeechOf(partsOfSpeech),
+      meaning: meaning ?? '',
+      example: switch (example) {
+        WordExample(:final ja, :final ko) => Example(ja: ja, ko: ko ?? ''),
+        null => null,
+      },
+      issues: [
+        if (headwordNote != null)
+          EntryIssue.corrected(EntryField.headword, note: headwordNote),
+        if (meaning == null) const EntryIssue.missing(EntryField.meaning),
+        if (meaning != null && fromDictionary)
+          const EntryIssue.inferred(EntryField.meaning, note: '사전 뜻'),
+        if (meaning != null &&
+            !fromDictionary &&
+            meaningLink?.confidence != PairConfidence.high)
+          EntryIssue.suspect(
+            EntryField.meaning,
+            note: 'pair ${meaningLink?.confidence.name ?? 'none'}',
+          ),
+        if (readingSource == FieldSource.dictionary)
+          const EntryIssue.inferred(EntryField.readings, note: 'dictionary'),
+      ],
+      ocrHeadword: headword,
+      evidence: EntryEvidence(
+        origin: origin,
+        fields: {
+          EntryField.headword: FieldEvidence(
+            source: headwordSource,
+            boxes: boxes([headwordFragmentId]),
+            note: headwordNote,
+          ),
+          if (readings.isNotEmpty)
+            EntryField.readings: FieldEvidence(
+              source: readingSource ?? FieldSource.photo,
+              confidence: readingLink?.confidence,
+              boxes: readingSource == FieldSource.photo
+                  ? boxes([readingLink?.fragmentId])
+                  : const [],
+              note: readingLink?.note,
+            ),
+          if (meaning != null)
+            EntryField.meaning: FieldEvidence(
+              source: meaningSource ?? FieldSource.photo,
+              confidence: meaningLink?.confidence,
+              boxes: meaningSource == FieldSource.photo
+                  ? boxes([meaningLink?.fragmentId])
+                  : const [],
+              candidates: meaningCandidates,
+              note: fromDictionary ? '사전 뜻' : meaningLink?.note,
+            ),
+          if (example != null)
+            EntryField.example: FieldEvidence(
+              source: FieldSource.photo,
+              boxes: boxes([headwordFragmentId]),
+            ),
+        },
+      ),
+    );
+  }
 
   @override
   String toString() =>
@@ -269,6 +315,7 @@ final class ExtractionResult {
     required this.unpaired,
     required this.fragments,
     this.elapsed = Duration.zero,
+    this.skippedKnown = const [],
   });
 
   final List<ExtractedWord> words;
@@ -283,6 +330,9 @@ final class ExtractionResult {
 
   /// Extraction time (OCR not included).
   final Duration elapsed;
+
+  /// Headwords left out because the learner already has them, each once.
+  final List<String> skippedKnown;
 }
 
 const Object _unset = Object();

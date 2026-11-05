@@ -5,8 +5,10 @@ library;
 
 // Models
 export 'src/models/capture_draft.dart';
+export 'src/models/capture_route.dart';
 export 'src/models/captured_entry.dart';
 export 'src/models/column_scale.dart';
+export 'src/models/evidence.dart';
 export 'src/models/library.dart';
 export 'src/models/ocr.dart';
 export 'src/models/page_image.dart';
@@ -29,6 +31,7 @@ export 'src/ports/textbook_template.dart';
 
 // Capture: OCR lines → review draft
 export 'src/capture/capture_pipeline.dart';
+export 'src/capture/capture_router.dart';
 export 'src/capture/correctors/badge_misread_corrector.dart';
 export 'src/capture/correctors/confusable_glyph_corrector.dart';
 export 'src/capture/correctors/cut_meaning_flagger.dart';
@@ -40,6 +43,7 @@ export 'src/capture/correctors/meaning_punctuation_corrector.dart';
 export 'src/capture/correctors/missing_field_flagger.dart';
 export 'src/capture/correctors/pos_inference_corrector.dart';
 export 'src/capture/correctors/reading_lookalike_corrector.dart';
+export 'src/capture/evidence_edits.dart';
 export 'src/capture/fixture_text_recognizer.dart';
 export 'src/capture/learner_edits.dart';
 export 'src/capture/vocab/entry_template.dart';

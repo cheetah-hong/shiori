@@ -2,7 +2,7 @@
 // textbook row templates on the same pages.
 //
 //   dart run tool/eval_extract.dart [--fixtures DIR] [--gt FILE]
-//       [--lexicon FILE] [--glosses FILE] [--template] [--verbose]
+//       [--lexicon FILE] [--glosses FILE] [--template] [--routed] [--verbose]
 //
 // DIR defaults to the synthetic pages for the extractor
 // (test/fixtures/synthetic_general); --gt to DIR/ground_truth.json, in either
@@ -57,6 +57,25 @@ Future<void> main(List<String> args) async {
       'glosses: ${glossPath ?? 'none'})',
     )
     ..writeln(general.table(verbose: verbose));
+  if (args.contains('--routed')) {
+    final routed = await scoreExtractor(
+      truth: truth,
+      loadScan: load,
+      run: routedRun(
+        CaptureRouter(
+          template: CapturePipeline.standard(),
+          general: GeneralExtractor(
+            lexicon: lexicon ?? const EmptyLexicon(),
+            koreanGlosses: glosses,
+          ),
+        ),
+      ),
+    );
+    stdout
+      ..writeln()
+      ..writeln('== routed (template when it fits, else general)')
+      ..writeln(routed.table(verbose: verbose));
+  }
   if (!args.contains('--template')) return;
   final template = await scoreExtractor(
     truth: truth,

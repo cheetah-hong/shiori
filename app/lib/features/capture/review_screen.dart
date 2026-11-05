@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/app/blocks.dart';
@@ -5,6 +6,9 @@ import 'package:shiori/app/data.dart';
 import 'package:shiori/app/theme.dart';
 import 'package:shiori/features/capture/entry_editor_sheet.dart';
 import 'package:shiori/features/capture/entry_tile.dart';
+import 'package:shiori/features/capture/evidence_tile.dart';
+import 'package:shiori/features/capture/evidence_view.dart';
+import 'package:shiori/features/capture/fragment_tray.dart';
 import 'package:shiori/shared/format.dart';
 import 'package:shiori/shared/widgets.dart';
 import 'package:shiori_core/shiori_core.dart';
@@ -33,11 +37,19 @@ class ReviewScreen extends ConsumerStatefulWidget {
     required this.draft,
     this.sourceLabel,
     this.recognizerId,
+    this.scan,
+    this.photo,
   });
 
   final CaptureDraft draft;
   final String? sourceLabel;
   final String? recognizerId;
+
+  /// The OCR passes of the page: drawn as the page when there is no [photo].
+  final OcrScan? scan;
+
+  /// The page photo, upright (as the OCR boxes): cut for the evidence view.
+  final Uint8List? photo;
 
   @override
   ConsumerState<ReviewScreen> createState() => _ReviewScreenState();
@@ -51,6 +63,57 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
 
   TextbookTemplate? get _template =>
       ref.read(templateRegistryProvider).byId(_draft.templateId);
+
+  String get _templateLabel =>
+      _draft.isGeneral ? '범용 추출' : _template?.label ?? _draft.templateId;
+
+  EvidencePage get _page =>
+      EvidencePage(photo: widget.photo, scan: widget.scan);
+
+  Future<void> _showEvidence(int index, EntryField field) => showEvidence(
+    context,
+    entry: _draft.entries[index],
+    field: field,
+    page: _page,
+  );
+
+  void _pickCandidate(int index, EntryField field, String value) =>
+      _replace(index, pickCandidate(_draft.entries[index], field, value));
+
+  /// An unpaired fragment goes on an entry's cell or becomes a new entry,
+  /// and leaves the tray.
+  Future<void> _useFragment(Fragment fragment) async {
+    final use = await showFragmentSheet(
+      context,
+      fragment: fragment,
+      entries: _draft.entries,
+    );
+    if (use == null || !mounted) return;
+    final rest = [
+      for (final f in _draft.unpaired)
+        if (f.id != fragment.id) f,
+    ];
+    setState(() {
+      _draft = switch (use) {
+        AttachFragment(:final index, :final field) =>
+          _draft
+              .replaceEntry(
+                index,
+                attachFragment(_draft.entries[index], field, fragment),
+              )
+              .copyWith(unpaired: rest),
+        NewEntryFromFragment() => _draft.copyWith(
+          entries: [..._draft.entries, entryFromFragment(fragment)],
+          unpaired: rest,
+        ),
+      };
+      // With the last flag fixed, the "확인 필요" filter would show nothing.
+      if (_draft.needsReviewCount == 0) _onlyFlagged = false;
+    });
+  }
+
+  /// "높음 전체 승인": confirms the entries whose pairings are all high.
+  void _approveHigh() => setState(() => _draft = approveHighConfidence(_draft));
 
   SaveTarget _defaultTarget(List<ShelfItem> shelf) => shelf.isNotEmpty
       ? ExistingTextbook(shelf.last.textbook)
@@ -183,11 +246,16 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
             sliver: SliverToBoxAdapter(
               child: _Summary(
                 draft: _draft,
-                templateLabel: _template?.label ?? _draft.templateId,
+                templateLabel: _templateLabel,
                 sourceLabel: widget.sourceLabel,
                 target: target,
                 onEditMeta: _editMeta,
                 onChooseTarget: () => _chooseTarget(shelf),
+                onApproveHigh:
+                    _draft.isGeneral &&
+                        ref.watch(highConfidenceApprovalProvider)
+                    ? _approveHigh
+                    : null,
               ),
             ),
           ),
@@ -214,17 +282,29 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
             ),
           ),
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(
+            padding: EdgeInsets.fromLTRB(
               Space.gutter,
               Space.md,
               Space.gutter,
-              120,
+              _draft.unpaired.isEmpty ? 120 : Space.xl,
             ),
             sliver: SliverList.separated(
               itemCount: visible.length,
               separatorBuilder: (_, _) => const SizedBox(height: Space.sm),
               itemBuilder: (_, k) {
                 final i = visible[k];
+                if (entries[i].evidence != null) {
+                  return EvidenceEntryTile(
+                    key: ValueKey('general-$i'),
+                    index: i,
+                    entry: entries[i],
+                    onEdit: () => _edit(i),
+                    onToggle: (v) => _toggle(i, v),
+                    onShowEvidence: (field) => _showEvidence(i, field),
+                    onPickCandidate: (field, value) =>
+                        _pickCandidate(i, field, value),
+                  );
+                }
                 return EntryTile(
                   key: ValueKey('entry-${entries[i].no}-$i'),
                   entry: entries[i],
@@ -235,6 +315,21 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
               },
             ),
           ),
+          if (_draft.unpaired.isNotEmpty)
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(
+                Space.gutter,
+                0,
+                Space.gutter,
+                120,
+              ),
+              sliver: SliverToBoxAdapter(
+                child: FragmentTray(
+                  fragments: _draft.unpaired,
+                  onTap: _useFragment,
+                ),
+              ),
+            ),
         ],
       ),
       bottomNavigationBar: SafeArea(
@@ -301,6 +396,7 @@ class _Summary extends StatelessWidget {
     required this.target,
     required this.onEditMeta,
     required this.onChooseTarget,
+    this.onApproveHigh,
   });
 
   final CaptureDraft draft;
@@ -309,6 +405,9 @@ class _Summary extends StatelessWidget {
   final SaveTarget target;
   final VoidCallback onEditMeta;
   final VoidCallback onChooseTarget;
+
+  /// "높음 전체 승인"; null hides the button (switched off, or a template page).
+  final VoidCallback? onApproveHigh;
 
   @override
   Widget build(BuildContext context) {
@@ -355,6 +454,14 @@ class _Summary extends StatelessWidget {
             const SizedBox(height: Space.sm),
             const _ColumnScaleNotice(),
           ],
+          if (draft.isGeneral) ...[
+            const SizedBox(height: Space.sm),
+            Text(
+              draft.route!.summary,
+              key: const ValueKey('route-summary'),
+              style: context.text.bodySmall?.copyWith(color: t.ink2),
+            ),
+          ],
           const SizedBox(height: Space.md),
           Wrap(
             spacing: Space.sm,
@@ -377,8 +484,25 @@ class _Summary extends StatelessWidget {
                   background: t.okBg,
                   foreground: t.ok,
                 ),
+              if (draft.skippedKnown.isNotEmpty)
+                Tooltip(
+                  message: draft.skippedKnown.join(', '),
+                  child: Pill(
+                    '이미 있는 단어 ${draft.skippedKnown.length}개 건너뜀',
+                    background: t.paper2,
+                    foreground: t.ink2,
+                  ),
+                ),
             ],
           ),
+          if (onApproveHigh != null) ...[
+            const SizedBox(height: Space.md),
+            OutlinedButton.icon(
+              onPressed: highConfidenceCount(draft) == 0 ? null : onApproveHigh,
+              icon: const Icon(Icons.done_all),
+              label: const Text('높음 전체 승인'),
+            ),
+          ],
           const Padding(
             padding: EdgeInsets.symmetric(vertical: Space.md),
             child: Divider(),

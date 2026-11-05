@@ -1,3 +1,4 @@
+import 'package:shiori_core/src/models/evidence.dart';
 import 'package:shiori_core/src/models/list_equality.dart';
 import 'package:shiori_core/src/models/part_of_speech.dart';
 
@@ -105,6 +106,7 @@ final class CapturedEntry {
     this.headwordCandidates = const [],
     this.included = true,
     this.ocrHeadword,
+    this.evidence,
   });
 
   /// Textbook word number (`0001`), or null when it could not be inferred.
@@ -127,6 +129,11 @@ final class CapturedEntry {
   /// The headword as the template read it, before any corrector ran. Lets a
   /// later corrector undo an earlier one. Null for entries made by hand.
   final String? ocrHeadword;
+
+  /// Where each cell came from and how sure its pairing is (general
+  /// extractor only; null for the row templates). Shown on the review
+  /// screen, never saved.
+  final EntryEvidence? evidence;
 
   /// The strongest flag on [field]: missing, then unverified, suspect,
   /// corrected (or picked by the learner), inferred.
@@ -173,6 +180,7 @@ final class CapturedEntry {
     List<String>? headwordCandidates,
     bool? included,
     Object? ocrHeadword = _unset,
+    Object? evidence = _unset,
   }) => CapturedEntry(
     no: identical(no, _unset) ? this.no : no as String?,
     headword: headword ?? this.headword,
@@ -188,6 +196,9 @@ final class CapturedEntry {
     ocrHeadword: identical(ocrHeadword, _unset)
         ? this.ocrHeadword
         : ocrHeadword as String?,
+    evidence: identical(evidence, _unset)
+        ? this.evidence
+        : evidence as EntryEvidence?,
   );
 
   CapturedEntry withIssue(EntryIssue issue) =>
@@ -219,6 +230,7 @@ final class CapturedEntry {
         for (final i in issues)
           if (!touched.contains(i.field)) i,
       ],
+      evidence: evidence?.checked(touched),
     );
   }
 
@@ -234,7 +246,8 @@ final class CapturedEntry {
       listEquals(other.issues, issues) &&
       listEquals(other.headwordCandidates, headwordCandidates) &&
       other.included == included &&
-      other.ocrHeadword == ocrHeadword;
+      other.ocrHeadword == ocrHeadword &&
+      other.evidence == evidence;
 
   @override
   int get hashCode => Object.hash(
@@ -248,6 +261,7 @@ final class CapturedEntry {
     Object.hashAll(headwordCandidates),
     included,
     ocrHeadword,
+    evidence,
   );
 
   @override

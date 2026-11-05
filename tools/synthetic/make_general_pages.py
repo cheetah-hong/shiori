@@ -16,6 +16,11 @@ give it layouts to work on, written as the two OCR passes a device would return 
   g04 warped     the list layout of make_pages.py on a curled page (row slope changing row by row)
                  with the next page's number column on the right
   g05 sidebar    a narrow side column of `漢字[かな] 뜻` lines beside sentences and translations
+  g06 paragraph  g02's kind of page with a four-line Korean explanation paragraph: the Korean pass
+                 reads its first two lines as one tall box and misses the other two, which the
+                 Japanese pass reads as dictionary words at 0.5 and 0.3; a word printed inside it
+                 (`学校[がっこう]`) is read by both passes; a small word box has a headword whose 口
+                 the Japanese pass read as katakana ロ
 
 OCR noise: each pass reads the other language's lines as low-confidence garbage, checkbox glyphs
 read as ロ 口 ■ □ (glued or spaced), marks over the print (a stray ✓ or ' by a meaning, a space
@@ -387,8 +392,55 @@ def page_g05() -> GPage:
     return p
 
 
+# ---------------------------------------------------------------- g06: a Korean paragraph read as Japanese
+
+G06_SENTENCES = [
+    ("兄は夜に紅茶を飲みます。", "형은 밤에 홍차를 마십니다.", ["兄", "夜", "紅茶", "飲む"]),
+    ("この部屋は静かです。", "이 방은 조용합니다.", ["部屋", "静か"]),
+]
+
+
+def page_g06() -> GPage:
+    """A pattern, a Korean paragraph the Japanese pass reads as words, a word box, sentences."""
+    p = GPage("g06", "paragraph", seed=106)
+    p.ko_line("문형 정리", 0.16, 0.050, h=0.020)
+    p.both("1", "1", 0.16, 0.100, 0.012, 0.018, 1.0, 1.0)
+    # a pattern, not a sentence: its words are placeholders
+    p.ja_line("〜が好きです。", 0.20, 0.100, per=mp.W_HEAD, h=0.022, c=0.5)
+    p.ko_line("~을(를) 좋아합니다.", 0.56, 0.104, h=0.016)
+    # the paragraph: the Korean pass reads its first two lines as one tall box
+    para = ("좋아하는 것을 말할 때는 예를 들어 学校[がっこう]처럼 조사 が를 씁니다. "
+            "이때 が 앞에는 좋아하는 대상이 옵니다.")
+    p.both(None, para, 0.16, 0.150, 0.43, 0.0135 * 2 + 0.006, c_ko=1.0)
+    # the word printed inside the first line: the Japanese pass reads it at full confidence
+    p.both("学校[がっこう]", None, 0.16 + 19 * mp.W_KO, 0.150, 9 * mp.W_KO, 0.0135, c_ja=1.0)
+    # the third line, missed by the Korean pass, read as dictionary words at the middle confidence
+    p.both("上手な木に気", None, 0.18, 0.1875, 6 * mp.W_KO, 0.0135, c_ja=0.5)
+    # the fourth line at the engine's lowest confidence
+    p.both("木気の上手", None, 0.22, 0.2125, 5 * mp.W_KO, 0.0135, c_ja=0.3)
+    p.word("学校", ["がっこう"], None)
+    # a word box: the headword's 口 read as katakana ロ
+    p.ko_line("단어", 0.16, 0.260, h=0.018)
+    p.ja_line("人ロ", 0.16, 0.300, per=mp.W_HEAD, h=0.022, c=1.0)
+    p.ko_line("인구", 0.50, 0.304, c=1.0)
+    p.word("人口", ["じんこう"], "인구")
+    p.ja_line("図書館", 0.16, 0.345, per=mp.W_HEAD, h=0.022, c=1.0)
+    p.ko_line("도서관", 0.50, 0.349, c=1.0)
+    p.word("図書館", ["としょかん"], "도서관")
+    y = 0.420
+    for k, (ja, ko, words) in enumerate(G06_SENTENCES):
+        p.both(str(k + 1), str(k + 1), 0.135, y + 0.003, 0.010, 0.014, 1.0, 1.0)
+        p.ja_line(ja, 0.16, y, c=1.0)
+        p.ko_line(ko, 0.56, y + 0.004, c=1.0)
+        p.sentence(words)
+        y += 0.065
+    p.both("61", "61", 0.88, 0.955, 0.025, 0.012, 1.0, 1.0)
+    p.ignore = ["〜", "문형 정리", "단어", "61", "この"]
+    return p
+
+
 PageBuilder = Callable[[], GPage]
-PAGES: tuple[PageBuilder, ...] = (page_g01, page_g02, page_g03, page_g04, page_g05)
+PAGES: tuple[PageBuilder, ...] = (page_g01, page_g02, page_g03, page_g04, page_g05, page_g06)
 
 
 # ---------------------------------------------------------------- dictionary facts (JMdict)
@@ -516,6 +568,19 @@ LEXICON: tuple[tuple[int, list[str], list[str], str, int, int | None, bool], ...
     (1486650, ["美味しい"], ["おいしい"], "adj-i", 4, None, True),
     (1355120, ["乗る"], ["のる"], "v5r vi", 5, 21, False),
     (1426370, ["昼寝"], ["ひるね"], "n vs vi", 5, 22, False),
+    # g06
+    (1277450, ["好き"], ["すき"], "adj-na n", 4, None, False),
+    (1353320, ["上手"], ["じょうず"], "adj-na n", 5, 12, False),
+    (1534520, ["木"], ["き"], "n", 5, 1, False),
+    (1221520, ["気"], ["き"], "n", 5, 1, False),
+    (1206730, ["学校"], ["がっこう"], "n", 5, 1, False),
+    (1367300, ["人口"], ["じんこう"], "n", 5, 1, False),
+    (1370420, ["図書館"], ["としょかん"], "n", 5, 5, False),
+    (1249900, ["兄"], ["あに"], "n", 5, 5, False),
+    (1536350, ["夜"], ["よる", "よ"], "n adv", 5, 2, False),
+    (1280770, ["紅茶"], ["こうちゃ"], "n", 5, 13, False),
+    (1499320, ["部屋"], ["へや"], "n", 5, 2, False),
+    (1381820, ["静か"], ["しずか"], "adj-na", 5, 5, False),
 )
 
 # Words whose Korean meaning does not follow the Sino-Korean reading (about half of them).

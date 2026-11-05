@@ -1736,6 +1736,190 @@
    "pri": 5,
    "nf": 22,
    "uk": false
+  },
+  {
+   "id": 1277450,
+   "kanji": [
+    "好き"
+   ],
+   "readings": [
+    "すき"
+   ],
+   "pos": [
+    "adj-na",
+    "n"
+   ],
+   "pri": 4,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 1353320,
+   "kanji": [
+    "上手"
+   ],
+   "readings": [
+    "じょうず"
+   ],
+   "pos": [
+    "adj-na",
+    "n"
+   ],
+   "pri": 5,
+   "nf": 12,
+   "uk": false
+  },
+  {
+   "id": 1534520,
+   "kanji": [
+    "木"
+   ],
+   "readings": [
+    "き"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 1,
+   "uk": false
+  },
+  {
+   "id": 1221520,
+   "kanji": [
+    "気"
+   ],
+   "readings": [
+    "き"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 1,
+   "uk": false
+  },
+  {
+   "id": 1206730,
+   "kanji": [
+    "学校"
+   ],
+   "readings": [
+    "がっこう"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 1,
+   "uk": false
+  },
+  {
+   "id": 1367300,
+   "kanji": [
+    "人口"
+   ],
+   "readings": [
+    "じんこう"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 1,
+   "uk": false
+  },
+  {
+   "id": 1370420,
+   "kanji": [
+    "図書館"
+   ],
+   "readings": [
+    "としょかん"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 5,
+   "uk": false
+  },
+  {
+   "id": 1249900,
+   "kanji": [
+    "兄"
+   ],
+   "readings": [
+    "あに"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 5,
+   "uk": false
+  },
+  {
+   "id": 1536350,
+   "kanji": [
+    "夜"
+   ],
+   "readings": [
+    "よる",
+    "よ"
+   ],
+   "pos": [
+    "n",
+    "adv"
+   ],
+   "pri": 5,
+   "nf": 2,
+   "uk": false
+  },
+  {
+   "id": 1280770,
+   "kanji": [
+    "紅茶"
+   ],
+   "readings": [
+    "こうちゃ"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 13,
+   "uk": false
+  },
+  {
+   "id": 1499320,
+   "kanji": [
+    "部屋"
+   ],
+   "readings": [
+    "へや"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 2,
+   "uk": false
+  },
+  {
+   "id": 1381820,
+   "kanji": [
+    "静か"
+   ],
+   "readings": [
+    "しずか"
+   ],
+   "pos": [
+    "adj-na"
+   ],
+   "pri": 5,
+   "nf": 5,
+   "uk": false
   }
  ]
 }

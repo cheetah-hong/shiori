@@ -82,9 +82,13 @@ Widget app(TestBlocks blocks, {List<Override> extra = const []}) =>
       child: const ShioriApp(),
     );
 
-Widget screen(TestBlocks blocks, Widget child) => ProviderScope(
+Widget screen(
+  TestBlocks blocks,
+  Widget child, {
+  List<Override> extra = const [],
+}) => ProviderScope(
   retry: _noRetry,
-  overrides: blocks.overrides,
+  overrides: [...blocks.overrides, ...extra],
   child: MaterialApp(theme: buildTheme(Brightness.light), home: child),
 );
 

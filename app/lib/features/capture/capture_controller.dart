@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,11 +26,19 @@ final class CaptureReady extends CaptureState {
     required this.draft,
     required this.image,
     required this.recognizerId,
+    this.scan,
+    this.photo,
   });
 
   final CaptureDraft draft;
   final PageImage image;
   final String recognizerId;
+
+  /// The OCR passes (the review screen draws them when there is no photo).
+  final OcrScan? scan;
+
+  /// The photo's bytes, kept for the evidence view after its file is gone.
+  final Uint8List? photo;
 }
 
 final class CaptureFailed extends CaptureState {
@@ -38,8 +47,33 @@ final class CaptureFailed extends CaptureState {
   final String message;
 }
 
-/// Photo (or sample) → `TextRecognizer` block → `CapturePipeline` → review
-/// draft.
+/// Reads a page photo's bytes for the review screen's evidence view; null
+/// when it cannot be read (the view then draws the OCR text instead).
+typedef PhotoReader = Future<Uint8List?> Function(PageImage image);
+
+/// Photos above this size are not kept for the evidence view (memory).
+const int maxKeptPhotoBytes = 24 * 1024 * 1024;
+
+/// Reads synchronously: a few megabytes once per page, while the reading
+/// overlay is up, and it completes in widget tests (no real I/O).
+Future<Uint8List?> _readPhotoFile(PageImage image) async {
+  try {
+    final file = File(image.path);
+    if (!file.existsSync() || file.lengthSync() > maxKeptPhotoBytes) {
+      return null;
+    }
+    return file.readAsBytesSync();
+  } on FileSystemException catch (e) {
+    debugPrint('photo for the evidence view: ${e.message}');
+    return null;
+  }
+}
+
+/// How the capture keeps the photo for the review screen. Tests override it.
+final photoReaderProvider = Provider<PhotoReader>((ref) => _readPhotoFile);
+
+/// Photo (or sample) → `TextRecognizer` block → `CaptureRouter` (row
+/// template or general extractor) → review draft.
 final class CaptureController extends Notifier<CaptureState> {
   @override
   CaptureState build() => const CaptureIdle();
@@ -50,7 +84,11 @@ final class CaptureController extends Notifier<CaptureState> {
       final image = await source.pick(origin);
       if (image == null || !ref.mounted) return; // cancelled
       try {
-        await _read(image, ref.read(textRecognizerProvider));
+        await _read(
+          image,
+          ref.read(textRecognizerProvider),
+          keepPhoto: ref.read(photoReaderProvider),
+        );
       } finally {
         await source.discard(image);
       }
@@ -75,16 +113,31 @@ final class CaptureController extends Notifier<CaptureState> {
 
   static void _ignore(Object _) {}
 
-  Future<void> _read(PageImage image, TextRecognizer recognizer) async {
+  /// Every headword in the library (hidden words too: the repository lists
+  /// them all), for the general extractor to skip.
+  Future<Set<String>> _knownHeadwords() async => {
+    for (final w in await ref.read(libraryRepositoryProvider).words())
+      w.headword,
+  };
+
+  Future<void> _read(
+    PageImage image,
+    TextRecognizer recognizer, {
+    PhotoReader? keepPhoto,
+  }) async {
     state = CaptureReading(image);
     try {
       final scan = await recognizer.recognize(image);
       if (!ref.mounted) return;
+      final photo = keepPhoto == null ? null : await keepPhoto(image);
+      if (!ref.mounted) return;
       await _dictionariesOpened();
       if (!ref.mounted) return;
-      final draft = await ref.read(capturePipelineProvider).fromScan(scan);
+      final draft = await ref
+          .read(captureRouterProvider)
+          .fromScan(scan, lookupKnown: _knownHeadwords);
       if (!ref.mounted) return;
-      state = draft.entries.isEmpty
+      state = draft.entries.isEmpty && draft.skippedKnown.isEmpty
           ? const CaptureFailed(
               '이 사진에서 단어를 찾지 못했어요. 페이지 전체가 똑바로 나오게 다시 찍어 주세요.',
             )
@@ -92,6 +145,8 @@ final class CaptureController extends Notifier<CaptureState> {
               draft: draft,
               image: image,
               recognizerId: recognizer.id,
+              scan: scan,
+              photo: photo,
             );
     } on TextRecognitionException catch (e) {
       if (ref.mounted) state = CaptureFailed(e.message);

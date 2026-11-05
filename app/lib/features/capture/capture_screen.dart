@@ -25,6 +25,8 @@ class CaptureScreen extends ConsumerWidget {
               draft: next.draft,
               sourceLabel: next.image.label,
               recognizerId: next.recognizerId,
+              scan: next.scan,
+              photo: next.photo,
             ),
           ),
         );
@@ -106,7 +108,7 @@ class CaptureScreen extends ConsumerWidget {
                     style: context.text.bodySmall?.copyWith(height: 1.5),
                   ),
                   const SizedBox(height: Space.md),
-                  for (final s in devSamples)
+                  for (final s in [...devSamples, ...generalDevSamples])
                     _SampleTile(
                       sample: s,
                       onTap: busy

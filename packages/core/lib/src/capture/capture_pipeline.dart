@@ -19,6 +19,7 @@ import 'package:shiori_core/src/models/ocr.dart';
 import 'package:shiori_core/src/ports/dictionary.dart';
 import 'package:shiori_core/src/ports/entry_corrector.dart';
 import 'package:shiori_core/src/ports/korean_glossary.dart';
+import 'package:shiori_core/src/ports/textbook_template.dart';
 
 /// OCR scan → line clean-up → template → corrector chain → review draft.
 ///
@@ -46,12 +47,26 @@ final class CapturePipeline {
   final List<EntryCorrector> correctors;
 
   /// Parses [scan] with the detected template, or with [templateId] when given.
-  Future<CaptureDraft> fromScan(OcrScan scan, {String? templateId}) async {
+  Future<CaptureDraft> fromScan(OcrScan scan, {String? templateId}) =>
+      finish(scan, attempt(scan, templateId: templateId));
+
+  /// The template's raw rows for [scan], before any corrector: what the
+  /// router measures to decide whether the template fits the page.
+  TemplateAttempt attempt(OcrScan scan, {String? templateId}) {
     final prepared = prepareScan(scan);
     final template =
         (templateId == null ? null : templates.byId(templateId)) ??
         templates.detect(prepared);
-    final result = template.parse(prepared);
+    return TemplateAttempt(
+      prepared: prepared,
+      template: template,
+      result: template.parse(prepared),
+    );
+  }
+
+  /// Runs the correctors over [attempt]'s rows: the review draft.
+  Future<CaptureDraft> finish(OcrScan scan, TemplateAttempt attempt) async {
+    final result = attempt.result;
     final entries = <CapturedEntry>[];
     for (final raw in result.entries) {
       var entry = raw;
@@ -61,13 +76,27 @@ final class CapturePipeline {
       entries.add(entry);
     }
     return CaptureDraft(
-      templateId: template.id,
+      templateId: attempt.template.id,
       meta: result.meta,
       entries: List.unmodifiable(entries),
       recognitionTime: scan.elapsed,
       columnScale: result.columnScale,
     );
   }
+}
+
+/// A page parsed by a template, before the correctors.
+final class TemplateAttempt {
+  const TemplateAttempt({
+    required this.prepared,
+    required this.template,
+    required this.result,
+  });
+
+  /// The scan after line clean-up (`prepareScan`).
+  final OcrScan prepared;
+  final TextbookTemplate template;
+  final TemplateResult result;
 }
 
 /// Order matters: fix glyphs first (the POS guess needs the fixed headword),
