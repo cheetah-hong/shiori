@@ -1,5 +1,6 @@
 import 'package:shiori_core/src/models/capture_draft.dart';
 import 'package:shiori_core/src/models/captured_entry.dart';
+import 'package:shiori_core/src/models/column_scale.dart';
 import 'package:shiori_core/src/models/ocr.dart';
 
 /// Block slot: knows the layout of one kind of textbook page.
@@ -25,8 +26,15 @@ abstract interface class TextbookTemplate {
 }
 
 final class TemplateResult {
-  const TemplateResult({required this.entries, required this.meta});
+  const TemplateResult({
+    required this.entries,
+    required this.meta,
+    this.columnScale,
+  });
 
   final List<CapturedEntry> entries;
   final PageMeta meta;
+
+  /// How the columns were scaled; null for a layout that does not measure them.
+  final ColumnScale? columnScale;
 }

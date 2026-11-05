@@ -61,21 +61,10 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     if (edited != null && mounted) _replace(index, edited);
   }
 
-  /// A dictionary candidate fills the empty headword; the cell shows as fixed.
-  void _pick(int index, String headword) {
-    final entry = _draft.entries[index];
-    _replace(
-      index,
-      entry
-          .edit(headword: headword)
-          .withIssue(
-            EntryIssue.corrected(
-              EntryField.headword,
-              note: pickedCandidateNote(headword),
-            ),
-          ),
-    );
-  }
+  /// A dictionary candidate fills the empty headword; the cell shows as fixed
+  /// by the learner (not counted as an automatic fix).
+  void _pick(int index, String headword) =>
+      _replace(index, pickHeadword(_draft.entries[index], headword));
 
   void _toggle(int index, bool included) =>
       _replace(index, _draft.entries[index].copyWith(included: included));
@@ -362,6 +351,10 @@ class _Summary extends StatelessWidget {
             ].join(' · '),
             style: context.text.bodySmall,
           ),
+          if (draft.columnScale?.isDefault ?? false) ...[
+            const SizedBox(height: Space.sm),
+            const _ColumnScaleNotice(),
+          ],
           const SizedBox(height: Space.md),
           Wrap(
             spacing: Space.sm,
@@ -417,6 +410,31 @@ class _Summary extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// The page's columns were read at the default frame (not measured), so cells
+/// may have landed in the wrong column.
+class _ColumnScaleNotice extends StatelessWidget {
+  const _ColumnScaleNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Row(
+      key: const ValueKey('column-scale-notice'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.info_outline, size: 16, color: t.warn),
+        const SizedBox(width: Space.xs),
+        Expanded(
+          child: Text(
+            '칸 위치를 재지 못해 기본값으로 읽었어요. 칸이 어긋났을 수 있어요.',
+            style: context.text.bodySmall?.copyWith(color: t.warn),
+          ),
+        ),
+      ],
     );
   }
 }

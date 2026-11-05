@@ -72,9 +72,13 @@ void main() {
     await tapText(tester, 'DAY 01 자연, 몸');
     await waitFor(tester, find.widgetWithText(ActionChip, '空'));
     await shot(tester, '19_review_candidates');
+    expect(find.text('자동 보정 1'), findsOneWidget);
     await tester.tap(find.widgetWithText(ActionChip, '日'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('mark-headword-corrected')), findsWidgets);
+    // A picked candidate is the learner's choice, not an automatic fix.
+    expect(find.text('자동 보정 1'), findsOneWidget);
+    expect(find.text('직접 고름 → 日'), findsOneWidget);
     await shot(tester, '20_review_candidate_picked');
   });
 }

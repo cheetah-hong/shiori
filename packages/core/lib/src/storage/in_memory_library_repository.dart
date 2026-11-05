@@ -84,6 +84,26 @@ final class InMemoryLibraryRepository implements LibraryRepository {
   Future<Word?> word(String id) => _tx.run(() => _words[id]);
 
   @override
+  Future<List<TextbookStats>> textbookStats() => _tx.run(() {
+    final counts = <String, int>{};
+    final days = <String, Set<int>>{};
+    for (final w in _words.values) {
+      counts[w.textbookId] = (counts[w.textbookId] ?? 0) + 1;
+      if (w.day case final day?) (days[w.textbookId] ??= {}).add(day);
+    }
+    return List<TextbookStats>.unmodifiable([
+      for (final t in _sortedTextbooks())
+        TextbookStats(
+          textbook: t,
+          wordCount: counts[t.id] ?? 0,
+          days: List.unmodifiable(
+            (days[t.id] ?? const <int>{}).toList()..sort(),
+          ),
+        ),
+    ]);
+  });
+
+  @override
   Future<void> saveWords(List<Word> words) => _tx.run(() {
     for (final w in words) {
       _words[w.id] = w;

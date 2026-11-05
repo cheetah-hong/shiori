@@ -6,6 +6,7 @@ library;
 // Models
 export 'src/models/capture_draft.dart';
 export 'src/models/captured_entry.dart';
+export 'src/models/column_scale.dart';
 export 'src/models/library.dart';
 export 'src/models/ocr.dart';
 export 'src/models/page_image.dart';
@@ -36,6 +37,7 @@ export 'src/capture/correctors/missing_field_flagger.dart';
 export 'src/capture/correctors/pos_inference_corrector.dart';
 export 'src/capture/correctors/reading_lookalike_corrector.dart';
 export 'src/capture/fixture_text_recognizer.dart';
+export 'src/capture/learner_edits.dart';
 export 'src/capture/vocab/entry_template.dart';
 export 'src/capture/vocab/list_template.dart';
 export 'src/capture/template_registry.dart';

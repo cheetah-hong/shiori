@@ -19,18 +19,18 @@
 | 항목 | 명령 | 결과 |
 |---|---|---|
 | core 정적 분석 | `cd packages/core && dart analyze` | 문제 없음 |
-| core 테스트 | `cd packages/core && dart test` | **264개 통과**, 교재 세트 11개 건너뜀 (8절 반영 뒤) |
-| core 테스트 (교재 세트 포함) | `SHIORI_PRIVATE_DIR=<로컬 폴더> dart test` | **277개 통과** |
-| core 커버리지 | `dart run coverage:test_with_coverage -o coverage` | 줄 커버리지 **98.3%** (교재 세트 없이) |
+| core 테스트 | `cd packages/core && dart test` | **295개 통과**, 교재 세트 11개 건너뜀 (9절 반영 뒤) |
+| core 테스트 (교재 세트 포함) | `SHIORI_PRIVATE_DIR=<로컬 폴더> dart test` | **308개 통과** |
+| core 커버리지 | `dart run coverage:test_with_coverage -o coverage` | 줄 커버리지 **97.8%** (교재 세트 없이. `InMemoryLibraryRepository.textbookStats`는 저장 패키지의 계약 테스트가 돌려서 core 숫자에는 안 잡힘) |
 | 사전 패키지 | `cd packages/dict_jmdict && dart analyze && dart test` | 문제 없음, **63개 통과** (테스트 DB 103개 항목) |
 | 사전 블록 (어댑터) | `cd packages/jmdict_block && dart analyze && dart test` | 문제 없음, **19개 통과** (8절) |
 | 사전 asset 스크립트 | `python3 -m unittest discover -s tools/dict -p 'test_*.py'` | **6개 통과** (네트워크 없음) |
-| 저장 패키지 | `cd packages/storage_drift && dart analyze && dart test` | 문제 없음, **58개 통과** (7절) |
+| 저장 패키지 | `cd packages/storage_drift && dart analyze && dart test` | 문제 없음, **72개 통과** (7절, 9절) |
 | app 정적 분석 | `cd app && flutter analyze` | 문제 없음 |
-| app 테스트 | `cd app && flutter test` | **64개 통과** (사전 asset 있음·없음 둘 다) |
+| app 테스트 | `cd app && flutter test` | **73개 통과** (사전 asset 있음·없음 둘 다) |
 | iOS 채널 순수 로직 | `cd app/ios && xcodebuild test -workspace Runner.xcworkspace -scheme Runner -destination 'id=<시뮬레이터>' -only-testing:RunnerTests` | **6개 통과** (회전 투표·가로세로 바꿈·방향 합성·이진화 크기, 6.4절) |
 | Android 채널 순수 로직 | `cd app/android && ./gradlew :app:testDebugUnitTest` (JDK 21) | **11개 통과** (조각 자르기·회전·상자 없는 글자, 6.5절) |
-| app 커버리지 | `flutter test --coverage` | 줄 커버리지 **89.9%** |
+| app 커버리지 | `flutter test --coverage` | 줄 커버리지 **91.6%** (1730/1888줄, 9절 반영 뒤 다시 잼. 반영 전 같은 방법으로 91.5%) |
 | iOS 흐름 | `flutter drive ... integration_test/flow_screenshots_test.dart` | 통과, 스크린샷 15장 (3절, 시뮬레이터 디버그 빌드) |
 | Android 빌드 | `flutter build apk --debug` | 성공 (Kotlin ML Kit 채널 컴파일, 디버그 APK 약 186MB = 177MiB, 빌드 환경에 따라 조금 다름) |
 | 합성 세트 점수표 | `cd packages/core && dart run tool/eval_capture.dart` | 30/35, 기준 구현과 다른 칸 0개 (2.1절) |
@@ -411,6 +411,7 @@ ML Kit는 ★ 30개 중 13개를 출력하지 않습니다(조각 판독에서 �
 | Android 빌드 | `flutter build apk --debug` | 성공, APK에 `libsqlite3.so`(arm64-v8a·armeabi-v7a·x86_64) 포함 |
 
 계약 테스트(`packages/storage_drift/test/contract/repository_contract.dart`)는 한 벌의 테스트를 InMemory와 drift에 똑같이 돌립니다.
+홈 교재 목록용 읽기 `LibraryRepository.textbookStats()`(교재별 단어 수·DAY 목록)도 같은 계약으로 지킵니다. drift는 `textbooks LEFT JOIN words GROUP BY 교재, DAY` 쿼리 한 번입니다(9절).
 core의 일반 의존성에 `test`를 넣지 않으려고(앱까지 따라 들어가 `flutter_test`의 고정 버전과 부딪힘) 저장 패키지의 테스트 폴더에 두었습니다.
 
 ### 7.4 iOS 시뮬레이터: 껐다 켜도 남는지
@@ -491,3 +492,50 @@ xcrun simctl launch <시뮬레이터> com.nihongoapp.shiori && xcrun simctl io <
 | iOS 시뮬레이터 (iPhone 17 Pro) | asset 없음: 앱이 뜨고 정보 화면에 "사전 데이터가 들어 있지 않아요". asset 있음: 첫 실행에 풀고 후보 칩·정보 화면 동작 (`integration_test/dictionary_screenshots_test.dart`) |
 | 스크린샷 | `docs/screenshots/18_about_dictionary.png`, `19_review_candidates.png`, `20_review_candidate_picked.png` |
 | 배포 빌드 | 사전 asset이 없으면 Gradle `preReleaseBuild`와 iOS 셸 단계가 멈춤(dev_samples 검사와 같은 자리) |
+
+## 9. 캡처·검토 정리 (2026-11-05)
+
+해석기의 칸 규칙과 회귀 점수는 그대로 두고, 기록·표시·집계만 바꿨습니다. 저장 스키마는 그대로입니다(`schemaVersion = 1`, 생성 코드 변화 없음).
+
+### 9.1 바꾼 것
+
+| 자리 | 내용 |
+|---|---|
+| 칸 배율 기록 | `columnScale(...)`이 값과 함께 **어떻게 정했는지**를 돌려줍니다: `ColumnScale(value, source)`, `ColumnScaleSource { reading, badge, tooFewRows, outOfRange }`, `isDefault`(뒤 둘). 값은 전과 같습니다. 읽기 열로 잰 값이 0.6~1.8 밖이면 배지 열을 다시 재지 않고 1.0(`outOfRange`)인 동작도 그대로입니다 |
+| 쪽 단위 전달 | 두 템플릿 → `TemplateResult.columnScale` → `CaptureDraft.columnScale`(`copyWith`·`replaceEntry`·`==`에서 유지, 메모리에만 있고 저장하지 않음). 재지 않는 템플릿이면 null |
+| 검토 화면 안내 | 배율이 기본값으로 넘어간 쪽은 요약 카드에 한 줄: "칸 위치를 재지 못해 기본값으로 읽었어요. 칸이 어긋났을 수 있어요." 항목마다 표시는 붙이지 않습니다 |
+| 체크박스 잡음 "의심" | `ConfusableGlyphCorrector`의 가타카나 덩어리 검사(8.1절)는 그대로, 테스트만 붙였습니다(`到着ロロ` 의심, `アメリカ人` 이슈 없음, `タ日` → `夕日` 고침, 한자 없는 `ロロロ` 그대로) |
+| 고치기 | core `applyLearnerEdits`로 옮겼습니다. 저장하면 그 항목의 **모든 칸**에서 "의심"(`suspect`)·"사전에 없음"(`unverified`)을 지웁니다(값이 그대로여도, 학습자가 보고 확인함). 바꾼 칸은 모든 표시를 지웁니다. 바꾸지 않은 칸의 "고침"·"추정"은 남습니다. 빈 칸은 다시 "없음"이 됩니다. 8.1절의 "표제어만" 규칙을 모든 칸으로 넓힌 것입니다 |
+| 학습자가 고른 후보 | 새 이슈 종류 `IssueKind.picked`(코드 `headword:picked`, `pickHeadword`). 칸 표시는 전처럼 "고침"(`statusOf`는 `corrected`와 같게), 위쪽 배지는 "직접 고름 → X". **"자동 보정 N"(`correctedCount`)에는 들어가지 않습니다.** `needsReview`와 저장(`saveDraft`)은 전과 같습니다 |
+| ★ 추정 표시 | 검토 화면의 ★ 옆에도 칸 표시를 그립니다. `important:inferred`(★ 칸 픽셀 검사로 되찾은 ★)이면 회색 "추정" |
+| 홈 교재 목록 | `LibraryRepository.textbookStats()` → `TextbookStats(textbook, wordCount, days)`, 교재 순서는 `textbooks()`와 같음. drift는 `textbooks LEFT JOIN words GROUP BY 교재, DAY` 쿼리 한 번(단어 없는 교재도 0으로 한 줄). `shelfProvider`는 이것만 부르고, 교재마다 `words()`를 부르던 것은 없앴습니다 |
+
+### 9.2 테스트
+
+| 묶음 | 파일 | 내용 |
+|---|---|---|
+| 배율 기록 | `packages/core/test/capture/column_scale_source_test.dart` | 사진(읽기 열, 약 0.96)·읽기 없음(배지 열)·번호 1개(기본값, 행 모자람)·읽기 열이 기준의 2배(기본값, 범위 밖)·1.5배(잼). 합성 6쪽(`s010`·`s011`·`s140`·`s147`, ML Kit형 `m011`·`m140`)은 기본값이 아니고 값이 전과 같음(1e-12). 번호만 있는 작은 쪽은 두 템플릿 모두 기본값 기록. `copyWith` 유지 |
+| 의심 표시 | `packages/core/test/capture/correctors_test.dart` | 위 4가지 |
+| 고르기·고치기 | `packages/core/test/capture/learner_edits_test.dart` | 고른 후보는 자동 보정 수에 안 들어감, 확인 필요 아님, 저장됨. 고치기 규칙 8가지 |
+| 저장소 계약 | `packages/storage_drift/test/contract/repository_contract.dart` | `textbookStats` 7개 × InMemory·drift: 빈 결과, 교재 순서(같은 시각이면 id), 단어 수(0 포함), DAY 중복 없이 오름차순·DAY 없는 단어는 수에만, `words()`와 같음, 바꿀 수 없는 목록, 트랜잭션 안에서 자기 쓰기를 봄 |
+| 홈 | `app/test/app/shelf_provider_test.dart` | 세는 가짜 저장소로 `words()` 0번·`textbookStats()` 1번, 홈 카드의 단어 수·DAY 표시 |
+| 검토 화면 | `app/test/features/review_marks_test.dart` | 바꾸지 않고 고치기 → 뜻 "의심" 사라지고 확인 필요 1 줄어듦, 후보를 골라도 "자동 보정 1" 그대로, ★ "추정", 쪽 안내(기본값 둘은 보임, 잰 쪽·재지 않은 쪽은 안 보임) |
+
+### 9.3 점수
+
+| 세트 | 결과 |
+|---|---|
+| 합성 (Vision형) | 30/35, 기준 구현과 다른 칸 0개 (전과 같음) |
+| 합성 (ML Kit형) | 14/18 (전과 같음) |
+| 교재 Vision (로컬) | 52/59, ★ 보조 54/59, 기준 구현과 다른 칸 0개 (전과 같음) |
+| 교재 ML Kit 조각 (로컬) | 38/59 (전과 같음) |
+| 배율이 기본값으로 넘어간 쪽 | 합성 6쪽 0쪽(0.98~1.02). 교재 5쪽: Vision 0쪽(0.98~1.03), ML Kit 조각 0쪽(0.97~1.04), 페이지만 자른 좌표 0쪽(1.12~1.37) |
+
+### 9.4 화면 확인
+
+| 항목 | 방법 | 결과 |
+|---|---|---|
+| 후보를 골라도 "자동 보정" 수 그대로 | iOS 시뮬레이터 iPhone 17 Pro, 합성 샘플 DAY 01(`integration_test/dictionary_screenshots_test.dart`, 사전 asset 있음) | 고르기 전후 모두 "자동 보정 1", 고른 줄은 "직접 고름 → 日"·칸 "고침". `docs/screenshots/20_review_candidate_picked.png`를 다시 찍음(전에는 "자동 보정 2") |
+| 홈 교재 목록 (drift 쿼리) | 같은 시뮬레이터, 실제 DB 파일로 저장 → 앱 끄기 → 다시 켜기(`integration_test/persistence_test.dart`) | 통과, 스크린샷 16은 전과 같음 |
+| 바꾸지 않고 고치기로 "의심" 지우기, ★ "추정", 쪽 안내 | 위젯 테스트(`review_marks_test.dart`) | 합성 샘플에는 뜻 "의심"·★ 추정·기본값 배율 쪽이 없어서(6쪽 모두 0.98~1.02) 시뮬레이터 대신 위젯 테스트로 확인 |
+| Android 빌드 | `flutter build apk --debug` | 성공 |

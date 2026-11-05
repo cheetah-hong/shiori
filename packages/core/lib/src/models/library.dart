@@ -131,3 +131,33 @@ final class Word {
   @override
   String toString() => 'Word($id $headword)';
 }
+
+/// A textbook with how many words it holds and the days they are on, for the
+/// shelf. Words without a day count but add no day.
+final class TextbookStats {
+  const TextbookStats({
+    required this.textbook,
+    required this.wordCount,
+    required this.days,
+  });
+
+  final Textbook textbook;
+  final int wordCount;
+
+  /// Day numbers, each once, ascending.
+  final List<int> days;
+
+  @override
+  bool operator ==(Object other) =>
+      other is TextbookStats &&
+      other.textbook == textbook &&
+      other.wordCount == wordCount &&
+      listEquals(other.days, days);
+
+  @override
+  int get hashCode => Object.hash(textbook, wordCount, Object.hashAll(days));
+
+  @override
+  String toString() =>
+      'TextbookStats(${textbook.id}, words: $wordCount, days: $days)';
+}

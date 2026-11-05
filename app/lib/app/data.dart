@@ -34,20 +34,13 @@ final class ShelfItem {
   final List<int> days;
 }
 
+/// Every textbook with its word count and days, in one storage read.
 final shelfProvider = FutureProvider<List<ShelfItem>>((ref) async {
   ref.watch(dataRevisionProvider);
-  final library = ref.watch(libraryRepositoryProvider);
-  final textbooks = await library.textbooks();
-  final words = await Future.wait([
-    for (final t in textbooks) library.words(textbookId: t.id),
-  ]);
+  final stats = await ref.watch(libraryRepositoryProvider).textbookStats();
   return [
-    for (final (i, t) in textbooks.indexed)
-      ShelfItem(
-        textbook: t,
-        wordCount: words[i].length,
-        days: {for (final w in words[i]) ?w.day}.toList()..sort(),
-      ),
+    for (final s in stats)
+      ShelfItem(textbook: s.textbook, wordCount: s.wordCount, days: s.days),
   ];
 });
 

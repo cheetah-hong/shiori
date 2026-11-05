@@ -62,6 +62,7 @@ final class CapturePipeline {
       meta: result.meta,
       entries: List.unmodifiable(entries),
       recognitionTime: scan.elapsed,
+      columnScale: result.columnScale,
     );
   }
 }

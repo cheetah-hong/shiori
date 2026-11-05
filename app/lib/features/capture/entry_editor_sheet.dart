@@ -60,41 +60,23 @@ class _EntryEditorSheetState extends State<EntryEditorSheet> {
     super.dispose();
   }
 
-  /// Applies only the fields the learner changed, so only their flags clear.
+  /// Pressing 고치기: changed cells lose their flags, and looking at the entry
+  /// confirms "의심" and "사전에 없음" on every cell (see [applyLearnerEdits]).
   CapturedEntry _result() {
-    final headword = _headword.text.trim();
-    final readings = parseReadingInput(_readings.text);
-    final meaning = _meaning.text.trim();
     final exJa = _exampleJa.text.trim();
-    final example = exJa.isEmpty
-        ? null
-        : Example(ja: exJa, ko: _exampleKo.text.trim());
-    var e = _e;
-    // Pressing 고치기 confirms a headword flagged as "사전에 없음" or suspect,
-    // even unchanged (a real word the dictionary lacks, or a reading slip).
-    if (headword != _e.headword || _flagsHeadword(_e)) {
-      e = e.edit(headword: headword);
-    }
-    if (readings.join('/') != _e.readings.join('/')) {
-      e = e.edit(readings: readings);
-    }
-    if (_pos != _e.pos) e = e.edit(pos: _pos);
-    if (meaning != _e.meaning) e = e.edit(meaning: meaning);
-    if (_important != _e.important) e = e.edit(important: _important);
-    // Pressing 고치기 confirms the example, including "this word has none".
-    if (_showExample &&
-        (example != _e.example ||
-            _e.statusOf(EntryField.example) == FieldStatus.needsReview)) {
-      e = e.edit(example: example);
-    }
-    // A cell the learner emptied is flagged again.
-    return flagMissingFields(e);
+    return applyLearnerEdits(
+      _e,
+      headword: _headword.text.trim(),
+      readings: parseReadingInput(_readings.text),
+      pos: _pos,
+      meaning: _meaning.text.trim(),
+      important: _important,
+      example: exJa.isEmpty
+          ? null
+          : Example(ja: exJa, ko: _exampleKo.text.trim()),
+      checksExample: _showExample,
+    );
   }
-
-  static bool _flagsHeadword(CapturedEntry e) => const {
-    FieldStatus.unverified,
-    FieldStatus.suspect,
-  }.contains(e.statusOf(EntryField.headword));
 
   bool get _showExample =>
       _e.example != null || _e.statusOf(EntryField.example) != FieldStatus.ok;

@@ -16,6 +16,7 @@ import 'package:shiori_core/src/capture/vocab/page_meta.dart';
 import 'package:shiori_core/src/capture/text/chars.dart';
 import 'package:shiori_core/src/capture/text/py.dart';
 import 'package:shiori_core/src/models/captured_entry.dart';
+import 'package:shiori_core/src/models/column_scale.dart';
 import 'package:shiori_core/src/models/ocr.dart';
 import 'package:shiori_core/src/ports/textbook_template.dart';
 
@@ -36,10 +37,20 @@ final class EntryPageTemplate implements TextbookTemplate {
       detectLayout(scan) == PageLayout.entry ? 1.0 : 0.0;
 
   @override
-  TemplateResult parse(OcrScan scan) => TemplateResult(
-    entries: List.unmodifiable(_parseEntries(scan)),
-    meta: readPageMeta(scan),
-  );
+  TemplateResult parse(OcrScan scan) {
+    final read = findAnchors(scan.japanese.lines);
+    final scale = columnScale(
+      anchors: read,
+      ja: scan.japanese.lines,
+      ko: scan.korean.lines,
+      shape: entryRow,
+    );
+    return TemplateResult(
+      entries: List.unmodifiable(_parseEntries(scan, read, scale)),
+      meta: readPageMeta(scan),
+      columnScale: scale,
+    );
+  }
 }
 
 final RegExp _bracketStart = RegExp(r'^[\[【]');
@@ -135,16 +146,17 @@ const double _sameRow = 0.035;
 const double _numberAboveRow = 0.018;
 const double _numberNear = 0.03;
 
-List<CapturedEntry> _parseEntries(OcrScan scan) {
+List<CapturedEntry> _parseEntries(
+  OcrScan scan,
+  List<Anchor> read,
+  ColumnScale scale,
+) {
   final ja = scan.japanese.lines;
   final ko = scan.korean.lines;
-  final read = findAnchors(ja);
   if (read.isEmpty) return const [];
   // Column offsets from the number (x = ax) on the photos they were set on,
   // times the page's measured column scale (rule 6).
-  final cols = _Cols(
-    columnScale(anchors: read, ja: ja, ko: ko, shape: entryRow),
-  );
+  final cols = _Cols(scale.value);
   final anchors = _withRowAnchors(ja, read, cols);
 
   // The neighbouring page shows up left of the leftmost number.

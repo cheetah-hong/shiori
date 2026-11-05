@@ -1,4 +1,5 @@
 import 'package:shiori_core/src/models/captured_entry.dart';
+import 'package:shiori_core/src/models/column_scale.dart';
 
 /// Where a page sits in the textbook: `DAY 01 자연, 몸`, page 10.
 final class PageMeta {
@@ -37,6 +38,7 @@ final class CaptureDraft {
     required this.meta,
     required this.entries,
     this.recognitionTime = Duration.zero,
+    this.columnScale,
   });
 
   /// Id of the `TextbookTemplate` that parsed the page.
@@ -44,6 +46,10 @@ final class CaptureDraft {
   final PageMeta meta;
   final List<CapturedEntry> entries;
   final Duration recognitionTime;
+
+  /// How the template scaled the page's columns; null when it did not measure
+  /// them. A default scale means the columns may sit off on this page.
+  final ColumnScale? columnScale;
 
   int get needsReviewCount => entries.where((e) => e.needsReview).length;
   int get correctedCount => entries.where((e) => e.wasCorrected).length;
@@ -55,6 +61,7 @@ final class CaptureDraft {
         meta: meta ?? this.meta,
         entries: List.unmodifiable(entries ?? this.entries),
         recognitionTime: recognitionTime,
+        columnScale: columnScale,
       );
 
   @override
@@ -63,6 +70,7 @@ final class CaptureDraft {
         other.templateId != templateId ||
         other.meta != meta ||
         other.recognitionTime != recognitionTime ||
+        other.columnScale != columnScale ||
         other.entries.length != entries.length) {
       return false;
     }
@@ -73,8 +81,13 @@ final class CaptureDraft {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(templateId, meta, recognitionTime, Object.hashAll(entries));
+  int get hashCode => Object.hash(
+    templateId,
+    meta,
+    recognitionTime,
+    columnScale,
+    Object.hashAll(entries),
+  );
 
   /// Returns a new draft with the entry at [index] replaced.
   CaptureDraft replaceEntry(int index, CapturedEntry entry) => copyWith(

@@ -4,14 +4,12 @@ import 'package:shiori/shared/format.dart';
 import 'package:shiori/shared/widgets.dart';
 import 'package:shiori_core/shiori_core.dart';
 
-/// Note on a headword the learner took from the dictionary candidates.
-String pickedCandidateNote(String headword) => '직접 고름 → $headword';
-
 /// One captured word on the review screen.
 ///
 /// Each flagged cell carries a small mark: the red pen for "사전에 없음" (and
 /// the missing-cell highlight), amber "의심" for a cell that looks cut, green
-/// "고침" for a fixed cell, and a quiet grey "추정" for a guess. The left
+/// "고침" for a fixed cell (or one the learner picked), and a quiet grey
+/// "추정" for a guess, including a ★ found by the star check. The left
 /// margin follows the strongest of them; a guess alone leaves it clear.
 /// An unread headword offers the dictionary's candidates as chips.
 class EntryTile extends StatelessWidget {
@@ -46,6 +44,9 @@ class EntryTile extends StatelessWidget {
     final e = entry;
     final needsReview = e.needsReview;
     final headStatus = e.statusOf(EntryField.headword);
+    final picked = e.issues
+        .where((i) => i.kind == IssueKind.picked)
+        .firstOrNull;
     final corrections = e.issues
         .where((i) => i.kind == IssueKind.corrected)
         .toList();
@@ -103,6 +104,11 @@ class EntryTile extends StatelessWidget {
                                   style: TextStyle(color: t.pen, fontSize: 13),
                                 ),
                               ),
+                              if (FieldMark.of(e, EntryField.important)
+                                  case final mark?) ...[
+                                const SizedBox(width: Space.xs),
+                                mark,
+                              ],
                             ],
                             const Spacer(),
                             if (needsReview)
@@ -111,16 +117,18 @@ class EntryTile extends StatelessWidget {
                                 background: t.riskBg,
                                 foreground: t.risk,
                               )
-                            else if (corrections.isNotEmpty)
+                            else if (picked != null || corrections.isNotEmpty)
+                              // The learner's pick names the badge; the tooltip
+                              // still lists every automatic fix on the entry.
                               Tooltip(
-                                message: corrections
-                                    .map((c) => c.note ?? '')
-                                    .join('\n'),
+                                message: [
+                                  ?picked,
+                                  ...corrections,
+                                ].map((c) => c.note ?? '').join('\n'),
                                 child: Pill(
-                                  switch (corrections.first.note) {
-                                    final n? when n.startsWith('직접 고름') => n,
-                                    final n => '자동 보정 ${n ?? ''}',
-                                  },
+                                  picked != null
+                                      ? picked.note ?? '직접 고름'
+                                      : '자동 보정 ${corrections.first.note ?? ''}',
                                   background: t.okBg,
                                   foreground: t.ok,
                                 ),

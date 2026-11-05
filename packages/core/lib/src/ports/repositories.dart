@@ -22,6 +22,10 @@ abstract interface class LibraryRepository {
 
   Future<Word?> word(String id);
 
+  /// Every textbook (in the order of [textbooks]) with its word count and
+  /// days, in one read: the shelf does not list each textbook's words.
+  Future<List<TextbookStats>> textbookStats();
+
   /// Inserts or replaces by id.
   Future<void> saveWords(List<Word> words);
 

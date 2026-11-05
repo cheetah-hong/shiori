@@ -102,6 +102,45 @@ final class DriftLibraryRepository implements LibraryRepository {
     return row == null ? null : _word(row);
   }
 
+  /// One query: textbooks left-joined to their words, grouped by textbook and
+  /// day. A textbook without words comes back as one row counting 0.
+  @override
+  Future<List<TextbookStats>> textbookStats() async {
+    final t = _db.textbooks;
+    final w = _db.words;
+    final count = w.id.count();
+    final query =
+        _db.select(t).join([
+            leftOuterJoin(w, w.textbookId.equalsExp(t.id), useColumns: false),
+          ])
+          ..addColumns([w.day, count])
+          ..groupBy([t.id, w.day])
+          ..orderBy([
+            // Same order as textbooks(), then days ascending.
+            OrderingTerm.asc(t.createdAt),
+            OrderingTerm.asc(t.id),
+            OrderingTerm.asc(w.day, nulls: NullsOrder.last),
+          ]);
+    final books = <String, TextbookRow>{};
+    final counts = <String, int>{};
+    final days = <String, List<int>>{};
+    for (final row in await query.get()) {
+      final book = row.readTable(t);
+      final day = row.read(w.day);
+      books[book.id] = book;
+      counts[book.id] = (counts[book.id] ?? 0) + (row.read(count) ?? 0);
+      days[book.id] = [...?days[book.id], ?day];
+    }
+    return List.unmodifiable([
+      for (final book in books.values)
+        TextbookStats(
+          textbook: _textbook(book),
+          wordCount: counts[book.id] ?? 0,
+          days: List.unmodifiable(days[book.id] ?? const <int>[]),
+        ),
+    ]);
+  }
+
   /// Updates existing rows in place (`ON CONFLICT DO UPDATE`): a word is
   /// never deleted and re-inserted, so nothing tied to its id is lost.
   @override

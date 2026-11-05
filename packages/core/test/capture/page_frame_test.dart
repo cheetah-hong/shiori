@@ -175,7 +175,7 @@ void main() {
         ja: ja,
         ko: s.korean.lines,
         shape: listRow,
-      );
+      ).value;
     }
 
     test('is about 1 on the photo and 1/0.72 on a page crop', () async {
@@ -215,7 +215,7 @@ void main() {
           ja: const [],
           ko: const [],
           shape: entryRow,
-        ),
+        ).value,
         1.0,
       );
     });

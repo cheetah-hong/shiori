@@ -11,6 +11,7 @@ import 'package:shiori_core/src/capture/vocab/page_meta.dart';
 import 'package:shiori_core/src/capture/text/chars.dart';
 import 'package:shiori_core/src/capture/text/py.dart';
 import 'package:shiori_core/src/models/captured_entry.dart';
+import 'package:shiori_core/src/models/column_scale.dart';
 import 'package:shiori_core/src/models/ocr.dart';
 import 'package:shiori_core/src/ports/textbook_template.dart';
 
@@ -32,10 +33,23 @@ final class ListPageTemplate implements TextbookTemplate {
       detectLayout(scan) == PageLayout.list ? 1.0 : 0.0;
 
   @override
-  TemplateResult parse(OcrScan scan) => TemplateResult(
-    entries: List.unmodifiable(_parseRows(scan)),
-    meta: readPageMeta(scan),
-  );
+  TemplateResult parse(OcrScan scan) {
+    final anchors = [
+      for (final a in findAnchors(scan.japanese.lines))
+        if (a.no != null) a,
+    ];
+    final scale = columnScale(
+      anchors: anchors,
+      ja: scan.japanese.lines,
+      ko: scan.korean.lines,
+      shape: listRow,
+    );
+    return TemplateResult(
+      entries: List.unmodifiable(_parseRows(scan, anchors, scale)),
+      meta: readPageMeta(scan),
+      columnScale: scale,
+    );
+  }
 }
 
 /// Column offsets from the row's number (x = ax), as image-width fractions on
@@ -85,17 +99,15 @@ typedef _Row = ({
 /// Rows above and below whose badges a glued badge is compared with.
 const int _badgeRows = 3;
 
-List<CapturedEntry> _parseRows(OcrScan scan) {
+List<CapturedEntry> _parseRows(
+  OcrScan scan,
+  List<Anchor> anchors,
+  ColumnScale scale,
+) {
   final ja = scan.japanese.lines;
   final ko = scan.korean.lines;
-  final anchors = [
-    for (final a in findAnchors(ja))
-      if (a.no != null) a,
-  ];
   final gap = anchorGap(anchors) ?? 0.045;
-  final cols = _Cols(
-    columnScale(anchors: anchors, ja: ja, ko: ko, shape: listRow),
-  );
+  final cols = _Cols(scale.value);
   final clusters = _clusterByX(anchors, cols);
   return [
     for (final (i, cluster) in clusters.indexed)

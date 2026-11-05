@@ -22,6 +22,10 @@ enum IssueKind {
   /// The dictionary does not have the headword with its reading, and no
   /// look-alike glyph explains it. Shown as "사전에 없음"; counts as "확인 필요".
   unverified,
+
+  /// The learner chose the value (a dictionary candidate for an unread
+  /// headword). Shown like [corrected], but not counted as an automatic fix.
+  picked,
 }
 
 /// How the review screen should present a field.
@@ -42,6 +46,8 @@ final class EntryIssue {
 
   const EntryIssue.unverified(this.field, {this.note})
     : kind = IssueKind.unverified;
+
+  const EntryIssue.picked(this.field, {this.note}) : kind = IssueKind.picked;
 
   final EntryField field;
   final IssueKind kind;
@@ -127,7 +133,7 @@ final class CapturedEntry {
   final String? ocrHeadword;
 
   /// The strongest flag on [field]: missing, then unverified, suspect,
-  /// corrected, inferred.
+  /// corrected (or picked by the learner), inferred.
   FieldStatus statusOf(EntryField field) {
     final kinds = {
       for (final i in issues)
@@ -136,7 +142,10 @@ final class CapturedEntry {
     if (kinds.contains(IssueKind.missing)) return FieldStatus.needsReview;
     if (kinds.contains(IssueKind.unverified)) return FieldStatus.unverified;
     if (kinds.contains(IssueKind.suspect)) return FieldStatus.suspect;
-    if (kinds.contains(IssueKind.corrected)) return FieldStatus.corrected;
+    if (kinds.contains(IssueKind.corrected) ||
+        kinds.contains(IssueKind.picked)) {
+      return FieldStatus.corrected;
+    }
     if (kinds.contains(IssueKind.inferred)) return FieldStatus.inferred;
     return FieldStatus.ok;
   }
@@ -149,6 +158,8 @@ final class CapturedEntry {
         i.kind == IssueKind.suspect ||
         i.kind == IssueKind.unverified,
   );
+
+  /// A corrector changed a cell (not a value the learner picked).
   bool get wasCorrected => issues.any((i) => i.kind == IssueKind.corrected);
 
   /// Flagged for the learner in any way other than a missing example

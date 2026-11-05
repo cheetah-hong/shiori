@@ -78,6 +78,9 @@ final class _FailingLibrary implements LibraryRepository {
   Future<Word?> word(String id) => _inner.word(id);
 
   @override
+  Future<List<TextbookStats>> textbookStats() => _inner.textbookStats();
+
+  @override
   Future<T> transaction<T>(Future<T> Function() action) =>
       _inner.transaction(action);
 }

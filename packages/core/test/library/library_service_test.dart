@@ -229,6 +229,9 @@ base class _Delegating implements LibraryRepository {
   Future<Word?> word(String id) => _inner.word(id);
 
   @override
+  Future<List<TextbookStats>> textbookStats() => _inner.textbookStats();
+
+  @override
   Future<void> saveWords(List<Word> words) => _inner.saveWords(words);
 
   @override

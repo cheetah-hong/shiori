@@ -26,6 +26,7 @@ void repositoryContract(
     tearDown(() => storage.close());
 
     _libraryContract(lib);
+    _textbookStatsContract(lib);
     _reviewContract(rev);
     _useCaseContract(lib, rev);
   });
@@ -283,6 +284,83 @@ void _libraryContract(LibraryRepository Function() lib) {
         await outsideWrite;
         expect((await outsideRead).map((w) => w.id), isNot(contains('a')));
         expect((await repo.words()).map((w) => w.id), ['b']);
+      });
+    });
+  });
+}
+
+void _textbookStatsContract(LibraryRepository Function() lib) {
+  group('textbook stats', () {
+    test('no textbooks: no stats', () async {
+      expect(await lib().textbookStats(), isEmpty);
+    });
+
+    group('three textbooks, the second without words', () {
+      setUp(() async {
+        final repo = lib();
+        // Saved out of order; two share a creation time (then by id).
+        await repo.saveTextbook(
+          _book('c', at: _t0.add(const Duration(days: 1))),
+        );
+        await repo.saveTextbook(_book('b', at: _t0));
+        await repo.saveTextbook(_book('a', at: _t0));
+        await repo.saveWords([
+          _word('a1', tb: 'a', day: 2, no: '0001'),
+          _word('a2', tb: 'a', day: 1, no: '0002'),
+          _word('a3', tb: 'a', day: 2, no: '0003'),
+          _word('c1', tb: 'c', day: 3, no: '0001'),
+          _word('c2', tb: 'c'),
+        ]);
+      });
+
+      test('one row per textbook, in the order of textbooks()', () async {
+        final stats = await lib().textbookStats();
+        expect(stats.map((s) => s.textbook), await lib().textbooks());
+        expect(stats.map((s) => s.textbook.id), ['a', 'b', 'c']);
+      });
+
+      test('word counts include a textbook with none', () async {
+        final stats = await lib().textbookStats();
+        expect(stats.map((s) => s.wordCount), [3, 0, 2]);
+      });
+
+      test('days come once each, ascending; a word without a day counts but '
+          'adds no day', () async {
+        final stats = await lib().textbookStats();
+        expect(stats.map((s) => s.days), [
+          [1, 2],
+          isEmpty,
+          [3],
+        ]);
+      });
+
+      test('agrees with words()', () async {
+        final repo = lib();
+        for (final s in await repo.textbookStats()) {
+          final words = await repo.words(textbookId: s.textbook.id);
+          expect(s.wordCount, words.length, reason: s.textbook.id);
+          expect(
+            s.days,
+            ({for (final w in words) ?w.day}.toList()..sort()),
+            reason: s.textbook.id,
+          );
+        }
+      });
+
+      test('returned lists cannot be changed by callers', () async {
+        final stats = await lib().textbookStats();
+        expect(() => stats.clear(), throwsUnsupportedError);
+        expect(() => stats.first.days.add(9), throwsUnsupportedError);
+      });
+
+      test('a transaction sees its own writes', () async {
+        final repo = lib();
+        await repo.transaction(() async {
+          await repo.saveWords([_word('b1', tb: 'b', day: 5)]);
+          final stats = await repo.textbookStats();
+          expect(stats[1].wordCount, 1);
+          expect(stats[1].days, [5]);
+        });
       });
     });
   });

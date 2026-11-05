@@ -94,6 +94,17 @@ void main() {
       expect(d(), isNot(d().replaceEntry(0, e().copyWith(included: false))));
     });
 
+    test('TextbookStats', () {
+      final book = Textbook(id: 'a', title: 'A', createdAt: t0);
+      TextbookStats s({int count = 2, List<int> days = const [1]}) =>
+          TextbookStats(textbook: book, wordCount: count, days: days);
+      expect(s(), s());
+      expect(s().hashCode, s().hashCode);
+      expect(s(), isNot(s(days: const [2])));
+      expect(s(), isNot(s(count: 3)));
+      expect(s().toString(), contains('2'));
+    });
+
     test('ReviewCard', () {
       final c = ReviewCard(
         wordId: 'w',

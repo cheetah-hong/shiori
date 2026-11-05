@@ -103,6 +103,38 @@ void main() {
       final out = await c.correct(entry('カタカナ', readings: const []));
       expect(out.headword, 'カタカナ');
     });
+
+    // Checkbox marks read as text after a headword (`□□` → `ロロ`): a run made
+    // only of look-alikes is kept but marked so the learner looks at it.
+    test(
+      'a run of look-alikes after a kanji word is kept and suspect',
+      () async {
+        final out = await c.correct(entry('到着ロロ', readings: const ['とうちゃく']));
+        expect(out.headword, '到着ロロ');
+        expect(out.issues.map((i) => i.code), ['headword:suspect']);
+        expect(out.issues.single.note, contains('ロロ'));
+        expect(out.statusOf(EntryField.headword), FieldStatus.suspect);
+        expect(out.needsReview, isTrue);
+      },
+    );
+
+    test('a katakana word with a kanji is not suspect', () async {
+      final out = await c.correct(entry('アメリカ人', readings: const ['あめりかじん']));
+      expect(out.headword, 'アメリカ人');
+      expect(out.issues, isEmpty);
+    });
+
+    test('a lone look-alike is fixed, not suspect', () async {
+      final out = await c.correct(entry('タ日', readings: const ['ゆうひ']));
+      expect(out.headword, '夕日');
+      expect(out.issues.map((i) => i.code), ['headword:corrected']);
+    });
+
+    test('look-alikes without a kanji are left alone, unflagged', () async {
+      final out = await c.correct(entry('ロロロ', readings: const []));
+      expect(out.headword, 'ロロロ');
+      expect(out.issues, isEmpty);
+    });
   });
 
   group('KanaOkuriganaCorrector', () {

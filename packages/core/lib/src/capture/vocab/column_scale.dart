@@ -11,6 +11,7 @@ library;
 import 'package:shiori_core/src/capture/text/chars.dart';
 import 'package:shiori_core/src/capture/text/py.dart';
 import 'package:shiori_core/src/capture/vocab/anchors.dart';
+import 'package:shiori_core/src/models/column_scale.dart';
 import 'package:shiori_core/src/models/ocr.dart';
 
 /// Number → reading distance on the photos the offsets were set on.
@@ -64,11 +65,13 @@ const RowShape entryRow = (
   nominalBadge: entryBadgeOffset,
 );
 
-/// Horizontal scale of the page: 1.0 on the photos the offsets were set on.
+/// Horizontal scale of the page (1.0 on the photos the offsets were set on)
+/// and how it was found.
 ///
 /// Measured from the reading column, else from the POS badge column of the
-/// Korean pass, else 1.0 (too few rows to tell).
-double columnScale({
+/// Korean pass, else 1.0 (too few rows to tell). A measured scale outside
+/// 0.6–1.8 is a misread, not a crop: 1.0, without trying the badge column.
+ColumnScale columnScale({
   required List<Anchor> anchors,
   required List<OcrLine> ja,
   required List<OcrLine> ko,
@@ -80,18 +83,25 @@ double columnScale({
   }
 
   final reading = _columnOffset(anchors, ja, shape, isReading);
-  if (reading != null) return _clamp(reading / shape.nominalReading);
+  if (reading != null) {
+    return _scale(reading / shape.nominalReading, ColumnScaleSource.reading);
+  }
   final badge = _columnOffset(
     anchors,
     ko,
     shape,
     (l) => _badge.hasMatch(nfkc(l.text).trim()),
   );
-  if (badge != null) return _clamp(badge / shape.nominalBadge);
-  return 1.0;
+  if (badge != null) {
+    return _scale(badge / shape.nominalBadge, ColumnScaleSource.badge);
+  }
+  return const ColumnScale(1.0, ColumnScaleSource.tooFewRows);
 }
 
-double _clamp(double s) => s < _minScale || s > _maxScale ? 1.0 : s;
+ColumnScale _scale(double s, ColumnScaleSource source) =>
+    s < _minScale || s > _maxScale
+    ? const ColumnScale(1.0, ColumnScaleSource.outOfRange)
+    : ColumnScale(s, source);
 
 /// The offset most rows share (null below two rows): for every number, the
 /// cells matching [pick] on its row; the column is the offset that the most
