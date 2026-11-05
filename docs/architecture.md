@@ -12,12 +12,12 @@ nihongo-app/
 ├── packages/core/          순수 Dart (Flutter 의존 없음)
 │   ├── lib/src/models/     OcrScan, CapturedEntry, CaptureDraft, Textbook·TextbookDay·Word, ReviewCard·ReviewLog
 │   ├── lib/src/ports/      포트 9개 (아래 블록 지도)
-│   ├── lib/src/capture/    캡처 파이프라인: 교재 템플릿 A(목록형)·B(항목형), 보정기 체인, 템플릿 자동 판별
+│   ├── lib/src/capture/    캡처 파이프라인: 줄 정리, 교재 템플릿 A(목록형)·B(항목형), 보정기 체인, 템플릿 자동 판별
 │   ├── lib/src/study/      라이트너 4단계 스케줄러, 세션 빌더, 세션, 학습 일 경계, StudyService
 │   ├── lib/src/library/    LibraryService (검토 초안 저장, 교재 › DAY 보기)
 │   ├── lib/src/storage/    InMemory 저장소 (테스트용 블록, 트랜잭션 포함)
 │   ├── lib/src/eval/       채점기 (lib/eval.dart로만 공개, 앱은 쓰지 않음)
-│   ├── test/               단위·회귀 테스트, fixtures/synthetic/ (합성 페이지 판독 기록·정답)
+│   ├── test/               단위·회귀 테스트, fixtures/synthetic/ (합성 페이지 판독 기록·정답), fixtures/synthetic_mlkit/ (같은 단어의 ML Kit형 판독)
 │   └── tool/eval_capture.dart   점수표 출력
 ├── packages/storage_drift/ 순수 Dart, SQLite 저장 블록 (drift): 테이블, 저장소 두 개, 스키마 덤프 drift_schemas/
 ├── app/                    Flutter (iOS·Android)
@@ -26,8 +26,8 @@ nihongo-app/
 │   ├── lib/app/data.dart   화면이 같이 쓰는 읽기 모델 (저장·답변 뒤 새로고침)
 │   ├── lib/adapters/       기기 블록: OCR 채널, image_picker, 개발용 샘플
 │   ├── lib/features/       home · capture(등록·검토) · library(교재) · study(학습)
-│   ├── ios/Runner/OcrChannel.swift                         Apple Vision 채널
-│   ├── android/app/src/main/kotlin/.../OcrChannel.kt       ML Kit 채널
+│   ├── ios/Runner/OcrChannel.swift                         Apple Vision 채널 (회전 판별, ★ 보조 판독)
+│   ├── android/app/src/main/kotlin/.../OcrChannel.kt       ML Kit 채널 (조각 단위, 회전), OcrGeometry.kt (순수 로직)
 │   ├── assets/dev_samples/ 합성 샘플 페이지의 판독 기록 (개발용, 배포 빌드에서 막음, 5절)
 │   └── integration_test/   시뮬레이터 흐름 스크린샷, 실제 OCR 채널 탐침
 ├── tools/reference/        Python 기준 구현 (parse_eval.py), 판독 도구, 기준 출력 덤프 도구
@@ -51,10 +51,10 @@ nihongo-app/
 
 | 포트 (core) | 지금 끼운 블록 | provider (`blocks.dart`) | 다음 블록 |
 |---|---|---|---|
-| `TextRecognizer` | iOS `OcrChannel.swift` (Apple Vision, ja·ko 두 번), Android `OcrChannel.kt` (ML Kit japanese·korean) → `PlatformTextRecognizer` | `textRecognizerProvider` | Cloud Vision, Claude |
+| `TextRecognizer` | iOS `OcrChannel.swift` (Apple Vision, ja·ko 두 번 + ★ 보조 판독, 글 방향으로 회전 판별), Android `OcrChannel.kt` (ML Kit japanese → korean, 조각 단위, 줄 각도로 회전 판별) → `PlatformTextRecognizer` | `textRecognizerProvider` | Cloud Vision, Claude |
 | `TextRecognizer` (샘플) | `FixtureTextRecognizer` + `assets/dev_samples/` (합성 페이지) | `sampleRecognizerProvider` | (개발용 전용) |
 | `TextbookTemplate` | `ListPageTemplate`(A 목록형), `EntryPageTemplate`(B 항목형) + `TemplateRegistry` 자동 판별 | `templateRegistryProvider` | 다른 교재 템플릿 |
-| `EntryCorrector` (체인) | `ConfusableGlyphCorrector` → `KanaOkuriganaCorrector` → `DictionaryCandidateCorrector` → `MissingFieldFlagger` | `entryCorrectorsProvider` | JMdict 읽기 검증 |
+| `EntryCorrector` (체인) | `ConfusableGlyphCorrector` → `KanaOkuriganaCorrector` → `ReadingLookalikeCorrector` → `BadgeMisreadCorrector` → `MeaningPunctuationCorrector` → `PosInferenceCorrector` → `CutMeaningFlagger` → `DictionaryCandidateCorrector` → `MissingFieldFlagger` (`standardCorrectors()`) | `entryCorrectorsProvider` | JMdict 읽기 검증 |
 | `Dictionary` | `EmptyDictionary` | `dictionaryProvider` | JMdict (SQLite, CC BY-SA 4.0) |
 | `ImageSource` | `ImagePickerSource` (카메라·앨범, 판독 뒤 임시 파일 `discard`) | `imageSourceProvider` | 문서 스캐너(cunning_document_scanner), 굽은 페이지 펴기 |
 | `LibraryRepository` | `DriftLibraryRepository` (SQLite, `packages/storage_drift`). 테스트: `InMemoryLibraryRepository` | `libraryRepositoryProvider` (DB: `appDatabaseProvider`) | 백업·동기화 |
@@ -89,12 +89,15 @@ runApp(ProviderScope(
 
 ```
 사진(ImageSource) ─┐
-샘플(dev_samples) ─┴→ TextRecognizer ──OcrScan(ja, ko)──→ TemplateRegistry.detect
-                                                             │ (번호 간격 중앙값 > 0.08 → B형)
+샘플(dev_samples) ─┴→ TextRecognizer ──OcrScan(ja, ko, ★ 보조?)──→ prepareScan (줄 정리: ML Kit 낮은 신뢰도 줄,
+                      (세운 좌표)                                     ★ 보조 판독의 ★, 붙은 ★ 떼기)
+                                                             ▼
+                                         TemplateRegistry.detect (예문 줄 0 → A형, 3 이상 → B형, 그 사이는 번호 간격 > 0.08 → B형)
+                                                             │ 칸 위치 = 상수 × 쪽마다 잰 배율 (번호 → 읽기 칸 거리)
                                                              ▼
                                          TextbookTemplate.parse → 원본 항목 + PageMeta(DAY·제목·쪽)
                                                              ▼
-                                         EntryCorrector 체인 → CaptureDraft (칸별 상태: 정상·자동 보정됨·확인 필요)
+                                         EntryCorrector 체인 → CaptureDraft (칸별 상태: 정상·추정·자동 보정됨·의심·확인 필요)
                                                              ▼
                                          검토 화면(수정·제외·교재 선택) → LibraryService.saveDraft
                                                              ▼                    (단어 id = 교재id:번호, 다시 찍으면 갱신)
@@ -138,9 +141,9 @@ runApp(ProviderScope(
 
 | 순서 | 블록 | 끼울 자리 | 메모 |
 |---|---|---|---|
-| 1 | ~~drift 저장소~~ (완료) | `LibraryRepository`, `ReviewRepository` | 앱을 꺼도 단어와 학습 상태가 남습니다. 포트에 트랜잭션 추가. 남은 일: 백업(3단계), 스키마 v2부터는 마이그레이션 단계 추가(verification.md 6절) |
+| 1 | ~~drift 저장소~~ (완료) | `LibraryRepository`, `ReviewRepository` | 앱을 꺼도 단어와 학습 상태가 남습니다. 포트에 트랜잭션 추가. 남은 일: 백업(3단계), 스키마 v2부터는 마이그레이션 단계 추가(verification.md 7절) |
 | 2 | 기기 판독 고정 데이터 | 로컬 전용 회귀 세트 | 실제 iPhone·Android에서 같은 쪽을 판독해 `$SHIORI_PRIVATE_DIR/textbook/`의 회귀 세트에 추가 (verification.md 4절) |
-| 3 | 문서 스캐너 | `ImageSource` | 사진이 옆으로 누워 있으면 지금은 해석이 안 됩니다. 스캐너가 똑바로 세운 이미지를 줌 |
+| 3 | 문서 스캐너 | `ImageSource` | 옆으로 누운 사진은 OCR 채널이 세웁니다(verification.md 6절). 해석기는 칸 위치를 내용에서 재므로 스캐너가 자른 페이지도 읽음. 남은 일: 펼친 책에서 페이지 찾기(모서리 고치기 화면) |
 | 4 | JMdict | `Dictionary` | OCR이 건너뛴 단순한 한자 표제어를 읽기로 후보 제시 (`DictionaryCandidateCorrector`가 이미 연결됨, `docs/dictionary.md`) |
 | 5 | flutter_tts | `Speech` | 블록만 바꾸면 카드에 발음 버튼이 나타남 |
 | 6 | FSRS | `ReviewScheduler` | 복습 기록이 쌓인 뒤 |

@@ -18,6 +18,7 @@ cd app && flutter test && flutter run                               # 합성 샘
 
 저장소의 테스트와 앱의 샘플 페이지는 **합성 페이지**를 씁니다. 단어·뜻·예문·번역은 모두 지어낸 것이고,
 교재와 같은 배치에 OCR이 흔히 내는 실수를 일부러 넣었습니다(`tools/synthetic/make_pages.py`).
+같은 단어 일부를 Android ML Kit 채널이 돌려주는 모양과 실수로 만든 세트도 있습니다(`packages/core/test/fixtures/synthetic_mlkit/`).
 
 실제 교재 페이지의 판독 기록과 정답은 교재 본문이라 저장소에 넣지 않습니다. 로컬에 `$SHIORI_PRIVATE_DIR/textbook/`
 (기본 `<저장소>/.private/textbook/`)이 있으면 실제 교재 회귀 테스트와 기준 구현 대조 테스트도 돌고, 없으면 건너뜁니다.

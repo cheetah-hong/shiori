@@ -9,7 +9,16 @@ normalized boxes, top-left origin), plus `ground_truth.json` with the answers.
     python3 tools/synthetic/make_pages.py --check   # exit 1 when the committed files are out of date
 
 The core copy also gets ground_truth.json and reference_output.json (the frozen reference parser's output,
-which the Dart parity test compares entry by entry).
+which the Dart parity test compares cell by cell).
+
+A second set, packages/core/test/fixtures/synthetic_mlkit/, holds two of the same pages as the Android
+ML Kit channel returns them (engine "mlkit", lines cut into pieces at column gaps, continuous confidences),
+with the slips that engine makes: a ★ not returned, glued to the reading or read as *, the 동 badge read
+as 8, a badge glued to the meaning or not returned, 0 read as O / D in the numbers, the checkbox edge read
+as |, a reading glued to the next column, ri read as katakana, a comma read as a period, a meaning cut
+after its comma, one language's pass reading the other's lines (low-confidence garbage), entry number
+lines not returned, long furigana lines, a stray glyph glued in front of a sentence, and a headword
+kanji misread as a look-alike kanji (a silent error).
 
 Every word, meaning, sentence and translation here is invented for the tests. The OCR side carries the
 mistakes the parsing and correction rules exist for, so the tests exercise them without real pages:
@@ -26,6 +35,7 @@ from __future__ import annotations
 
 import json
 import random
+from collections.abc import Callable, Sequence
 import subprocess
 import sys
 import tempfile
@@ -33,6 +43,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 OUT_DIRS = [REPO / "packages" / "core" / "test" / "fixtures" / "synthetic", REPO / "app" / "assets" / "dev_samples"]
+MLKIT_DIR = REPO / "packages" / "core" / "test" / "fixtures" / "synthetic_mlkit"
 REFERENCE_DUMP = REPO / "tools" / "reference" / "dump_reference.py"
 NOTE = ("Synthetic pages made by tools/synthetic/make_pages.py. Every word, meaning, example and "
         "translation is invented; no textbook content.")
@@ -55,8 +66,10 @@ def text_width(t: str, per_char: float) -> float:
 class Page:
     """Both OCR passes of one page plus its answer sheet."""
 
-    def __init__(self, fixture: str, page: int, template: str, day: int, title: str, seed: int):
+    def __init__(self, fixture: str, page: int, template: str, day: int, title: str, seed: int,
+                 engine: str = "synthetic"):
         self.fixture, self.page, self.template, self.day, self.title = fixture, page, template, day, title
+        self.engine = engine
         self.ja: list[dict] = []
         self.ko: list[dict] = []
         self.entries: list[dict] = []
@@ -83,11 +96,12 @@ class Page:
 
     def files(self) -> dict[str, dict]:
         ms_ja, ms_ko = 480 + self.rng.randrange(120), 460 + self.rng.randrange(120)
+        mlkit = self.engine == "mlkit"
         return {
-            f"{self.fixture}.ja.json": {"engine": "synthetic", "langs": JA_LANGS, "ms": ms_ja,
-                                        "lines": sorted(self.ja, key=_reading_order)},
-            f"{self.fixture}.ko.json": {"engine": "synthetic", "langs": KO_LANGS, "ms": ms_ko,
-                                        "lines": sorted(self.ko, key=_reading_order)},
+            f"{self.fixture}.ja.json": {"engine": self.engine, "langs": ["ja", "en"] if mlkit else JA_LANGS,
+                                        "ms": ms_ja, "lines": sorted(self.ja, key=_reading_order)},
+            f"{self.fixture}.ko.json": {"engine": self.engine, "langs": ["ko", "en"] if mlkit else KO_LANGS,
+                                        "ms": ms_ko, "lines": sorted(self.ko, key=_reading_order)},
         }
 
     def answer(self) -> dict:
@@ -102,15 +116,23 @@ def _reading_order(line: dict) -> tuple:
 
 # ---------------------------------------------------------------- layout A: one row per word
 
-def list_row(p: Page, i: int, r: dict, *, ax0: float, ay0: float, gap: float, drift: float,
-             slope: float, reading_x: float) -> None:
-    """One word row. r: truth fields plus OCR overrides (see the page builders)."""
+def row_geometry(p: Page, i: int, *, ax0: float, ay0: float, gap: float, drift: float,
+                 slope: float) -> tuple[float, float, Callable[[float], float]]:
+    """Number x, number y and the row's height at x for row i of a list page."""
     ax = ax0 - drift * i + p.jitter(0.0004)
     ay = ay0 + gap * i + p.jitter(0.001)
     ref_x = ax + 0.045
 
     def y_at(x: float) -> float:  # the page is skewed: a row climbs or falls along x
         return ay + slope * (x - ref_x)
+
+    return ax, ay, y_at
+
+
+def list_row(p: Page, i: int, r: dict, *, ax0: float, ay0: float, gap: float, drift: float,
+             slope: float, reading_x: float) -> None:
+    """One word row. r: truth fields plus OCR overrides (see the page builders)."""
+    ax, ay, y_at = row_geometry(p, i, ax0=ax0, ay0=ay0, gap=gap, drift=drift, slope=slope)
 
     no = r["no"]
     id_text = r.get("id", no)
@@ -362,15 +384,195 @@ def page_s147() -> Page:
     return p
 
 
-PAGES = [page_s010, page_s011, page_s140, page_s147]
+PageBuilder = Callable[[], Page]
+PAGES: tuple[PageBuilder, ...] = (page_s010, page_s011, page_s140, page_s147)
+
+
+# ---------------------------------------------------------------- the same pages as ML Kit reads them
+
+# ML Kit boxes fit the glyphs more tightly than Vision's (height x0.85, width x0.89).
+MK_H, MK_W = 0.85, 0.89
+
+
+def mk_conf(p: Page, lo: float = 0.45, hi: float = 0.95) -> float:
+    return round(p.rng.uniform(lo, hi), 4)
+
+
+def mk_list_row(p: Page, i: int, r: dict, *, ax0: float, ay0: float, gap: float, drift: float,
+                slope: float, reading_x: float) -> None:
+    """One word row, cut into pieces at the column gaps as the ML Kit channel returns it.
+    No checkbox glyphs (ML Kit's Japanese pass rarely returns them)."""
+    ax, ay, y_at = row_geometry(p, i, ax0=ax0, ay0=ay0, gap=gap, drift=drift, slope=slope)
+
+    id_text = r.get("id", r["no"])
+    if id_text is not None:
+        p.ja.append(box(id_text, ax, ay, 0.0190, 0.0063, mk_conf(p)))
+    for t, dx in r.get("head_ocr", [(r["headword"], 0.045)]):
+        x = ax + dx
+        p.ja.append(box(t, x, y_at(x) + 0.001, text_width(t, W_HEAD) * MK_W, 0.0192 * MK_H, mk_conf(p)))
+    star = r.get("star_ocr", r.get("important", False))  # True | "*" | "glued" | False
+    reading = r.get("reading_ocr", "/".join(r["readings"]) or "–")
+    rx = reading_x + p.jitter(0.0006)
+    sx = ax + 0.187
+    if star is True or star == "*":
+        p.ja.append(box("★" if star is True else "*", sx, y_at(sx) + 0.0045, 0.0129, 0.0092, mk_conf(p, 0.25, 0.6)))
+    if reading is not None:
+        rw = text_width(reading, W_READ) * MK_W
+        if star == "glued":  # the ★ and the reading came back as one piece
+            p.ja.append(box("★" + reading, sx, y_at(sx) + 0.0015, rx + rw - sx, 0.0150 * MK_H, mk_conf(p)))
+        else:
+            p.ja.append(box(reading, rx, y_at(rx) + 0.0015, rw, 0.0150 * MK_H, mk_conf(p)))
+    for t, dx in r.get("meaning_ocr", [(f"{r['pos']} {r['meaning']}", 0.0)]):
+        x = ax + 0.39 + 0.0012 * i + dx
+        p.ko.append(box(t, x, y_at(x) + 0.0045, text_width(t, W_KO) * MK_W, 0.0133 * MK_H, mk_conf(p, 0.55, 0.95)))
+    if "ko_junk" in r:  # the Korean pass reads the ★ as a Hangul glyph, with very low confidence
+        t, dx = r["ko_junk"]
+        x = ax + dx
+        p.ko.append(box(t, x, y_at(x) + 0.0045, 0.008, 0.0133 * MK_H, 0.12))
+    p.truth(r["no"], r["headword"], r["readings"], r["pos"], r["meaning"], r.get("important", False))
+
+
+def page_m011() -> Page:
+    """s011's words as ML Kit reads them."""
+    p = Page("m011", 11, "list", 1, "자연, 몸", seed=1011, engine="mlkit")
+    p.ja.append(box("★三人=試験上大", 0.5465, 0.1265, 0.2190, 0.0112, 0.31))
+    p.ko.append(box("★ 표시 = 시험에 자주 나온 단어", 0.5465, 0.1265, 0.2190, 0.0112, 0.83))
+    p.ko.append(box("DAY", 0.8430, 0.2064, 0.0155, 0.0198, 0.9))
+    rows = [
+        # the ★ was not returned at all
+        dict(no="0013", headword="海", readings=["うみ"], pos="명", meaning="바다", important=True, star_ocr=False),
+        # 0 of the number read as O
+        dict(no="0014", headword="山", readings=["やま"], pos="명", meaning="산", id="OO14"),
+        # the ★ and the reading came back as one piece
+        dict(no="0015", headword="川", readings=["かわ"], pos="명", meaning="강, 개천", important=True,
+             star_ocr="glued"),
+        # look-alike katakana in the headword; a comma between Korean words read as a period
+        dict(no="0016", headword="夕日", readings=["ゆうひ"], pos="명", meaning="석양, 저녁 해",
+             head_ocr=[("タ日", 0.045)], meaning_ocr=[("명 석양. 저녁 해", 0.0)]),
+        # a glyph of the next column glued after the reading; the badge was not returned
+        dict(no="0017", headword="光る", readings=["ひかる"], pos="동", meaning="빛나다", reading_ocr="ひかる で",
+             meaning_ocr=[("빛나다", 0.0213)]),
+        # the first checkbox read as O right after the number
+        dict(no="0018", headword="力", readings=["ちから"], pos="명", meaning="힘", id="0018O",
+             head_ocr=[("カ", 0.05)]),
+        # ★ read as *; the badge glued to the meaning
+        dict(no="0019", headword="星", readings=["ほし"], pos="명", meaning="별", important=True, star_ocr="*",
+             meaning_ocr=[("명별", 0.0)]),
+        dict(no="0020", headword="痛い", readings=["いたい"], pos="い형", meaning="아프다", important=True),
+        # 0 read as D and 1 as l in the number; the checkbox edge read as | before the headword
+        dict(no="0021", headword="指", readings=["ゆび"], pos="명", meaning="손가락", id="D02l",
+             head_ocr=[("|指", 0.043)]),
+        # low-confidence Hangul garbage in front of the meaning
+        dict(no="0022", headword="鼻", readings=["はな"], pos="명", meaning="코", ko_junk=("ㅎ", 0.345)),
+        # badge 동 read as 8
+        dict(no="0023", headword="吹く", readings=["ふく"], pos="동", meaning="불다", meaning_ocr=[("8 불다", 0.0)]),
+        # the dash of a kana word not returned; the meaning lost its last word after the comma
+        dict(no="0024", headword="のんびり", readings=[], pos="부", meaning="느긋하게, 한가로이", reading_ocr=None,
+             meaning_ocr=[("부 느긋하게,", 0.0)]),
+    ]
+    for i, r in enumerate(rows):
+        mk_list_row(p, i, r, ax0=0.2112, ay0=0.1830, gap=0.0458, drift=0.0012, slope=0.035, reading_x=0.4302)
+    p.ja.append(box("PART 1N5", 0.6124, 0.9070, 0.0700, 0.0100, 0.42))
+    p.ko.append(box("PART 1 기초 단어 | DAY 01 자연, 몸 11", 0.6124, 0.9070, 0.1932, 0.0100, 0.78))
+    return p
+
+
+def mk_entry_block(p: Page, e: dict, *, ax: float, ty: float) -> None:
+    """One entry block as the ML Kit channel returns it."""
+    if not e.get("id_missing"):
+        p.ja.append(box(e.get("id", e["no"]), ax, ty, 0.0300, 0.0100, mk_conf(p)))
+    head = e.get("head_ocr", e["headword"])
+    p.ja.append(box(head, ax + 0.0115, ty + 0.0208, text_width(head, W_HEAD) * MK_W, 0.0219 * MK_H, mk_conf(p)))
+    # The Korean pass reads the headword as the same garbage glyph every time.
+    p.ko.append(box("슴", ax + 0.0115, ty + 0.0208, 0.02, 0.0186, 0.11))
+    if e.get("important") and e.get("star_ocr", True):
+        p.ja.append(box("★", ax + 0.146, ty + 0.0275, 0.0138, 0.0111, mk_conf(p, 0.25, 0.6)))
+    reading = e.get("reading_ocr", "/".join(e["readings"]) or "–")
+    p.ja.append(box(reading, ax + 0.182, ty + 0.0163, text_width(reading, W_READ) * MK_W, 0.0162 * MK_H,
+                    mk_conf(p)))
+    for t, dx in e.get("meaning_ocr", [(f"{e['pos']} {e['meaning']}", 0.0)]):
+        p.ko.append(box(t, ax + 0.407 + dx, ty + 0.0208, text_width(t, W_KO) * MK_W, 0.0132 * MK_H,
+                        mk_conf(p, 0.6, 0.95)))
+    y = ty + 0.0454
+    if e.get("furigana"):  # ML Kit joins the furigana of a line into one long kana line
+        t = " ".join(f for f, _ in e["furigana"])
+        p.ja.append(box(t, ax + 0.18, y, 0.21, 0.0090 * MK_H, mk_conf(p)))
+    y = ty + 0.0554
+    for k, t in enumerate(e.get("sentence_ocr", e["example"][0:1])):
+        h = (0.0208 if k == 0 else 0.0161) * MK_H
+        x, w = ax + 0.1798, text_width(t, W_SENT) * MK_W
+        if k == 0 and e.get("stray"):  # a glyph of another column glued in front pulls the box left
+            t, x, w = e["stray"] + t, ax + 0.06, w + 0.1198
+        p.ja.append(box(t, x, y, w, h, mk_conf(p, 0.6, 0.95)))
+        p.ko.append(box("다음 엑 굽행", ax + 0.1798, y, 0.1, h, 0.1))  # Korean pass on the sentence: garbage
+        y += 0.0256
+    for t in e.get("translation_ocr", [e["example"][-1]]):
+        x, w = ax + 0.1802, text_width(t, 0.0098) * MK_W
+        if e.get("trans_left"):  # the translation box starts left of the example column
+            x, w = ax + 0.06, w + 0.1202
+        p.ko.append(box(t, x, y - 0.0025, w, 0.0131 * MK_H, mk_conf(p, 0.6, 0.95)))
+        # the Japanese pass reads the translation as Japanese garbage, confidence above the
+        # low-confidence cut but below what a real sentence gets
+        p.ja.append(box("己乙人日本口目", ax + 0.1802, y - 0.0025, 0.12, 0.0131 * MK_H, 0.31))
+        y += 0.0170
+    for _ja_t, ko_t in e.get("boxes", []):
+        y += 0.0050
+        p.ko.append(box(ko_t, ax + 0.21, y, text_width(ko_t, 0.0098) * MK_W, 0.0199 * MK_H, mk_conf(p)))
+        y += 0.0200
+    ex = e["example"]
+    p.truth(e["no"], e["headword"], e["readings"], e["pos"], e["meaning"], e.get("important", False),
+            (ex[0] if len(ex) == 2 else "".join(ex[:-1]), ex[-1]))
+
+
+def page_m140() -> Page:
+    """s140's words as ML Kit reads them."""
+    p = Page("m140", 140, "entry", 20, "여행·교통", seed=1140, engine="mlkit")
+    p.ko.append(box("★ 표시 = 시험에 자주 나온 단어", 0.5637, 0.0703, 0.2109, 0.0142, 0.8))
+    entries = [
+        # ri of the reading read as katakana リ
+        dict(no="1211", headword="乗り換える", readings=["のりかえる"], pos="동", meaning="갈아타다, 환승하다",
+             important=True, reading_ocr="のリかえる",
+             furigana=[("つぎ", 0.0), ("えき", 0.032), ("きゅうこう", 0.066)],
+             example=("次の駅で急行に乗り換えてください。", "다음 역에서 급행으로 갈아타 주세요.")),
+        # the small number line was not returned; a comma read as a period
+        dict(no="1212", headword="切符", readings=["きっぷ"], pos="명", meaning="표, 승차권", id_missing=True,
+             meaning_ocr=[("명 표. 승차권", 0.0)],
+             example=("窓口で大阪までの切符を二枚買いました。", "창구에서 오사카까지 가는 표를 두 장 샀습니다.")),
+        # the badge was not returned; a long furigana line; the 관련어 box ends the example
+        dict(no="1213", headword="到着", readings=["とうちゃく"], pos="명", meaning="도착",
+             meaning_ocr=[("도착", 0.0213)], furigana=[("ひこうき", 0.0), ("よてい", 0.06), ("さんじゅっぷん", 0.12)],
+             sentence_ocr=["飛行機は予定より三十分早く空港に", "到着しました。"],
+             boxes=[("", "관련어 到着時刻 とうちゃくじこく 명 도착 시각")],
+             example=("飛行機は予定より三十分早く空港に", "到着しました。", "비행기는 예정보다 30분 일찍 공항에 도착했습니다.")),
+        # number line not returned; a stray glyph glued in front of the sentence
+        dict(no="1214", headword="渋滞", readings=["じゅうたい"], pos="명", meaning="(교통) 정체", id_missing=True,
+             stray="送", example=("朝の高速道路はいつも渋滞しています。", "아침 고속도로는 늘 차가 막혀 있습니다.")),
+        # the ★ not returned; | in front of the headword; badge 동 read as 8
+        dict(no="1215", headword="揺れる", readings=["ゆれる"], pos="동", meaning="흔들리다", important=True,
+             star_ocr=False, head_ocr="|揺れる", meaning_ocr=[("8 흔들리다", 0.0)],
+             example=("バスがひどく揺れたので、立っていられなかった。", "버스가 심하게 흔들려서 서 있을 수 없었다.")),
+        # number line not returned; a headword kanji read as a look-alike kanji (wrong, not flagged);
+        # the translation box starts left of the column
+        dict(no="1216", headword="降りる", readings=["おりる"], pos="동", meaning="내리다", id_missing=True,
+             head_ocr="陸りる", trans_left=True,
+             example=("忘れ物をしないように気をつけて降りてください。", "잊은 물건이 없도록 조심해서 내려 주세요.")),
+    ]
+    tops = [0.1275, 0.2485, 0.3595, 0.5113, 0.6373, 0.7914]
+    for k, (e, ty) in enumerate(zip(entries, tops)):
+        mk_entry_block(p, e, ax=0.1901 + 0.0045 * k, ty=ty)
+    p.ko.append(box("PART 2 장면별 단어 | DAY 20 여행 • 교통 140", 0.6047, 0.9273, 0.2305, 0.0124, 0.81))
+    return p
+
+
+MLKIT_PAGES: tuple[PageBuilder, ...] = (page_m011, page_m140)
 
 
 # ---------------------------------------------------------------- output
 
-def render() -> dict[str, str]:
+def render(pages: Sequence[PageBuilder] = PAGES) -> dict[str, str]:
     files: dict[str, str] = {}
     answers = []
-    for make in PAGES:
+    for make in pages:
         p = make()
         for name, data in p.files().items():
             files[name] = json.dumps(data, ensure_ascii=False, indent=0) + "\n"
@@ -393,9 +595,12 @@ def main(argv: list[str]) -> int:
     files = render()
     core_only = {"ground_truth.json": files["ground_truth.json"], "reference_output.json": reference_output(files)}
     stale = []
-    for out in OUT_DIRS:
-        wanted = {**files, **core_only} if out == OUT_DIRS[0] else {k: v for k, v in files.items() if k not in core_only}
-        for name, text in wanted.items():  # the app only replays the OCR passes
+    targets = [(out, {**files, **core_only} if out == OUT_DIRS[0]
+                else {k: v for k, v in files.items() if k not in core_only})  # the app only replays the OCR passes
+               for out in OUT_DIRS]
+    targets.append((MLKIT_DIR, render(MLKIT_PAGES)))  # Dart-only set: no reference output
+    for out, wanted in targets:
+        for name, text in wanted.items():
             f = out / name
             if check:
                 if not f.is_file() or f.read_text(encoding="utf-8") != text:
@@ -407,7 +612,8 @@ def main(argv: list[str]) -> int:
         for s in stale:
             print(f"out of date: {s} (run python3 tools/synthetic/make_pages.py)", file=sys.stderr)
         return 1 if stale else 0
-    print("wrote " + ", ".join(str(d.relative_to(REPO)) for d in OUT_DIRS) + " (with ground truth and reference output)")
+    print("wrote " + ", ".join(str(d.relative_to(REPO)) for d in [*OUT_DIRS, MLKIT_DIR])
+          + " (ground truth for the core and ML Kit sets, reference output for the core set)")
     return 0
 
 

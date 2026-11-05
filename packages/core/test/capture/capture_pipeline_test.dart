@@ -82,6 +82,13 @@ void main() {
     },
   );
 
+  test('an OcrPage engine that is not a string is rejected', () {
+    expect(
+      () => OcrPage.fromJson(const {'lines': [], 'engine': 3}),
+      throwsFormatException,
+    );
+  });
+
   test('OcrPage without lines is rejected', () {
     expect(
       () => OcrPage.fromJson(const {'engine': 'x'}),

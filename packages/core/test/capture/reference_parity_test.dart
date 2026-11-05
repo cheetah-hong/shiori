@@ -1,13 +1,17 @@
-// Parity with the frozen reference parser, entry by entry.
-// reference_output.json is produced by tools/reference/dump_reference.py.
+// Parity with the frozen reference parser, cell by cell.
+//
+// reference_output.json is the reference parser's output for the same OCR
+// passes (tools/reference/dump_reference.py). The Dart parser has moved on from
+// it on purpose; every cell where the two differ must be listed with a reason
+// in intended_differences.json next to the fixtures. A difference that is not
+// listed fails the test, and so does a listed one that no longer occurs.
+// To see the current differences: dart run tool/reference_diff.dart --fixtures DIR
 import 'dart:io';
 
-import 'package:shiori_core/shiori_core.dart';
+import 'package:shiori_core/eval.dart';
 import 'package:test/test.dart';
 
 import '../support/fixtures.dart';
-
-const _templateIds = {'list': 'vocab.list', 'entry': 'vocab.entry'};
 
 void main() {
   _parity(synthetic);
@@ -34,59 +38,44 @@ void _parity(FixtureSet set) {
     });
     return;
   }
-  final reference = set.readJson('reference_output.json');
-  final pages = (reference['pages']! as List).cast<Map<String, Object?>>();
-  final pipeline = standardPipeline();
 
-  for (final page in pages) {
-    final fixture = page['fixture']! as String;
+  group(set.name, () {
+    late List<CellDifference> found;
+    final intended = readIntendedDifferences(set);
 
-    group(fixture, () {
-      late CaptureDraft draft;
-      final expected = (page['entries']! as List).cast<Map<String, Object?>>();
+    setUpAll(
+      () async => found = await referenceDifferences(
+        reference: set.readJson('reference_output.json'),
+        loadScan: set.loadScan,
+        pipeline: standardPipeline(),
+      ),
+    );
 
-      setUpAll(
-        () async =>
-            draft = await pipeline.fromScan(await set.loadScan(fixture)),
-      );
-
-      test('same template and page meta', () {
-        final meta = (page['meta']! as Map).cast<String, Object?>();
-        expect(draft.templateId, _templateIds[page['template']]);
-        expect(
-          draft.meta,
-          PageMeta(
-            day: meta['day'] as int?,
-            title: meta['title'] as String?,
-            page: meta['page'] as int?,
-          ),
-        );
-      });
-
-      test('same entries in the same order', () {
-        expect(draft.entries.map((e) => e.no), expected.map((e) => e['no']));
-        for (final (i, want) in expected.indexed) {
-          final got = draft.entries[i];
-          final example = want['example'] as Map?;
-          final label = '$fixture #${want['no']}';
-          expect(got.headword, want['headword'], reason: label);
-          expect(
-            got.readings,
-            (want['readings']! as List).cast<String>(),
-            reason: label,
-          );
-          expect(got.pos?.badge, want['pos'], reason: label);
-          expect(got.meaning, want['meaning'], reason: label);
-          expect(got.important, want['important'], reason: label);
-          expect(got.example?.ja, example?['ja'], reason: label);
-          expect(got.example?.ko, example?['ko'], reason: label);
-          expect(
-            got.issues.map((i) => i.code),
-            (want['issues']! as List).cast<String>(),
-            reason: label,
-          );
-        }
-      });
+    test('every listed difference has a reason', () {
+      expect([
+        for (final d in intended)
+          if (d.reason.trim().isEmpty) '$d',
+      ], isEmpty);
     });
-  }
+
+    test('no cell differs from the reference output unless listed', () {
+      final r = compareWithIntended(found, intended);
+      expect(
+        r.unexpected.map((d) => '$d'),
+        isEmpty,
+        reason:
+            'cells that changed without being listed in '
+            '${set.dir}/$intendedDifferencesFile',
+      );
+    });
+
+    test('every listed difference still occurs', () {
+      final r = compareWithIntended(found, intended);
+      expect(
+        r.stale.map((d) => '$d'),
+        isEmpty,
+        reason: 'listed in $intendedDifferencesFile but no longer different',
+      );
+    });
+  });
 }

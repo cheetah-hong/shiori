@@ -47,6 +47,11 @@ dependencies {
     // Device OCR block: bundled on-device models, no network (OcrChannel.kt).
     implementation("com.google.mlkit:text-recognition-japanese:16.0.1")
     implementation("com.google.mlkit:text-recognition-korean:16.0.1")
+    // EXIF rotation of the photo (works around vendor EXIF bugs the platform reader keeps).
+    implementation("androidx.exifinterface:exifinterface:1.4.2")
+
+    // OcrGeometry (pieces, turns) runs as a plain JVM test: ./gradlew :app:testDebugUnitTest
+    testImplementation("junit:junit:4.13.2")
 }
 
 // Development samples (assets/dev_samples/) must never ship. Release builds stop

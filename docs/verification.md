@@ -19,25 +19,40 @@
 | 항목 | 명령 | 결과 |
 |---|---|---|
 | core 정적 분석 | `cd packages/core && dart analyze` | 문제 없음 |
-| core 테스트 | `cd packages/core && dart test` | **173개 통과**, 교재 세트 8개 건너뜀 |
-| core 테스트 (교재 세트 포함) | `SHIORI_PRIVATE_DIR=<로컬 폴더> dart test` | **190개 통과** |
-| core 커버리지 | `dart run coverage:test_with_coverage -o coverage` | 줄 커버리지 **97.2%** (교재 세트 없이) |
+| core 테스트 | `cd packages/core && dart test` | **248개 통과**, 교재 세트 11개 건너뜀 (6·7절 반영 뒤) |
+| core 테스트 (교재 세트 포함) | `SHIORI_PRIVATE_DIR=<로컬 폴더> dart test` | **261개 통과** |
+| core 커버리지 | `dart run coverage:test_with_coverage -o coverage` | 줄 커버리지 **98.3%** (교재 세트 없이) |
 | 사전 패키지 | `cd packages/dict_jmdict && dart analyze && dart test` | 문제 없음, **63개 통과** |
-| 저장 패키지 | `cd packages/storage_drift && dart analyze && dart test` | 문제 없음, **58개 통과** (6절) |
+| 저장 패키지 | `cd packages/storage_drift && dart analyze && dart test` | 문제 없음, **58개 통과** (7절) |
 | app 정적 분석 | `cd app && flutter analyze` | 문제 없음 |
-| app 테스트 | `cd app && flutter test` | **43개 통과** |
+| app 테스트 | `cd app && flutter test` | **44개 통과** |
+| iOS 채널 순수 로직 | `cd app/ios && xcodebuild test -workspace Runner.xcworkspace -scheme Runner -destination 'id=<시뮬레이터>' -only-testing:RunnerTests` | **6개 통과** (회전 투표·가로세로 바꿈·방향 합성·이진화 크기, 6.4절) |
+| Android 채널 순수 로직 | `cd app/android && ./gradlew :app:testDebugUnitTest` (JDK 21) | **11개 통과** (조각 자르기·회전·상자 없는 글자, 6.5절) |
 | app 커버리지 | `flutter test --coverage` | 줄 커버리지 **89.9%** |
 | iOS 흐름 | `flutter drive ... integration_test/flow_screenshots_test.dart` | 통과, 스크린샷 15장 (3절, 시뮬레이터 디버그 빌드) |
 | Android 빌드 | `flutter build apk --debug` | 성공 (Kotlin ML Kit 채널 컴파일, 디버그 APK 약 186MB = 177MiB, 빌드 환경에 따라 조금 다름) |
-| 합성 세트 점수표 | `cd packages/core && dart run tool/eval_capture.dart` | 기준 구현과 같음 (2.1절) |
-| 교재 세트 점수표 | `dart run tool/eval_capture.dart --fixtures "$SHIORI_PRIVATE_DIR/textbook/vocab_n5n3"` | 기준 구현과 같음 (2.2절) |
+| 합성 세트 점수표 | `cd packages/core && dart run tool/eval_capture.dart` | 30/35, 기준 구현과 다른 칸 0개 (2.1절) |
+| 합성 세트 점수표 (ML Kit형) | `dart run tool/eval_capture.dart --fixtures test/fixtures/synthetic_mlkit` | 14/18 (6.3절) |
+| 교재 세트 점수표 | `dart run tool/eval_capture.dart --fixtures "$SHIORI_PRIVATE_DIR/textbook/vocab_n5n3"` | 52/59, 기준 구현과 다른 칸 0개 (2.2절) |
+| 합성 생성기 | `python3 tools/synthetic/make_pages.py --check` | 저장소 파일과 같음 |
 | 배포 빌드 차단 | `flutter build apk --release`, `flutter build ios --release --no-codesign` | **의도대로 실패**: 개발용 `assets/dev_samples/`가 pubspec에 있는 동안 막힘 |
 | 연구 도구 테스트 | `python3 -m unittest test_tools` (`research/scan/tools`, `research/ocr-android/tools`) | 27개, 16개 통과 |
 | ML Kit 판독 앱 | `cd research/ocr-android/mlkit_probe && ./gradlew :app:testDebugUnitTest` | 5개 통과 |
 
 ## 2. 캡처 회귀 점수표
 
-`dart run tool/eval_capture.dart`의 출력은 `python3 tools/reference/parse_eval.py --data <같은 폴더>`와 **한 칸도 다르지 않습니다.**
+`dart run tool/eval_capture.dart`의 출력을 `python3 tools/reference/parse_eval.py --data <같은 폴더>`(동결한 기준 구현)와 칸 단위로 비교합니다.
+Dart 해석기는 6절에서 기준 구현보다 앞으로 나갔으므로, **기준 출력과 다른 칸은 모두 같은 폴더의 `intended_differences.json`에 이유와 함께 적혀 있어야 합니다.**
+적히지 않은 차이도, 적혔지만 더는 생기지 않는 차이도 테스트가 실패시킵니다(`reference_parity_test.dart`). 지금 차이를 보려면
+`dart run tool/reference_diff.dart [--fixtures <폴더>]`(목록 파일과 같은 모양의 JSON)를 씁니다.
+
+| 세트 | 기준 출력과 다른 칸 | 목록 파일 |
+|---|---|---|
+| 합성 세트 (35단어) | **0개** | 없음 (차이가 생기면 `packages/core/test/fixtures/synthetic/intended_differences.json`) |
+| 교재 세트 (59단어, 로컬) | **0개** | 없음 (차이가 생기면 `$SHIORI_PRIVATE_DIR/textbook/vocab_n5n3/intended_differences.json`, 교재 글자가 들어가므로 로컬 전용) |
+
+6절의 규칙(내용 기준 칸 위치, 약점 수정, ML Kit 규칙 18개)은 두 세트의 칸을 하나도 바꾸지 않았습니다. 바뀌는 것은 다른 이미지 틀(페이지만 자른 좌표)과
+ML Kit 판독 결과뿐이고, 그 효과는 6절 점수표로 확인합니다.
 
 ### 2.1 합성 세트 (4쪽 35단어)
 
@@ -83,8 +98,8 @@ core fields wrong and flagged for review: 3;  flagged but actually correct: 3
 
 - 회귀 테스트와 기준 출력 대조는 같은 두 파일의 "recorded textbook pages (local only)" 그룹입니다.
 - 기준 출력 대조: `packages/core/test/capture/reference_parity_test.dart`는 Python 기준 구현의 출력
-  (`tools/reference/dump_reference.py --data <폴더>` → `reference_output.json`)과 **모든 항목의 모든 칸과 표시 코드**를 하나씩 비교합니다.
-  합성 세트(35개)는 항상, 교재 세트(59개)는 로컬 자료가 있을 때 비교합니다.
+  (`tools/reference/dump_reference.py --data <폴더>` → `reference_output.json`)과 **모든 항목의 모든 칸과 표시 코드**, 형식, DAY·제목·쪽을 하나씩 비교하고,
+  다른 칸을 의도한 차이 목록과 맞춥니다(위). 합성 세트(35개)는 항상, 교재 세트(59개)는 로컬 자료가 있을 때 비교합니다.
 - 이식에서 맞춘 Python 동작: 안정 정렬, 첫 최솟값, `round(x, 2)`의 짝수 반올림, `difflib.SequenceMatcher`(autojunk 포함),
   NFKC, 유니코드 `\b`·`\d`, 코드 포인트 단위 문자열 처리.
 - 기준 구현과 일부러 다르게 한 곳 (두 세트의 결과에는 영향 없음, 대조 테스트로 확인. 합성 세트도 이 경우는 피해서 만들었습니다):
@@ -121,53 +136,227 @@ core fields wrong and flagged for review: 3;  flagged but actually correct: 3
 ## 4. 실제 OCR 채널 확인 (추가, 시뮬레이터, 교재 세트)
 
 녹화 데이터가 아니라 **앱의 Swift Vision 채널**로 교재 원본 사진 5장을 읽고 같은 채점기로 채점했습니다.
-사진과 정답은 저장소 밖 로컬 전용 폴더에 둡니다. EXIF 회전값이 있는 3장(69·157·185쪽)은 원본 그대로 넘겨 채널의 EXIF 처리를 확인했고,
-EXIF 없이 옆으로 찍힌 2장(12·13쪽)은 연구 때처럼 미리 돌렸습니다(`research/OCR_TEST.md` 4절).
+사진과 정답은 저장소 밖 로컬 전용 폴더에 둡니다. **원본 사진을 그대로 넘깁니다**: EXIF 회전값이 있는 3장(69·157·185쪽)은 채널의 EXIF 처리로,
+EXIF 없이 옆으로 찍힌 2장(12·13쪽)은 채널의 회전 판별(첫 일본어 판독의 글 방향 투표, 6.4절)로 세웁니다.
 
 ```
 cd app && flutter test integration_test/vision_channel_probe_test.dart -d <시뮬레이터> \
   --dart-define=SHIORI_PROBE_PHOTOS=<쪽 이름.jpg 사진 폴더> --dart-define=SHIORI_PROBE_TRUTH=<ground_truth.json>
+# ★ 보조 판독 끄기: --dart-define=SHIORI_PROBE_STARS=false
 # 틀린 단어 목록(교재 본문이 찍힘)이 필요하면 --dart-define=SHIORI_PROBE_VERBOSE=true
+# 채널 출력을 판독 기록 형식으로 저장: --dart-define=SHIORI_PROBE_DUMP=<폴더>
 ```
 
-OCR 블록이 돌려준 JSON을 엄격하게 파싱하도록 바꾼 뒤에도 같은 결과로 통과했습니다.
+2026-11-05, iPhone 17 시뮬레이터(iOS 26.5), 6절 반영 뒤. 쪽마다 적용한 회전과 판독 시간을 찍습니다(교재 글자 없음).
 
 ```
-engine=apple-vision
-p012: ja 119 lines 1789 ms, ko 78 lines 1387 ms
-p013: ja 86 lines 1318 ms, ko 69 lines 1212 ms
-p069: ja 90 lines 1400 ms, ko 78 lines 1314 ms
-p157: ja 67 lines 1648 ms, ko 65 lines 1567 ms
-p185: ja 61 lines 1583 ms, ko 47 lines 1673 ms
-page tpl    n found head read  pos mean star  row exJA exKO meta
-  12 list  15    15   13   15   15   14   15   12    -    - ok
-  13 list  16    16   14   16   16   16   15   13    -    - ok
-  69 list  16    16   16   16   16   16   15   15    -    - ok
- 157 entry  6     6    6    6    6    6    6    6    6    6 ok
- 185 entry  6     6    6    6    4    5    4    3    5    6 ok
-
-TOTAL  headword=55/59  readings=59/59  pos=57/59  meaning=57/59  important=55/59  ex_ja=11/12  ex_ko=12/12  row=49/59  found=59/59
-core fields wrong but NOT flagged (silent errors): 2
+engine=apple-vision   (★ 보조 판독 켬, 앱 기본값. 오류 처리 보강 뒤 다시 잼, Mac 부하 평균 약 6)
+p012: turned 90°, ja 116 lines 1507 ms, ko 76 lines 1366 ms, star 1412 ms, extra {orient_pass: 1802, star_binarize: 550}, total 6678 ms
+p013: turned 90°, ja 87 lines 1324 ms, ko 65 lines 1242 ms, star 1215 ms, extra {orient_pass: 1269, star_binarize: 401}, total 5455 ms
+p069: turned 0°, ja 90 lines 1487 ms, ko 78 lines 1390 ms, star 1318 ms, extra {star_binarize: 419}, total 4620 ms
+p157: turned 0°, ja 67 lines 1734 ms, ko 65 lines 1615 ms, star 1622 ms, extra {star_binarize: 403}, total 5378 ms
+p185: turned 0°, ja 61 lines 1582 ms, ko 47 lines 1441 ms, star 1494 ms, extra {star_binarize: 364}, total 4890 ms
+TOTAL  headword=56/59  readings=59/59  pos=59/59  meaning=57/59  important=59/59  ex_ja=12/12  ex_ko=12/12  row=54/59  found=59/59
+core fields wrong but NOT flagged (silent errors): 1
+core fields wrong and flagged for review: 4;  flagged but actually correct: 3
 ```
 
-- 채널은 동작합니다: 59단어를 모두 찾았고 DAY·제목·쪽 5/5, 한 장 두 번 판독 합계 약 2.6~3.4초(시뮬레이터, Mac CPU).
-- Mac에서 녹화한 판독(52/59)과 결과가 조금 다릅니다. 같은 Vision API라도 iOS 26.5 시뮬레이터와 macOS 26.3의 판독 결과가 다릅니다
-  (예: 13쪽에서 표제어 앞에 잡음 글자가 붙음, 185쪽에서 품사 배지가 뜻 뒤에 붙어 품사를 못 읽음). **조용한 오류가 1 → 2로 늘었습니다.**
-- 그래서 회귀 기준은 Mac 녹화 데이터로 두고, 다음 단계에서 **실제 iPhone으로 같은 쪽을 녹화한 고정 데이터**를 로컬 전용 회귀 세트에 더해야 합니다.
+| 채널 구성 | 줄 전체 | ★ | 조용한 오류 | 한 장 시간 (이 측정) |
+|---|---|---|---|---|
+| main (12·13쪽은 미리 돌림, 기준) | 49/59 | 55/59 | 2 | 2.6~3.4초 |
+| 6절, ★ 보조 판독 끔 (12·13쪽 돌리지 않음) | 51/59 | 55/59 | 1 | 2.7~4.5초 |
+| **6절, ★ 보조 판독 켬 (앱 기본값)** | **54/59** | **59/59** | **1** | 4.6~6.7초 |
+
+- 회전: 12·13쪽은 첫 일본어 판독의 글 방향 투표로 시계 방향 90°를 판별했습니다. 바른 사진(69·157·185쪽)은 판독을 한 번 더 하지 않습니다.
+  옆 사진만 일본어 판독이 한 번 더 듭니다(이 측정에서 1.3~1.8초).
+- ★ 보조 판독: 이진화 0.36~0.55초 + 일본어 판독 한 번(1.2~1.6초). ★ 4개를 되찾았고 다른 칸은 바뀌지 않았습니다.
+- **시간은 Mac 부하에 따라 크게 흔들립니다.** 같은 탐침을 부하 평균 약 45일 때 돌리면 한 장 6.1~10.5초(판독 한 번 1.7~2.5초)였습니다.
+  ★ 보조 판독을 끈 표의 줄은 그 부하 높은 때 잰 값입니다. 실제 iPhone 측정이 필요합니다(Mac 연구 기록: 판독 한 번 0.4~0.7초, 이진화 18~84ms).
+- Mac에서 녹화한 판독(교재 세트, 52/59)과 시뮬레이터 판독은 조금 다릅니다(같은 Vision API라도 iOS 26.5 시뮬레이터와 macOS 26.3의 결과가 다름).
+  그래서 회귀 기준은 Mac 녹화 데이터로 두고, 다음 단계에서 **실제 iPhone으로 같은 쪽을 녹화한 고정 데이터**를 로컬 전용 회귀 세트에 더해야 합니다.
   실제 iPhone 측정은 아직 하지 않았습니다.
 
 ## 5. 하지 않은 것
 
-- 실제 iPhone·Android 기기 실행 (Android 기기 없음). Android ML Kit 판독 정확도는 `research/ocr-android/README.md`(에뮬레이터).
-- Android 에뮬레이터에서 앱 실행, 접근성 자동 점검, 다크 모드 스크린샷 (다크 토큰은 있고 위젯 테스트로 적용만 확인)
+- 실제 iPhone·Android 기기 실행 (Android 기기 없음). Android ML Kit 판독 정확도는 `research/ocr-android/README.md`(에뮬레이터)와 6.5절(앱 채널, 에뮬레이터).
+- Android 에뮬레이터에서 앱 화면 흐름, 접근성 자동 점검, 다크 모드 스크린샷 (다크 토큰은 있고 위젯 테스트로 적용만 확인). OCR 채널만 에뮬레이터에서 확인했습니다(6.5절).
 - 빌드를 위해 Android SDK 라이선스 동의(`sdkmanager --licenses`)를 했습니다. Gradle이 CMake 3.22.1을 내려받았습니다.
 
-## 6. 저장소 (SQLite, drift)
+## 6. 캡처 개선: 내용 기준 칸 위치, 회전, ★ 보조 판독, ML Kit 조각과 보정 규칙
+
+- 날짜: 2026-11-05. iOS는 iPhone 17 시뮬레이터(iOS 26.5), Android는 에뮬레이터 `Medium_Phone_API_36.1`. 실제 기기는 쓰지 않았습니다.
+- 교재 세트의 점수는 합계 줄만 적습니다(쪽별 줄에는 교재 제목이 찍힐 수 있음).
+
+### 6.1 바꾼 것
+
+| 단계 | 자리 | 내용 |
+|---|---|---|
+| ① 해석기 | `capture/vocab/column_scale.dart`, 두 템플릿 | 칸 위치 상수(`ax + 0.17` 등)를 **쪽마다 잰 배율**에 곱합니다. 배율 = (번호 칸 → 읽기 칸 거리의 최빈 칸) ÷ (상수를 정한 사진의 거리: 목록형 0.23, 항목형 0.183). 읽기 칸이 없으면 품사 배지 칸으로, 둘 다 없거나 0.6~1.8 밖이면 1.0. 사진·페이지만 자른 이미지·가깝게 찍은 사진을 같은 규칙으로 읽습니다 |
+| ① 약점 1 | `vocab/anchors.dart` | 번호가 3개 미만이고 체크박스 글자가 붙지 않은 번호 열은 페이지(옆 페이지)로 인정하지 않습니다(가장 큰 열은 항상 남김) |
+| ① 약점 2 | `capture/scan_preparation.dart` | 템플릿 앞 줄 정리 단계: 줄에 붙은 `★ * ☆ ＊`를 글자 수 비례 위치의 `★` 줄로 떼어 냅니다. 읽기 칸이 "가나만" 조건을 다시 만족합니다 |
+| ① 약점 4 | `vocab/layout.dart` | 형식 판별 두 번째 신호 = **예문 줄 수**(10자 이상, 일본어 비율 0.85 이상, 히라가나 있음, 가나만은 아님). 0줄 → 목록형, 3줄 이상 → 항목형, 1~2줄 → 번호 간격. 실제 교재의 판독 폴더 34개(엔진·이미지 변형) × 5쪽 모두에서 목록형 0줄, 항목형 4줄 이상 |
+| ① 대조 | `eval/reference_diff.dart`, `tool/reference_diff.dart` | 기준 구현과 다른 칸은 의도한 차이 목록에 있어야 함(2절) |
+| ② 회전 | iOS `OcrChannel.swift` | 첫 일본어 판독의 상자 글 방향(topLeft→topRight)을 글자 수로 투표 → 득표율 0.6 이상·20자 이상이면 그 방향으로 돌린 EXIF 방향으로 일본어를 다시 판독, 한국어는 처음부터 세운 방향으로. 좌표는 세운 이미지 기준. 바른 사진은 추가 판독 없음 |
+| ② 회전 | Android `OcrChannel.kt`, `OcrGeometry.kt` | `androidx.exifinterface`로 EXIF 각도를 읽어 `InputImage.fromBitmap(bmp, 각도)`. 일본어 판독의 `Line.angle` 중앙값 + 넘긴 각도가 ±90°·180°(±20°)면 모든 상자를 그만큼 돌립니다(다시 판독하지 않음) |
+| ③ ★ 보조 판독 | iOS 채널 + core `starPassMarks` | 세운 이미지를 회색조 ÷ 작은 반경(긴 변의 0.6%) 종이 추정 → 0.80 기준 이진화 → 일본어 판독 한 번 더(`"star"` 쪽). core는 그 판독의 ★·☆ 글자 위치만 일본어 판독에 더합니다(안내 문구 줄 제외). `OcrScan.stars`, 앱 기본값은 켬(`PlatformTextRecognizer(starPass: true)`) |
+| ④ 조각 | Android `OcrGeometry.segments` | Line을 Element 간격 > 1.1 × 줄 높이에서, 그리고 ★ 글자 앞뒤에서 자릅니다. x는 Symbol 상자 합집합, y는 줄 상자, c는 Symbol 신뢰도 평균 |
+| ④ 채널 | Android `OcrChannel.kt` | 일본어 → 한국어 차례 실행, recognizer 재사용과 `close()`, 비트맵 `recycle()`(판독이 끝나지 않았으면 놓지 않음), `Tasks.await` 60초 제한 |
+| ④ 규칙 | core 템플릿·줄 정리·보정기 체인 | ML Kit 보정 규칙 18개(6.6절) |
+
+### 6.2 단계별 점수표 (회귀 세트 네 개, 줄 전체 · 조용한 오류)
+
+단계를 순서대로 하나씩 더해 잰 값입니다. ②③은 채널 변경이라 core 세트의 점수는 바로 앞 단계와 같고, 채널 측정은 오른쪽 열에 적습니다.
+
+| 단계 | 합성 세트 (Vision형, 저장소) | 교재 Vision (로컬) | 교재 ML Kit 조각 (로컬) | 페이지만 자른 좌표 (로컬, 측정만) | 채널 측정 |
+|---|---|---|---|---|---|
+| 시작 (main) | 30/35 · 1 | 52/59 · 1 | 13/59 · 4 (기준 해석기) | 30/59 · 1 | iOS 시뮬레이터 49/59 · 2 (12·13쪽 미리 돌림) |
+| ① 해석기 | 30/35 · 1 | 52/59 · 1 | 16/59 · 3 | **39/59** · 1 | |
+| ② 회전 | (같음) | (같음) | (같음) | (같음) | iOS 51/59 · 1, Android 36/59 · 2 (둘 다 원본 사진, 돌리지 않음) |
+| ③ ★ 보조 판독 | (같음) | **54/59** · 1 (★ 58/59, 녹화한 이진화 판독을 합침) | (같음) | (같음) | iOS **54/59** · 1 (★ 59/59) |
+| ④ ML Kit 규칙 | 30/35 · 1 | 52/59 · 1 (★ 보조 54/59) | **38/59** · 1 | **40/59** · 1 | |
+| 목표 | ≥ 30/35 | ≥ 52, ★ 보조 54, 조용한 오류 ≤ 1 | ≥ 38/59 | 측정만 | |
+
+최종 합계 줄(`dart run tool/eval_capture.dart`, 교재 세트는 `--fixtures`·`--gt`·`--stars`로 로컬 폴더를 줌):
+
+```
+합성 세트 (Vision형)
+TOTAL  headword=33/35  readings=35/35  pos=35/35  meaning=33/35  important=34/35  ex_ja=10/11  ex_ko=10/11  row=30/35  found=35/35
+core fields wrong but NOT flagged (silent errors): 1
+core fields wrong and flagged for review: 3;  flagged but actually correct: 4
+
+교재 Vision
+TOTAL  headword=57/59  readings=59/59  pos=59/59  meaning=57/59  important=56/59  ex_ja=12/12  ex_ko=12/12  row=52/59  found=59/59
+core fields wrong but NOT flagged (silent errors): 1
+core fields wrong and flagged for review: 3;  flagged but actually correct: 3
+
+교재 Vision + ★ 보조 판독 (--stars <이진화 판독 폴더>)
+TOTAL  headword=57/59  readings=59/59  pos=59/59  meaning=57/59  important=58/59  ex_ja=12/12  ex_ko=12/12  row=54/59  found=59/59
+core fields wrong but NOT flagged (silent errors): 1
+core fields wrong and flagged for review: 3;  flagged but actually correct: 3
+
+교재 ML Kit 조각
+TOTAL  headword=52/59  readings=59/59  pos=55/59  meaning=58/59  important=46/59  ex_ja=12/12  ex_ko=12/12  row=38/59  found=59/59
+core fields wrong but NOT flagged (silent errors): 1
+core fields wrong and flagged for review: 7;  flagged but actually correct: 23
+
+페이지만 자른 좌표 (원근 보정 이미지 좌표 그대로)
+TOTAL  headword=52/57  readings=55/57  pos=55/57  meaning=52/57  important=49/57  ex_ja=8/10  ex_ko=8/10  row=40/59  found=57/59
+core fields wrong but NOT flagged (silent errors): 1
+core fields wrong and flagged for review: 8;  flagged but actually correct: 2
+```
+
+- 페이지 좌표의 남은 손실은 원근 보정이 펼친 면을 비틀어 편 157쪽(번호를 다른 숫자로 읽어 2단어를 놓침, 찾음 4/6)이 가장 큽니다.
+  사진 좌표로 되돌린 판독(`a-persp-photo`)은 기준 해석기 40/59 → 41/59입니다.
+- 정리 필터 변형(`research/scan/README.md` 4.2절)에서 약점 수정의 효과(최종 코드): 회색조 27 → 38/59(가짜 번호 열), 이진화 24 → 45/59(★가 붙은 읽기),
+  원근 보정 + 이진화 18 → 28/59. OCR 입력은 여전히 컬러 원본이 가장 좋습니다(52/59).
+- ML Kit 칸별 숫자(표제어 52, 읽기 59, 품사 55, 뜻 58, ★ 46, 예문 12/12)는 연구 도구의 보정 해석기 결과와 같습니다. Line 단위 판독 기록으로는 37/59(연구 도구와 같음).
+
+### 6.3 합성 세트, ML Kit형 (저장소, `packages/core/test/fixtures/synthetic_mlkit/`)
+
+합성 세트의 11쪽·140쪽 단어를 ML Kit 채널이 돌려주는 모양(조각, 연속 신뢰도, 상자 높이 0.85배)으로 만들었습니다(`tools/synthetic/make_pages.py`).
+넣은 실수: ★ 미출력 2, ★가 읽기에 붙음, ★를 `*`로, 배지 `8`, 붙은 배지(`명별`), 배지 미출력 2, 번호의 `O`·`D`·`l`, 번호 뒤 체크박스 `O`, 표제어 앞 `|` 2,
+읽기 뒤 다른 칸 글자(`ひかる で`), 읽기의 `リ`, 한글 사이 마침표 2, 쉼표로 끝난 뜻, 낮은 신뢰도 쓰레기 줄(한국어 판독의 일본어 줄, 뜻 앞의 한글 잡음),
+가짜 일본어 예문 줄(신뢰도 0.31), 항목형 번호 줄 미출력 3, 긴 후리가나 줄, 예문 앞 떠돌이 글자, 왼쪽에서 시작하는 번역, 비슷한 한자로 읽은 표제어(조용한 오류).
+
+```
+page tpl    n found head read  pos mean star  row exJA exKO meta
+  11 list  12    12   12   12   12   11   11   10    -    - ok
+ 140 entry  6     6    5    6    6    6    5    4    6    6 ok
+
+TOTAL  headword=17/18  readings=18/18  pos=18/18  meaning=17/18  important=16/18  ex_ja=6/6  ex_ko=6/6  row=14/18  found=18/18
+core fields wrong but NOT flagged (silent errors): 1
+core fields wrong and flagged for review: 1;  flagged but actually correct: 7
+```
+
+틀린 4줄은 모두 일부러 넣은 것입니다: ★ 미출력 2, 쉼표로 끝난 뜻 1("뜻 확인 필요" `meaning:suspect`로 표시), 비슷한 한자 표제어 1(조용한 오류).
+같은 판독 기록을 기준 해석기(`tools/reference/parse_eval.py`)로 읽으면 1/18, 찾음 13/18입니다.
+회귀 테스트(`regression_test.dart`의 "synthetic pages, ML Kit")가 위 값을 정확히 단언하고, `synthetic_mlkit_pages_test.dart`가 실수마다 하나씩 확인합니다.
+
+### 6.4 iOS 채널 (회전, ★ 보조 판독)
+
+- 실제 사진 탐침 결과와 시간은 4절. 회전 판별은 12·13쪽(EXIF 없음)에서 90°, 나머지 3쪽에서 0°(EXIF로 이미 바름)였습니다.
+- 순수 로직 XCTest 6개(`app/ios/RunnerTests/RunnerTests.swift`): 투표 방향(0·90·180·270°, 경계 44°/46°), 픽셀 가로세로비, 득표율·글자 수 문턱, EXIF 방향과 회전의 합성(거울 방향은 돌리지 않고 로그를 남김), 가로세로가 바뀌는 방향, 이진화 이미지가 세운 틀의 크기를 지키는지.
+- 긴 변이 4096px를 넘는 사진만 줄여 디코드합니다(12MP 사진은 그대로). 판독·이진화마다 `autoreleasepool`로 임시 메모리를 놓습니다. ★ 보조 판독이 실패하면 ★ 판독만 빠지고 일본어·한국어 결과는 그대로 돌려줍니다.
+- 채널 JSON에는 `"turned"`(돌린 각도)와 `"timing"`(`orient_pass`, `star_binarize`, ms)이 더 있습니다. Dart 모델은 이 둘을 읽지 않고, 탐침이 출력합니다.
+
+### 6.5 Android 채널 (조각, 회전, 에뮬레이터)
+
+`flutter test integration_test/vision_channel_probe_test.dart -d emulator-5554` (사진은 `run-as`로 앱 내부 저장소에 넣음, 끝난 뒤 지움). 원본 사진, 12·13쪽 돌리지 않음.
+좌표를 소수 4자리로 맞추고 오류 처리를 보강한 뒤 다시 돌려 점수가 칸별로 같음을 확인했습니다(시간은 첫 측정 값).
+
+```
+engine=mlkit
+p012: turned 90°, ja 88 lines 3057 ms, ko 58 lines 2400 ms, no star pass, extra {decode: 484, exif_rotation: 0}, total 6134 ms
+p013: turned 90°, ja 61 lines 901 ms, ko 48 lines 750 ms, no star pass, extra {decode: 467, exif_rotation: 0}, total 2202 ms
+p069: turned 0°, ja 62 lines 1051 ms, ko 57 lines 887 ms, no star pass, extra {decode: 460, exif_rotation: 90}, total 2445 ms
+p157: turned 0°, ja 74 lines 1131 ms, ko 62 lines 867 ms, no star pass, extra {decode: 233, exif_rotation: 90}, total 2333 ms
+p185: turned 0°, ja 64 lines 834 ms, ko 46 lines 928 ms, no star pass, extra {decode: 282, exif_rotation: 90}, total 2106 ms
+TOTAL  headword=47/59  readings=55/59  pos=50/59  meaning=52/59  important=50/59  ex_ja=12/12  ex_ko=12/12  row=36/59  found=59/59
+core fields wrong but NOT flagged (silent errors): 2
+core fields wrong and flagged for review: 16;  flagged but actually correct: 20
+```
+
+- 회전: 12·13쪽은 EXIF가 0이고 줄 각도 −90°로 시계 방향 90°를 판별, 나머지는 EXIF 90°로 이미 바름.
+- **조각 구현 확인:** 같은 원본 사진·같은 디코드 경로(`fromBitmap(bmp, EXIF)`)의 연구 원본 덤프(`raw/orig-bitmap-exif`)를
+  연구 도구(`raw_to_fixture.py segment --auto-rotate`)로 바꾼 결과와 쪽·판독마다 줄 수가 모두 같고(88/58, 61/48, 62/57, 74/62, 64/46),
+  Dart 점수가 칸별로 같습니다(36/59).
+- 세운 JPEG를 넣은 연구 측정(38/59)보다 2줄 낮은 것은 디코드 경로 차이입니다(연구 README 6절: 같은 쪽도 경로에 따라 ±4줄, 원본 입력에서 새 잡음).
+  연구의 "원본 + 각도로 자동 세우기" 측정(36/59)과 같습니다.
+- 첫 쪽의 시간(3.1초)에는 모델 적재가 들어 있습니다. 에뮬레이터라 실제 기기 시간이 아닙니다.
+- 순수 로직 JVM 테스트 11개(`app/android/app/src/test/.../OcrGeometryTest.kt`): 자를 필요 없는 줄, 넓은 간격, Element 안에 붙은 ★, 줄 상자 높이 유지,
+  상자 없는 글자(일부만 없는 경우 포함), 신뢰도 대체, 각도+EXIF로 회전 판별(시계 1·2·3회, 불분명·짧은 줄은 0), 상자 돌리기와 틀 바꾸기, 돌린 뒤 자르기.
+- 쪽 JSON에 진단 값이 더 있습니다: `dropped`(상자 없는 줄), `lost_glyphs`(잘린 줄에서 빠진 상자 없는 글자), `no_confidence`(신뢰도가 NaN이라 0.5로 쓴 조각).
+  판독이 시간 제한(60초)에 걸리거나 끝나지 않으면 비트맵을 해제하지 않고 남겨 둡니다(네이티브가 아직 읽을 수 있으므로).
+
+### 6.6 ML Kit 보정 규칙 18개의 자리
+
+| 규칙 | 자리 | 엔진 |
+|---|---|---|
+| `id_ocr` 번호의 O·o·D, 번호 뒤 `O` | 템플릿 (`anchors.dart`, `fields.dart` 표제어 정리). 숫자 2개 이상일 때만 | 공통 |
+| `star_split` ★·`*` 떼기 | 줄 정리 (`scan_preparation.dart`) | 공통 |
+| `reading_token` 읽기는 첫 토막 | 템플릿 (`fields.dart` `readingText`, 슬래시 앞뒤 공백은 먼저 붙임) | 공통 |
+| `kata_lookalike` 읽기의 リ·ヘ·ベ·ペ | 보정기 `ReadingLookalikeCorrector` (자동 보정으로 표시) | 공통 |
+| `keep_anchored` 번호만 읽힌 줄 유지 | 목록형 템플릿. 줄 절반 이상에 읽기 칸이 있는 번호 열에서만(잘린 옆 페이지 번호가 단어가 되지 않게) | 공통 |
+| `row_ids` 번호 채우기 | 이미 Dart에 있음(2.2절 차이 2번, 앞뒤 번호에서 거리만큼) | 공통 |
+| `entry_fallback` 항목형 번호 대체, 안내 문구 제외 | 항목형 템플릿 (`_withRowAnchors`). 판별은 예문 줄 신호(6.1절) | 공통 |
+| `sentence_geom` 예문 기하 | 항목형 템플릿 | 공통 |
+| `sentence_conf` 예문 c ≥ 0.4 | 항목형 템플릿 | **ML Kit만** |
+| `entry_reading` 읽기 조건 | 항목형 템플릿 | 공통 |
+| `bar_noise` 앞의 `\|` | 템플릿 (`fields.dart`) | 공통 |
+| `pos_8` 배지 `8` | 보정기 `BadgeMisreadCorrector` | 공통 |
+| `pos_glued` 붙은 배지 | 목록형 템플릿 (이웃 줄 배지 위치가 필요) | 공통 |
+| `pos_infer` 품사 추정 | 보정기 `PosInferenceCorrector` (`pos:inferred`, 새 표시 종류 "추정") | 공통 |
+| `low_conf` c < 0.2 버림 | 줄 정리 | **ML Kit만** |
+| `meta_day` DAY 숫자 위치 | 템플릿 (`page_meta.dart`) | 공통 |
+| `ko_period` 한글 사이 마침표 | 보정기 `MeaningPunctuationCorrector`(뜻, 배지를 뗀 뒤, 자동 보정으로 표시) + `page_meta.dart`(제목) | 공통 |
+| `meaning_cut` 쉼표로 끝난 뜻 | 보정기 `CutMeaningFlagger` (`meaning:suspect`, 새 표시 종류 "의심") | 공통 |
+
+- 엔진과 상관없이 켠 규칙은 두 Vision 세트의 칸을 하나도 바꾸지 않았습니다(2절, 다른 칸 0개). 신뢰도 눈금에 기대는 두 규칙만 `OcrPage.engine == "mlkit"`일 때 켭니다.
+- 보정기 체인은 core `standardCorrectors()` 안에서 바뀌므로 블록 지도(`blocks.dart`)는 그대로입니다.
+- 새 표시 종류: `IssueKind.inferred`(→ `FieldStatus.inferred`), `IssueKind.suspect`(→ `FieldStatus.suspect`, 항목은 "확인 필요"로 셈).
+  지금 검토 화면은 `needsReview`(빨간 여백)만 보고 두 상태를 따로 그리지 않습니다.
+
+### 6.7 Android ★ 칸 픽셀 검사 (시험만, 앱에는 넣지 않음)
+
+ML Kit는 ★ 30개 중 13개를 출력하지 않습니다(조각 판독에서 ★ 46/59). 판독 결과로는 되살릴 수 없어 사진 픽셀로 시험했습니다(로컬 스크립트, 교재 사진).
+
+- 방법: 목록형 3쪽의 각 줄에서 "표제어 칸 끝(번호 x + 0.165) ~ 읽기 칸 시작, 읽기 줄 높이 ± 0.006" 상자를 잘라, 붉은 픽셀
+  (R > 120, R − max(G, B) > 45) 비율을 셉니다. 이 교재의 ★는 붉은색이고 칸의 바탕 띠는 베이지라 섞이지 않습니다.
+- 결과(줄 45개, 정답 ★ 24개): 비율 ≥ 0.002로 판정하면 **★ 22/24를 찾고, ★ 없는 21줄은 하나도 잘못 표시하지 않았습니다.**
+  ≥ 0.0005면 23/24(잘못 표시 0), ≥ 0.01이면 18/24. 놓친 2개는 69쪽의 기울어진 줄에서 상자가 ★를 벗어난 경우입니다.
+- 설계(다음 단계):
+  1. Dart가 해석을 마친 뒤, ML Kit 쪽의 `important == false`인 목록형 줄마다 ★ 칸 상자(정규화 좌표, 줄 기울기 반영)를 만듭니다.
+  2. 채널에 `measureStars(path, cells)`를 더합니다. Kotlin이 같은 사진을 작게(긴 변 1600px) 디코드해 칸마다 붉은 픽셀 비율을 돌려줍니다.
+  3. 문턱을 넘은 줄은 ★로 바꾸고 `important:inferred`로 표시합니다(검토 화면에서 가볍게).
+  4. ★ 색은 교재마다 다르므로 템플릿의 설정값으로 둡니다. 색이 없는 교재는 모양(어두운 별 모양 덩어리) 검사가 필요합니다.
+- 주의: 사진 5장 중 목록형 3장으로 본 결과입니다. 조명이 붉거나 사진이 바랜 경우, 다른 교재의 색을 더 재야 합니다.
+
+## 7. 저장소 (SQLite, drift)
 
 `packages/storage_drift/`는 순수 Dart 패키지입니다. 앱은 `blocks.dart`에서 `DriftLibraryRepository`, `DriftReviewRepository`를 끼우고,
 두 저장소가 DB 파일 하나(`ShioriDatabase`)를 같이 씁니다. 위젯 테스트는 InMemory 블록을 씁니다.
 
-### 6.1 설계
+### 7.1 설계
 
 - **트랜잭션 포트:** 두 포트에 `Future<T> transaction<T>(Future<T> Function() action)`을 더했습니다.
   유스케이스의 두 단계 쓰기가 각각 한 저장소 안에서 일어나므로(DAY → 단어, 카드 → 기록) 포트마다 두었고,
@@ -194,7 +383,7 @@ core fields wrong but NOT flagged (silent errors): 2
   앱에서 풀리지 않습니다. 그래서 `storage_drift`와 `dict_jmdict` 모두 `sqlite3: ">=3.4.0 <3.6.0"`(지금 3.5.2)으로 맞췄습니다.
   Flutter SDK가 올라가면 상한을 풉니다.
 
-### 6.2 스키마 버전과 마이그레이션
+### 7.2 스키마 버전과 마이그레이션
 
 - 지금 `schemaVersion = 1`. 덤프: `packages/storage_drift/drift_schemas/shiori_database/drift_schema_v1.json`,
   테스트 도우미: `test/migrations/generated/` (`dart run drift_dev schema generate drift_schemas/shiori_database/ test/migrations/generated/`).
@@ -206,7 +395,7 @@ core fields wrong but NOT flagged (silent errors): 2
 - 코드 생성 결과(`lib/src/database.g.dart`, 생성된 테스트 도우미)는 저장소에 넣습니다. 받은 사람은 생성 없이 테스트를 돌립니다.
   다시 만들 때: `dart run build_runner build`.
 
-### 6.3 결과 (2026-11-05)
+### 7.3 결과 (2026-11-05)
 
 | 항목 | 명령 | 결과 |
 |---|---|---|
@@ -222,7 +411,7 @@ core fields wrong but NOT flagged (silent errors): 2
 계약 테스트(`packages/storage_drift/test/contract/repository_contract.dart`)는 한 벌의 테스트를 InMemory와 drift에 똑같이 돌립니다.
 core의 일반 의존성에 `test`를 넣지 않으려고(앱까지 따라 들어가 `flutter_test`의 고정 버전과 부딪힘) 저장 패키지의 테스트 폴더에 두었습니다.
 
-### 6.4 iOS 시뮬레이터: 껐다 켜도 남는지
+### 7.4 iOS 시뮬레이터: 껐다 켜도 남는지
 
 iPhone 17 Pro (iOS 26.5), 합성 샘플 페이지, 실제 DB 파일.
 

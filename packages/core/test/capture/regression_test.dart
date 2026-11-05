@@ -7,7 +7,7 @@ import '../support/fixtures.dart';
 
 Future<CaptureScore> _score(FixtureSet set) async {
   final score = await scoreCapture(
-    truth: GroundTruth.fromJson(set.readJson('ground_truth.json')),
+    truth: set.truth,
     loadScan: set.loadScan,
     pipeline: standardPipeline(),
   );
@@ -23,6 +23,8 @@ Map<int, String> _templates(FixtureSet set) => {
           .cast<Map<String, Object?>>())
     p['page']! as int: 'vocab.${p['template']}',
 };
+
+int _metaOk(CaptureScore s) => s.pages.where((p) => p.metaOk).length;
 
 void main() {
   group('synthetic pages', () {
@@ -65,6 +67,91 @@ void main() {
       }, _templates(synthetic));
     });
   });
+
+  group('synthetic pages, ML Kit', () {
+    late CaptureScore score;
+    setUpAll(() async => score = await _score(syntheticMlKit));
+
+    // The same words as s011 and s140, as the ML Kit channel returns them, with
+    // the slips that engine makes. Without the ML Kit rules the reference
+    // parser gets 1/18 rows of these pages (13 words found).
+    test('finds every word (18/18)', () {
+      expect(score.total('found'), (ok: 18, of: 18));
+    });
+
+    test('per-field totals', () {
+      expect(score.total('headword'), (ok: 17, of: 18)); // look-alike kanji
+      expect(score.total('readings'), (ok: 18, of: 18));
+      expect(score.total('pos'), (ok: 18, of: 18)); // 8, glued, inferred
+      expect(score.total('meaning'), (ok: 17, of: 18)); // cut after a comma
+      expect(score.total('important'), (ok: 16, of: 18)); // two ★ not returned
+      expect(score.total('row'), (ok: 14, of: 18));
+      expect(score.total('ex_ja'), (ok: 6, of: 6));
+      expect(score.total('ex_ko'), (ok: 6, of: 6));
+    });
+
+    test(
+      'one silent error (the look-alike kanji); the cut meaning is flagged',
+      () {
+        expect(score.silentErrors, 1);
+        expect(score.flaggedWrong, 1);
+        expect(_metaOk(score), 2);
+      },
+    );
+
+    test('picks the list or entry layout as the ground truth says', () {
+      expect({
+        for (final p in score.pages) p.page: p.templateId,
+      }, _templates(syntheticMlKit));
+    });
+  });
+
+  group(
+    'recorded textbook pages, ML Kit (local only)',
+    skip: skipUnlessPresent(recordedMlKit),
+    () {
+      late CaptureScore score;
+      setUpAll(() async => score = await _score(recordedMlKit));
+
+      test('the Dart rule chain reads at least 38/59 rows', () {
+        expect(score.total('found'), (ok: 59, of: 59));
+        expect(score.total('row').ok, greaterThanOrEqualTo(38));
+        expect(score.total('ex_ja'), (ok: 12, of: 12));
+        expect(score.total('ex_ko'), (ok: 12, of: 12));
+        expect(score.silentErrors, lessThanOrEqualTo(1));
+      });
+    },
+  );
+
+  group(
+    'recorded textbook pages + star pass (local only)',
+    skip: skipUnlessPresent(recordedWithStars),
+    () {
+      late CaptureScore score;
+      setUpAll(() async => score = await _score(recordedWithStars));
+
+      test('the star pass brings back ★ marks (≥ 54/59 rows, ★ ≥ 58)', () {
+        expect(score.total('row').ok, greaterThanOrEqualTo(54));
+        expect(score.total('important').ok, greaterThanOrEqualTo(58));
+        expect(score.silentErrors, lessThanOrEqualTo(1));
+      });
+    },
+  );
+
+  group(
+    'recorded textbook pages, page crop (local only)',
+    skip: skipUnlessPresent(recordedPageCrop),
+    () {
+      late CaptureScore score;
+      setUpAll(() async => score = await _score(recordedPageCrop));
+
+      // Measured, not a target: the reference parser reads 30/59 here.
+      test('column positions measured from the content read ≥ 40/59', () {
+        expect(score.total('row').ok, greaterThanOrEqualTo(40));
+        expect(score.silentErrors, lessThanOrEqualTo(1));
+      });
+    },
+  );
 
   group(
     'recorded textbook pages (local only)',

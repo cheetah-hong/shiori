@@ -21,6 +21,12 @@ final RegExp _pageLine = RegExp(r'^(\p{Nd}{1,3})\s+\P{Nd}', unicode: true);
 /// `ᄋ1` is the NFKC form of `ㅇ1`; the reference only listed the latter.
 const Map<String, String> _dayMisreads = {'이': '01', 'ㅇ1': '01', 'ᄋ1': '01'};
 
+/// The page footer (`PART … | DAY 20 여행·교통 140`) in the Korean pass.
+bool isFooterLine(String text) => _footer.hasMatch(nfkc(text));
+
+/// How far from the DAY label (x) its digits may sit.
+const double _dayDigitsReach = 0.1;
+
 /// Reads the footer `PART … | DAY 20 여행·교통 140` from the Korean pass.
 /// Pages without a footer use the `DAY` header and the `10 …` page line.
 PageMeta readPageMeta(OcrScan scan) {
@@ -35,7 +41,7 @@ PageMeta readPageMeta(OcrScan scan) {
     final token = _dayMisreads[dayToken] ?? dayToken;
     return PageMeta(
       day: (isDecimal(token) ? pyInt(token) : null) ?? jaDay,
-      title: normTitle(m.group(2) ?? ''),
+      title: fixKoreanPeriods(normTitle(m.group(2) ?? '')),
       page: pyInt(m.group(3) ?? ''),
     );
   }
@@ -47,10 +53,19 @@ PageMeta readPageMeta(OcrScan scan) {
   if (dayLabels.isNotEmpty) {
     final d = dayLabels.first;
     final near = ko.where((l) => (l.cy - d.cy).abs() < 0.05);
-    final number = near.where((l) => isDecimal(l.text.trim()));
+    // The big DAY digits sit by the label; a word number of the next page
+    // (`0017`) on the same height is not the DAY.
+    final number = near.where(
+      (l) =>
+          isDecimal(l.text.trim()) &&
+          (l.x - d.x).abs() < _dayDigitsReach &&
+          l.text.trim().runes.length <= 2,
+    );
     if (number.isNotEmpty) day = int.tryParse(nfkc(number.first.text).trim());
     final heading = near.where((l) => ratio(l.text, isHangul) > 0.5);
-    if (heading.isNotEmpty) title = heading.first.text.trim();
+    if (heading.isNotEmpty) {
+      title = fixKoreanPeriods(normTitle(heading.first.text));
+    }
   }
   for (final l in ko) {
     final m = _pageLine.firstMatch(l.text);

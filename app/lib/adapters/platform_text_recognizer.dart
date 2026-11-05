@@ -8,24 +8,34 @@ import 'package:shiori_core/shiori_core.dart';
 /// ML Kit on Android (android/.../OcrChannel.kt).
 ///
 /// Both channels answer `recognize(path)` with `{"ja": OcrPage, "ko": OcrPage}` JSON,
-/// the same shape the research probe recorded.
+/// the same shape the research probe recorded. Both turn a sideways photo upright
+/// first (EXIF, then the direction of the text read).
+///
+/// [starPass]: the iOS channel also reads a binarized copy for the ★ marks
+/// Vision misses on the colour photo (about half a second more). The Android
+/// channel has no star pass and ignores it.
 final class PlatformTextRecognizer implements TextRecognizer {
-  const PlatformTextRecognizer({MethodChannel channel = defaultChannel})
-    : _channel = channel;
+  const PlatformTextRecognizer({
+    MethodChannel channel = defaultChannel,
+    this.starPass = true,
+  }) : _channel = channel;
 
   static const MethodChannel defaultChannel = MethodChannel('shiori/ocr');
 
   final MethodChannel _channel;
+  final bool starPass;
 
   @override
-  String get id =>
-      defaultTargetPlatform == TargetPlatform.iOS ? 'apple-vision' : 'mlkit';
+  String get id => defaultTargetPlatform == TargetPlatform.iOS
+      ? appleVisionEngine
+      : mlKitEngine;
 
   @override
   Future<OcrScan> recognize(PageImage image) async {
     try {
       final payload = await _channel.invokeMethod<String>('recognize', {
         'path': image.path,
+        'starPass': starPass,
       });
       if (payload == null || payload.isEmpty) {
         throw const TextRecognitionException('글자 인식 결과가 비어 있습니다');

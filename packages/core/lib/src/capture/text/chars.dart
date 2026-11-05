@@ -49,5 +49,11 @@ double ratio(String s, bool Function(int) pred) {
 bool containsKanji(String s) => s.runes.any(isKanji);
 bool containsKata(String s) => s.runes.any(isKata);
 
+final RegExp _periodBetweenHangul = RegExp(r'(?<=[가-힣])\.\s+(?=[가-힣])');
+
+/// A comma between Korean words read as a period: `싸다. 포장하다` →
+/// `싸다, 포장하다` (meanings and DAY titles).
+String fixKoreanPeriods(String s) => s.replaceAll(_periodBetweenHangul, ', ');
+
 /// Unicode NFKC: full-width forms to ASCII, compatibility jamo to conjoining jamo.
 String nfkc(String s) => unorm.nfkc(s);

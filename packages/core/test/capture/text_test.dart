@@ -113,4 +113,9 @@ void main() {
       expect(sequenceRatio(a, b), 0.0);
     });
   });
+
+  test('maxBy returns the first largest, or null when empty', () {
+    expect(maxBy(['a', 'bb', 'cc'], (x) => x.length), 'bb');
+    expect(maxBy(<String>[], (x) => x.length), isNull);
+  });
 }

@@ -2,10 +2,15 @@
 library;
 
 import 'package:shiori_core/src/capture/text/py.dart';
+import 'package:shiori_core/src/capture/vocab/fields.dart';
 import 'package:shiori_core/src/models/ocr.dart';
 
-/// A four-digit word number; OCR may read 1 as I, l or |.
-final RegExp idPattern = RegExp(r'^\s*([0-9Il|]{4})(?=\s|$|[□口ロコ■])');
+/// A four-digit word number; OCR may read 1 as I, l or |, and 0 as O or D,
+/// with the first checkbox read as O right after it (`1212O`).
+final RegExp idPattern = RegExp('^\\s*([$ocrDigits]{4})(?=\\s|\$|[□口ロコ■Oo])');
+
+/// A real number keeps at least two digits (`DO17` is 0017, `DOOD` is a word).
+const int _minDigits = 2;
 
 /// A number that lost a digit (`143 ロロロ`) but still has its checkboxes.
 final RegExp _shortIdPattern = RegExp(r'^\s*([0-9Il|]{2,3})\s*[□口ロコ■]{2,}');
@@ -17,32 +22,85 @@ const double entryLayoutMinGap = 0.08;
 
 typedef Anchor = ({OcrLine line, String? no});
 
+/// Checkbox glyphs printed right after a word number.
+final RegExp _checkboxAfterId = RegExp(
+  '^\\s*[$ocrDigits]{2,4}\\s*[□口ロコ■]|^\\s*[$ocrDigits]{4}[Oo]',
+);
+
+/// Numbers whose x differ by less than this sit in the same column.
+const double _columnTolerance = 0.12;
+
+/// A column of numbers with fewer members and no checkbox is not a page.
+const int _minColumn = 3;
+
 /// Anchors in reading order. Numbers that lost a digit are filled from neighbours.
+///
+/// A column of numbers counts as a page only with at least three numbers or a
+/// checkbox printed next to one: a meaning line misread as four digits must not
+/// split the page in two (rule 3).
 List<Anchor> findAnchors(List<OcrLine> ja) {
   final found = <Anchor>[];
   for (final l in ja) {
     final m = idPattern.firstMatch(l.text);
     if (m != null) {
-      final digits = m
-          .group(1)!
-          .replaceAll('I', '1')
-          .replaceAll('l', '1')
-          .replaceAll('|', '1');
-      if (_asciiDigits.hasMatch(digits)) found.add((line: l, no: digits));
+      final token = m.group(1)!;
+      final digits = token
+          .replaceAll(RegExp('[Il|]'), '1')
+          .replaceAll(RegExp('[OoD]'), '0');
+      if (_asciiDigits.hasMatch(digits) &&
+          RegExp('[0-9]').allMatches(token).length >= _minDigits) {
+        found.add((line: l, no: digits));
+      }
     } else if (_shortIdPattern.hasMatch(l.text)) {
       found.add((line: l, no: null));
     }
   }
-  final out = stableSorted(found, (a, b) => cmpNum(a.line.cy, b.line.cy));
-  for (var i = 0; i < out.length; i++) {
-    if (out[i].no != null) continue;
-    final prev = int.tryParse(i > 0 ? out[i - 1].no ?? '' : '');
-    final next = int.tryParse(i + 1 < out.length ? out[i + 1].no ?? '' : '');
-    final k = prev != null ? prev + 1 : (next != null ? next - 1 : null);
-    // Word numbers start at 0001; never invent 0000 or a negative one.
-    out[i] = (line: out[i].line, no: k != null && k >= 1 ? pad4(k) : null);
+  final out = stableSorted(
+    _credibleColumns(found),
+    (a, b) => cmpNum(a.line.cy, b.line.cy),
+  );
+  // Unread digits count on from the nearest read number by distance, so a run
+  // of them is filled too; never 0000 or below (inferNumber).
+  final numbers = [for (final a in out) a.no];
+  return [
+    for (final (i, a) in out.indexed)
+      a.no != null
+          ? a
+          : (
+              line: a.line,
+              no: switch (inferNumber(numbers, i)) {
+                final k? => pad4(k),
+                null => null,
+              },
+            ),
+  ];
+}
+
+/// Drops number columns that are too small to be a page and show no checkbox.
+/// The largest column always stays.
+List<Anchor> _credibleColumns(List<Anchor> found) {
+  if (found.isEmpty) return found;
+  final columns = <List<Anchor>>[];
+  for (final a in stableSorted(found, (p, q) => cmpNum(p.line.x, q.line.x))) {
+    if (columns.isNotEmpty &&
+        (a.line.x - columns.last.last.line.x).abs() < _columnTolerance) {
+      columns.last.add(a);
+    } else {
+      columns.add([a]);
+    }
   }
-  return out;
+  final largest = maxBy(columns, (c) => c.length);
+  final kept = {
+    for (final c in columns)
+      if (identical(c, largest) ||
+          c.length >= _minColumn ||
+          c.any((a) => _checkboxAfterId.hasMatch(a.line.text)))
+        ...c,
+  };
+  return [
+    for (final a in found)
+      if (kept.contains(a)) a,
+  ];
 }
 
 /// Median vertical gap between anchors, or null with fewer than two anchors.

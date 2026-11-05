@@ -1,7 +1,13 @@
+import 'package:shiori_core/src/capture/correctors/badge_misread_corrector.dart';
 import 'package:shiori_core/src/capture/correctors/confusable_glyph_corrector.dart';
+import 'package:shiori_core/src/capture/correctors/cut_meaning_flagger.dart';
 import 'package:shiori_core/src/capture/correctors/dictionary_candidate_corrector.dart';
 import 'package:shiori_core/src/capture/correctors/kana_okurigana_corrector.dart';
+import 'package:shiori_core/src/capture/correctors/meaning_punctuation_corrector.dart';
 import 'package:shiori_core/src/capture/correctors/missing_field_flagger.dart';
+import 'package:shiori_core/src/capture/correctors/pos_inference_corrector.dart';
+import 'package:shiori_core/src/capture/correctors/reading_lookalike_corrector.dart';
+import 'package:shiori_core/src/capture/scan_preparation.dart';
 import 'package:shiori_core/src/capture/vocab/entry_template.dart';
 import 'package:shiori_core/src/capture/vocab/list_template.dart';
 import 'package:shiori_core/src/capture/template_registry.dart';
@@ -11,7 +17,7 @@ import 'package:shiori_core/src/models/ocr.dart';
 import 'package:shiori_core/src/ports/dictionary.dart';
 import 'package:shiori_core/src/ports/entry_corrector.dart';
 
-/// OCR scan → template → corrector chain → review draft.
+/// OCR scan → line clean-up → template → corrector chain → review draft.
 ///
 /// Recognition (`TextRecognizer`) is a separate step so the caller can show
 /// progress and choose which recognizer block to use.
@@ -37,10 +43,11 @@ final class CapturePipeline {
 
   /// Parses [scan] with the detected template, or with [templateId] when given.
   Future<CaptureDraft> fromScan(OcrScan scan, {String? templateId}) async {
+    final prepared = prepareScan(scan);
     final template =
         (templateId == null ? null : templates.byId(templateId)) ??
-        templates.detect(scan);
-    final result = template.parse(scan);
+        templates.detect(prepared);
+    final result = template.parse(prepared);
     final entries = <CapturedEntry>[];
     for (final raw in result.entries) {
       var entry = raw;
@@ -58,10 +65,19 @@ final class CapturePipeline {
   }
 }
 
-/// Order matters: fix glyphs first, then offer dictionary candidates, flag last.
+/// Order matters: fix glyphs first (the POS guess needs the fixed headword),
+/// then offer dictionary candidates, flag last.
+///
+/// The glyph fixes for ML Kit's slips (`のリかえる`, badge `8`, `싸다. 포장하다`)
+/// never change an Apple Vision result, so they run for every engine.
 List<EntryCorrector> standardCorrectors(Dictionary dictionary) => [
   const ConfusableGlyphCorrector(),
   const KanaOkuriganaCorrector(),
+  const ReadingLookalikeCorrector(),
+  const BadgeMisreadCorrector(),
+  const MeaningPunctuationCorrector(),
+  const PosInferenceCorrector(),
+  const CutMeaningFlagger(),
   DictionaryCandidateCorrector(dictionary),
   const MissingFieldFlagger(),
 ];

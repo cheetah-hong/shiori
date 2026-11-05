@@ -25,10 +25,15 @@ export 'src/ports/textbook_template.dart';
 
 // Capture: OCR lines → review draft
 export 'src/capture/capture_pipeline.dart';
+export 'src/capture/correctors/badge_misread_corrector.dart';
 export 'src/capture/correctors/confusable_glyph_corrector.dart';
+export 'src/capture/correctors/cut_meaning_flagger.dart';
 export 'src/capture/correctors/dictionary_candidate_corrector.dart';
 export 'src/capture/correctors/kana_okurigana_corrector.dart';
+export 'src/capture/correctors/meaning_punctuation_corrector.dart';
 export 'src/capture/correctors/missing_field_flagger.dart';
+export 'src/capture/correctors/pos_inference_corrector.dart';
+export 'src/capture/correctors/reading_lookalike_corrector.dart';
 export 'src/capture/fixture_text_recognizer.dart';
 export 'src/capture/vocab/entry_template.dart';
 export 'src/capture/vocab/list_template.dart';

@@ -10,10 +10,18 @@ enum IssueKind {
 
   /// A corrector changed what OCR read. Shown as "자동 보정됨".
   corrected,
+
+  /// OCR read nothing and a corrector filled in a likely value (a POS guessed
+  /// from the headword). Lighter than [missing]: usually right.
+  inferred,
+
+  /// The field was read but looks incomplete (a meaning ending in a comma).
+  /// The learner should check it, like [missing].
+  suspect,
 }
 
 /// How the review screen should present a field.
-enum FieldStatus { ok, corrected, needsReview }
+enum FieldStatus { ok, inferred, corrected, suspect, needsReview }
 
 final class EntryIssue {
   const EntryIssue(this.field, this.kind, {this.note});
@@ -22,6 +30,11 @@ final class EntryIssue {
 
   const EntryIssue.corrected(this.field, {this.note})
     : kind = IssueKind.corrected;
+
+  const EntryIssue.inferred(this.field, {this.note})
+    : kind = IssueKind.inferred;
+
+  const EntryIssue.suspect(this.field, {this.note}) : kind = IssueKind.suspect;
 
   final EntryField field;
   final IssueKind kind;
@@ -101,18 +114,23 @@ final class CapturedEntry {
   /// Whether the learner keeps this entry when saving.
   final bool included;
 
+  /// The strongest flag on [field]: missing, then suspect, corrected, inferred.
   FieldStatus statusOf(EntryField field) {
-    final mine = issues.where((i) => i.field == field);
-    if (mine.any((i) => i.kind == IssueKind.missing)) {
-      return FieldStatus.needsReview;
-    }
-    if (mine.any((i) => i.kind == IssueKind.corrected)) {
-      return FieldStatus.corrected;
-    }
+    final kinds = {
+      for (final i in issues)
+        if (i.field == field) i.kind,
+    };
+    if (kinds.contains(IssueKind.missing)) return FieldStatus.needsReview;
+    if (kinds.contains(IssueKind.suspect)) return FieldStatus.suspect;
+    if (kinds.contains(IssueKind.corrected)) return FieldStatus.corrected;
+    if (kinds.contains(IssueKind.inferred)) return FieldStatus.inferred;
     return FieldStatus.ok;
   }
 
-  bool get needsReview => issues.any((i) => i.kind == IssueKind.missing);
+  /// A field is missing or looks wrong: the learner should look at the entry.
+  bool get needsReview => issues.any(
+    (i) => i.kind == IssueKind.missing || i.kind == IssueKind.suspect,
+  );
   bool get wasCorrected => issues.any((i) => i.kind == IssueKind.corrected);
 
   /// Flagged for the learner in any way other than a missing example

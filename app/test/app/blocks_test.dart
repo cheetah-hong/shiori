@@ -35,12 +35,11 @@ void main() {
       'vocab.entry',
     ]);
     expect(c.read(dictionaryProvider), isA<EmptyDictionary>());
-    expect(c.read(entryCorrectorsProvider).map((e) => e.id), [
-      'confusable-glyphs',
-      'kana-okurigana',
-      'dictionary-candidates',
-      'missing-fields',
-    ]);
+    // The core's standard chain (its order is tested in packages/core).
+    expect(
+      c.read(entryCorrectorsProvider).map((e) => e.id),
+      standardCorrectors(const EmptyDictionary()).map((e) => e.id),
+    );
     expect(c.read(libraryRepositoryProvider), isA<DriftLibraryRepository>());
     expect(c.read(reviewRepositoryProvider), isA<DriftReviewRepository>());
     expect(c.read(reviewSchedulerProvider), isA<LeitnerFourStepScheduler>());
@@ -70,7 +69,10 @@ void main() {
     );
     expect(c.read(studyServiceProvider).clock, same(clock));
     expect(c.read(reviewSchedulerProvider).maxLevel, 1);
-    expect(c.read(capturePipelineProvider).correctors.length, 4);
+    expect(
+      c.read(capturePipelineProvider).correctors.length,
+      standardCorrectors(const EmptyDictionary()).length,
+    );
   });
 
   test('storage needs the database opened by main', () {

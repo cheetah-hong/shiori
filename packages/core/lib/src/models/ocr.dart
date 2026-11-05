@@ -6,6 +6,12 @@
 /// Boxes are normalized to 0..1 with the origin at the top-left of the upright page.
 library;
 
+/// `OcrPage.engine` of the ML Kit channel (Android).
+const String mlKitEngine = 'mlkit';
+
+/// `OcrPage.engine` of the Apple Vision channel (iOS).
+const String appleVisionEngine = 'apple-vision';
+
 final class OcrLine {
   const OcrLine({
     required this.text,
@@ -70,8 +76,14 @@ final class OcrPage {
     if (rawLines is! List) {
       throw const FormatException('OcrPage JSON has no "lines" list');
     }
+    // The engine switches confidence rules on, so it must be what it says.
+    // The language list is only a label.
+    final engine = json['engine'];
+    if (engine != null && engine is! String) {
+      throw FormatException('OcrPage "engine" must be a string', json);
+    }
     return OcrPage(
-      engine: json['engine'] as String? ?? 'unknown',
+      engine: engine as String? ?? 'unknown',
       languages: switch (json['langs']) {
         final List<Object?> langs => [for (final l in langs) '$l'],
         _ => const [],
@@ -88,6 +100,17 @@ final class OcrPage {
   final List<String> languages;
   final Duration elapsed;
 
+  /// Confidence values are on ML Kit's scale (continuous, meaningful), so rules
+  /// with confidence thresholds may run. Vision reports only 0.3, 0.5 and 1.0.
+  bool get isMlKit => engine == mlKitEngine;
+
+  OcrPage withLines(List<OcrLine> lines) => OcrPage(
+    lines: List.unmodifiable(lines),
+    engine: engine,
+    languages: languages,
+    elapsed: elapsed,
+  );
+
   Map<String, Object?> toJson() => {
     'engine': engine,
     'langs': languages,
@@ -96,27 +119,37 @@ final class OcrPage {
   };
 }
 
-/// The two passes a page gets: Japanese-first and Korean-first.
+/// The passes a page gets: Japanese-first and Korean-first, and optionally a
+/// third Japanese pass that only contributes ★ marks.
 ///
 /// Japanese text (headwords, readings, examples) is read from [japanese];
 /// Korean text (meanings, translations, footer) from [korean].
 final class OcrScan {
-  const OcrScan({required this.japanese, required this.korean});
+  const OcrScan({required this.japanese, required this.korean, this.stars});
 
-  /// Accepts `{"ja": OcrPage, "ko": OcrPage}`, the native channel payload.
+  /// Accepts `{"ja": OcrPage, "ko": OcrPage, "star"?: OcrPage}`, the native
+  /// channel payload.
   factory OcrScan.fromJson(Map<String, Object?> json) => OcrScan(
     japanese: OcrPage.fromJson(_map(json['ja'])),
     korean: OcrPage.fromJson(_map(json['ko'])),
+    stars: json['star'] == null ? null : OcrPage.fromJson(_map(json['star'])),
   );
 
   final OcrPage japanese;
   final OcrPage korean;
 
-  Duration get elapsed => japanese.elapsed + korean.elapsed;
+  /// Japanese pass over a binarized copy of the same image (same frame).
+  /// Vision misses some ★ marks on the colour photo and reads them here; only
+  /// its ★ glyphs are used, everything else comes from [japanese].
+  final OcrPage? stars;
+
+  Duration get elapsed =>
+      japanese.elapsed + korean.elapsed + (stars?.elapsed ?? Duration.zero);
 
   Map<String, Object?> toJson() => {
     'ja': japanese.toJson(),
     'ko': korean.toJson(),
+    if (stars case final s?) 'star': s.toJson(),
   };
 }
 

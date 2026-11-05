@@ -34,6 +34,20 @@ T? minBy<T>(Iterable<T> items, num Function(T) key) {
   return best;
 }
 
+/// First element with the largest key, or null when empty.
+T? maxBy<T>(Iterable<T> items, num Function(T) key) {
+  T? best;
+  num? bestKey;
+  for (final item in items) {
+    final k = key(item);
+    if (bestKey == null || k > bestKey) {
+      best = item;
+      bestKey = k;
+    }
+  }
+  return best;
+}
+
 /// `statistics.median`: the middle value, or the mean of the two middle values.
 double median(Iterable<double> values) {
   final sorted = stableSorted(values, cmpNum);
