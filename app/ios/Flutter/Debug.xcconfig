@@ -1,0 +1,5 @@
+#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"
+#include "Generated.xcconfig"
+
+// Optional, untracked: per-developer signing (e.g. DEVELOPMENT_TEAM) for device builds.
+#include? "Local.xcconfig"
