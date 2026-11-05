@@ -4,19 +4,41 @@ import 'package:shiori/shared/format.dart';
 import 'package:shiori/shared/widgets.dart';
 import 'package:shiori_core/shiori_core.dart';
 
-/// One captured word on the review screen. Cells to check are marked with the
-/// red pen; auto-corrected cells get a quiet green note.
+/// Note on a headword the learner took from the dictionary candidates.
+String pickedCandidateNote(String headword) => '직접 고름 → $headword';
+
+/// One captured word on the review screen.
+///
+/// Each flagged cell carries a small mark: the red pen for "사전에 없음" (and
+/// the missing-cell highlight), amber "의심" for a cell that looks cut, green
+/// "고침" for a fixed cell, and a quiet grey "추정" for a guess. The left
+/// margin follows the strongest of them; a guess alone leaves it clear.
+/// An unread headword offers the dictionary's candidates as chips.
 class EntryTile extends StatelessWidget {
   const EntryTile({
     super.key,
     required this.entry,
     required this.onTap,
     required this.onToggle,
+    this.onPickCandidate,
   });
 
   final CapturedEntry entry;
   final VoidCallback onTap;
   final ValueChanged<bool> onToggle;
+
+  /// The learner chose a dictionary candidate for the empty headword.
+  final ValueChanged<String>? onPickCandidate;
+
+  Color _margin(ShioriTokens t) {
+    final kinds = {for (final i in entry.issues) i.kind};
+    if (kinds.contains(IssueKind.missing) ||
+        kinds.contains(IssueKind.unverified)) {
+      return t.risk;
+    }
+    if (kinds.contains(IssueKind.suspect)) return t.warn;
+    return Colors.transparent;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,12 +62,7 @@ class EntryTile extends StatelessWidget {
           child: DecoratedBox(
             // Red-pen margin for entries that need a look.
             decoration: BoxDecoration(
-              border: Border(
-                left: BorderSide(
-                  color: needsReview ? t.risk : Colors.transparent,
-                  width: 4,
-                ),
-              ),
+              border: Border(left: BorderSide(color: _margin(t), width: 4)),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -100,7 +117,10 @@ class EntryTile extends StatelessWidget {
                                     .map((c) => c.note ?? '')
                                     .join('\n'),
                                 child: Pill(
-                                  '자동 보정 ${corrections.first.note ?? ''}',
+                                  switch (corrections.first.note) {
+                                    final n? when n.startsWith('직접 고름') => n,
+                                    final n => '자동 보정 ${n ?? ''}',
+                                  },
                                   background: t.okBg,
                                   foreground: t.ok,
                                 ),
@@ -117,6 +137,7 @@ class EntryTile extends StatelessWidget {
                               _MissingCell(text: '표제어 없음 · 눌러서 입력', large: true)
                             else
                               Text(e.headword, style: JpType.print(26, t.ink)),
+                            ?FieldMark.of(e, EntryField.headword),
                             if (e.statusOf(EntryField.readings) ==
                                 FieldStatus.needsReview)
                               const _MissingCell(text: '읽기 없음')
@@ -125,25 +146,45 @@ class EntryTile extends StatelessWidget {
                                 readingsLabel(e.readings),
                                 style: JpType.gothic(14, t.ink3, height: 1.3),
                               ),
+                            ?FieldMark.of(e, EntryField.readings),
                           ],
                         ),
+                        if (e.headword.trim().isEmpty &&
+                            e.headwordCandidates.isNotEmpty &&
+                            onPickCandidate != null)
+                          _Candidates(
+                            candidates: e.headwordCandidates,
+                            onPick: onPickCandidate!,
+                          ),
                         const SizedBox(height: Space.sm),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             PosBadge(e.pos, missing: e.pos == null),
+                            if (FieldMark.of(e, EntryField.pos)
+                                case final mark?) ...[
+                              const SizedBox(width: Space.xs),
+                              mark,
+                            ],
                             const SizedBox(width: Space.sm),
                             Expanded(
-                              child:
-                                  e.statusOf(EntryField.meaning) ==
-                                      FieldStatus.needsReview
-                                  ? const _MissingCell(text: '뜻 없음')
-                                  : Text(
+                              child: Wrap(
+                                spacing: Space.sm,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  if (e.statusOf(EntryField.meaning) ==
+                                      FieldStatus.needsReview)
+                                    const _MissingCell(text: '뜻 없음')
+                                  else
+                                    Text(
                                       e.meaning,
                                       style: context.text.bodyMedium?.copyWith(
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
+                                  ?FieldMark.of(e, EntryField.meaning),
+                                ],
+                              ),
                             ),
                           ],
                         ),
@@ -172,6 +213,88 @@ class EntryTile extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// The mark next to a cell, by its status. None for ok and missing cells
+/// (missing ones show [_MissingCell] instead of their text).
+class FieldMark extends StatelessWidget {
+  const FieldMark._({super.key, required this.status});
+
+  static FieldMark? of(CapturedEntry entry, EntryField field) {
+    final status = entry.statusOf(field);
+    if (status == FieldStatus.ok || status == FieldStatus.needsReview) {
+      return null;
+    }
+    return FieldMark._(
+      key: ValueKey('mark-${field.name}-${status.name}'),
+      status: status,
+    );
+  }
+
+  final FieldStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final (label, fg, bg) = switch (status) {
+      FieldStatus.unverified => ('사전에 없음', t.risk, t.riskBg),
+      FieldStatus.suspect => ('의심', t.warn, t.warnBg),
+      FieldStatus.corrected => ('고침', t.ok, t.okBg),
+      // A guess is usually right: grey text, no fill.
+      _ => ('추정', t.ink3, Colors.transparent),
+    };
+    final guess = status == FieldStatus.inferred;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(Radii.chip),
+        border: guess ? Border.all(color: t.paper3) : null,
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: fg,
+          fontSize: 11,
+          fontWeight: guess ? FontWeight.w500 : FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+/// Dictionary words for an unread headword; a tap fills it in.
+class _Candidates extends StatelessWidget {
+  const _Candidates({required this.candidates, required this.onPick});
+
+  final List<String> candidates;
+  final ValueChanged<String> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Padding(
+      padding: const EdgeInsets.only(top: Space.xs),
+      child: Wrap(
+        spacing: Space.xs,
+        runSpacing: Space.xs,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text('사전 후보', style: context.text.bodySmall),
+          for (final c in candidates)
+            ActionChip(
+              label: Text(c, style: JpType.print(17, t.ink)),
+              tooltip: '표제어를 $c(으)로',
+              backgroundColor: t.paper,
+              side: BorderSide(color: t.paper3),
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              onPressed: () => onPick(c),
+            ),
+        ],
       ),
     );
   }

@@ -5,7 +5,9 @@ import 'package:shiori_core/src/ports/entry_corrector.dart';
 /// When OCR skipped a headword (simple kanji such as `日`, `空`), offers the
 /// dictionary's words for the reading. The learner still confirms the choice.
 ///
-/// With `EmptyDictionary` this does nothing; it lights up once JMdict lands.
+/// The POS badge goes along as a hint (it reorders, never filters). The
+/// headword stays empty: the learner picks a candidate on the review screen.
+/// With `EmptyDictionary` this does nothing.
 final class DictionaryCandidateCorrector implements EntryCorrector {
   const DictionaryCandidateCorrector(this.dictionary, {this.limit = 5});
 
@@ -21,6 +23,7 @@ final class DictionaryCandidateCorrector implements EntryCorrector {
     final found = await dictionary.byReading(
       entry.readings.first,
       limit: limit,
+      pos: entry.pos,
     );
     final candidates = {for (final d in found) d.headword}.toList();
     return candidates.isEmpty

@@ -24,6 +24,7 @@ final class _FakeDictionary implements Dictionary {
   Future<List<DictionaryEntry>> byReading(
     String reading, {
     int limit = 5,
+    PartOfSpeech? pos,
   }) async => [
     for (final h in (byKana[reading] ?? const <String>[]).take(limit))
       DictionaryEntry(headword: h, readings: [reading]),
@@ -33,6 +34,18 @@ final class _FakeDictionary implements Dictionary {
   Future<List<DictionaryEntry>> byHeadword(
     String headword, {
     int limit = 5,
+  }) async => const [];
+
+  @override
+  Future<PairStatus> checkPair(String headword, List<String> readings) async =>
+      PairStatus.unavailable;
+
+  @override
+  Future<List<String>> fixHeadword(
+    String ocrHeadword,
+    String reading, {
+    PartOfSpeech? pos,
+    int limit = 3,
   }) async => const [];
 }
 
@@ -65,6 +78,25 @@ void main() {
         (await c.correct(entry('タ日', readings: const ['ゆうひ']))).headword,
         '夕日',
       );
+    });
+
+    test('a lone look-alike next to a kanji becomes kanji', () async {
+      expect(
+        (await c.correct(entry('協カ', readings: const ['きょうりょく']))).headword,
+        '協力',
+      );
+    });
+
+    test('katakana runs of two or more glyphs are words: left alone', () async {
+      for (final (h, r) in [
+        ('アメリカ人', 'あめりかじん'),
+        ('ローマ字', 'ろーまじ'),
+        ('カタカナ語', 'かたかなご'),
+      ]) {
+        final out = await c.correct(entry(h, readings: [r]));
+        expect(out.headword, h, reason: h);
+        expect(out.issues, isEmpty, reason: h);
+      }
     });
 
     test('a katakana word without kanji is not touched', () async {

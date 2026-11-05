@@ -1,0 +1,22 @@
+name: jmdict_block
+description: >-
+  The JMdict dictionary block for Shiori: adapts dict_jmdict to the core
+  Dictionary port. Pure Dart, so the capture pipeline can be tested and scored
+  with the dictionary without Flutter.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  dict_jmdict:
+    path: ../dict_jmdict
+  shiori_core:
+    path: ../core
+
+dev_dependencies:
+  lints: ^6.0.0
+  # Same constraint as dict_jmdict: tests load the SQL fixture in memory.
+  sqlite3: ">=3.4.0 <3.6.0"
+  test: ^1.30.0

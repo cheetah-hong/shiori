@@ -69,3 +69,19 @@ tasks.matching { it.name == "preReleaseBuild" }.configureEach {
         }
     }
 }
+
+// The dictionary asset is built, not committed (tools/dict/build_app_asset.py).
+// Debug builds run without it (no dictionary); a release must carry it.
+val dictionaryAssets = listOf("jmdict-full-lean.sqlite.gz", "jmdict-full-lean.edition.json")
+    .map { rootProject.file("../assets/dict/$it") }
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    doFirst {
+        val missing = dictionaryAssets.filter { !it.isFile || it.length() == 0L }
+        if (missing.isNotEmpty()) {
+            throw GradleException(
+                "Dictionary asset missing: ${missing.joinToString { "assets/dict/${it.name}" }}. " +
+                    "Build it with: python3 tools/dict/build_app_asset.py",
+            )
+        }
+    }
+}

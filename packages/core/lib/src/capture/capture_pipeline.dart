@@ -2,6 +2,7 @@ import 'package:shiori_core/src/capture/correctors/badge_misread_corrector.dart'
 import 'package:shiori_core/src/capture/correctors/confusable_glyph_corrector.dart';
 import 'package:shiori_core/src/capture/correctors/cut_meaning_flagger.dart';
 import 'package:shiori_core/src/capture/correctors/dictionary_candidate_corrector.dart';
+import 'package:shiori_core/src/capture/correctors/dictionary_pair_corrector.dart';
 import 'package:shiori_core/src/capture/correctors/kana_okurigana_corrector.dart';
 import 'package:shiori_core/src/capture/correctors/meaning_punctuation_corrector.dart';
 import 'package:shiori_core/src/capture/correctors/missing_field_flagger.dart';
@@ -66,7 +67,8 @@ final class CapturePipeline {
 }
 
 /// Order matters: fix glyphs first (the POS guess needs the fixed headword),
-/// then offer dictionary candidates, flag last.
+/// then offer dictionary candidates for unread headwords, then check the read
+/// ones against the dictionary (which may undo a rule), flag last.
 ///
 /// The glyph fixes for ML Kit's slips (`のリかえる`, badge `8`, `싸다. 포장하다`)
 /// never change an Apple Vision result, so they run for every engine.
@@ -79,5 +81,6 @@ List<EntryCorrector> standardCorrectors(Dictionary dictionary) => [
   const PosInferenceCorrector(),
   const CutMeaningFlagger(),
   DictionaryCandidateCorrector(dictionary),
+  DictionaryPairCorrector(dictionary),
   const MissingFieldFlagger(),
 ];

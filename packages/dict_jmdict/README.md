@@ -1,7 +1,7 @@
 # dict_jmdict
 
 JMdict(EDRDG의 일본어 사전)를 SQLite로 줄인 파일을 읽는 **순수 Dart** 패키지입니다.
-Flutter에도, `shiori_core`에도 의존하지 않습니다. core의 `Dictionary` 포트에는 앱 쪽 어댑터로 끼웁니다
+Flutter에도, `shiori_core`에도 의존하지 않습니다. core의 `Dictionary` 포트에는 어댑터 패키지 `packages/jmdict_block`으로 끼웁니다
 (`docs/dictionary.md` 7절).
 
 하는 일은 세 가지입니다.
@@ -93,7 +93,7 @@ dict.close();
 python3 tools/dict/build_jmdict_db.py --matrix
 # 앱에 넣을 판(권고: 전체 항목, 뜻 없음)
 python3 tools/dict/build_jmdict_db.py --entries all --glosses none --out tools/dict/out/jmdict-full-lean.sqlite
-# 테스트 DB(JMdict 89개 항목, SQL 텍스트)
+# 테스트 DB(JMdict 103개 항목, SQL 텍스트)
 python3 tools/dict/build_jmdict_db.py --only tools/dict/test_forms.txt --glosses first \
     --sql packages/dict_jmdict/test/fixtures/mini_jmdict.sql
 ```
@@ -142,5 +142,5 @@ dart analyze
 dart test
 ```
 
-테스트 DB `test/fixtures/mini_jmdict.sql`에는 JMdict 항목 89개만 있습니다(JMdict 데이터만).
+테스트 DB `test/fixtures/mini_jmdict.sql`에는 JMdict 항목 103개만 있습니다(JMdict 데이터만).
 측정 도구 `tool/query_batch.dart`는 `tools/dict/eval_dict.py`가 씁니다.

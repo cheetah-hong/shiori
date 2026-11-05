@@ -70,7 +70,11 @@ class _EntryEditorSheetState extends State<EntryEditorSheet> {
         ? null
         : Example(ja: exJa, ko: _exampleKo.text.trim());
     var e = _e;
-    if (headword != _e.headword) e = e.edit(headword: headword);
+    // Pressing 고치기 confirms a headword flagged as "사전에 없음" or suspect,
+    // even unchanged (a real word the dictionary lacks, or a reading slip).
+    if (headword != _e.headword || _flagsHeadword(_e)) {
+      e = e.edit(headword: headword);
+    }
     if (readings.join('/') != _e.readings.join('/')) {
       e = e.edit(readings: readings);
     }
@@ -86,6 +90,11 @@ class _EntryEditorSheetState extends State<EntryEditorSheet> {
     // A cell the learner emptied is flagged again.
     return flagMissingFields(e);
   }
+
+  static bool _flagsHeadword(CapturedEntry e) => const {
+    FieldStatus.unverified,
+    FieldStatus.suspect,
+  }.contains(e.statusOf(EntryField.headword));
 
   bool get _showExample =>
       _e.example != null || _e.statusOf(EntryField.example) != FieldStatus.ok;

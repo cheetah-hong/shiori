@@ -328,6 +328,7 @@ CapturedEntry? _entryOf(_Cells c, {required bool keepUnread}) {
     pos: pos,
     meaning: meaning,
     important: c.important,
+    ocrHeadword: c.headword,
   );
 }
 

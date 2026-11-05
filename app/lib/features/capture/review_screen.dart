@@ -61,6 +61,22 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     if (edited != null && mounted) _replace(index, edited);
   }
 
+  /// A dictionary candidate fills the empty headword; the cell shows as fixed.
+  void _pick(int index, String headword) {
+    final entry = _draft.entries[index];
+    _replace(
+      index,
+      entry
+          .edit(headword: headword)
+          .withIssue(
+            EntryIssue.corrected(
+              EntryField.headword,
+              note: pickedCandidateNote(headword),
+            ),
+          ),
+    );
+  }
+
   void _toggle(int index, bool included) =>
       _replace(index, _draft.entries[index].copyWith(included: included));
 
@@ -225,6 +241,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                   entry: entries[i],
                   onTap: () => _edit(i),
                   onToggle: (v) => _toggle(i, v),
+                  onPickCandidate: (c) => _pick(i, c),
                 );
               },
             ),

@@ -18,10 +18,14 @@ enum IssueKind {
   /// The field was read but looks incomplete (a meaning ending in a comma).
   /// The learner should check it, like [missing].
   suspect,
+
+  /// The dictionary does not have the headword with its reading, and no
+  /// look-alike glyph explains it. Shown as "사전에 없음"; counts as "확인 필요".
+  unverified,
 }
 
 /// How the review screen should present a field.
-enum FieldStatus { ok, inferred, corrected, suspect, needsReview }
+enum FieldStatus { ok, inferred, corrected, suspect, unverified, needsReview }
 
 final class EntryIssue {
   const EntryIssue(this.field, this.kind, {this.note});
@@ -35,6 +39,9 @@ final class EntryIssue {
     : kind = IssueKind.inferred;
 
   const EntryIssue.suspect(this.field, {this.note}) : kind = IssueKind.suspect;
+
+  const EntryIssue.unverified(this.field, {this.note})
+    : kind = IssueKind.unverified;
 
   final EntryField field;
   final IssueKind kind;
@@ -92,6 +99,7 @@ final class CapturedEntry {
     this.issues = const [],
     this.headwordCandidates = const [],
     this.included = true,
+    this.ocrHeadword,
   });
 
   /// Textbook word number (`0001`), or null when it could not be inferred.
@@ -114,22 +122,32 @@ final class CapturedEntry {
   /// Whether the learner keeps this entry when saving.
   final bool included;
 
-  /// The strongest flag on [field]: missing, then suspect, corrected, inferred.
+  /// The headword as the template read it, before any corrector ran. Lets a
+  /// later corrector undo an earlier one. Null for entries made by hand.
+  final String? ocrHeadword;
+
+  /// The strongest flag on [field]: missing, then unverified, suspect,
+  /// corrected, inferred.
   FieldStatus statusOf(EntryField field) {
     final kinds = {
       for (final i in issues)
         if (i.field == field) i.kind,
     };
     if (kinds.contains(IssueKind.missing)) return FieldStatus.needsReview;
+    if (kinds.contains(IssueKind.unverified)) return FieldStatus.unverified;
     if (kinds.contains(IssueKind.suspect)) return FieldStatus.suspect;
     if (kinds.contains(IssueKind.corrected)) return FieldStatus.corrected;
     if (kinds.contains(IssueKind.inferred)) return FieldStatus.inferred;
     return FieldStatus.ok;
   }
 
-  /// A field is missing or looks wrong: the learner should look at the entry.
+  /// A field is missing, looks wrong or is not in the dictionary: the learner
+  /// should look at the entry.
   bool get needsReview => issues.any(
-    (i) => i.kind == IssueKind.missing || i.kind == IssueKind.suspect,
+    (i) =>
+        i.kind == IssueKind.missing ||
+        i.kind == IssueKind.suspect ||
+        i.kind == IssueKind.unverified,
   );
   bool get wasCorrected => issues.any((i) => i.kind == IssueKind.corrected);
 
@@ -148,6 +166,7 @@ final class CapturedEntry {
     List<EntryIssue>? issues,
     List<String>? headwordCandidates,
     bool? included,
+    Object? ocrHeadword = _unset,
   }) => CapturedEntry(
     no: identical(no, _unset) ? this.no : no as String?,
     headword: headword ?? this.headword,
@@ -161,6 +180,9 @@ final class CapturedEntry {
       headwordCandidates ?? this.headwordCandidates,
     ),
     included: included ?? this.included,
+    ocrHeadword: identical(ocrHeadword, _unset)
+        ? this.ocrHeadword
+        : ocrHeadword as String?,
   );
 
   CapturedEntry withIssue(EntryIssue issue) =>
@@ -210,7 +232,8 @@ final class CapturedEntry {
       other.example == example &&
       listEquals(other.issues, issues) &&
       listEquals(other.headwordCandidates, headwordCandidates) &&
-      other.included == included;
+      other.included == included &&
+      other.ocrHeadword == ocrHeadword;
 
   @override
   int get hashCode => Object.hash(
@@ -224,6 +247,7 @@ final class CapturedEntry {
     Object.hashAll(issues),
     Object.hashAll(headwordCandidates),
     included,
+    ocrHeadword,
   );
 
   @override

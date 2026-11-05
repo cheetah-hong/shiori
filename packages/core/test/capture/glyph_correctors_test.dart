@@ -153,6 +153,7 @@ void main() {
       'pos-inference',
       'cut-meanings',
       'dictionary-candidates',
+      'dictionary-pair',
       'missing-fields',
     ]);
   });

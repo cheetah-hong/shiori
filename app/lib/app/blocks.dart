@@ -15,6 +15,7 @@ library;
 
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shiori/adapters/bundled_dictionary.dart';
 import 'package:shiori/adapters/dev_samples.dart';
 import 'package:shiori/adapters/image_picker_source.dart';
 import 'package:shiori/adapters/platform_text_recognizer.dart';
@@ -41,16 +42,29 @@ final imageSourceProvider = Provider<ImageSource>((ref) => ImagePickerSource());
 
 /// Textbook layouts, auto-detected per page. Next: other textbooks.
 final templateRegistryProvider = Provider<TemplateRegistry>(
-  (ref) =>
-      TemplateRegistry(const [ListPageTemplate(), EntryPageTemplate()]),
+  (ref) => TemplateRegistry(const [ListPageTemplate(), EntryPageTemplate()]),
 );
 
-/// Dictionary for headword candidates. Next: JMdict (SQLite).
+/// JMdict unpacked from the app's assets. `main.dart` starts opening it before
+/// the first frame without waiting for it.
+/// Never fails: without the asset it holds `BundledDictionary.unavailable`.
+final bundledDictionaryProvider = FutureProvider<BundledDictionary>((
+  ref,
+) async {
+  final dictionary = await openAppDictionary();
+  ref.onDispose(dictionary.close);
+  return dictionary;
+});
+
+/// Dictionary for headword candidates and pair checks: JMdict once it is
+/// open, `EmptyDictionary` until then or without dictionary data.
 final dictionaryProvider = Provider<Dictionary>(
-  (ref) => const EmptyDictionary(),
+  (ref) =>
+      ref.watch(bundledDictionaryProvider).value?.dictionary ??
+      const EmptyDictionary(),
 );
 
-/// Corrector chain, in order. Next: a JMdict-backed reading checker.
+/// Corrector chain, in order (`standardCorrectors` in core).
 final entryCorrectorsProvider = Provider<List<EntryCorrector>>(
   (ref) => standardCorrectors(ref.watch(dictionaryProvider)),
 );

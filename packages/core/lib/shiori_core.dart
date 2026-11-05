@@ -29,6 +29,7 @@ export 'src/capture/correctors/badge_misread_corrector.dart';
 export 'src/capture/correctors/confusable_glyph_corrector.dart';
 export 'src/capture/correctors/cut_meaning_flagger.dart';
 export 'src/capture/correctors/dictionary_candidate_corrector.dart';
+export 'src/capture/correctors/dictionary_pair_corrector.dart';
 export 'src/capture/correctors/kana_okurigana_corrector.dart';
 export 'src/capture/correctors/meaning_punctuation_corrector.dart';
 export 'src/capture/correctors/missing_field_flagger.dart';

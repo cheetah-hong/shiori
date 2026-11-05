@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:dict_jmdict/dict_jmdict.dart';
 import 'package:sqlite3/sqlite3.dart';
 
-/// SQL dump of 89 JMdict entries (tools/dict/test_forms.txt).
+/// SQL dump of 103 JMdict entries (tools/dict/test_forms.txt).
 const miniFixturePath = 'test/fixtures/mini_jmdict.sql';
 
 /// The fixture loaded into an in-memory database.

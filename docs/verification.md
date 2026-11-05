@@ -19,13 +19,15 @@
 | 항목 | 명령 | 결과 |
 |---|---|---|
 | core 정적 분석 | `cd packages/core && dart analyze` | 문제 없음 |
-| core 테스트 | `cd packages/core && dart test` | **248개 통과**, 교재 세트 11개 건너뜀 (6·7절 반영 뒤) |
-| core 테스트 (교재 세트 포함) | `SHIORI_PRIVATE_DIR=<로컬 폴더> dart test` | **261개 통과** |
+| core 테스트 | `cd packages/core && dart test` | **264개 통과**, 교재 세트 11개 건너뜀 (8절 반영 뒤) |
+| core 테스트 (교재 세트 포함) | `SHIORI_PRIVATE_DIR=<로컬 폴더> dart test` | **277개 통과** |
 | core 커버리지 | `dart run coverage:test_with_coverage -o coverage` | 줄 커버리지 **98.3%** (교재 세트 없이) |
-| 사전 패키지 | `cd packages/dict_jmdict && dart analyze && dart test` | 문제 없음, **63개 통과** |
+| 사전 패키지 | `cd packages/dict_jmdict && dart analyze && dart test` | 문제 없음, **63개 통과** (테스트 DB 103개 항목) |
+| 사전 블록 (어댑터) | `cd packages/jmdict_block && dart analyze && dart test` | 문제 없음, **19개 통과** (8절) |
+| 사전 asset 스크립트 | `python3 -m unittest discover -s tools/dict -p 'test_*.py'` | **6개 통과** (네트워크 없음) |
 | 저장 패키지 | `cd packages/storage_drift && dart analyze && dart test` | 문제 없음, **58개 통과** (7절) |
 | app 정적 분석 | `cd app && flutter analyze` | 문제 없음 |
-| app 테스트 | `cd app && flutter test` | **44개 통과** |
+| app 테스트 | `cd app && flutter test` | **64개 통과** (사전 asset 있음·없음 둘 다) |
 | iOS 채널 순수 로직 | `cd app/ios && xcodebuild test -workspace Runner.xcworkspace -scheme Runner -destination 'id=<시뮬레이터>' -only-testing:RunnerTests` | **6개 통과** (회전 투표·가로세로 바꿈·방향 합성·이진화 크기, 6.4절) |
 | Android 채널 순수 로직 | `cd app/android && ./gradlew :app:testDebugUnitTest` (JDK 21) | **11개 통과** (조각 자르기·회전·상자 없는 글자, 6.5절) |
 | app 커버리지 | `flutter test --coverage` | 줄 커버리지 **89.9%** |
@@ -35,7 +37,7 @@
 | 합성 세트 점수표 (ML Kit형) | `dart run tool/eval_capture.dart --fixtures test/fixtures/synthetic_mlkit` | 14/18 (6.3절) |
 | 교재 세트 점수표 | `dart run tool/eval_capture.dart --fixtures "$SHIORI_PRIVATE_DIR/textbook/vocab_n5n3"` | 52/59, 기준 구현과 다른 칸 0개 (2.2절) |
 | 합성 생성기 | `python3 tools/synthetic/make_pages.py --check` | 저장소 파일과 같음 |
-| 배포 빌드 차단 | `flutter build apk --release`, `flutter build ios --release --no-codesign` | **의도대로 실패**: 개발용 `assets/dev_samples/`가 pubspec에 있는 동안 막힘 |
+| 배포 빌드 차단 | `flutter build apk --release`, `flutter build ios --release --no-codesign` | **의도대로 실패**: 개발용 `assets/dev_samples/`가 pubspec에 있는 동안 막힘. 사전 asset(`app/assets/dict/`)이 없을 때도 막힘(8절) |
 | 연구 도구 테스트 | `python3 -m unittest test_tools` (`research/scan/tools`, `research/ocr-android/tools`) | 27개, 16개 통과 |
 | ML Kit 판독 앱 | `cd research/ocr-android/mlkit_probe && ./gradlew :app:testDebugUnitTest` | 5개 통과 |
 
@@ -441,3 +443,51 @@ xcrun simctl launch <시뮬레이터> com.nihongoapp.shiori && xcrun simctl io <
 
 다시 켠 홈 화면은 `09_home_after_study.png`와 내용이 같아(시뮬레이터 상태 표시줄 시각도 09:41 고정) 따로 저장하지 않았습니다.
 기존 흐름 테스트(`flow_screenshots_test.dart`)는 매번 빈 홈에서 시작하도록 메모리 DB로 돕니다.
+
+## 8. 사전 연결 (JMdict, 2026-11-05)
+
+### 8.1 바꾼 것
+
+- **포트**: `Dictionary`에 `checkPair(headword, readings)` → `PairStatus { known, compoundOnly, notFound, unavailable }`,
+  `fixHeadword(ocrHeadword, reading, {pos, limit})`, `byReading(..., pos:)`(품사 힌트는 순서만 바꿈)을 더했습니다.
+  `EmptyDictionary`는 `unavailable`과 빈 목록을 돌려줍니다.
+- **모델**: `CapturedEntry.ocrHeadword`(템플릿이 보정기 전 표제어를 채움), `IssueKind.unverified`·`FieldStatus.unverified`("사전에 없음", 확인 필요로 셈).
+- **보정기**: `DictionaryPairCorrector`를 `DictionaryCandidateCorrector`와 `MissingFieldFlagger` 사이에 넣었습니다.
+  짝이 있으면 그대로, 규칙이 바꾼 표제어가 없고 OCR 원문이 있으면 원문으로, 합성어로만 맞으면 그대로,
+  헷갈리는 글자로 설명되면 고치고(후보도 채움), 그 밖은 "사전에 없음"입니다.
+- **규칙 좁히기**: `ConfusableGlyphCorrector`는 앞뒤에 다른 가타카나가 없는 한 글자만 한자로 바꿉니다(`タ日`→`夕日`, `アメリカ人`은 그대로).
+  헷갈리는 글자로만 된 2글자 이상 덩어리(체크박스 잡음 `ロロロ` 등)는 바꾸지 않고 "의심"으로 표시합니다
+  (넓은 규칙이 우연히 붙이던 표시를 잃지 않게. 교재 세트의 스캐너형 자르기에서 조용한 오류가 1→2로 늘던 것을 막음).
+- **어댑터**: `packages/jmdict_block`(순수 Dart). 앱은 `app/assets/dict/`의 gzip을 첫 실행 때 앱 캐시 폴더로 풀어 엽니다(다시 만들 수 있는 파일이라 iOS 백업에서 빠지게. 시스템이 지우면 다음 실행 때 다시 풂).
+- **화면**: 검토 화면에 사전 후보 칩(누르면 표제어로 들어가고 "고침", 위쪽 표시는 "직접 고름"), 칸별 표시(사전에 없음·의심·고침·추정), 홈 → 정보 화면(출처·링크·판).
+  편집 시트에서 "고치기"를 누르면 표제어가 그대로여도 "사전에 없음"·"의심"을 확인한 것으로 지웁니다(사전에 없는 진짜 단어, 읽기만 틀린 경우).
+
+### 8.2 사전 끔 / 켬 점수표 (`full-lean`, JMdict 2026-11-04)
+
+명령: `cd packages/jmdict_block && dart run tool/eval_capture_dict.dart --db <full-lean.sqlite> [--fixtures DIR] [--gt FILE] [--stars DIR]`
+(DB는 `gzip -dc app/assets/dict/jmdict-full-lean.sqlite.gz`). 교재 세트는 합계만 적습니다.
+
+| 세트 | 줄 전체 끔 → 켬 | 조용한 오류 끔 → 켬 | 맞는 표제어를 "사전에 없음" | 사전이 새로 "확인 필요"로 잡은 틀린 줄 | 못 읽은 표제어의 정답 후보 순위 |
+|---|---|---|---|---|---|
+| 합성 (Vision형, 저장소) | 30/35 → 30/35 | 1 → 1 | 0/33 | 0 | 2위, 1위 |
+| 합성 (ML Kit형, 저장소) | 14/18 → 14/18 | 1 → **0** | 0/17 | 1 | (없음) |
+| 교재 Vision (로컬) | 52/59 → 52/59 | 1 → 1 | **0/57** | 0 | **1위, 1위** |
+| 교재 Vision + ★ 보조 (로컬) | 54/59 → 54/59 | 1 → 1 | 0/57 | 0 | 1위, 1위 |
+| 교재 ML Kit (로컬) | 38/59 → 38/59 | 0 → 0 | 0/52 | **2** | 2위, 1위, 1위, 1위, 1위 |
+
+- 줄 전체 점수는 바뀌지 않습니다. 사전은 표제어를 학습자 대신 고르지 않고(후보만), 이 세트들에는 규칙이 망친 단어나 헷갈리는 글자 오류가 없기 때문입니다.
+- 효과는 검토 화면 쪽입니다. ML Kit 세트에서 틀린 표제어 2줄이 전에는 "추정"·"자동 보정"만 붙어 확인 필요에 없었는데, 이제 "사전에 없음"으로 확인 필요에 들어갑니다.
+- **합성 세트의 `日`(ひ)은 2위**입니다. JMdict 순위에서 ひ의 1위가 `火`(빈도대 nf02)이고 `日`은 nf03이라서입니다. 품사(명사) 힌트로도 가릴 수 없습니다.
+  테스트 DB에는 `火`가 없어 단위 테스트에서는 1위입니다. 검토 화면은 후보 5개를 모두 보여 줍니다.
+
+### 8.3 앱
+
+| 항목 | 결과 |
+|---|---|
+| 사전 asset 만들기 | `python3 tools/dict/build_app_asset.py --expect-sha256 7f6dc7a4…001ed` 약 8초. gzip 12,200,998 B, SQLite 30,539,776 B(sha256 `bdaf3b7c…`, 이전 빌드와 같음) |
+| 첫 실행 | gzip을 백그라운드 isolate에서 앱 캐시 폴더로 풂(`.part` 파일 → 이름 바꿈 → 판 표시 파일). 화면은 기다리지 않고, 그동안 사전 슬롯은 비어 있음 |
+| 실패 시 | asset 없음·깨진 gzip·판 표시 파일 오류·열기 실패 → 로그 한 줄, `EmptyDictionary`로 동작(단위 테스트 9개) |
+| debug APK 크기 | 압축 항목 합계 194,296,028 B → 206,481,158 B (**+12.2 MB**, asset이 이미 gzip이라 zip으로 더 줄지 않음). 설치 뒤 풀린 파일 30.5 MB가 더 생김 |
+| iOS 시뮬레이터 (iPhone 17 Pro) | asset 없음: 앱이 뜨고 정보 화면에 "사전 데이터가 들어 있지 않아요". asset 있음: 첫 실행에 풀고 후보 칩·정보 화면 동작 (`integration_test/dictionary_screenshots_test.dart`) |
+| 스크린샷 | `docs/screenshots/18_about_dictionary.png`, `19_review_candidates.png`, `20_review_candidate_picked.png` |
+| 배포 빌드 | 사전 asset이 없으면 Gradle `preReleaseBuild`와 iOS 셸 단계가 멈춤(dev_samples 검사와 같은 자리) |

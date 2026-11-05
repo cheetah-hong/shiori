@@ -5,8 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shiori/app/app.dart';
 import 'package:shiori/app/blocks.dart';
+import 'package:shiori/adapters/bundled_dictionary.dart';
 import 'package:shiori/app/startup.dart';
+import 'package:shiori_core/shiori_core.dart';
 import 'package:shiori_storage_drift/shiori_storage_drift.dart';
+
+import '../support/dictionary.dart';
 
 void main() {
   test('an opened database is plugged into the storage blocks', () async {
@@ -67,5 +71,25 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.textContaining('불러오지 못했어요'), findsWidgets);
+  });
+
+  test('opening the dictionary never holds up startup', () async {
+    final unpacking = Completer<BundledDictionary>();
+    var started = false;
+    final override = bundledDictionaryOverride(
+      open: () {
+        started = true;
+        return unpacking.future;
+      },
+    );
+    expect(started, isTrue, reason: 'starts before the first frame');
+    final c = ProviderContainer.test(overrides: [override]);
+    expect(c.read(dictionaryProvider), isA<EmptyDictionary>());
+
+    final opened = BundledDictionary.opened(openMiniJmdict(), testEdition);
+    addTearDown(opened.close);
+    unpacking.complete(opened);
+    await c.read(bundledDictionaryProvider.future);
+    expect(c.read(dictionaryProvider), same(opened.jmdict));
   });
 }

@@ -41,6 +41,9 @@ dependencies:
   path_provider: ^2.1.6
   shiori_storage_drift:
     path: ../packages/storage_drift
+  # Dictionary: JMdict (SQLite), unpacked from assets/dict/ on first run.
+  jmdict_block:
+    path: ../packages/jmdict_block
   flutter_localizations:
     sdk: flutter
 
@@ -60,6 +63,8 @@ dev_dependencies:
     sdk: flutter
   path_provider_platform_interface: ^2.1.2
   plugin_platform_interface: ^2.1.8
+  # Tests load the JMdict test fixture into an in-memory database.
+  sqlite3: ">=3.4.0 <3.6.0"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -76,6 +81,10 @@ flutter:
     # DEV ONLY: OCR passes of synthetic sample pages (tools/synthetic/make_pages.py).
     # Remove or move behind a flavor before any distribution (docs/architecture.md, 배포 전).
     - assets/dev_samples/
+    # JMdict (full-lean) as gzip plus its edition file, built by
+    # tools/dict/build_app_asset.py; not in git. Without them the app runs with
+    # no dictionary, and release builds stop (android/app/build.gradle.kts).
+    - assets/dict/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

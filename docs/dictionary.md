@@ -5,7 +5,7 @@
   - `packages/dict_jmdict/`: 순수 Dart 패키지, 테스트, README
   - `tools/dict/`: 데이터 빌드 스크립트, 효과 측정 스크립트
   - 이 문서
-- core(`packages/core`)와 `app/`은 건드리지 않았습니다. 어댑터와 포트 확장은 7절에 제안으로만 적습니다.
+- 처음 보고 때는 core와 `app/`을 건드리지 않고 7절을 제안으로 적었습니다. **7절은 이후 적용됐습니다**(위치는 7절, 결과는 `docs/verification.md` 8절).
 - 교재 측정은 저장소에 포함하지 않은 교재 5쪽(59단어) 비공개 세트로 했습니다(4절).
 
 ## 1. 요약
@@ -100,12 +100,12 @@ API와 규칙은 `packages/dict_jmdict/README.md`에 있습니다. 요약입니�
 | `lookupByHeadword(headword)` | 추가 | core 포트의 `byHeadword`용 |
 | `info` | 추가 | 출처, 날짜, sha256, 라이선스, 표기 문구 |
 
-- **의존성**: `sqlite3: ^3.8.0` 하나뿐입니다(dart:ffi, 빌드 훅으로 SQLite 동봉). Flutter와 core에는 의존하지 않습니다. 루트 workspace 파일은 만들지 않았습니다.
+- **의존성**: `sqlite3: ">=3.4.0 <3.6.0"` 하나뿐입니다(dart:ffi, 빌드 훅으로 SQLite 동봉. `packages/storage_drift`와 같은 범위: 3.6부터는 Flutter 3.41이 고정한 meta 1.17과 맞지 않음). Flutter와 core에는 의존하지 않습니다. 루트 workspace 파일은 만들지 않았습니다.
 - **검증**
   - `dart analyze`: 문제 없음
-  - `dart test`: 63개 모두 통과
+  - `dart test`: 63개 모두 통과(테스트 DB를 103개 항목으로 다시 만든 뒤에도 같음)
   - 라인 커버리지: 96.2%(462/480)
-- **테스트 DB**: `test/fixtures/mini_jmdict.sql`(JMdict 89개 항목, SQL 텍스트 47 KB)
+- **테스트 DB**: `test/fixtures/mini_jmdict.sql`(JMdict 103개 항목, SQL 텍스트 52 KB. 사전 연결 때 `一日`·`日`·`空`·`カ月`을 더함)
   - 동음어 묶음(に·さん·はち·じゅう·ゆうべ), 헷갈리는 한자 단어, 가타카나+한자 단어(タ行·カ所·ハ長調),
     오쿠리가나 변형, 합성어 부품(本·棚 등), re_restr·re_nokanji·검색 전용 표기를 넣었습니다.
   - JMdict 데이터만 들어 있습니다.
@@ -199,10 +199,17 @@ API와 규칙은 `packages/dict_jmdict/README.md`에 있습니다. 요약입니�
 - 교재 59줄에서는 1·2만 쓰였습니다(60/60 `exact`).
 - 상용어판에서는 교재의 두 줄이 7로 통과했습니다.
 
-## 7. core `Dictionary` 포트에 맞출 어댑터 (코드 스케치)
+## 7. core `Dictionary` 포트에 맞춘 어댑터 (**적용됨**)
 
-core는 읽기만 했습니다(`packages/core/lib/src/ports/dictionary.dart`, `capture/correctors/*`, `app/lib/app/blocks.dart`).
-아래는 제안이며, 포트와 core를 고칠지는 core 쪽에서 따로 정합니다.
+처음에는 제안으로 쓴 절입니다. 아래 스케치는 그때 모습 그대로 두고, 실제 위치와 달라진 점만 적습니다.
+
+| 절 | 실제 위치 | 스케치와 다른 점 |
+|---|---|---|
+| 7.1 어댑터 | `packages/jmdict_block/lib/src/jmdict_dictionary_adapter.dart` (`JmdictDictionaryAdapter`, `wordClassesFor`) | `app/`이 아니라 순수 Dart 패키지에 둠(Flutter 없이 `dart test`와 사전을 켠 점수 측정 `tool/eval_capture_dict.dart`). `fixHeadword`는 빈 표제어에 `[]` |
+| 7.2 포트 확장 | `packages/core/lib/src/ports/dictionary.dart` | 스케치 그대로 |
+| 7.3 보정기 | `packages/core/lib/src/capture/correctors/dictionary_pair_corrector.dart`, 순서는 `standardCorrectors()` | 되돌리거나 고칠 때 규칙이 남긴 표제어 "자동 보정" 표시를 지우고 사전 표시 하나만 남김 |
+| 7.3 규칙 좁히기 | `confusable_glyph_corrector.dart` | 한 글자 가타카나만 바꿈. 헷갈리는 글자로만 된 2글자 이상 덩어리는 바꾸지 않고 "의심" 표시 |
+| 7.4 Flutter 탑재 | `app/lib/adapters/bundled_dictionary.dart`, `app/lib/app/blocks.dart`(`bundledDictionaryProvider`, `dictionaryProvider`), `app/lib/app/startup.dart` | 판 표시는 `jmdict-full-lean.edition.json`(원본 sha256, JMdict 날짜, 만든 날). 앱 지원 폴더가 아니라 **캐시 폴더**에 풂(다시 만들 수 있는 파일이라 iOS 백업 제외). 풀기는 `Isolate.run`, 실패하면 `EmptyDictionary`. asset 생성: `tools/dict/build_app_asset.py` |
 
 ### 7.1 지금 포트 그대로 끼우기 (앱 쪽 파일)
 
@@ -364,7 +371,7 @@ final class DictionaryPairCorrector implements EntryCorrector {
 - `タ日`→`夕日`처럼 한자 옆에 홀로 있는 가타카나를 고치는 보정은 그대로 됩니다.
 - 교재 59줄에서는 이 규칙이 한 번도 쓰이지 않아 점수에는 영향이 없습니다.
 
-### 7.4 Flutter 탑재 (방법만, 이번에 하지 않음)
+### 7.4 Flutter 탑재 (처음 제안. 적용 내용은 7절 표)
 
 - **SQLite 바이너리**: `sqlite3` 3.x는 빌드 훅으로 SQLite를 앱에 넣으므로 `sqlite3_flutter_libs`가 필요 없습니다(그 패키지는 0.6.0+eol).
   - 첫 빌드 때 훅이 GitHub 릴리스에서 sha256으로 확인된 바이너리를 받습니다.
@@ -400,17 +407,22 @@ Future<jm.JmdictDictionary> openBundledJmdict() async {
 4. **같은 조건**: 변환한 DB 파일은 CC BY-SA 4.0으로 배포하고, 그 데이터에 저작권을 주장하지 않습니다.
    앱 코드는 공개하지 않아도 되고 상업적 사용도 됩니다.
 5. **정기 갱신(4절)**: 최신판으로 데이터를 정기적으로 갱신하는 절차가 있어야 합니다. 예로 웹 사전은 최소 월 1회입니다. 지키지 않으면 위반입니다.
-6. **모의 측정 데이터**: JLPT 목록(Waller CC BY, stephenmk CC BY-SA)은 측정에만 쓰고 앱에 넣지 않으므로 표기 의무가 없습니다.
+6. **앱의 표기 위치**: 홈 오른쪽 위 정보 버튼 → **정보 화면**(`app/lib/features/about/about_screen.dart`).
+   DB의 `info.attribution`, JMdict 프로젝트·라이선스 링크(글자로 보이고 복사 버튼, 외부 브라우저 패키지는 넣지 않음),
+   DB 판(JMdict 날짜, 만든 날, 원본 sha256)을 보여 줍니다. 사전이 없으면 그 사실을 보여 줍니다.
+   Flutter 라이선스 페이지(`showLicensePage`)에도 JMdict 항목을 등록합니다(`registerDictionaryLicense`).
+7. **모의 측정 데이터**: JLPT 목록(Waller CC BY, stephenmk CC BY-SA)은 측정에만 쓰고 앱에 넣지 않으므로 표기 의무가 없습니다.
 
 ## 9. 남은 문제
 
-1. **데이터 갱신 방식 결정(라이선스 의무)**
+1. **데이터 갱신 방식 결정(라이선스 의무)** — 남음
+   - 지금: 다시 빌드하는 명령 한 줄 `python3 tools/dict/build_app_asset.py`, 판은 정보 화면과 `app/assets/dict/jmdict-full-lean.edition.json`에 보임
    - **결정(2026-11-05): 나중에 자동화로 처리한다.** 예: CI가 최신 JMdict로 DB를 다시 빌드한다. 구체적인 방식은 사전을 앱에 붙이는 단계에서 정한다.
    - 서버가 없으면: 앱을 출시할 때마다 최신 JMdict로 다시 빌드하는 절차(CI 작업)
    - 또는 앱 안에서 정적 호스팅(GitHub 릴리스 등)의 DB를 받는 방식
    - 둘 중 무엇을 쓸지는 그 단계에서 정합니다.
-2. **앱 크기**: 설치 후 30.5 MB(gzip 12.2 MB)입니다. gzip asset을 풀어 쓰면 디스크 약 42 MB를 씁니다. 첫 실행 때 내려받으면 30.5 MB지만 네트워크가 필요합니다.
-3. **core 쪽 합의 필요**
+2. **앱 크기**(해결: gzip asset으로 실음, debug APK +12.2 MB, `docs/verification.md` 8.3): 설치 후 30.5 MB(gzip 12.2 MB)입니다. gzip asset을 풀어 쓰면 디스크 약 42 MB를 씁니다. 첫 실행 때 내려받으면 30.5 MB지만 네트워크가 필요합니다.
+3. **core 쪽 합의** — 해결(7절 표대로 적용)
    - 포트 확장(`checkPair`, `fixHeadword`, 품사 힌트)
    - `CapturedEntry.ocrHeadword`
    - 새 `IssueKind`(사전에 없음)
@@ -419,12 +431,13 @@ Future<jm.JmdictDictionary> openBundledJmdict() async {
    - 모두 core 쪽에서 정할 일입니다.
 4. **교재 표본이 작음**: 사전이 쓰이는 줄이 59줄 중 5줄(빠진 표제어 2, 규칙 보정 3)뿐입니다. 사진이 더 모이면 같은 스크립트로 다시 잽니다(`--data`, `--truth`).
 5. **동음이의어**: 문맥 없이 1순위는 82–84%입니다. 후보 3개 이상을 보여 주고 학습자가 고르게 합니다.
+   검토 화면은 후보 5개를 칩으로 보여 줍니다. 예: 합성 세트의 `日`(ひ)은 `火` 다음 2위입니다.
 6. **다루지 않는 경우**
    - 읽기 자체가 틀린 경우(측정에서 59/59 맞음)
    - 읽기에 가타카나가 섞인 사전 항목(`ハ長調【ハちょうちょう】`을 히라가나 읽기로 찾지 못함)
    - 세 단어 이상 합성어와 촉음화(`学`+`校`=`がっこう`)
    - OCR이 글자를 빼거나 더한 경우(글자 수가 같은 바꿈만 다룸)
-7. **합성어 확인은 약한 확인**: 헷갈리는 글자로 바뀐 표기도 두 단어로 나뉘면 통과합니다(`二短調`). 보정기에서 OCR 원문을 우선하는 순서로 보완합니다(7.3).
+7. **합성어 확인은 약한 확인**: 헷갈리는 글자로 바뀐 표기도 두 단어로 나뉘면 통과합니다(`二短調`). 보정기에서 OCR 원문을 우선하는 순서로 보완했습니다(7.3, 적용됨).
 8. **영어 뜻 나누기**: 뜻은 `; `로 이어 저장해서, 뜻 문장 안에 `; `가 있으면 잘못 나뉩니다(드묾). 권고 판에는 뜻이 없습니다.
 
 ## 10. 다시 돌리는 방법
@@ -433,6 +446,8 @@ Future<jm.JmdictDictionary> openBundledJmdict() async {
 # 데이터 (원본이 없으면 EDRDG에서 https로 받음, 약 25초). 이 보고서의 판으로 고정하려면 sha256을 줌
 python3 tools/dict/build_jmdict_db.py --matrix \
     --expect-sha256 7f6dc7a4a50411e5a99c35969f28740e174714f04708ea84d50d6bdc09a001ed
+# 앱 asset (app/assets/dict/, git 제외)
+python3 tools/dict/build_app_asset.py --expect-sha256 7f6dc7a4a50411e5a99c35969f28740e174714f04708ea84d50d6bdc09a001ed
 # 테스트 DB
 python3 tools/dict/build_jmdict_db.py --only tools/dict/test_forms.txt --glosses first \
     --sql packages/dict_jmdict/test/fixtures/mini_jmdict.sql
@@ -448,8 +463,10 @@ python3 tools/dict/eval_dict.py --data packages/core/test/fixtures/synthetic
 | 경로 | 내용 |
 |---|---|
 | `tools/dict/build_jmdict_db.py` | JMdict XML → SQLite(판본 선택, 크기표, 테스트용 SQL 덤프) |
+| `tools/dict/build_app_asset.py` | 앱 asset(full-lean gzip + 판 표시 파일). 테스트 `tools/dict/test_build_app_asset.py` |
 | `tools/dict/test_forms.txt` | 테스트 DB에 넣을 JMdict 표기 목록 |
 | `tools/dict/eval_dict.py` | 효과 측정(기준 해석기 + Dart 패키지 호출) |
 | `packages/dict_jmdict/lib/` | 패키지(`jmdict_dictionary.dart`, `confusables.dart`, `spelling.dart`, `priority.dart`, `kana.dart`, `models.dart`) |
 | `packages/dict_jmdict/test/` | 단위 테스트 63개와 테스트 DB |
+| `packages/jmdict_block/` | core 포트 어댑터, 테스트 19개, 사전 끔/켬 점수표 `tool/eval_capture_dict.dart` |
 | `packages/dict_jmdict/tool/query_batch.dart` | 측정용 일괄 호출 도구 |

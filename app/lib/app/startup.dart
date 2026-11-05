@@ -1,9 +1,12 @@
 /// Wiring done once before the first frame.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:shiori/adapters/app_database.dart';
+import 'package:shiori/adapters/bundled_dictionary.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori_storage_drift/shiori_storage_drift.dart';
 
@@ -29,4 +32,20 @@ Future<Override> appDatabaseOverride({
       (ref) => Error.throwWithStackTrace(error, stack),
     );
   }
+}
+
+/// The override that plugs the bundled dictionary in once it is open.
+///
+/// Opening starts right away but is not awaited: the first frame never waits
+/// for unpacking, and until it is done the dictionary slot stays empty.
+Override bundledDictionaryOverride({
+  Future<BundledDictionary> Function() open = openAppDictionary,
+}) {
+  final opening = open();
+  return bundledDictionaryProvider.overrideWith((ref) {
+    ref.onDispose(
+      () => unawaited(opening.then((d) => d.close(), onError: (_) {})),
+    );
+    return opening;
+  });
 }

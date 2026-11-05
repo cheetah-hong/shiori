@@ -1,10 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:jmdict_block/jmdict_block.dart';
+import 'package:shiori/adapters/bundled_dictionary.dart';
 import 'package:shiori/adapters/image_picker_source.dart';
 import 'package:shiori/adapters/platform_text_recognizer.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori_core/shiori_core.dart';
 import 'package:shiori_storage_drift/shiori_storage_drift.dart';
+
+import '../support/dictionary.dart';
 
 final class _FakeRecognizer implements TextRecognizer {
   @override
@@ -106,5 +110,47 @@ void main() {
         );
     expect((await library.textbooks()).single.id, 'tb');
     expect(await c.read(reviewRepositoryProvider).card('tb:0001'), isNotNull);
+  });
+
+  group('dictionary slot', () {
+    test('holds the JMdict block once the bundled data is open', () async {
+      final opened = BundledDictionary.opened(openMiniJmdict(), testEdition);
+      addTearDown(opened.close);
+      final c = ProviderContainer.test(
+        overrides: [
+          bundledDictionaryProvider.overrideWith((ref) async => opened),
+        ],
+      );
+      await c.read(bundledDictionaryProvider.future);
+      expect(c.read(dictionaryProvider), isA<JmdictDictionaryAdapter>());
+      expect(c.read(dictionaryProvider), same(opened.jmdict));
+      // The corrector chain and the pipeline are built on it.
+      final pair = c
+          .read(capturePipelineProvider)
+          .correctors
+          .whereType<DictionaryPairCorrector>()
+          .single;
+      expect(pair.dictionary, same(opened.jmdict));
+    });
+
+    test('stays empty without dictionary data', () async {
+      final c = ProviderContainer.test(
+        overrides: [
+          bundledDictionaryProvider.overrideWith(
+            (ref) async => const BundledDictionary.unavailable('no asset'),
+          ),
+        ],
+      );
+      await c.read(bundledDictionaryProvider.future);
+      expect(c.read(dictionaryProvider), isA<EmptyDictionary>());
+    });
+
+    test('swapping the dictionary is one override', () {
+      const other = EmptyDictionary();
+      final c = ProviderContainer.test(
+        overrides: [dictionaryProvider.overrideWithValue(other)],
+      );
+      expect(c.read(dictionaryProvider), same(other));
+    });
   });
 }

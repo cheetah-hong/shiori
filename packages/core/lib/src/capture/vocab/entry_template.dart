@@ -276,9 +276,11 @@ CapturedEntry _entry(
         : pageReadingHeight,
     minConfidence: mlKit ? _mlKitSentenceConfidence : 0.0,
   );
+  final headword = heads.map((l) => cleanHead(l.text)).join();
   return CapturedEntry(
     no: b.anchor.no,
-    headword: heads.map((l) => cleanHead(l.text)).join(),
+    headword: headword,
+    ocrHeadword: headword,
     readings: reading == null ? const [] : parseReadings(reading.text),
     pos: pos,
     meaning: meaning,

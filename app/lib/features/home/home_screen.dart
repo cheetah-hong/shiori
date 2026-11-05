@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/data.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/features/about/about_screen.dart';
 import 'package:shiori/features/capture/capture_screen.dart';
 import 'package:shiori/features/library/textbook_screen.dart';
 import 'package:shiori/features/study/study_screen.dart';
@@ -61,6 +62,12 @@ class HomeScreen extends ConsumerWidget {
                         foreground: t.pen,
                         icon: Icons.local_fire_department,
                       ),
+                    IconButton(
+                      tooltip: '정보',
+                      icon: Icon(Icons.info_outline, color: t.ink2),
+                      onPressed: () =>
+                          pushScreen<void>(context, const AboutScreen()),
+                    ),
                   ],
                 ),
               ),

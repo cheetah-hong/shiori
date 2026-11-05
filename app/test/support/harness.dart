@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shiori/adapters/bundled_dictionary.dart';
 import 'package:shiori/adapters/dev_samples.dart';
 import 'package:shiori/app/app.dart';
 import 'package:shiori/app/blocks.dart';
@@ -32,18 +33,21 @@ final class TestBlocks {
   /// Block behind "샘플 페이지로 해 보기"; tests may swap it before pumping.
   TextRecognizer sampleRecognizer = fixtureFileRecognizer;
 
+  /// No dictionary data unless a test plugs one in before pumping.
+  BundledDictionary dictionary = const BundledDictionary.unavailable(
+    'no dictionary in tests',
+  );
+
   List<Override> get overrides => [
     clockProvider.overrideWith((ref) => clock),
     libraryRepositoryProvider.overrideWithValue(library),
     reviewRepositoryProvider.overrideWithValue(reviews),
     sampleRecognizerProvider.overrideWithValue(sampleRecognizer),
+    bundledDictionaryProvider.overrideWith((ref) async => dictionary),
   ];
 
   /// Saves the words of a sample page as if it had been captured and reviewed.
-  Future<Textbook> seedPage(
-    String fixture, {
-    String title = 'JLPT 단어장',
-  }) async {
+  Future<Textbook> seedPage(String fixture, {String title = 'JLPT 단어장'}) async {
     final service = LibraryService(library: library, clock: clock);
     final existing = await library.textbooks();
     final textbook = existing.isNotEmpty
