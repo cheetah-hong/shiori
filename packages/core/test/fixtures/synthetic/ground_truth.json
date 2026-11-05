@@ -1,0 +1,430 @@
+{
+ "_note": "Synthetic pages made by tools/synthetic/make_pages.py. Every word, meaning, example and translation is invented; no textbook content.",
+ "pages": [
+  {
+   "page": 10,
+   "fixture": "s010",
+   "template": "list",
+   "day": 1,
+   "title": "자연, 몸",
+   "entries": [
+    {
+     "no": "0001",
+     "headword": "雨",
+     "readings": [
+      "あめ"
+     ],
+     "pos": "명",
+     "meaning": "비",
+     "important": true
+    },
+    {
+     "no": "0002",
+     "headword": "日",
+     "readings": [
+      "ひ"
+     ],
+     "pos": "명",
+     "meaning": "해, 날",
+     "important": false
+    },
+    {
+     "no": "0003",
+     "headword": "空",
+     "readings": [
+      "そら"
+     ],
+     "pos": "명",
+     "meaning": "하늘",
+     "important": false
+    },
+    {
+     "no": "0004",
+     "headword": "風",
+     "readings": [
+      "かぜ"
+     ],
+     "pos": "명",
+     "meaning": "바람",
+     "important": true
+    },
+    {
+     "no": "0005",
+     "headword": "雲",
+     "readings": [
+      "くも"
+     ],
+     "pos": "명",
+     "meaning": "구름",
+     "important": false
+    },
+    {
+     "no": "0006",
+     "headword": "晴れ",
+     "readings": [
+      "はれ"
+     ],
+     "pos": "명",
+     "meaning": "맑음",
+     "important": true
+    },
+    {
+     "no": "0007",
+     "headword": "雪",
+     "readings": [
+      "ゆき"
+     ],
+     "pos": "명",
+     "meaning": "눈",
+     "important": false
+    },
+    {
+     "no": "0008",
+     "headword": "口",
+     "readings": [
+      "くち"
+     ],
+     "pos": "명",
+     "meaning": "입",
+     "important": false
+    },
+    {
+     "no": "0009",
+     "headword": "明日",
+     "readings": [
+      "あした",
+      "あす"
+     ],
+     "pos": "명",
+     "meaning": "내일",
+     "important": false
+    },
+    {
+     "no": "0010",
+     "headword": "天気予報",
+     "readings": [
+      "てんきよほう"
+     ],
+     "pos": "명",
+     "meaning": "일기 예보",
+     "important": false
+    },
+    {
+     "no": "0011",
+     "headword": "暑い",
+     "readings": [
+      "あつい"
+     ],
+     "pos": "い형",
+     "meaning": "덥다",
+     "important": true
+    },
+    {
+     "no": "0012",
+     "headword": "ちょっと",
+     "readings": [],
+     "pos": "부",
+     "meaning": "조금, 잠깐",
+     "important": false
+    }
+   ]
+  },
+  {
+   "page": 11,
+   "fixture": "s011",
+   "template": "list",
+   "day": 1,
+   "title": "자연, 몸",
+   "entries": [
+    {
+     "no": "0013",
+     "headword": "海",
+     "readings": [
+      "うみ"
+     ],
+     "pos": "명",
+     "meaning": "바다",
+     "important": true
+    },
+    {
+     "no": "0014",
+     "headword": "山",
+     "readings": [
+      "やま"
+     ],
+     "pos": "명",
+     "meaning": "산",
+     "important": false
+    },
+    {
+     "no": "0015",
+     "headword": "川",
+     "readings": [
+      "かわ"
+     ],
+     "pos": "명",
+     "meaning": "강, 개천",
+     "important": true
+    },
+    {
+     "no": "0016",
+     "headword": "夕日",
+     "readings": [
+      "ゆうひ"
+     ],
+     "pos": "명",
+     "meaning": "석양, 저녁 해",
+     "important": false
+    },
+    {
+     "no": "0017",
+     "headword": "光る",
+     "readings": [
+      "ひかる"
+     ],
+     "pos": "동",
+     "meaning": "빛나다",
+     "important": false
+    },
+    {
+     "no": "0018",
+     "headword": "力",
+     "readings": [
+      "ちから"
+     ],
+     "pos": "명",
+     "meaning": "힘",
+     "important": false
+    },
+    {
+     "no": "0019",
+     "headword": "星",
+     "readings": [
+      "ほし"
+     ],
+     "pos": "명",
+     "meaning": "별",
+     "important": true
+    },
+    {
+     "no": "0020",
+     "headword": "痛い",
+     "readings": [
+      "いたい"
+     ],
+     "pos": "い형",
+     "meaning": "아프다",
+     "important": true
+    },
+    {
+     "no": "0021",
+     "headword": "指",
+     "readings": [
+      "ゆび"
+     ],
+     "pos": "명",
+     "meaning": "손가락",
+     "important": false
+    },
+    {
+     "no": "0022",
+     "headword": "鼻",
+     "readings": [
+      "はな"
+     ],
+     "pos": "명",
+     "meaning": "코",
+     "important": false
+    },
+    {
+     "no": "0023",
+     "headword": "吹く",
+     "readings": [
+      "ふく"
+     ],
+     "pos": "동",
+     "meaning": "불다",
+     "important": false
+    },
+    {
+     "no": "0024",
+     "headword": "のんびり",
+     "readings": [],
+     "pos": "부",
+     "meaning": "느긋하게, 한가로이",
+     "important": false
+    }
+   ]
+  },
+  {
+   "page": 140,
+   "fixture": "s140",
+   "template": "entry",
+   "day": 20,
+   "title": "여행·교통",
+   "entries": [
+    {
+     "no": "1211",
+     "headword": "乗り換える",
+     "readings": [
+      "のりかえる"
+     ],
+     "pos": "동",
+     "meaning": "갈아타다, 환승하다",
+     "important": true,
+     "example": {
+      "ja": "次の駅で急行に乗り換えてください。",
+      "ko": "다음 역에서 급행으로 갈아타 주세요."
+     }
+    },
+    {
+     "no": "1212",
+     "headword": "切符",
+     "readings": [
+      "きっぷ"
+     ],
+     "pos": "명",
+     "meaning": "표, 승차권",
+     "important": false,
+     "example": {
+      "ja": "窓口で大阪までの切符を二枚買いました。",
+      "ko": "창구에서 오사카까지 가는 표를 두 장 샀습니다."
+     }
+    },
+    {
+     "no": "1213",
+     "headword": "到着",
+     "readings": [
+      "とうちゃく"
+     ],
+     "pos": "명",
+     "meaning": "도착",
+     "important": false,
+     "example": {
+      "ja": "飛行機は予定より三十分早く空港に到着しました。",
+      "ko": "비행기는 예정보다 30분 일찍 공항에 도착했습니다."
+     }
+    },
+    {
+     "no": "1214",
+     "headword": "渋滞",
+     "readings": [
+      "じゅうたい"
+     ],
+     "pos": "명",
+     "meaning": "(교통) 정체",
+     "important": false,
+     "example": {
+      "ja": "朝の高速道路はいつも渋滞しています。",
+      "ko": "아침 고속도로는 늘 차가 막혀 있습니다."
+     }
+    },
+    {
+     "no": "1215",
+     "headword": "揺れる",
+     "readings": [
+      "ゆれる"
+     ],
+     "pos": "동",
+     "meaning": "흔들리다",
+     "important": true,
+     "example": {
+      "ja": "バスがひどく揺れたので、立っていられなかった。",
+      "ko": "버스가 심하게 흔들려서 서 있을 수 없었다."
+     }
+    },
+    {
+     "no": "1216",
+     "headword": "降りる",
+     "readings": [
+      "おりる"
+     ],
+     "pos": "동",
+     "meaning": "내리다",
+     "important": false,
+     "example": {
+      "ja": "忘れ物をしないように気をつけて降りてください。",
+      "ko": "잊은 물건이 없도록 조심해서 내려 주세요."
+     }
+    }
+   ]
+  },
+  {
+   "page": 147,
+   "fixture": "s147",
+   "template": "entry",
+   "day": 21,
+   "title": "쇼핑",
+   "entries": [
+    {
+     "no": "1271",
+     "headword": "値段",
+     "readings": [
+      "ねだん"
+     ],
+     "pos": "명",
+     "meaning": "가격, 값",
+     "important": false,
+     "example": {
+      "ja": "この店の野菜は値段が安くて新鮮です。",
+      "ko": "이 가게의 채소는 가격이 싸고 신선합니다."
+     }
+    },
+    {
+     "no": "1272",
+     "headword": "売り場",
+     "readings": [
+      "うりば"
+     ],
+     "pos": "명",
+     "meaning": "매장",
+     "important": true,
+     "example": {
+      "ja": "靴の売り場は三階にございます。",
+      "ko": "신발 매장은 3층에 있습니다."
+     }
+    },
+    {
+     "no": "1273",
+     "headword": "試着",
+     "readings": [
+      "しちゃく"
+     ],
+     "pos": "명",
+     "meaning": "(옷을) 입어 봄",
+     "important": false,
+     "example": {
+      "ja": "このシャツを試着してもいいですか。",
+      "ko": "이 셔츠를 입어 봐도 될까요?"
+     }
+    },
+    {
+     "no": "1274",
+     "headword": "包む",
+     "readings": [
+      "つつむ"
+     ],
+     "pos": "동",
+     "meaning": "싸다, 포장하다",
+     "important": false,
+     "example": {
+      "ja": "プレゼントなので、きれいに包んでいただけますか。",
+      "ko": "선물이라서 예쁘게 포장해 주실 수 있나요?"
+     }
+    },
+    {
+     "no": "1275",
+     "headword": "レシート",
+     "readings": [],
+     "pos": "명",
+     "meaning": "영수증",
+     "important": false,
+     "example": {
+      "ja": "返品するときはレシートが必要です。",
+      "ko": "반품할 때는 영수증이 필요합니다."
+     }
+    }
+   ]
+  }
+ ]
+}

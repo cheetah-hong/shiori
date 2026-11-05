@@ -1,0 +1,215 @@
+import 'package:shiori_core/src/models/list_equality.dart';
+import 'package:shiori_core/src/models/part_of_speech.dart';
+
+/// Editable fields of a captured entry, used to attach review flags.
+enum EntryField { headword, readings, pos, meaning, important, example }
+
+enum IssueKind {
+  /// The field could not be read. The review screen asks the learner to check it.
+  missing,
+
+  /// A corrector changed what OCR read. Shown as "자동 보정됨".
+  corrected,
+}
+
+/// How the review screen should present a field.
+enum FieldStatus { ok, corrected, needsReview }
+
+final class EntryIssue {
+  const EntryIssue(this.field, this.kind, {this.note});
+
+  const EntryIssue.missing(this.field) : kind = IssueKind.missing, note = null;
+
+  const EntryIssue.corrected(this.field, {this.note})
+    : kind = IssueKind.corrected;
+
+  final EntryField field;
+  final IssueKind kind;
+
+  /// Human readable detail, for example `ー → 一`.
+  final String? note;
+
+  /// Same code as the reference parser, for example `headword:missing`.
+  String get code => '${field.name}:${kind.name}';
+
+  @override
+  bool operator ==(Object other) =>
+      other is EntryIssue &&
+      other.field == field &&
+      other.kind == kind &&
+      other.note == note;
+
+  @override
+  int get hashCode => Object.hash(field, kind, note);
+
+  @override
+  String toString() => note == null ? code : '$code($note)';
+}
+
+/// Example sentence printed under an N3 entry, with its Korean translation.
+final class Example {
+  const Example({required this.ja, required this.ko});
+
+  final String ja;
+  final String ko;
+
+  @override
+  bool operator ==(Object other) =>
+      other is Example && other.ja == ja && other.ko == ko;
+
+  @override
+  int get hashCode => Object.hash(ja, ko);
+
+  @override
+  String toString() => 'Example($ja / $ko)';
+}
+
+const Object _unset = Object();
+
+/// A word read from a page, before the learner saves it (review draft).
+final class CapturedEntry {
+  const CapturedEntry({
+    required this.no,
+    required this.headword,
+    required this.readings,
+    required this.pos,
+    required this.meaning,
+    required this.important,
+    this.example,
+    this.issues = const [],
+    this.headwordCandidates = const [],
+    this.included = true,
+  });
+
+  /// Textbook word number (`0001`), or null when it could not be inferred.
+  final String? no;
+  final String headword;
+
+  /// Readings in kana. Empty for kana-only words (printed as `–`).
+  final List<String> readings;
+  final PartOfSpeech? pos;
+  final String meaning;
+
+  /// `★`: appeared in past JLPT exams.
+  final bool important;
+  final Example? example;
+  final List<EntryIssue> issues;
+
+  /// Suggestions from a `Dictionary` block when the headword was not read.
+  final List<String> headwordCandidates;
+
+  /// Whether the learner keeps this entry when saving.
+  final bool included;
+
+  FieldStatus statusOf(EntryField field) {
+    final mine = issues.where((i) => i.field == field);
+    if (mine.any((i) => i.kind == IssueKind.missing)) {
+      return FieldStatus.needsReview;
+    }
+    if (mine.any((i) => i.kind == IssueKind.corrected)) {
+      return FieldStatus.corrected;
+    }
+    return FieldStatus.ok;
+  }
+
+  bool get needsReview => issues.any((i) => i.kind == IssueKind.missing);
+  bool get wasCorrected => issues.any((i) => i.kind == IssueKind.corrected);
+
+  /// Flagged for the learner in any way other than a missing example
+  /// (the scorer's definition of "shown on the review screen").
+  bool get isFlagged => issues.any((i) => i.field != EntryField.example);
+
+  CapturedEntry copyWith({
+    Object? no = _unset,
+    String? headword,
+    List<String>? readings,
+    Object? pos = _unset,
+    String? meaning,
+    bool? important,
+    Object? example = _unset,
+    List<EntryIssue>? issues,
+    List<String>? headwordCandidates,
+    bool? included,
+  }) => CapturedEntry(
+    no: identical(no, _unset) ? this.no : no as String?,
+    headword: headword ?? this.headword,
+    readings: List.unmodifiable(readings ?? this.readings),
+    pos: identical(pos, _unset) ? this.pos : pos as PartOfSpeech?,
+    meaning: meaning ?? this.meaning,
+    important: important ?? this.important,
+    example: identical(example, _unset) ? this.example : example as Example?,
+    issues: List.unmodifiable(issues ?? this.issues),
+    headwordCandidates: List.unmodifiable(
+      headwordCandidates ?? this.headwordCandidates,
+    ),
+    included: included ?? this.included,
+  );
+
+  CapturedEntry withIssue(EntryIssue issue) =>
+      copyWith(issues: [...issues, issue]);
+
+  /// Applies the learner's edits. A field the learner touched counts as checked,
+  /// so its review flags are cleared.
+  CapturedEntry edit({
+    String? headword,
+    List<String>? readings,
+    Object? pos = _unset,
+    String? meaning,
+    bool? important,
+    Object? example = _unset,
+  }) {
+    final touched = <EntryField>{
+      if (headword != null) EntryField.headword,
+      if (readings != null) EntryField.readings,
+      if (!identical(pos, _unset)) EntryField.pos,
+      if (meaning != null) EntryField.meaning,
+      if (important != null) EntryField.important,
+      if (!identical(example, _unset)) EntryField.example,
+    };
+    return copyWith(
+      headword: headword,
+      readings: readings,
+      pos: pos,
+      meaning: meaning,
+      important: important,
+      example: example,
+      issues: [
+        for (final i in issues)
+          if (!touched.contains(i.field)) i,
+      ],
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is CapturedEntry &&
+      other.no == no &&
+      other.headword == headword &&
+      listEquals(other.readings, readings) &&
+      other.pos == pos &&
+      other.meaning == meaning &&
+      other.important == important &&
+      other.example == example &&
+      listEquals(other.issues, issues) &&
+      listEquals(other.headwordCandidates, headwordCandidates) &&
+      other.included == included;
+
+  @override
+  int get hashCode => Object.hash(
+    no,
+    headword,
+    Object.hashAll(readings),
+    pos,
+    meaning,
+    important,
+    example,
+    Object.hashAll(issues),
+    Object.hashAll(headwordCandidates),
+    included,
+  );
+
+  @override
+  String toString() =>
+      'CapturedEntry($no $headword|${readings.join('/')}|${pos?.badge}|$meaning'
+      '${important ? '|★' : ''} issues=$issues)';
+}
