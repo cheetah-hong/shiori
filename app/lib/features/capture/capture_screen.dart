@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/adapters/dev_samples.dart';
+import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/theme.dart';
 import 'package:shiori/features/capture/capture_controller.dart';
 import 'package:shiori/features/capture/review_screen.dart';
@@ -32,6 +33,7 @@ class CaptureScreen extends ConsumerWidget {
     final state = ref.watch(captureControllerProvider);
     final controller = ref.read(captureControllerProvider.notifier);
     final busy = state is CaptureReading;
+    final showSamples = ref.watch(devSamplesEnabledProvider);
     final t = context.tokens;
 
     return Scaffold(
@@ -89,7 +91,7 @@ class CaptureScreen extends ConsumerWidget {
                   const SizedBox(height: Space.lg),
                   _FailureNote(message: state.message),
                 ],
-                if (devSamplesEnabled) ...[
+                if (showSamples) ...[
                   SectionLabel(
                     '샘플 페이지로 해 보기',
                     trailing: Pill(

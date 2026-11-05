@@ -33,6 +33,9 @@ final class TestBlocks {
   /// Block behind "샘플 페이지로 해 보기"; tests may swap it before pumping.
   TextRecognizer sampleRecognizer = fixtureFileRecognizer;
 
+  /// Sample pages on (as in the dev flavor), whatever `--flavor` the tests run with.
+  bool devSamples = true;
+
   /// No dictionary data unless a test plugs one in before pumping.
   BundledDictionary dictionary = const BundledDictionary.unavailable(
     'no dictionary in tests',
@@ -42,6 +45,7 @@ final class TestBlocks {
     clockProvider.overrideWith((ref) => clock),
     libraryRepositoryProvider.overrideWithValue(library),
     reviewRepositoryProvider.overrideWithValue(reviews),
+    devSamplesEnabledProvider.overrideWithValue(devSamples),
     sampleRecognizerProvider.overrideWithValue(sampleRecognizer),
     bundledDictionaryProvider.overrideWith((ref) async => dictionary),
   ];

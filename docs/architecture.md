@@ -60,7 +60,7 @@ nihongo-app/
 | 포트 (core) | 지금 끼운 블록 | provider (`blocks.dart`) | 다음 블록 |
 |---|---|---|---|
 | `TextRecognizer` | iOS `OcrChannel.swift` (Apple Vision, ja·ko 두 번, 글 방향으로 회전 판별), Android `OcrChannel.kt` (ML Kit japanese → korean, 조각 단위, 줄 각도로 회전 판별) → `PlatformTextRecognizer` | `textRecognizerProvider` | Cloud Vision, Claude |
-| `TextRecognizer` (샘플) | `FixtureTextRecognizer` + `assets/dev_samples/` (합성 페이지) | `sampleRecognizerProvider` | (개발용 전용) |
+| `TextRecognizer` (샘플) | `FixtureTextRecognizer` + `assets/dev_samples/` (합성 페이지). dev flavor에서만 켜짐(5.1절) | `sampleRecognizerProvider` (켜짐: `devSamplesEnabledProvider`) | (개발용 전용) |
 | `TextbookTemplate` | `ListPageTemplate`(A 목록형), `EntryPageTemplate`(B 항목형) + `TemplateRegistry` 자동 판별 | `templateRegistryProvider` | 다른 교재 템플릿 |
 | `EntryCorrector` (체인) | `ConfusableGlyphCorrector` → `KanaOkuriganaCorrector` → `ReadingLookalikeCorrector` → `BadgeMisreadCorrector` → `MeaningPunctuationCorrector` → `PosInferenceCorrector` → `CutMeaningFlagger` → `DictionaryCandidateCorrector`(표제어 빈 줄에 후보, 품사 힌트) → `DictionaryPairCorrector`(표제어·읽기 짝 확인: 규칙이 망친 단어 되돌리기, 헷갈리는 글자 고치기, "사전에 없음") → `MissingFieldFlagger` (`standardCorrectors()`) | `entryCorrectorsProvider` | |
 | `Dictionary` (`byReading(pos:)`, `byHeadword`, `checkPair` → `PairStatus`, `fixHeadword`) | `JmdictDictionaryAdapter` (`packages/jmdict_block`, JMdict full-lean SQLite, CC BY-SA 4.0). 사전 asset이 없거나 열지 못하면 `EmptyDictionary` | `dictionaryProvider` (열기: `bundledDictionaryProvider`) | 데이터 정기 갱신 자동화 |
@@ -71,6 +71,7 @@ nihongo-app/
 | `Clock` | `SystemClock` (테스트: `FixedClock`) | `clockProvider` | |
 | `Speech` (선택) | `SilentSpeech` (발음 버튼 숨김) | `speechProvider` | flutter_tts, 클라우드 음성 |
 | 설정값 | `StudySettings` (간격, 하루 시작 04시, 세션 10장) | `studySettingsProvider` | 설정 화면 |
+| `CrashReporter` / `CrashLog` (앱, `lib/app/crash_reporting.dart`) | `FileCrashLog` (앱 지원 폴더의 텍스트 파일, 64KiB, 전송 없음). `main.dart`의 `installCrashHandlers`가 전역 오류 처리기에 연결 | `crashLogProvider` | 충돌 보고 서비스(5.3절) |
 
 조립만 하는 provider(교체 대상 아님): `capturePipelineProvider`, `libraryServiceProvider`, `studyServiceProvider`.
 
@@ -130,23 +131,81 @@ runApp(ProviderScope(
 
 간격(`StudySettings.intervals`), 하루 시작 시각(`dayStartHour`, 기본 04시), 세션 크기(`dailyGoal`, 기본 10)는 설정값입니다.
 
-## 5. 배포 전에 할 일 (개발용 샘플과 교재 데이터)
+## 5. 배포 준비 (flavor, 차단 검사, 충돌 기록, 서명)
 
-- 교재 본문(판독 기록, 정답, 사진)은 저장소에 넣지 않습니다. 로컬 전용 폴더 `$SHIORI_PRIVATE_DIR/textbook/`
-  (기본 `<저장소>/.private`)에 두고, 실제 교재 회귀 테스트와 기준 구현 대조 테스트는 그 자료가 있을 때만 돕니다(없으면 건너뜀).
-- 저장소의 테스트와 앱의 "샘플 페이지로 해 보기"는 **합성 페이지**를 씁니다. 지어낸 단어를 교재와 같은 배치로 놓고,
-  해석 규칙이 다루는 OCR 실수를 일부러 넣었습니다(`tools/synthetic/make_pages.py`, 4쪽 35단어).
-- 지금 `dev_samples`는 개발 편의를 위해 pubspec asset으로 묶여 있습니다. 개발용 자료가 배포판에 들어가지 않도록
-  **배포 빌드는 일부러 실패합니다**:
-  - Android: `app/android/app/build.gradle.kts`의 `preReleaseBuild` 검사
-  - iOS: Runner 타깃 맨 앞 셸 단계 "Release asset checks (dev samples, dictionary)"
-  - Dart: 배포판에서는 샘플 버튼이 숨고(`devSamplesEnabled = !kReleaseMode`) 판독기도 막힘
-- **사전 asset**(`app/assets/dict/`)은 git에 없고 `python3 tools/dict/build_app_asset.py`로 만듭니다.
-  없으면 debug 빌드는 사전 없이 동작하고, **배포 빌드는 실패합니다**(같은 두 검사 자리: Gradle `preReleaseBuild`, iOS 셸 단계).
+교재 본문(판독 기록, 정답, 사진)은 저장소에 넣지 않습니다. 로컬 전용 폴더 `$SHIORI_PRIVATE_DIR/textbook/`
+(기본 `<저장소>/.private`)에 두고, 실제 교재 회귀 테스트와 기준 구현 대조 테스트는 그 자료가 있을 때만 돕니다(없으면 건너뜀).
+저장소의 테스트와 앱의 "샘플 페이지로 해 보기"는 **합성 페이지**를 씁니다. 지어낸 단어를 교재와 같은 배치로 놓고,
+해석 규칙이 다루는 OCR 실수를 일부러 넣었습니다(`tools/synthetic/make_pages.py`, 4쪽 35단어).
+실제 OCR 탐침(`integration_test/vision_channel_probe_test.dart`)은 저장소 밖의 사진과 정답 경로를 `--dart-define`으로 받습니다.
+
+### 5.1 flavor: dev와 prod
+
+| | dev (개발) | prod (배포) |
+|---|---|---|
+| 앱 ID | `com.nihongoapp.shiori.dev` | `com.nihongoapp.shiori` |
+| `assets/dev_samples/` | 들어감 (pubspec `flavors: [dev]`) | 들어가지 않음 |
+| "샘플 페이지로 해 보기"·샘플 판독기 | 켜짐 | 꺼짐 |
+| release 빌드 | **항상 실패** | 사전 asset·서명 키가 있으면 성공 |
+
+- pubspec `default-flavor: dev`라서 `--flavor` 없는 명령(`flutter run`, `flutter test`, `flutter build apk --debug`, `flutter drive`)은 dev로 돕니다.
+  `--flavor` 없는 release 빌드도 dev라서 실패합니다. 배포 빌드는 언제나 `--flavor prod`를 붙입니다.
+- 샘플 켜짐은 build mode가 아니라 flavor로 정합니다: `devSamplesEnabledFor(appFlavor)`(`lib/adapters/dev_samples.dart`)는 `dev`일 때만 참이고,
+  flavor가 없거나 다른 이름이면 거짓입니다. 화면과 판독기는 `devSamplesEnabledProvider`를 봅니다(테스트는 이 provider를 덮어씀).
+- Android: `productFlavors` `dev`(`applicationIdSuffix = ".dev"`)·`prod`, 차원 `channel`(`app/android/app/build.gradle.kts`).
+- iOS: 빌드 구성 `Debug-dev`·`Profile-dev`·`Release-dev`·`Debug-prod`·`Profile-prod`·`Release-prod`, 스킴 `dev`·`prod`.
+  구성마다 `Flutter/<구성>.xcconfig`가 CocoaPods 설정과 `Flutter/Shared.xcconfig`(Generated + `Local.xcconfig`)를 읽습니다. Podfile도 여섯 구성을 압니다.
+  RunnerTests는 스킴 `dev`로 돌립니다.
+- **dev 앱 ID에 `.dev`를 붙인 이유:** 한 기기에 두 앱을 같이 깔 수 있고, 개발 빌드(샘플·실험 중인 코드)가 학습자의 실제 단어·복습 기록(prod 앱의 데이터)을 건드리지 않습니다.
+  비용은 iOS에서 App ID가 하나 더 드는 것입니다. 무료(개인) 팀은 7일마다 다시 설치해야 하고, 새 App ID 수와 한 기기에 동시에 둘 수 있는 앱 수에 제한이 있으므로
+  두 앱을 다 깔면 그 자리를 둘 씁니다. 자리가 모자라면 실제 학습에는 prod만 깔고(`flutter run --flavor prod --release`), dev는 시뮬레이터에서 씁니다.
+  접미사를 없애려면 iOS `*-dev` 구성의 `PRODUCT_BUNDLE_IDENTIFIER`와 Android `applicationIdSuffix`를 지웁니다(두 앱이 같은 데이터를 쓰게 됨).
+
+### 5.2 release 차단 검사
+
+개발용 자료가 배포판에 들어가는 길과, 사전이나 서명 없이 배포판이 만들어지는 길을 막습니다. 검사는 두 겹입니다: 빌드 전에 flavor·사전·서명을 보고, 빌드 뒤에 결과물 안을 봅니다.
+
+| 검사 | Android (`build.gradle.kts`) | iOS (Runner 셸 단계) |
+|---|---|---|
+| dev flavor의 release | `preDevReleaseBuild`에서 실패 | "Release checks (flavor, dictionary)": `Release-dev`면 실패 |
+| 사전 asset 없음 (`app/assets/dict/`) | `preProdReleaseBuild`에서 실패 | 같은 단계: `Release*`에서 실패 |
+| 서명 키 없음·빈 값·keystore 없음 | `preProdReleaseBuild`에서 실패 (5.4절) | (Xcode 서명 단계가 막음) |
+| 결과물에 `dev_samples` | `copyFlutterAssets*Release` 뒤 출력 폴더를 보고 실패 | 마지막 단계 "Release bundle check (no dev samples)": 앱의 `App.framework/flutter_assets`를 보고 실패 |
+
+- 결과물 검사는 flavor 이름과 상관없이 모든 release에 걸립니다. pubspec의 `flavors: [dev]`가 빠지거나 flavor가 늘어도 dev 자료가 배포판에 들어가지 않습니다.
+- Flutter는 이전 빌드의 asset 폴더를 빌드 폴더에서 지우지 않습니다(Android `build/app/intermediates/flutter/<변형>/`, iOS `build/ios/<구성>/`).
+  pubspec이 맞는데 결과물 검사가 실패하면 그렇게 남은 파일이니 `flutter clean` 뒤 다시 빌드합니다. 검사는 이런 남은 파일도 막습니다.
+- **사전 asset**(`app/assets/dict/`)은 git에 없고 `python3 tools/dict/build_app_asset.py`로 만듭니다. 없으면 debug 빌드는 사전 없이 동작합니다.
   첫 실행 때 앱 캐시 폴더로 풀고(백그라운드 isolate, 기기 백업에서 빠지게. 지워지면 다시 풂), 판 표시 파일이 바뀌면 다시 풉니다(`lib/adapters/bundled_dictionary.dart`).
-- 첫 배포 전에 할 일(TODO): `dev_samples`를 flavor 조건부 asset(`flavors: [dev]`)으로 옮기거나 pubspec에서 빼기,
-  release 서명 설정(지금은 `flutter create` 기본값인 디버그 키), 충돌 보고 블록(`main.dart`의 전역 오류 처리기에 연결).
-- 실제 OCR 탐침(`integration_test/vision_channel_probe_test.dart`)은 저장소 밖의 사진과 정답 경로를 `--dart-define`으로 받습니다.
+
+### 5.3 충돌 기록
+
+- 포트 `CrashReporter`(`record`는 절대 예외를 내지 않음)와 읽고 지울 수 있는 `CrashLog`가 `lib/app/crash_reporting.dart`에 있습니다(Flutter 오류 정보를 다루므로 core가 아니라 앱).
+- `main.dart`가 `installCrashHandlers(crashLog)`로 `FlutterError.onError`(화면 오류)와 `PlatformDispatcher.instance.onError`(아무도 기다리지 않은 비동기 오류 등)를 연결합니다.
+  원래 처리는 그대로입니다: 화면 오류는 콘솔에 찍히고, 비동기 오류는 `false`를 돌려 엔진 기본 처리도 돕니다. 기록은 백그라운드로 하고 실패해도 처리기를 깨지 않습니다.
+  zone 처리기(`runZonedGuarded`)는 쓰지 않습니다. 루트 zone의 잡히지 않은 오류는 `PlatformDispatcher.onError`로 옵니다.
+- 기본 블록 `FileCrashLog`(`lib/adapters/file_crash_log.dart`): 앱 지원 폴더의 `crash_log.jsonl`, 한 줄에 기록 하나(시각, 출처, 오류 글, 스택, 위치).
+  파일은 **64KiB 상한**이고 넘으면 오래된 기록부터 지웁니다. 기록 하나는 오류 글 4000자·스택 60줄까지 남기고, 그래도 상한보다 크면 스택을 빼고 글을 줄입니다.
+  쓰기는 한 번에 하나씩, 임시 파일에 쓴 뒤 바꿔치기합니다. 같은 오류(출처·글·위치)가 1분 안에 되풀이되면 다시 쓰지 않습니다(매 프레임 나는 오류가
+  디스크를 두드리거나 처음 기록을 밀어내지 않게). 형식이 맞지 않는 줄은 읽을 때 건너뜁니다. 네트워크로 보내지 않습니다.
+  iOS는 앱 지원 폴더가 기기 백업(iCloud·컴퓨터)에 들어가므로 기록도 백업에 함께 들어갈 수 있고, 화면 안내에 그렇게 적었습니다(Android는 `allowBackup="false"`).
+- 정보 화면 → "오류 기록 보기"(`lib/features/about/crash_log_screen.dart`): 최근 것부터 보여 주고, 복사(클립보드)와 지우기가 있습니다.
+  무엇이 기록되는지와 사진 경로 같은 개인 정보가 섞일 수 있다는 안내를 화면 맨 위에 둡니다.
+- **충돌 보고 서비스를 끼우는 방법**(지금은 넣지 않음. 계정·비용·개인 정보 처리 방침을 먼저 정해야 함):
+  1. 서비스 SDK를 감싼 `CrashReporter` 구현을 `lib/adapters/`에 둡니다(`record`에서 SDK 호출, 예외는 삼킴).
+  2. `main.dart`에서 로컬 기록과 함께 쓰려면 둘에 차례로 넘기는 작은 reporter로 묶어 `installCrashHandlers`에 넘깁니다. 정보 화면은 그대로 `crashLogProvider`(로컬 기록)를 봅니다.
+  3. SDK가 자체 전역 처리기를 설치하는 방식(Crashlytics의 `recordFlutterFatalError` 등)이면 `installCrashHandlers`의 `present` 자리에 넘기거나, 그 SDK 문서대로 하고 로컬 기록만 `CrashReporter`로 둡니다.
+  4. 개인 정보: 오류 글에 파일 경로가 들어갈 수 있으므로 보내기 전에 경로를 지우는 처리와 학습자 동의(설정 화면)를 함께 넣습니다.
+
+### 5.4 release 서명
+
+- **Android:** `app/android/key.properties`(git 제외)에 upload 키를 적습니다. 틀은 `app/android/key.properties.example`, 키 만드는 명령은 README "배포 빌드".
+  파일이 없거나, 네 값(`storeFile`, `storePassword`, `keyAlias`, `keyPassword`) 중 빈 것이 있거나, `storeFile`이 파일이 아니면 prod release가 `preProdReleaseBuild`에서
+  `Release signing: … A release is never signed with the debug key.`로 실패합니다. debug 키로 조용히 서명하지 않습니다(이전에는 release가 debug 키로 서명됐음).
+  상대 경로 `storeFile`은 `app/android/` 기준이고, keystore는 저장소 밖에 두는 것을 권합니다.
+- **iOS:** 서명은 `app/ios/Flutter/Local.xcconfig`(git 제외)의 `DEVELOPMENT_TEAM`으로 하고 자동 서명입니다. 모든 구성이 `Shared.xcconfig`를 거쳐 이 파일을 읽습니다.
+  틀은 `Local.xcconfig.example`(배포용 수동 서명 자리 `CODE_SIGN_STYLE`·`CODE_SIGN_IDENTITY`·`PROVISIONING_PROFILE_SPECIFIER`를 주석으로 둠). 키·프로필 파일은 저장소에 두지 않습니다.
+  App Store·TestFlight 배포는 유료 Apple Developer Program 팀이 있어야 합니다.
 
 ## 6. 다음 블록 (이번에 하지 않은 것, 포트와 TODO만 있음)
 

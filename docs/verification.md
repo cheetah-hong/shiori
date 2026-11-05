@@ -27,17 +27,18 @@
 | 사전 asset 스크립트 | `python3 -m unittest discover -s tools/dict -p 'test_*.py'` | **6개 통과** (네트워크 없음) |
 | 저장 패키지 | `cd packages/storage_drift && dart analyze && dart test` | 문제 없음, **74개 통과** (7절, 9절, 스키마 v2 마이그레이션 10절) |
 | app 정적 분석 | `cd app && flutter analyze` | 문제 없음 |
-| app 테스트 | `cd app && flutter test` | **79개 통과** (사전 asset 있음·없음 둘 다) |
-| iOS 채널 순수 로직 | `cd app/ios && xcodebuild test -workspace Runner.xcworkspace -scheme Runner -destination 'id=<시뮬레이터>' -only-testing:RunnerTests` | **5개 통과** (회전 투표·가로세로 바꿈·방향 합성, 6.4절) |
-| Android 채널 순수 로직 | `cd app/android && ./gradlew :app:testDebugUnitTest` (JDK 21) | **11개 통과** (조각 자르기·회전·상자 없는 글자, 6.5절) |
-| app 커버리지 | `flutter test --coverage` | 줄 커버리지 **91.6%** (1707/1864줄, 10절 반영 뒤 다시 잼. 그 전 91.8%) |
+| app 테스트 | `cd app && flutter test` (기본 flavor = dev), `flutter test --flavor dev` | **101개 통과** (11절 반영 뒤. 그 전 79개, 사전 asset 있음·없음 둘 다) |
+| iOS 채널 순수 로직 | `cd app/ios && xcodebuild test -workspace Runner.xcworkspace -scheme dev -destination 'id=<시뮬레이터>' -only-testing:RunnerTests` (11절부터 스킴 `dev`) | **5개 통과** (회전 투표·가로세로 바꿈·방향 합성, 6.4절) |
+| Android 채널 순수 로직 | `cd app/android && ./gradlew :app:testDevDebugUnitTest` (JDK 21, 11절부터 flavor 이름이 붙음) | **11개 통과** (조각 자르기·회전·상자 없는 글자, 6.5절) |
+| app 커버리지 | `flutter test --coverage` | 줄 커버리지 **92.2%** (1902/2064줄, 11절 반영 뒤. 10절 뒤 91.6%) |
 | iOS 흐름 | `flutter drive ... integration_test/flow_screenshots_test.dart` | 통과, 스크린샷 15장 (3절, 시뮬레이터 디버그 빌드) |
-| Android 빌드 | `flutter build apk --debug` | 성공 (Kotlin ML Kit 채널 컴파일, 디버그 APK 약 186MB = 177MiB, 빌드 환경에 따라 조금 다름) |
+| Android 빌드 | `flutter build apk --debug` (= dev flavor, `app-dev-debug.apk`) | 성공 (Kotlin ML Kit 채널 컴파일, 디버그 APK 약 186MB = 177MiB, 빌드 환경에 따라 조금 다름) |
 | 합성 세트 점수표 | `cd packages/core && dart run tool/eval_capture.dart` | 31/35, 기준 구현과 다른 칸 0개 (2.1절) |
 | 합성 세트 점수표 (ML Kit형) | `dart run tool/eval_capture.dart --fixtures test/fixtures/synthetic_mlkit` | 16/18 (6.3절) |
 | 교재 세트 점수표 | `dart run tool/eval_capture.dart --fixtures "$SHIORI_PRIVATE_DIR/textbook/vocab_n5n3"` | 55/59, 기준 구현과 다른 칸 0개 (2.2절) |
 | 합성 생성기 | `python3 tools/synthetic/make_pages.py --check` | 저장소 파일과 같음 |
-| 배포 빌드 차단 | `flutter build apk --release`, `flutter build ios --release --no-codesign` | **의도대로 실패**: 개발용 `assets/dev_samples/`가 pubspec에 있는 동안 막힘. 사전 asset(`app/assets/dict/`)이 없을 때도 막힘(8절) |
+| 배포 빌드 (prod) | `flutter build apk --flavor prod --release`, `flutter build appbundle --flavor prod --release`, `flutter build ios --flavor prod --release --no-codesign` | 사전 asset과 서명 키(Android)가 있으면 **성공**, 결과물에 `dev_samples` 없음. 사전 asset이나 `key.properties`가 없으면 **분명한 메시지로 실패** (11절) |
+| 배포 빌드 차단 (dev) | `flutter build apk --flavor dev --release`, `flutter build ios --flavor dev --release --no-codesign` (`--flavor` 없는 release도 dev) | **의도대로 실패**: dev flavor는 개발 샘플을 묶으므로 release로 빌드하지 않음 (11절) |
 | 연구 도구 테스트 | `python3 -m unittest test_tools` (`research/scan/tools`, `research/ocr-android/tools`) | 27개, 16개 통과 |
 | ML Kit 판독 앱 | `cd research/ocr-android/mlkit_probe && ./gradlew :app:testDebugUnitTest` | 5개 통과 |
 
@@ -626,3 +627,72 @@ iPhone 17 Pro 시뮬레이터에서 합성 샘플 흐름(3절)과 사전 화면(
 | 빌드 | `flutter build apk --debug` 성공, `python3 tools/synthetic/make_pages.py --check` 통과 |
 | 커버리지 | core 97.7%, app 91.6%, storage_drift 손으로 쓴 코드 100%(생성 steps 파일 제외) |
 | 코드 줄 수 | 제품 코드(core·storage_drift·app·네이티브·도구) 36개 파일 +150/−1269줄, 테스트 27개 파일 +504/−1178줄 (생성 코드·fixtures 제외) |
+
+## 11. 배포 준비 (2026-11-05)
+
+flavor(dev·prod), release 차단 검사, 충돌 기록, release 서명 자리를 넣었습니다. 구조는 `docs/architecture.md` 5절.
+
+### 11.1 바뀐 명령
+
+| 하려는 것 | 명령 |
+|---|---|
+| 개발 실행·테스트 (dev, 샘플 있음) | `flutter run`, `flutter test`, `flutter build apk --debug`, `flutter drive …` 그대로 (기본 flavor가 dev). `--flavor dev`를 붙여도 같음 |
+| 배포판 모양으로 실행 (샘플 없음) | `flutter run --flavor prod` (debug), `flutter run --flavor prod --release` (사전 asset·서명 필요) |
+| 배포 빌드 | `flutter build apk --flavor prod --release`, `flutter build appbundle --flavor prod --release`, `flutter build ios --flavor prod --release` (README "배포 빌드") |
+| Android 채널 단위 테스트 | `./gradlew :app:testDevDebugUnitTest` (전: `testDebugUnitTest`) |
+| iOS 채널 단위 테스트 | `xcodebuild test … -scheme dev …` (전: `-scheme Runner`) |
+| 시뮬레이터·에뮬레이터 앱 지우기 | dev 앱 ID는 `com.nihongoapp.shiori.dev` (`xcrun simctl uninstall <시뮬레이터> com.nihongoapp.shiori.dev`) |
+
+### 11.2 release 빌드 결과
+
+사전 asset은 `tools/dict/build_app_asset.py`로 만든 것을 복사해 썼고, Android 서명은 저장소 밖에 만든 시험용 keystore(유효 1일, 확인 뒤 지움)로 했습니다.
+
+| 명령 | 조건 | 결과 |
+|---|---|---|
+| `flutter build apk --flavor prod --release` | `key.properties` 없음 | 실패: `preProdReleaseBuild` — `Release signing: android/key.properties is missing. A release is never signed with the debug key. …` |
+| 같음 | 시험 키 + 사전 asset | **성공** (105.8MB). `apksigner`: 시험 인증서로 서명됨. 패키지 `com.nihongoapp.shiori` |
+| 같음 | 시험 키, 사전 asset 없음 | 실패: `Dictionary asset missing: assets/dict/jmdict-full-lean.sqlite.gz, … Build it with: python3 tools/dict/build_app_asset.py` |
+| `flutter build appbundle --flavor prod --release` | 시험 키 + 사전 asset | **성공** (78.1MB), `jarsigner -verify` 통과 |
+| `flutter build apk --flavor dev --release` | — | 실패: `preDevReleaseBuild` — `The dev flavor bundles development samples (assets/dev_samples/) and never builds for release. Build with --flavor prod.` |
+| `flutter build ios --flavor prod --release --no-codesign` | 사전 asset 없음 | 실패: `assets/dict/jmdict-full-lean.sqlite.gz is missing. …` |
+| 같음 | 사전 asset 있음 | **성공** (`Runner.app` 32.4MB), 번들 ID `com.nihongoapp.shiori` |
+| `flutter build ios --flavor dev --release --no-codesign` | — | 실패: dev flavor 메시지(위와 같음) |
+| 결과물 검사 시험 | pubspec에서 `flavors: [dev]`를 일부러 뺀 채 prod release (확인 뒤 되돌림) | Android `copyFlutterAssetsProdRelease`, iOS "Release bundle check"가 둘 다 `dev_samples`를 찾아 실패 |
+| 같은 시험 뒤 pubspec을 되돌리고 다시 prod release | (`flutter clean` 없이) | Android·iOS 모두 결과물 검사에서 실패: 앞 빌드의 `dev_samples`가 빌드 폴더(`intermediates/flutter/prodRelease`, `build/ios/Release-prod-iphoneos`)에 남아 있었음. 그 폴더를 지우고 다시 빌드하니 성공. 메시지에 `flutter clean` 안내를 더함 |
+
+결과물 안의 Flutter asset (`unzip -l`, 앱 번들 `find`):
+
+| 결과물 | `assets/` 아래 | `dev_samples` |
+|---|---|---|
+| `app-prod-release.apk` | `flutter_assets/assets/dict/jmdict-full-lean.edition.json`, `…sqlite.gz` + `AssetManifest.bin`, `FontManifest.json`, `NOTICES.Z`, `NativeAssetsManifest.json`, `fonts/MaterialIcons-Regular.otf`, `shaders/ink_sparkle.frag`, `shaders/stretch_effect.frag` | 0개 |
+| `app-prod-release.aab` | `base/assets/flutter_assets/assets/dict/` 두 파일 (나머지는 APK와 같음) | 0개 |
+| `Runner.app` (prod release) | `App.framework/flutter_assets/assets/dict/` 두 파일과 `.gitignore`, 나머지는 APK와 같음 | 0개 |
+| `app-prod-debug.apk` | — | 0개 |
+| `app-dev-debug.apk` (`com.nihongoapp.shiori.dev`) | `flutter_assets/assets/dev_samples/` 합성 4쪽 × 2 | 8개 |
+
+iOS 앱 번들에는 `assets/dict/.gitignore`(71바이트)도 들어갑니다(이번 변경 전부터, Android는 점 파일을 빼서 없음).
+
+### 11.3 테스트
+
+| 묶음 | 파일 | 내용 |
+|---|---|---|
+| flavor 판단 | `test/features/dev_flavor_test.dart` | `devSamplesEnabledFor`: `dev`만 켜짐, `prod`·없음·`Dev`·`staging`·빈 이름은 꺼짐. 빌드 상수가 `appFlavor` 판단과 같음. prod 설정에서 샘플 판독기가 모든 쪽을 거절. dev 화면에는 "샘플 페이지로 해 보기"와 샘플 쪽이 있고 prod에는 없음 |
+| 전역 처리기 | `test/app/crash_reporting_test.dart` | 화면 오류 하나와 비동기 오류 하나가 둘 다 기록되고(출처·글·위치·스택·시각), 원래 처리(오류 표시, `false`)는 그대로. 새 로그 객체로 다시 읽힘, 지우기, 파일 없음, 깨진 줄 건너뜀 |
+| 크기 상한 | 같은 파일 | 상한 2000바이트에 40개를 쓰면 파일이 상한 이하이고 가장 새 기록은 남고 순서 유지. 상한보다 큰 기록 하나는 잘려서 남음 |
+| 쓰기 실패 | 같은 파일 | 폴더를 못 얻음·폴더 자리가 파일이어도 `record`가 조용히 끝남. 그 상태에서 전역 처리기의 원래 처리도 그대로 |
+| 정보 화면 | `test/features/crash_log_screen_test.dart` | 기록 없음 문구, 개인 정보 안내, 최근 것이 위, 복사 버튼이 두 기록을 최근 것부터 클립보드에 넣고 알림, 지우기, 읽기 실패 문구 |
+| 기존 테스트 | `test/app/blocks_test.dart` | 첫 블록 목록에 `devSamplesEnabledProvider`·`crashLogProvider` 추가. 화면 테스트 보조(`test/support/harness.dart`)는 flavor와 상관없이 샘플을 켬 |
+
+- `flutter test` 101개 통과(기본 flavor, `--flavor dev` 둘 다). 줄 커버리지 92.2%.
+- Android 채널 11개(`testDevDebugUnitTest`), iOS 채널 5개(스킴 `dev`) 그대로 통과. core는 고치지 않았고 302개 통과, 점수표 31/35·16/18 그대로.
+
+### 11.4 시뮬레이터·에뮬레이터
+
+| 기기 | 확인 | 결과 |
+|---|---|---|
+| iPhone 17 Pro 시뮬레이터 | `flutter drive --flavor dev … flow_screenshots_test.dart` (스크린샷은 저장소 밖에 저장해 기존 그림을 바꾸지 않음) | 통과 (15장) |
+| 같음 | `flutter test integration_test/flavor_check_test.dart --flavor prod` / `--flavor dev` | 통과: prod는 샘플 버튼 없음·샘플 asset 못 읽음, dev는 둘 다 있음 |
+| 같음 | `flutter drive --flavor dev … crash_log_screenshot_test.dart` | 통과: 실제 전역 처리기로 지어낸 오류 두 개를 앱 지원 폴더에 기록하고 정보 → 오류 기록에 보임. `docs/screenshots/21_about_crash_log.png` |
+| Android 에뮬레이터 `Medium_Phone_API_36.1` | `flutter drive --flavor dev … persistence_test.dart --dart-define=SHIORI_PERSISTENCE_STEP=save` | 통과: 합성 샘플 DAY 20 → 저장 6개 → 학습 |
+| 같음 | `flavor_check_test.dart --flavor prod` / `--flavor dev` | 통과 |
+| 같음 | `flow_screenshots_test.dart` | 실패: Android에서 `takeScreenshot` 전에 `convertFlutterSurfaceToImage()`가 필요함(스크린샷 테스트는 원래 iOS 시뮬레이터용, 이번 변경과 무관) |

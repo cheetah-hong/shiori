@@ -1,0 +1,6 @@
+// Included by every Debug-/Profile-/Release-<flavor>.xcconfig (flavors: dev, prod).
+#include "Generated.xcconfig"
+
+// Optional, untracked: per-developer signing for device and release builds
+// (DEVELOPMENT_TEAM and friends). Copy Local.xcconfig.example to start.
+#include? "Local.xcconfig"

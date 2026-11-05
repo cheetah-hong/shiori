@@ -2,13 +2,22 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shiori_core/shiori_core.dart';
 
-/// DEVELOPMENT ONLY.
+/// DEVELOPMENT ONLY: the `dev` flavor.
 ///
 /// `assets/dev_samples/` holds the OCR passes of synthetic pages (made-up words
 /// laid out like the textbook, `tools/synthetic/make_pages.py`) so the whole
-/// flow runs on a simulator without a camera. Release builds leave them out
-/// (see docs/architecture.md, "배포 전").
-const bool devSamplesEnabled = !kReleaseMode;
+/// flow runs on a simulator without a camera. Only the dev flavor bundles them
+/// (pubspec.yaml), and the dev flavor never builds for release
+/// (docs/architecture.md, 5).
+const String devFlavor = 'dev';
+
+/// Whether the sample pages are on for [flavor]: only in [devFlavor]. No
+/// flavor, or any other, means off, whatever the build mode.
+bool devSamplesEnabledFor(String? flavor) => flavor == devFlavor;
+
+/// The samples switch for this build (`flutter run --flavor dev`, or no
+/// `--flavor`: pubspec.yaml makes dev the default).
+const bool devSamplesEnabled = appFlavor == devFlavor;
 
 const String devSampleDir = 'assets/dev_samples';
 
@@ -36,9 +45,13 @@ const List<DevSample> devSamples = [
   DevSample(id: 's147', page: 147, detail: 'DAY 21 쇼핑', layout: '항목형 · 예문'),
 ];
 
-/// Replays a sample page through the same pipeline as a real photo.
-TextRecognizer devSampleRecognizer(AssetBundle bundle) {
-  if (!devSamplesEnabled) {
+/// Replays a sample page through the same pipeline as a real photo; refuses
+/// every page when [enabled] is false.
+TextRecognizer devSampleRecognizer(
+  AssetBundle bundle, {
+  bool enabled = devSamplesEnabled,
+}) {
+  if (!enabled) {
     return const _DisabledRecognizer();
   }
   return FixtureTextRecognizer((name) async {
@@ -60,5 +73,5 @@ final class _DisabledRecognizer implements TextRecognizer {
 
   @override
   Future<OcrScan> recognize(PageImage image) =>
-      Future.error(const TextRecognitionException('배포판에는 샘플 페이지가 없습니다'));
+      Future.error(const TextRecognitionException('이 빌드에는 샘플 페이지가 없습니다'));
 }

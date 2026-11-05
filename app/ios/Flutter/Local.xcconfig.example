@@ -1,0 +1,11 @@
+// Copy to Local.xcconfig (git-ignored) and fill in. Never commit the filled copy.
+//
+// Apple developer team that signs device and release builds
+// (Xcode > Settings > Accounts, or the Membership page of the developer account).
+DEVELOPMENT_TEAM =
+
+// Automatic signing is the default. For a release with a fixed distribution
+// profile, switch to manual and name the profile installed on this Mac:
+// CODE_SIGN_STYLE = Manual
+// CODE_SIGN_IDENTITY = Apple Distribution
+// PROVISIONING_PROFILE_SPECIFIER =

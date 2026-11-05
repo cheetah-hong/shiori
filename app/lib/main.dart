@@ -1,7 +1,9 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shiori/adapters/file_crash_log.dart';
 import 'package:shiori/app/app.dart';
+import 'package:shiori/app/blocks.dart';
+import 'package:shiori/app/crash_reporting.dart';
 import 'package:shiori/app/startup.dart';
 import 'package:shiori/features/about/about_screen.dart';
 
@@ -12,20 +14,22 @@ import 'package:shiori/features/about/about_screen.dart';
 /// ```
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // TODO(crash-reporting): forward these to a crash reporter block.
-  FlutterError.onError = (details) {
-    FlutterError.presentError(details);
-    debugPrint('[shiori] ${details.exceptionAsString()}');
-  };
-  PlatformDispatcher.instance.onError = (error, stack) {
-    debugPrint('[shiori] uncaught: $error\n$stack');
-    return false; // keep the engine's default handling as well
-  };
+  // Uncaught errors go to a log on the device (정보 → 오류 기록). A crash
+  // service would be another reporter here (docs/architecture.md, 5).
+  final crashLog = FileCrashLog.appSupport();
+  installCrashHandlers(crashLog);
   registerDictionaryLicense();
   // Unpacking the dictionary starts now and runs while the app starts.
   final dictionary = bundledDictionaryOverride();
   final database = await appDatabaseOverride();
   runApp(
-    ProviderScope(overrides: [database, dictionary], child: const ShioriApp()),
+    ProviderScope(
+      overrides: [
+        database,
+        dictionary,
+        crashLogProvider.overrideWithValue(crashLog),
+      ],
+      child: const ShioriApp(),
+    ),
   );
 }

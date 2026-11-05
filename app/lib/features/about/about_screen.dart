@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/adapters/bundled_dictionary.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/features/about/crash_log_screen.dart';
 import 'package:shiori/shared/widgets.dart';
 
 const _projectUrl =
@@ -44,6 +45,22 @@ class AboutScreen extends ConsumerWidget {
               AsyncData() || AsyncError() => const _NoDictionary(),
               _ => const _Preparing(),
             },
+            const SizedBox(height: Space.section),
+            const SectionLabel('오류 기록'),
+            _Card(
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.bug_report_outlined),
+                title: const Text('오류 기록 보기'),
+                subtitle: const Text('앱에서 난 오류를 이 기기에만 남겨요. 복사해서 보낼 수 있어요.'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const CrashLogScreen(),
+                  ),
+                ),
+              ),
+            ),
             const SizedBox(height: Space.section),
             const SectionLabel('오픈소스'),
             _Card(

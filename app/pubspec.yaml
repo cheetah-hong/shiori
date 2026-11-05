@@ -77,10 +77,15 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  # Two flavors (docs/architecture.md, 5): `dev` for development (sample pages,
+  # never a release) and `prod` for distribution. Commands without --flavor use dev.
+  default-flavor: dev
+
   assets:
-    # DEV ONLY: OCR passes of synthetic sample pages (tools/synthetic/make_pages.py).
-    # Remove or move behind a flavor before any distribution (docs/architecture.md, 배포 전).
-    - assets/dev_samples/
+    # dev flavor only: OCR passes of synthetic sample pages (tools/synthetic/make_pages.py).
+    - path: assets/dev_samples/
+      flavors:
+        - dev
     # JMdict (full-lean) as gzip plus its edition file, built by
     # tools/dict/build_app_asset.py; not in git. Without them the app runs with
     # no dictionary, and release builds stop (android/app/build.gradle.kts).

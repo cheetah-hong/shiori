@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jmdict_block/jmdict_block.dart';
 import 'package:shiori/adapters/bundled_dictionary.dart';
+import 'package:shiori/adapters/dev_samples.dart';
+import 'package:shiori/adapters/file_crash_log.dart';
 import 'package:shiori/adapters/image_picker_source.dart';
 import 'package:shiori/adapters/platform_text_recognizer.dart';
 import 'package:shiori/app/blocks.dart';
@@ -32,6 +34,8 @@ void main() {
     );
     expect(c.read(clockProvider), isA<SystemClock>());
     expect(c.read(textRecognizerProvider), isA<PlatformTextRecognizer>());
+    // Tests run as the dev flavor (pubspec.yaml default-flavor).
+    expect(c.read(devSamplesEnabledProvider), devSamplesEnabled);
     expect(c.read(sampleRecognizerProvider), isA<FixtureTextRecognizer>());
     expect(c.read(imageSourceProvider), isA<ImagePickerSource>());
     expect(c.read(templateRegistryProvider).templates.map((t) => t.id), [
@@ -48,6 +52,7 @@ void main() {
     expect(c.read(reviewRepositoryProvider), isA<DriftReviewRepository>());
     expect(c.read(reviewSchedulerProvider), isA<LeitnerFourStepScheduler>());
     expect(c.read(speechProvider), isA<SilentSpeech>());
+    expect(c.read(crashLogProvider), isA<FileCrashLog>());
   });
 
   test('swapping a block is one override', () {

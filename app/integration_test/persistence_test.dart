@@ -2,11 +2,11 @@
 // Uses the real database file (openAppDatabase) and a synthetic sample page.
 //
 //   cd app
-//   xcrun simctl uninstall <simulator> com.nihongoapp.shiori   # start empty
+//   xcrun simctl uninstall <simulator> com.nihongoapp.shiori.dev   # start empty (dev flavor)
 //   flutter drive -d <simulator> --keep-app-running --driver=test_driver/integration_test.dart \
 //     --target=integration_test/persistence_test.dart \
 //     --dart-define=SHIORI_PERSISTENCE_STEP=save
-//   xcrun simctl terminate <simulator> com.nihongoapp.shiori
+//   xcrun simctl terminate <simulator> com.nihongoapp.shiori.dev
 //   flutter drive ... (same) --dart-define=SHIORI_PERSISTENCE_STEP=reopen
 //
 // Screenshots land in docs/screenshots/ (see test_driver/integration_test.dart).

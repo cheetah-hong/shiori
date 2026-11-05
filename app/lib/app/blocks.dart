@@ -17,8 +17,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/adapters/bundled_dictionary.dart';
 import 'package:shiori/adapters/dev_samples.dart';
+import 'package:shiori/adapters/file_crash_log.dart';
 import 'package:shiori/adapters/image_picker_source.dart';
 import 'package:shiori/adapters/platform_text_recognizer.dart';
+import 'package:shiori/app/crash_reporting.dart';
 import 'package:shiori_core/shiori_core.dart';
 import 'package:shiori_storage_drift/shiori_storage_drift.dart';
 
@@ -32,9 +34,15 @@ final textRecognizerProvider = Provider<TextRecognizer>(
   (ref) => const PlatformTextRecognizer(),
 );
 
-/// "샘플 페이지로 해 보기": recorded OCR from assets (development builds only).
+/// Whether "샘플 페이지로 해 보기" is on: the dev flavor only (`dev_samples.dart`).
+final devSamplesEnabledProvider = Provider<bool>((ref) => devSamplesEnabled);
+
+/// "샘플 페이지로 해 보기": recorded OCR from assets (dev flavor only).
 final sampleRecognizerProvider = Provider<TextRecognizer>(
-  (ref) => devSampleRecognizer(rootBundle),
+  (ref) => devSampleRecognizer(
+    rootBundle,
+    enabled: ref.watch(devSamplesEnabledProvider),
+  ),
 );
 
 /// Page photos: image_picker. Next: document scanner, page flattening.
@@ -102,6 +110,11 @@ final reviewSchedulerProvider = Provider<ReviewScheduler>(
 
 /// Pronunciation (optional). Next: flutter_tts.
 final speechProvider = Provider<Speech>((ref) => const SilentSpeech());
+
+/// Uncaught errors, kept on the device for the 정보 screen. `main.dart` plugs
+/// in the same log its global error handlers write to. Next: a crash service
+/// (docs/architecture.md, 5).
+final crashLogProvider = Provider<CrashLog>((ref) => FileCrashLog.appSupport());
 
 // ---------------------------------------------------------------- composed from the blocks above
 

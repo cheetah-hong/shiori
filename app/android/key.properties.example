@@ -1,0 +1,9 @@
+# Copy to android/key.properties (git-ignored) and fill in. Never commit the copy.
+# README.md ("배포 빌드") shows how to make an upload key.
+#
+# storeFile: the keystore; an absolute path outside the repository is safest
+# (a relative path is read from this android/ folder).
+storeFile=
+storePassword=
+keyAlias=upload
+keyPassword=
