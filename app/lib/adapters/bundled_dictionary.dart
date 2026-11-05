@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:isolate';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:jmdict_block/jmdict_block.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shiori/adapters/unpacked_asset.dart';
 import 'package:shiori_core/shiori_core.dart';
 
 /// gzip of the JMdict SQLite file (tools/dict/build_app_asset.py).
@@ -104,30 +104,20 @@ Future<BundledDictionary> openBundledDictionary({
       cache: false,
     );
     final edition = _parseEdition(editionText);
-    final dir = await supportDirectory();
-    await dir.create(recursive: true);
-    final file = File('${dir.path}/$dictionaryFileName');
-    final marker = File('${dir.path}/$dictionaryMarkerName');
-
-    if (await _isCurrent(marker, editionText) && await file.exists()) {
-      try {
-        return BundledDictionary.opened(_open(file), edition);
-      } on Object catch (error) {
-        log('the unpacked file does not open ($error); unpacking it again');
-      }
+    final opened = await openUnpackedAsset(
+      bundle: bundle,
+      gzipAsset: dictionaryAsset,
+      editionText: editionText,
+      dir: await supportDirectory(),
+      fileName: dictionaryFileName,
+      markerName: dictionaryMarkerName,
+      open: _open,
+      log: log,
+    );
+    if (opened.unpacked) {
+      log('unpacked ${edition.variant}, JMdict ${edition.jmdictCreated}');
     }
-    if (await marker.exists()) await marker.delete();
-    await _unpack(bundle, file);
-    final JmdictDictionaryAdapter opened;
-    try {
-      opened = _open(file);
-    } on Object {
-      await _deleteIfPresent(file);
-      rethrow;
-    }
-    await marker.writeAsString(editionText, flush: true);
-    log('unpacked ${edition.variant}, JMdict ${edition.jmdictCreated}');
-    return BundledDictionary.opened(opened, edition);
+    return BundledDictionary.opened(opened.value, edition);
   } on Object catch (error, stack) {
     log('not available: $error\n$stack');
     return BundledDictionary.unavailable('$error');
@@ -150,34 +140,7 @@ DictionaryEdition _parseEdition(String text) => switch (jsonDecode(text)) {
   _ => throw const FormatException('dictionary edition: not a JSON object'),
 };
 
-Future<bool> _isCurrent(File marker, String editionText) async =>
-    await marker.exists() && await marker.readAsString() == editionText;
-
 JmdictDictionaryAdapter _open(File file) =>
     JmdictDictionaryAdapter(JmdictDictionary.open(file.path));
-
-/// Decodes the gzip asset off the UI isolate. The SQLite file only appears
-/// once it is complete.
-Future<void> _unpack(AssetBundle bundle, File file) async {
-  final data = await bundle.load(dictionaryAsset);
-  final packed = data.buffer.asUint8List(
-    data.offsetInBytes,
-    data.lengthInBytes,
-  );
-  final part = File('${file.path}.part');
-  try {
-    final partPath = part.path;
-    await Isolate.run(
-      () => File(partPath).writeAsBytesSync(gzip.decode(packed), flush: true),
-    );
-    await part.rename(file.path);
-  } finally {
-    await _deleteIfPresent(part);
-  }
-}
-
-Future<void> _deleteIfPresent(File file) async {
-  if (await file.exists()) await file.delete();
-}
 
 void _log(String message) => debugPrint('[shiori] dictionary: $message');

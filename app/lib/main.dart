@@ -19,14 +19,17 @@ Future<void> main() async {
   final crashLog = FileCrashLog.appSupport();
   installCrashHandlers(crashLog);
   registerDictionaryLicense();
-  // Unpacking the dictionary starts now and runs while the app starts.
+  registerGlossaryLicense();
+  // Unpacking the dictionaries starts now and runs while the app starts.
   final dictionary = bundledDictionaryOverride();
+  final glossary = bundledGlossaryOverride();
   final database = await appDatabaseOverride();
   runApp(
     ProviderScope(
       overrides: [
         database,
         dictionary,
+        glossary,
         crashLogProvider.overrideWithValue(crashLog),
       ],
       child: const ShioriApp(),

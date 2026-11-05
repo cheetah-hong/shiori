@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shiori/adapters/bundled_dictionary.dart';
+import 'package:shiori/adapters/bundled_glossary.dart';
 import 'package:shiori/adapters/dev_samples.dart';
 import 'package:shiori/app/app.dart';
 import 'package:shiori/app/blocks.dart';
@@ -41,6 +42,11 @@ final class TestBlocks {
     'no dictionary in tests',
   );
 
+  /// No Korean glossary unless a test plugs one in before pumping.
+  BundledGlossary glossary = const BundledGlossary.unavailable(
+    'no glossary in tests',
+  );
+
   List<Override> get overrides => [
     clockProvider.overrideWith((ref) => clock),
     libraryRepositoryProvider.overrideWithValue(library),
@@ -48,6 +54,7 @@ final class TestBlocks {
     devSamplesEnabledProvider.overrideWithValue(devSamples),
     sampleRecognizerProvider.overrideWithValue(sampleRecognizer),
     bundledDictionaryProvider.overrideWith((ref) async => dictionary),
+    bundledGlossaryProvider.overrideWith((ref) async => glossary),
   ];
 
   /// Saves the words of a sample page as if it had been captured and reviewed.

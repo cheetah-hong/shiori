@@ -418,6 +418,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.0"
+  krdict_block:
+    dependency: "direct main"
+    description:
+      path: "../packages/krdict_block"
+      relative: true
+    source: path
+    version: "0.1.0"
   leak_tracker:
     dependency: transitive
     description:

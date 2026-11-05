@@ -1,0 +1,9 @@
+{
+ "_note": "Added after the review: characters both keys.dart and build_ko_glossary.py must treat alike (an explicit set, not \\s, whose range differs between Python and Dart).",
+ "cases": [
+  {"form": "食堂﻿", "reading": "しょくどう", "key": "食堂", "reading_key": "しょくどう", "why": "byte order mark"},
+  {"form": "食堂 ", "reading": " しょくどう", "key": "食堂", "reading_key": "しょくどう", "why": "no-break space"},
+  {"form": "食堂\u0085", "reading": "", "key": "食堂\u0085", "reading_key": "", "why": "NEL is not a space on either side"},
+  {"form": "食堂\u001f", "reading": "", "key": "食堂\u001f", "reading_key": "", "why": "unit separator is not a space on either side"}
+ ]
+}

@@ -1,0 +1,31 @@
+{
+ "_note": "Index keys of the Korean glossary: written form and reading in, keys out. tools/dict/build_ko_glossary.py and packages/krdict_block must give the same keys (both test suites read this file).",
+ "cases": [
+  {"form": "食堂", "reading": "しょくどう", "key": "食堂", "reading_key": "しょくどう", "why": "a plain pair"},
+  {"form": "レストラン", "reading": "", "key": "れすとらん", "reading_key": "", "why": "katakana folds to hiragana"},
+  {"form": "チェコ語", "reading": "チェコご", "key": "ちぇこ語", "reading_key": "ちぇこご", "why": "kana inside a kanji form folds too"},
+  {"form": "有名だ", "reading": "ゆうめいだ", "key": "有名", "reading_key": "ゆうめい", "why": "だ after kanji"},
+  {"form": "有名だ", "reading": "", "key": "有名", "reading_key": "", "why": "だ after kanji, no reading"},
+  {"form": "有名", "reading": "ゆうめい", "key": "有名", "reading_key": "ゆうめい", "why": "nothing to strip"},
+  {"form": "有名(だ)", "reading": "ゆうめい(だ)", "key": "有名", "reading_key": "ゆうめい", "why": "optional だ in parentheses"},
+  {"form": "静かな", "reading": "しずかな", "key": "静か", "reading_key": "しずか", "why": "な after kanji"},
+  {"form": "静か(な)", "reading": "しずか", "key": "静か", "reading_key": "しずか", "why": "optional な"},
+  {"form": "勉強する", "reading": "べんきょうする", "key": "勉強", "reading_key": "べんきょう", "why": "する on both"},
+  {"form": "勉強する", "reading": "べんきょう", "key": "勉強", "reading_key": "べんきょう", "why": "する on the form only"},
+  {"form": "勉強（する）", "reading": "べんきょう（する）", "key": "勉強", "reading_key": "べんきょう", "why": "full-width parentheses"},
+  {"form": "罰する", "reading": "ばっする", "key": "罰", "reading_key": "ばっ", "why": "one kanji before する"},
+  {"form": "ただ", "reading": "", "key": "ただ", "reading_key": "", "why": "kana word ending in だ keeps it"},
+  {"form": "まだ", "reading": "", "key": "まだ", "reading_key": "", "why": "kana word ending in だ keeps it"},
+  {"form": "きれいだ", "reading": "", "key": "きれいだ", "reading_key": "", "why": "だ is stripped only after kanji"},
+  {"form": "みんな", "reading": "", "key": "みんな", "reading_key": "", "why": "な is stripped only after kanji"},
+  {"form": "ドキドキする", "reading": "", "key": "どきどき", "reading_key": "", "why": "する after two or more kana"},
+  {"form": "かする", "reading": "", "key": "かする", "reading_key": "", "why": "one kana before する: a word of its own"},
+  {"form": "する", "reading": "", "key": "する", "reading_key": "", "why": "する alone stays"},
+  {"form": "〜的", "reading": "〜てき", "key": "的", "reading_key": "てき", "why": "wave dash"},
+  {"form": "～さん", "reading": "", "key": "さん", "reading_key": "", "why": "full-width tilde"},
+  {"form": "…にして", "reading": "", "key": "にして", "reading_key": "", "why": "ellipsis"},
+  {"form": " 帳\t　", "reading": "ちょう ", "key": "帳", "reading_key": "ちょう", "why": "spaces, tabs, ideographic space"},
+  {"form": "(お)金", "reading": "(お)かね", "key": "金", "reading_key": "かね", "why": "other parenthesised parts are dropped"},
+  {"form": "", "reading": "", "key": "", "reading_key": "", "why": "empty stays empty"}
+ ]
+}

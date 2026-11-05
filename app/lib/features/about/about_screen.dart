@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/adapters/bundled_dictionary.dart';
+import 'package:shiori/adapters/bundled_glossary.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/theme.dart';
 import 'package:shiori/features/about/crash_log_screen.dart';
@@ -18,14 +19,18 @@ const _notice =
     'property of the Electronic Dictionary Research and Development Group, '
     "and are used in conformance with the Group's licence.";
 
+const _krdictUrl = 'https://krdict.korean.go.kr';
+
 /// 정보: where the app's data comes from (the JMdict notice the EDRDG licence
-/// asks for on a screen of its own) and the open source licences.
+/// asks for on a screen of its own, the credit line of the Basic Korean
+/// Dictionary) and the open source licences.
 class AboutScreen extends ConsumerWidget {
   const AboutScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dictionary = ref.watch(bundledDictionaryProvider);
+    final glossary = ref.watch(bundledGlossaryProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('정보')),
       body: SelectionArea(
@@ -43,6 +48,15 @@ class AboutScreen extends ConsumerWidget {
                 dictionary: value,
               ),
               AsyncData() || AsyncError() => const _NoDictionary(),
+              _ => const _Preparing(),
+            },
+            const SizedBox(height: Space.section),
+            const SectionLabel('한국어 뜻 사전'),
+            switch (glossary) {
+              AsyncData(:final value) when value.isAvailable => _GlossaryCard(
+                edition: value.edition!,
+              ),
+              AsyncData() || AsyncError() => const _NoGlossary(),
               _ => const _Preparing(),
             },
             const SizedBox(height: Space.section),
@@ -99,7 +113,7 @@ class _DictionaryCard extends StatelessWidget {
           const SizedBox(height: Space.xs),
           Text(
             '표제어 후보와 사전 확인에 EDRDG의 JMdict를 씁니다. '
-            '뜻은 사전이 아니라 교재에서 가져옵니다.',
+            '뜻은 교재에서 가져옵니다(교재에 뜻이 없을 때만 아래 한국어 뜻 사전).',
             style: context.text.bodySmall,
           ),
           const SizedBox(height: Space.md),
@@ -127,6 +141,60 @@ class _DictionaryCard extends StatelessWidget {
           _Fact('만든 날', edition.builtOn),
           _Fact('판본', '${edition.variant} · 항목 ${info.entryCount}'),
           _Fact('원본 sha256', edition.sourceSha256, mono: true),
+        ],
+      ),
+    );
+  }
+}
+
+/// The Korean glossary: one credit line per dictionary in the asset (the
+/// licence asks for source, publisher, licence and that the data was changed).
+class _GlossaryCard extends StatelessWidget {
+  const _GlossaryCard({required this.edition});
+
+  final GlossaryEdition edition;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return _Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('한국어기초사전', style: context.text.titleLarge),
+          const SizedBox(height: Space.xs),
+          Text(
+            '교재에 뜻이 없거나 읽지 못했을 때만, 사전의 일본어 대역어를 거꾸로 찾아 '
+            '뜻 칸을 채웁니다. 채운 뜻에는 "추정" 표시가 붙습니다.',
+            style: context.text.bodySmall,
+          ),
+          for (final source in edition.sources) ...[
+            const SizedBox(height: Space.md),
+            Container(
+              padding: const EdgeInsets.all(Space.md),
+              decoration: BoxDecoration(
+                color: t.paper,
+                borderRadius: BorderRadius.circular(Radii.tile),
+              ),
+              child: Text(
+                source.attribution,
+                style: context.text.bodyMedium?.copyWith(height: 1.5),
+              ),
+            ),
+            const SizedBox(height: Space.lg),
+            _Link(label: '라이선스 (${source.license})', url: source.licenseUrl),
+          ],
+          const _Link(label: '한국어기초사전', url: _krdictUrl),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: Space.md),
+            child: Divider(),
+          ),
+          Text('들어 있는 판', style: context.text.labelLarge),
+          const SizedBox(height: Space.sm),
+          for (final source in edition.sources)
+            _Fact('${source.source.label} 판', source.edition),
+          _Fact('만든 날', edition.builtOn),
+          _Fact('판본', edition.variant),
         ],
       ),
     );
@@ -239,6 +307,31 @@ class _NoDictionary extends StatelessWidget {
   }
 }
 
+class _NoGlossary extends StatelessWidget {
+  const _NoGlossary();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return _Card(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline, color: t.warn),
+          const SizedBox(width: Space.md),
+          Expanded(
+            child: Text(
+              '이 앱에는 한국어 뜻 사전이 들어 있지 않아요. '
+              '교재에서 읽은 뜻만 씁니다.',
+              style: context.text.bodyMedium,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Preparing extends StatelessWidget {
   const _Preparing();
 
@@ -291,6 +384,31 @@ Licence: $_licenseUrl
 
 The dictionary data (a converted copy of JMdict) is distributed under the
 Creative Commons Attribution-ShareAlike 4.0 International licence (CC BY-SA 4.0).''',
+      ),
+    ),
+  );
+}
+
+bool _glossaryLicenseRegistered = false;
+
+/// Adds the Basic Korean Dictionary to the licences page ([showLicensePage]).
+/// Call once at start.
+void registerGlossaryLicense() {
+  if (_glossaryLicenseRegistered) return;
+  _glossaryLicenseRegistered = true;
+  LicenseRegistry.addLicense(
+    () => Stream.value(
+      const LicenseEntryWithLineBreaks(
+        ['한국어기초사전'],
+        '''한국어기초사전 (Basic Korean Dictionary), 국립국어원 (National Institute of
+Korean Language). The app's Korean meanings are its Japanese equivalents
+indexed backwards; the converted data is a changed copy of the dictionary.
+
+한국어기초사전: $_krdictUrl
+Licence: Creative Commons Attribution-ShareAlike 2.0 Korea (CC BY-SA 2.0 KR),
+https://creativecommons.org/licenses/by-sa/2.0/kr/
+
+The converted data is distributed under the same licence.''',
       ),
     ),
   );

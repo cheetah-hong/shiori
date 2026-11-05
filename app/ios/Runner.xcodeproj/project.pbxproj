@@ -315,7 +315,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Release builds (docs/architecture.md, 5): the dev flavor never ships, and a release carries the dictionary.\ncase \"${CONFIGURATION}\" in\n  Release-dev)\n    echo \"error: The dev flavor bundles development samples (assets/dev_samples/) and never builds for release. Build with --flavor prod.\"\n    exit 1\n    ;;\n  Release*)\n    for f in jmdict-full-lean.sqlite.gz jmdict-full-lean.edition.json; do\n      if [ ! -s \"${SRCROOT}/../assets/dict/$f\" ]; then\n        echo \"error: assets/dict/$f is missing. Build it with: python3 tools/dict/build_app_asset.py\"\n        exit 1\n      fi\n    done\n    ;;\nesac\n";
+			shellScript = "# Release builds (docs/architecture.md, 5): the dev flavor never ships, and a release carries the dictionary.\ncase \"${CONFIGURATION}\" in\n  Release-dev)\n    echo \"error: The dev flavor bundles development samples (assets/dev_samples/) and never builds for release. Build with --flavor prod.\"\n    exit 1\n    ;;\n  Release*)\n    for f in jmdict-full-lean.sqlite.gz jmdict-full-lean.edition.json; do\n      if [ ! -s \"${SRCROOT}/../assets/dict/$f\" ]; then\n        echo \"error: assets/dict/$f is missing. Build it with: python3 tools/dict/build_app_asset.py\"\n        exit 1\n      fi\n    done\n    for f in ko-glossary.sqlite.gz ko-glossary.edition.json; do\n      if [ ! -s \"${SRCROOT}/../assets/dict/$f\" ]; then\n        echo \"error: assets/dict/$f is missing. Build it with: python3 tools/dict/build_ko_glossary.py --source <krdict JSON zip>\"\n        exit 1\n      fi\n    done\n    ;;\nesac\n";
 		};
 		08AEAB7FF787F378568DBDC0 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;

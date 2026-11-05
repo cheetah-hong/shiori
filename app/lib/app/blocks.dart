@@ -16,6 +16,7 @@ library;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/adapters/bundled_dictionary.dart';
+import 'package:shiori/adapters/bundled_glossary.dart';
 import 'package:shiori/adapters/dev_samples.dart';
 import 'package:shiori/adapters/file_crash_log.dart';
 import 'package:shiori/adapters/image_picker_source.dart';
@@ -72,10 +73,34 @@ final dictionaryProvider = Provider<Dictionary>(
       const EmptyDictionary(),
 );
 
-/// Corrector chain, in order (`standardCorrectors` in core).
-final entryCorrectorsProvider = Provider<List<EntryCorrector>>(
-  (ref) => standardCorrectors(ref.watch(dictionaryProvider)),
+/// The Korean glossary (한국어기초사전) unpacked from the app's assets, like
+/// JMdict: `main.dart` starts opening it before the first frame.
+/// Never fails: without the asset it holds `BundledGlossary.unavailable`.
+final bundledGlossaryProvider = FutureProvider<BundledGlossary>((ref) async {
+  final glossary = await openAppGlossary();
+  ref.onDispose(glossary.close);
+  return glossary;
+});
+
+/// Korean meanings for meaning cells the page did not give: the glossary
+/// once it is open, `EmptyKoreanGlossary` until then or without data.
+/// Next: 위키낱말사전 in the same file, on-device translation.
+final koreanGlossaryProvider = Provider<KoreanGlossary>(
+  (ref) =>
+      ref.watch(bundledGlossaryProvider).value?.glossary ??
+      const EmptyKoreanGlossary(),
 );
+
+/// Corrector chain, in order (`standardCorrectors` in core). Without
+/// glossary data there is no meaning filler: the chain the reference scores
+/// were measured with.
+final entryCorrectorsProvider = Provider<List<EntryCorrector>>((ref) {
+  final glossary = ref.watch(koreanGlossaryProvider);
+  return standardCorrectors(
+    ref.watch(dictionaryProvider),
+    glossary: glossary is EmptyKoreanGlossary ? null : glossary,
+  );
+});
 
 /// The SQLite file behind both storage blocks. `main.dart` opens it (the app
 /// support folder is only known asynchronously) and overrides this provider.

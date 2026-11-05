@@ -471,3 +471,120 @@ python3 tools/dict/eval_dict.py --data packages/core/test/fixtures/synthetic
 | `packages/dict_jmdict/test/` | 단위 테스트 63개와 테스트 DB |
 | `packages/jmdict_block/` | core 포트 어댑터, 테스트 19개, 사전 끔/켬 점수표 `tool/eval_capture_dict.dart` |
 | `packages/dict_jmdict/tool/query_batch.dart` | 측정용 일괄 호출 도구 |
+
+## 11. 한국어 뜻 사전 (한국어기초사전 일본어 대역어 역색인, 2026-11-05)
+
+JMdict는 영어 뜻뿐이라, 사진에 한국어 뜻이 없거나 읽지 못했을 때 채울 데이터가 없습니다.
+한국어 뜻의 출처 순서는 ① 사진 속 한국어 → ② **한국어기초사전 역색인(이 절)** → ③ 한국어 위키낱말사전 → ④ 기기 번역입니다.
+지금은 ②만 넣었고, 가로줄 틀 흐름에서 **뜻 칸이 비었을 때만** 씁니다.
+
+### 11.1 출처와 판
+
+| 항목 | 값 |
+|---|---|
+| 원본 | 국립국어원 한국어기초사전 전체 내려받기, JSON (zip 안에 JSON 11개) |
+| 받는 곳 | https://krdict.korean.go.kr/download/downloadPopup 에서 JSON 내려받기의 `seq`를 읽고 `https://krdict.korean.go.kr/dicBatchDownload?seq=<seq>` (로그인 없음, `seq`는 판마다 바뀜). 스크립트는 내려받지 않습니다 |
+| 판 (파일 머리말 `creationDate`) | 2026-10-19 |
+| 크기, sha256 | 84,498,237 bytes, `c8f9ffbf7e9be1f1ec86fa29e4160a75eee8044fc081c27788dadf3ceb66d34e` |
+| 규모 | 표제어 56,555, 일본어 대역어가 있는 뜻 75,144. 그중 단어(`lexicalUnit` 단어) 뜻 67,030개를 색인, 색인 키 104,102개 |
+| 라이선스 | CC BY-SA 2.0 KR (https://creativecommons.org/licenses/by-sa/2.0/kr/). 출처 표시·동일조건. 변환한 DB도 같은 조건으로 배포 |
+| 앱 표기 | 「한국어기초사전, 국립국어원, CC BY-SA 2.0 KR, 2026-10-19판을 가공함」 (판 날짜는 판 정보 JSON에서 읽음) |
+
+오픈 API(하루 5만 건)는 일본어로 거꾸로 찾을 수 없고 서버 없는 앱에도 맞지 않아 쓰지 않습니다.
+
+### 11.2 색인 규칙 (`tools/dict/build_ko_glossary.py`)
+
+- 대역어 `しょくどう【食堂】。レストラン` → (食堂, しょくどう) 짝은 0번 자리, 가나 낱말 レストラン은 1번 자리.
+  `【】` 안·밖의 `・`는 대안(`ただ【只・唯】`, `そん・むら【村】`), `【】` 안이 가나면 가나 낱말 둘(`たばこ【タバコ】`),
+  읽기 없는 한자 표기(`着手する`)는 표기만으로 색인합니다. 닫는 괄호가 `」`인 오기(`いちばん【一番」`)도 짝으로 읽습니다.
+- 한자 표제어는 **읽기와 한자 표기를 함께** 맞춥니다. 食堂/しょくどう에 식도(食道)가 걸리지 않습니다. 읽기를 모르면 표기만으로 찾습니다.
+- 키 정규화(앱 블록과 같은 규칙, 시험 표 `tools/dict/testdata/ko_glossary_keys.json`을 Python·Dart 테스트가 같이 읽음):
+  공백·탭·`〜`·`…` 제거 → 끝말 `する`·`だ`·`な` 떼기(`だ`·`な`는 한자 뒤에서만, `する`는 한자 뒤나 가나 두 글자 이상 뒤) →
+  다른 괄호 부분 제거 → 가타카나를 히라가나로. `有名だ`↔`有名`, `勉強する`↔`勉強`, `ただ`·`まだ`는 그대로.
+- 뗀 끝말은 따로 남깁니다(`ja.ending`). 표제어와 끝말이 같은 대역어를 앞에 둡니다(有名だ → 유명하다가 유명보다 앞).
+- `(対訳語無し)`만 있는 뜻(2,421개)과 단어가 아닌 항목(관용구·구·문법 표현·속담)은 뺍니다.
+- 순위: ① 맞은 방식(한자 표제어+읽기 일치 / 가나 표제어의 가나 대역어가 먼저, 표기만 일치 / 가나 표제어가 한자 대역어의 읽기로만 일치는 뒤)
+  → ② 대역어 안 자리 → ③ 끝말 일치 → ④ 기초사전 등급(초급 > 중급 > 고급 > 없음) → ⑤ 뜻 번호 → 파일 순서.
+- **뜻 묶음** = 한 뜻(sense)의 한국어 표제어 + 그 뜻의 유의어(`SenseRelation` 유의어) 가운데 **같은 일본어로도 걸리는** 낱말.
+  앞 묶음에 이미 나온 낱말의 뜻은 건너뜁니다(한 낱말의 여러 뜻이 같은 대역어를 가질 때 한 번만). 예: ただ → 「다만, 단지, 오직」/「단」/「그저」 …
+- 사전에 없는 한자 표제어가 `お`·`ご`·`御`로 시작하면 그것을 떼고 한 번 더 찾습니다(お皿 → 皿). 사전에 `お`째 있으면 그대로 씁니다.
+
+### 11.3 판본 크기
+
+| 판본 | SQLite | gzip | 내용 |
+|---|---|---|---|
+| **lean (기본, 앱 asset)** | **9.4 MB** (9,379,840) | **3.6 MB** (3,635,596) | 한국어 낱말·등급·뜻 번호·유의어 + 일본어 키 |
+| full | 13.6 MB (13,578,240) | 5.0 MB (5,023,830) | lean + 한국어 뜻풀이 |
+| (조사 때 시험 DB) | 19.3 MB | 6.9 MB | 뜻풀이와 대역어 원문 포함 |
+
+뜻풀이는 지금 쓰는 곳이 없어 lean을 기본으로 했습니다(뜻 묶음 후보를 고를 때 뜻풀이를 보여 줄 필요가 생기면 full로 바꿉니다).
+iOS prod release `Runner.app`은 36.1 MB입니다(11절 기록 때 JMdict만 넣고 32.4 MB, docs/verification.md 14절).
+
+### 11.4 포트와 블록
+
+- core 포트 `KoreanGlossary` (`packages/core/lib/src/ports/korean_glossary.dart`): `lookup(headword, readings:, limit:)` → `KoreanSense` 목록
+  (낱말 목록, 출처 `GlossarySource.krdict`/`wiktionary`, 등급, 뜻 번호, `text` = `다만, 단지`), `sources` → `GlossarySourceInfo`(발행처·라이선스·판, `attribution`).
+  데이터가 없으면 `EmptyKoreanGlossary`. 기존 `Dictionary` 포트는 그대로입니다.
+- 블록 `packages/krdict_block`: `KrdictGlossary.open(path)` (읽기 전용, `PRAGMA user_version` 1·테이블·`meta` 확인, 아니면 `KrdictFormatException`),
+  `lookupSync`, `close()` 뒤 조회는 `StateError`. sqlite3 제약은 다른 패키지와 같은 `">=3.4.0 <3.6.0"`.
+- 보정기 `KoreanMeaningFiller` (core `capture/correctors/korean_meaning_filler.dart`): `DictionaryPairCorrector` 뒤, `MissingFieldFlagger` 앞.
+  뜻 칸이 비었을 때만 1순위 묶음으로 채우고 `meaning:inferred`(note `사전 뜻: 한국어기초사전`)를 남깁니다.
+  사진에서 읽은 뜻(잘린 뜻 포함)은 바꾸지 않고, 표제어가 비었거나 「사전에 없음」·의심인 항목은 채우지 않습니다.
+  `standardCorrectors(dictionary, glossary: …)`에 glossary를 줄 때만 체인에 들어갑니다(주지 않으면 기준 점수를 잰 체인 그대로).
+
+### 11.5 측정 (2026-10-19판, lean, 데스크톱 arm64)
+
+| 측정 | 결과 |
+|---|---|
+| JLPT 목록(open-anki-jlpt-decks)에서 뜻 1개 이상 | N5 **674/718 (93.9%)**, N4 **596/668 (89.2%)**, N3 **1,981/2,140 (92.6%)** |
+| 교재 정밀도 표본 74단어(단어장 5쪽 + 실기기 1쪽의 정답, 로컬 전용) | 뜻이 나옴 69/74 (93.2%). **1순위 묶음에 정답 낱말 47/74 (63.5%)**, **3순위 안 58/74 (78.4%)** |
+| 같은 표본, 느슨한 일치(`하다`·`되다` 붙음, 띄어쓰기) | 1순위 48/74 (64.9%), 3순위 안 59/74 (79.7%) |
+| 조회 시간 | 한 번 0.02–0.3 ms, 교재 한 쪽(12–15단어) 약 3–5 ms. 캡처 파이프라인 전체(보정기 포함) 쪽당 약 2 ms |
+
+- 조사 때의 느슨한 일치(93%)와 비교: 읽기+한자를 함께 맞추고 단어만 남긴 뒤 N5는 같은 수준, N4는 낮습니다.
+  N4 목록에는 `運動`·`うんどうする`처럼 표기에는 없는 `する`가 읽기에만 붙은 항목이 많아, 읽기가 맞지 않아 빠집니다(교재 표기와는 다름).
+- 정밀도에서 틀린 경우의 갈래(낱말은 로컬 메모): 정답과 뜻은 같지만 다른 낱말(숫자 한자의 고유어·한자어, 「~ 무렵」·「~ 동안」),
+  등급이 낮은 쉬운 낱말이 앞서는 경우(부사 뜻이 명사 뜻보다 앞), 다의어(가나 낱말), 한국어에서 구로 옮기는 말(사전에 단어 항목 없음).
+- 캡처 점수(보정기 켬): 합성 31 → **32/35**(뜻 33 → 34, 빈 뜻 1개가 맞게 채워짐), 합성 ML Kit형 16/18 그대로(빈 뜻 없음),
+  교재 Vision 55 → **56/59**(빈 뜻 1개가 맞게 채워짐), 교재 ML Kit 51/59 그대로(빈 뜻 없음). 여분 0, 조용한 오류 수 그대로.
+
+측정 명령(교재 데이터는 로컬 전용 폴더에서 읽음, `--verbose`는 교재 낱말을 찍으므로 저장소에 넣지 않음):
+
+```bash
+gzip -dc app/assets/dict/ko-glossary.sqlite.gz > /tmp/ko.sqlite
+cd packages/krdict_block
+dart run tool/measure_glossary.dart coverage  --db /tmp/ko.sqlite --jlpt <n5.csv·n4.csv·n3.csv 폴더>
+dart run tool/measure_glossary.dart precision --db /tmp/ko.sqlite --gt "$SHIORI_PRIVATE_DIR/textbook/vocab_n5n3/ground_truth.json" --gt <다른 정답 파일>
+dart run tool/measure_glossary.dart capture   --db /tmp/ko.sqlite --fixtures ../core/test/fixtures/synthetic
+```
+
+### 11.6 앱
+
+- asset: `app/assets/dict/ko-glossary.sqlite.gz`, `ko-glossary.edition.json` (git 제외, JMdict와 같은 폴더).
+  JMdict와 같은 방식으로 첫 실행·새 판일 때 앱 캐시 폴더로 풀어 엽니다(`app/lib/adapters/bundled_glossary.dart`, 풀기 공용 코드 `unpacked_asset.dart`).
+  asset이 없거나 열지 못하면 `EmptyKoreanGlossary`로 동작하고 체인에 채우기가 없습니다.
+- 캡처는 두 사전이 다 열린 뒤 보정기 체인을 만듭니다(그 전에는 첫 페이지가 사전 없이 해석될 수 있었음. JMdict에도 같이 적용).
+- release 빌드: 두 asset이 없으면 Android `preProdReleaseBuild`와 iOS 빌드 단계가 실패합니다.
+- 정보 화면에 「한국어 뜻 사전」 카드(출처 문구, 라이선스·사전 링크, 판 날짜·만든 날·판본)와, 라이선스 페이지에 `한국어기초사전` 항목을 더했습니다.
+- 판 정보 JSON의 `sqlite_sha256`을 앱이 푼 파일과 대조하는 장치는 JMdict에도 없어서 이번에는 넣지 않았습니다(다음 단계).
+
+### 11.7 다시 만드는 방법
+
+```bash
+# 앱 asset (원본 zip은 저장소 밖에 둠). 이 절의 판으로 고정하려면 sha256을 줌
+python3 tools/dict/build_ko_glossary.py --source <krdict_json.zip> \
+    --expect-sha256 c8f9ffbf7e9be1f1ec86fa29e4160a75eee8044fc081c27788dadf3ceb66d34e
+python3 tools/dict/build_ko_glossary.py --source <krdict_json.zip> --sizes   # 두 판본 크기
+# 테스트 DB (지어낸 견본 tools/dict/testdata/krdict_sample.json → packages/krdict_block/test/fixtures/mini_krdict.sql)
+python3 tools/dict/build_ko_glossary.py --sample-sql
+python3 -m unittest discover -s tools/dict -p 'test_*.py'
+(cd packages/krdict_block && dart pub get && dart analyze && dart test)
+```
+
+### 11.8 남은 문제
+
+1. **다의어**: 가나 낱말(ただ 등)과 뜻이 여럿인 한자 낱말은 1순위가 교재 뜻과 다를 수 있습니다. 채운 뜻은 "추정"으로 보이고,
+   뜻 묶음 후보 칩(표제어 후보 칩과 같은 방식)은 다음 단계입니다.
+2. **등급 순위의 한계**: 쉬운 낱말이 앞서 다른 품사의 뜻이 1순위가 되는 경우가 있습니다. 교재 품사 배지를 힌트로 주려면 포트에 `pos`를 더해야 합니다(다음 단계).
+3. **빠지는 말**: 한국어에서 구로 옮기는 말(사전에 단어 항목이 없음), 숫자·조수사, 오쿠리가나가 다른 표기. 위키낱말사전(③)이 일부를 메웁니다.
+4. **갱신**: 기초사전은 판이 바뀌면 같은 명령으로 다시 빌드합니다. 갱신 의무 조항은 없지만 JMdict 갱신 자동화(9절 1)와 같이 묶는 것을 권합니다.

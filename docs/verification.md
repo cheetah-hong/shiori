@@ -24,7 +24,8 @@
 | core 커버리지 | `dart run coverage:test_with_coverage -o coverage` | 줄 커버리지 **97.7%** (1805/1847줄, 교재 세트 없이. `InMemoryLibraryRepository.textbookStats`는 저장 패키지의 계약 테스트가 돌려서 core 숫자에는 안 잡힘) |
 | 사전 패키지 | `cd packages/dict_jmdict && dart analyze && dart test` | 문제 없음, **66개 통과** (테스트 DB 103개 항목, 12절 반영 뒤. 그 전 63개) |
 | 사전 블록 (어댑터) | `cd packages/jmdict_block && dart analyze && dart test` | 문제 없음, **20개 통과** (8절, 12절) |
-| 사전 asset 스크립트 | `python3 -m unittest discover -s tools/dict -p 'test_*.py'` | **6개 통과** (네트워크 없음) |
+| 사전 asset 스크립트 | `python3 -m unittest discover -s tools/dict -p 'test_*.py'` | **33개 통과** (네트워크 없음. 14절 한국어 뜻 사전 27개 더함, 그 전 6개) |
+| 한국어 뜻 사전 블록 | `cd packages/krdict_block && dart analyze && dart test` | 문제 없음, **74개 통과** (지어낸 견본 30항목, 14절) |
 | 저장 패키지 | `cd packages/storage_drift && dart analyze && dart test` | 문제 없음, **74개 통과** (7절, 9절, 스키마 v2 마이그레이션 10절) |
 | app 정적 분석 | `cd app && flutter analyze` | 문제 없음 |
 | app 테스트 | `cd app && flutter test` (기본 flavor = dev), `flutter test --flavor dev` | **101개 통과** (11절 반영 뒤. 그 전 79개, 사전 asset 있음·없음 둘 다) |
@@ -736,3 +737,62 @@ iOS 앱 번들에는 `assets/dict/.gitignore`(71바이트)도 들어갑니다(�
 - 기준 구현과 다른 칸: 합성·교재 세트 모두 0개(`tool/reference_diff.dart`).
 - 실기기 쪽은 줄 밀림이 그대로라 배지 줄이 버려지는 행이 있어 품사가 하나만 늘었습니다. 사전을 켜면 な형용사 표제어 한 개의 「사전에 없음」이 사라집니다(오탐 2 → 1, 남은 하나는 밀린 읽기 때문).
 
+## 14. 한국어 뜻 사전 (한국어기초사전 역색인, 2026-11-05)
+
+자세한 규칙·측정은 docs/dictionary.md 11절입니다.
+
+### 14.1 바꾼 것
+
+| 무엇 | 어디 | 내용 |
+|---|---|---|
+| 데이터 빌드 | `tools/dict/build_ko_glossary.py` | 기초사전 JSON zip → SQLite(lean/full) + gzip + 판 정보 JSON. 원본은 인자로 받고 내려받지 않음 |
+| 포트 | `packages/core/lib/src/ports/korean_glossary.dart` | `KoreanGlossary`, `KoreanSense`, `GlossarySourceInfo`, `EmptyKoreanGlossary` |
+| 블록 | `packages/krdict_block` | `KrdictGlossary` (SQLite 읽기 전용, 스키마 1), 키 정규화 `pairKey`, 측정 도구 `tool/measure_glossary.dart` |
+| 보정기 | `packages/core/lib/src/capture/correctors/korean_meaning_filler.dart` | 빈 뜻 칸만 1순위 뜻으로 채움(`meaning:inferred`). glossary를 줄 때만 체인에 들어감 |
+| 앱 | `app/lib/adapters/bundled_glossary.dart`, `unpacked_asset.dart`(JMdict와 공용), `app/lib/app/blocks.dart`, `startup.dart`, `main.dart` | asset 풀기·열기, `koreanGlossaryProvider`, 데이터가 없으면 체인에 채우기 없음 |
+| 캡처 | `app/lib/features/capture/capture_controller.dart` | 두 사전이 열린 뒤 체인을 만듦(첫 페이지도 사전을 씀. 전에는 JMdict도 첫 페이지에서 빠질 수 있었음) |
+| 정보 화면 | `app/lib/features/about/about_screen.dart` | 「한국어 뜻 사전」 카드, 라이선스 페이지 `한국어기초사전` 항목 |
+| release 차단 | `app/android/app/build.gradle.kts`, `app/ios/Runner.xcodeproj/project.pbxproj` | `ko-glossary.sqlite.gz`·`ko-glossary.edition.json`이 없으면 실패 |
+
+### 14.2 점수 (보정기 켬, 실제 asset)
+
+| 세트 | 줄 | 뜻 | 여분 |
+|---|---|---|---|
+| 합성 (4쪽 35단어) | 31 → **32/35** | 33 → 34 (빈 뜻 1개가 맞게 채워짐) | 0 |
+| 합성, ML Kit형 | 16/18 (그대로, 빈 뜻 없음) | 17/18 | 0 |
+| 교재 세트, Vision (로컬) | 55 → **56/59** | 57 → 58 (빈 뜻 1개가 맞게 채워짐) | 0 |
+| 교재 세트, ML Kit 조각 (로컬) | 51/59 (그대로, 빈 뜻 없음) | 58/59 | 0 |
+
+- 보정기를 끈 기준 체인(`standardCorrectors(dictionary)`)의 점수와 기준 구현과 다른 칸 0개는 그대로입니다.
+- 모든 표제어에 지어낸 뜻을 답하는 사전으로도 합성 두 세트의 점수가 그대로입니다(사진에서 읽은 뜻을 바꾸지 않음, `korean_meaning_regression_test.dart`).
+
+### 14.3 빌드와 화면
+
+| 명령 | 조건 | 결과 |
+|---|---|---|
+| `flutter build apk --debug --flavor dev` | — | 성공 (`app-dev-debug.apk`, 198 MB) |
+| `flutter build ios --flavor prod --release --no-codesign` | JMdict asset만 있음 | 실패: `assets/dict/ko-glossary.sqlite.gz is missing. Build it with: python3 tools/dict/build_ko_glossary.py --source <krdict JSON zip>` |
+| `flutter build apk --flavor prod --release` | 같음 | 실패: `preProdReleaseBuild` — `Dictionary asset missing: assets/dict/ko-glossary.sqlite.gz, assets/dict/ko-glossary.edition.json. …` |
+| `flutter build ios --flavor prod --release --no-codesign` | 두 사전 asset 있음 | **성공** (`Runner.app` 36.1 MB, `assets/dict/`에 네 파일, `dev_samples` 0개) |
+
+`flutter drive -d <iPhone 17 Pro> --driver=test_driver/integration_test.dart --target=integration_test/glossary_screenshots_test.dart` (합성 샘플만):
+
+| 파일 (`docs/screenshots/`) | 화면 |
+|---|---|
+| `22_about_glossary.png` | 정보: 한국어 뜻 사전 카드, 출처 문구, 라이선스·사전 링크, 판 2026-10-19 |
+| `23_review_glossary_meaning.png` | 검토: 11쪽 0022 鼻의 빈 뜻 칸이 「코」로 채워지고 「추정」 표시 |
+
+### 14.4 테스트
+
+| 파일 | 내용 |
+|---|---|
+| `tools/dict/test_build_ko_glossary.py`, `test_build_ko_glossary_extra.py` | 대역어 나누기(짝·가나·`・` 대안·오기 괄호·꼬리 끝말), `(対訳語無し)`·다른 언어·단어 아닌 항목 제외, 등급·뜻 번호·유의어, lean/full, 같은 원본 같은 바이트, zip·폴더 읽기 순서, 판 정보 JSON(출처·판 날짜·라이선스·sha256), 테스트 DB가 견본에서 만든 것과 같음 |
+| `tools/dict/testdata/ko_glossary_keys.json`, `ko_glossary_keys_extra.json` | 키 정규화 시험 표 30줄. Python과 Dart 테스트가 같은 표를 읽음 |
+| `packages/krdict_block/test/lookup_test.dart` | 읽기+한자 함께 맞추기(食堂/食道), だ·する, 한자 없는 だ, 순위(자리 → 등급 → 뜻 번호), 다의어 묶음과 `limit`, 가나 표제어의 가나 대역어 먼저 |
+| `packages/krdict_block/test/open_test.dart`, `keys_test.dart`, `keys_extra_test.dart`, `ranking_extra_test.dart` | 없는 파일·다른 스키마·테이블 없음·SQLite 아님은 열기 거부, 닫은 뒤 조회 오류, 출처 문구; 끝말 일치 순위, `お`·`ご` 떼고 다시 찾기 |
+| `packages/core/test/capture/korean_meaning_filler_test.dart`, `korean_meaning_filler_extra_test.dart` | 빈 뜻만 채움(`meaning:inferred`), 읽은 뜻·잘린 뜻은 그대로, 사전 없음·「사전에 없음」·표제어 없음은 채우지 않음, 체인 자리, 조회가 실패하면 비워 둠 |
+| `packages/core/test/capture/korean_meaning_regression_test.dart` | 모든 단어에 지어낸 뜻을 답해도 합성 두 세트 점수 그대로, 기준 구현과 다른 칸은 빈 뜻 1칸뿐; 鼻 → 코면 합성 뜻 34/35·줄 32/35 |
+| `app/test/adapters/bundled_glossary_test.dart`, `app/test/app/glossary_slot_test.dart` | asset 없음·DB 아님·판 정보 이상은 빈 사전, 첫 실행 풀기, 같은 판 다시 안 풂, 체인에 채우기가 들어감/빠짐 |
+| `app/test/features/about_glossary_test.dart`, `review_glossary_test.dart` | 정보 화면 출처 문구·판 날짜·라이선스 링크, 라이선스 페이지 항목; 검토 화면에서 鼻의 빈 뜻이 「코」+「추정」 |
+
+결과: core 337개 통과(교재 세트 포함 350개), 사전 블록 74개, Python 33개, app 113개 통과.

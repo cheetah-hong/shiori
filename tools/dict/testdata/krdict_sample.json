@@ -1,0 +1,2344 @@
+{
+ "LexicalResource": {
+  "GlobalInformation": {
+   "feat": [
+    {
+     "att": "label",
+     "val": "한국어기초사전 - 국립국어원 제공"
+    },
+    {
+     "att": "creationDate",
+     "val": "2026/10/19 12:38:12"
+    },
+    {
+     "att": "languageCoding",
+     "val": "ISO 639-3"
+    }
+   ]
+  },
+  "Lexicon": {
+   "LexicalEntry": [
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "식당"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "restaurant"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "しょくどう【食堂】。レストラン"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "음식을 만들어 파는 가게."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "명사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "초급"
+      }
+     ],
+     "val": "101"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "식도"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "esophagus"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "しょくどう【食道】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "음식이 위로 내려가는 길."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "명사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "고급"
+      }
+     ],
+     "val": "102"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "유명하다"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "famous"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "ゆうめいだ【有名だ】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "이름이 널리 알려져 있다."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "형용사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "초급"
+      }
+     ],
+     "val": "103"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "공부"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "study"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "べんきょう【勉強】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "학문이나 기술을 배우고 익힘."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "명사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "초급"
+      }
+     ],
+     "val": "104"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "다만"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "only"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "ただ。たんに【単に】\t"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "다른 것이 아니라 오로지."
+      },
+      "val": "1",
+      "SenseRelation": {
+       "feat": [
+        {
+         "att": "type",
+         "val": "유의어"
+        },
+        {
+         "att": "id",
+         "val": "106"
+        },
+        {
+         "att": "lemma",
+         "val": "단지"
+        },
+        {
+         "att": "homonymNumber"
+        }
+       ]
+      }
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "부사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "중급"
+      }
+     ],
+     "val": "105"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "단지"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "only"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "ただ。もっぱら【専ら】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "다른 것이 아니라 오직."
+      },
+      "val": "1",
+      "SenseRelation": [
+       {
+        "feat": [
+         {
+          "att": "type",
+          "val": "유의어"
+         },
+         {
+          "att": "id",
+          "val": "105"
+         },
+         {
+          "att": "lemma",
+          "val": "다만"
+         },
+         {
+          "att": "homonymNumber",
+          "val": "0"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "type",
+          "val": "반대말"
+         },
+         {
+          "att": "id",
+          "val": "199"
+         },
+         {
+          "att": "lemma",
+          "val": "전부"
+         },
+         {
+          "att": "homonymNumber",
+          "val": "0"
+         }
+        ]
+       }
+      ]
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "부사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "중급"
+      }
+     ],
+     "val": "106"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "그저"
+      }
+     },
+     "Sense": [
+      {
+       "Equivalent": [
+        {
+         "feat": [
+          {
+           "att": "language",
+           "val": "영어"
+          },
+          {
+           "att": "lemma",
+           "val": "just"
+          },
+          {
+           "att": "definition",
+           "val": "…"
+          }
+         ]
+        },
+        {
+         "feat": [
+          {
+           "att": "language",
+           "val": "일본어"
+          },
+          {
+           "att": "lemma",
+           "val": "ひたすら"
+          },
+          {
+           "att": "definition",
+           "val": "…"
+          }
+         ]
+        }
+       ],
+       "att": "id",
+       "feat": {
+        "att": "definition",
+        "val": "다른 일은 하지 않고 계속."
+       },
+       "val": "1"
+      },
+      {
+       "Equivalent": [
+        {
+         "feat": [
+          {
+           "att": "language",
+           "val": "영어"
+          },
+          {
+           "att": "lemma",
+           "val": "just"
+          },
+          {
+           "att": "definition",
+           "val": "…"
+          }
+         ]
+        },
+        {
+         "feat": [
+          {
+           "att": "language",
+           "val": "일본어"
+          },
+          {
+           "att": "lemma",
+           "val": "ただ"
+          },
+          {
+           "att": "definition",
+           "val": "…"
+          }
+         ]
+        }
+       ],
+       "att": "id",
+       "feat": {
+        "att": "definition",
+        "val": "특별한 목적 없이."
+       },
+       "val": "2"
+      }
+     ],
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "부사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "중급"
+      }
+     ],
+     "val": "107"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "공짜"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "free"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "ただ【只】。むりょう【無料】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "돈을 내지 않고 얻는 것."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "명사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "초급"
+      }
+     ],
+     "val": "108"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "한갓"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "merely"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "ただ【只・唯】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "다른 것 없이 겨우."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "부사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "고급"
+      }
+     ],
+     "val": "109"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "거저"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "for nothing"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "(対訳語無し)"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "아무 노력 없이."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "부사"
+      }
+     ],
+     "val": "110"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "찻집"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "teahouse"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "きっさてん【喫茶店】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "차를 파는 가게."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "명사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "고급"
+      }
+     ],
+     "val": "111"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "카페"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "cafe"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "カフェ。きっさてん【喫茶店】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "커피를 파는 가게."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "명사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "초급"
+      }
+     ],
+     "val": "112"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "접시"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "plate"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "さら【皿】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "음식을 담는 납작한 그릇."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "명사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "고급"
+      }
+     ],
+     "val": "113"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "그릇"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "bowl"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "さら【皿】。うつわ【器】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "음식을 담는 도구."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "명사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "초급"
+      }
+     ],
+     "val": "114"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "맛"
+      }
+     },
+     "Sense": [
+      {
+       "Equivalent": [
+        {
+         "feat": [
+          {
+           "att": "language",
+           "val": "영어"
+          },
+          {
+           "att": "lemma",
+           "val": "word"
+          },
+          {
+           "att": "definition",
+           "val": "…"
+          }
+         ]
+        },
+        {
+         "feat": [
+          {
+           "att": "language",
+           "val": "일본어"
+          },
+          {
+           "att": "lemma",
+           "val": "あじわい【味わい】"
+          },
+          {
+           "att": "definition",
+           "val": "…"
+          }
+         ]
+        }
+       ],
+       "att": "id",
+       "feat": {
+        "att": "definition",
+        "val": "음식을 혀에 댈 때 느끼는 감각."
+       },
+       "val": "1"
+      },
+      {
+       "Equivalent": [
+        {
+         "feat": [
+          {
+           "att": "language",
+           "val": "영어"
+          },
+          {
+           "att": "lemma",
+           "val": "word"
+          },
+          {
+           "att": "definition",
+           "val": "…"
+          }
+         ]
+        },
+        {
+         "feat": [
+          {
+           "att": "language",
+           "val": "일본어"
+          },
+          {
+           "att": "lemma",
+           "val": "あじ【味】"
+          },
+          {
+           "att": "definition",
+           "val": "…"
+          }
+         ]
+        }
+       ],
+       "att": "id",
+       "feat": {
+        "att": "definition",
+        "val": "어떤 일에서 느끼는 기분."
+       },
+       "val": "2"
+      }
+     ],
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "명사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "초급"
+      }
+     ],
+     "val": "115"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "미각"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "taste"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "あじ【味】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "맛을 느끼는 감각."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "명사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "초급"
+      }
+     ],
+     "val": "116"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "걸다"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "hang"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "かける【掛ける】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "벽이나 못 등에 매달아 놓다."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "동사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "초급"
+      }
+     ],
+     "val": "117"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "앉다"
+      }
+     },
+     "Sense": [
+      {
+       "Equivalent": [
+        {
+         "feat": [
+          {
+           "att": "language",
+           "val": "영어"
+          },
+          {
+           "att": "lemma",
+           "val": "sit"
+          },
+          {
+           "att": "definition",
+           "val": "…"
+          }
+         ]
+        },
+        {
+         "feat": [
+          {
+           "att": "language",
+           "val": "일본어"
+          },
+          {
+           "att": "lemma",
+           "val": "すわる【座る】"
+          },
+          {
+           "att": "definition",
+           "val": "…"
+          }
+         ]
+        }
+       ],
+       "att": "id",
+       "feat": {
+        "att": "definition",
+        "val": "엉덩이를 바닥에 대다."
+       },
+       "val": "1"
+      },
+      {
+       "Equivalent": [
+        {
+         "feat": [
+          {
+           "att": "language",
+           "val": "영어"
+          },
+          {
+           "att": "lemma",
+           "val": "sit"
+          },
+          {
+           "att": "definition",
+           "val": "…"
+          }
+         ]
+        },
+        {
+         "feat": [
+          {
+           "att": "language",
+           "val": "일본어"
+          },
+          {
+           "att": "lemma",
+           "val": "かける【掛ける】。こしかける【腰掛ける】"
+          },
+          {
+           "att": "definition",
+           "val": "…"
+          }
+         ]
+        }
+       ],
+       "att": "id",
+       "feat": {
+        "att": "definition",
+        "val": "의자에 몸을 올려놓다."
+       },
+       "val": "2"
+      }
+     ],
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "동사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "초급"
+      }
+     ],
+     "val": "118"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "곱하다"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "multiply"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "かける【掛ける】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "수를 여러 번 더하다."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "동사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "중급"
+      }
+     ],
+     "val": "119"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "가깝다"
+      }
+     },
+     "Sense": [
+      {
+       "Equivalent": [
+        {
+         "feat": [
+          {
+           "att": "language",
+           "val": "영어"
+          },
+          {
+           "att": "lemma",
+           "val": "near"
+          },
+          {
+           "att": "definition",
+           "val": "…"
+          }
+         ]
+        },
+        {
+         "feat": [
+          {
+           "att": "language",
+           "val": "일본어"
+          },
+          {
+           "att": "lemma",
+           "val": "ちかい【近い】"
+          },
+          {
+           "att": "definition",
+           "val": "…"
+          }
+         ]
+        }
+       ],
+       "att": "id",
+       "feat": {
+        "att": "definition",
+        "val": "거리가 멀지 않다."
+       },
+       "val": "1"
+      },
+      {
+       "Equivalent": [
+        {
+         "feat": [
+          {
+           "att": "language",
+           "val": "영어"
+          },
+          {
+           "att": "lemma",
+           "val": "near"
+          },
+          {
+           "att": "definition",
+           "val": "…"
+          }
+         ]
+        },
+        {
+         "feat": [
+          {
+           "att": "language",
+           "val": "일본어"
+          },
+          {
+           "att": "lemma",
+           "val": "ちかい【近い】"
+          },
+          {
+           "att": "definition",
+           "val": "…"
+          }
+         ]
+        }
+       ],
+       "att": "id",
+       "feat": {
+        "att": "definition",
+        "val": "시간이 멀지 않다."
+       },
+       "val": "2"
+      }
+     ],
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "형용사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "초급"
+      }
+     ],
+     "val": "120"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "코"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "nose"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "はな【鼻】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "얼굴 가운데 숨을 쉬는 곳."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "명사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "초급"
+      }
+     ],
+     "val": "121"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "꽃"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "flower"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "はな【花】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "식물의 아름다운 부분."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "명사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "초급"
+      }
+     ],
+     "val": "122"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "코가 높다"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "be proud"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "はながたかい【鼻が高い】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "잘난 체하다."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "관용구"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": null
+      }
+     ],
+     "val": "123"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "체코어"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "Czech"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "チェコご【チェコ語】 \t　"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "체코의 언어."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "명사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "없음"
+      }
+     ],
+     "val": "124"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "담배"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "tobacco"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "たばこ【タバコ】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "피우는 물건."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "명사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "중급"
+      }
+     ],
+     "val": "125"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "마을"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "village"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "そん・むら【村】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "사람이 모여 사는 곳."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "명사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "초급"
+      }
+     ],
+     "val": "126"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "제일"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "first"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "いちばん【一番」"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "여럿 가운데 첫째."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "부사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "초급"
+      }
+     ],
+     "val": "127"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "두근두근"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "pit-a-pat"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "どきどき。ドキドキする"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "가슴이 뛰는 모양."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "부사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "고급"
+      }
+     ],
+     "val": "128"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "스치다"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "graze"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "かする【掠る】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "살짝 닿으며 지나가다."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "동사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "중급"
+      }
+     ],
+     "val": "129"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "사전"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "dictionary"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "じしょ【辞書】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "낱말을 모은 책."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": {
+      "att": "lexicalUnit",
+      "val": "단어"
+     },
+     "val": "130"
+    }
+   ],
+   "feat": {
+    "att": "language",
+    "val": "kor"
+   }
+  },
+  "dtdVersion": "16"
+ }
+}

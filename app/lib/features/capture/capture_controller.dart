@@ -65,10 +65,23 @@ final class CaptureController extends Notifier<CaptureState> {
   /// Back to idle once the review screen has taken the draft.
   void reset() => state = const CaptureIdle();
 
+  /// The bundled dictionaries start opening with the app (`main.dart`). A
+  /// page waits for them so the corrector chain is built on them even for the
+  /// first page; they never fail (without data they are empty blocks).
+  Future<void> _dictionariesOpened() => Future.wait<void>([
+    ref.read(bundledDictionaryProvider.future).then((_) {}, onError: _ignore),
+    ref.read(bundledGlossaryProvider.future).then((_) {}, onError: _ignore),
+  ]);
+
+  static void _ignore(Object _) {}
+
   Future<void> _read(PageImage image, TextRecognizer recognizer) async {
     state = CaptureReading(image);
     try {
       final scan = await recognizer.recognize(image);
+      if (!ref.mounted) return;
+      await _dictionariesOpened();
+      if (!ref.mounted) return;
       final draft = await ref.read(capturePipelineProvider).fromScan(scan);
       if (!ref.mounted) return;
       state = draft.entries.isEmpty

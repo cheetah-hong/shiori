@@ -115,18 +115,24 @@ tasks.named { it == "preDevReleaseBuild" }.configureEach {
     }
 }
 
-// The dictionary asset is built, not committed (tools/dict/build_app_asset.py).
-// Debug builds run without it (no dictionary); a release must carry it.
-// A release is signed with the upload key from android/key.properties.
-val dictionaryAssets = listOf("jmdict-full-lean.sqlite.gz", "jmdict-full-lean.edition.json")
-    .map { rootProject.file("../assets/dict/$it") }
+// The dictionary assets are built, not committed: JMdict
+// (tools/dict/build_app_asset.py) and the Korean glossary
+// (tools/dict/build_ko_glossary.py). Debug builds run without them; a release
+// must carry them. A release is signed with the upload key from
+// android/key.properties.
+val dictionaryAssets = listOf(
+    "jmdict-full-lean.sqlite.gz" to "tools/dict/build_app_asset.py",
+    "jmdict-full-lean.edition.json" to "tools/dict/build_app_asset.py",
+    "ko-glossary.sqlite.gz" to "tools/dict/build_ko_glossary.py --source <krdict JSON zip>",
+    "ko-glossary.edition.json" to "tools/dict/build_ko_glossary.py --source <krdict JSON zip>",
+).map { (name, script) -> rootProject.file("../assets/dict/$name") to script }
 tasks.named { it == "preProdReleaseBuild" }.configureEach {
     doFirst {
-        val missing = dictionaryAssets.filter { !it.isFile || it.length() == 0L }
+        val missing = dictionaryAssets.filter { (file, _) -> !file.isFile || file.length() == 0L }
         if (missing.isNotEmpty()) {
             throw GradleException(
-                "Dictionary asset missing: ${missing.joinToString { "assets/dict/${it.name}" }}. " +
-                    "Build it with: python3 tools/dict/build_app_asset.py",
+                "Dictionary asset missing: ${missing.joinToString { "assets/dict/${it.first.name}" }}. " +
+                    "Build it with: ${missing.map { "python3 ${it.second}" }.distinct().joinToString(" and ")}",
             )
         }
         releaseSigningProblem?.let { problem ->

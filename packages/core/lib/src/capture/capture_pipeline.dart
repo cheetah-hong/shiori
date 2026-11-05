@@ -4,6 +4,7 @@ import 'package:shiori_core/src/capture/correctors/cut_meaning_flagger.dart';
 import 'package:shiori_core/src/capture/correctors/dictionary_candidate_corrector.dart';
 import 'package:shiori_core/src/capture/correctors/dictionary_pair_corrector.dart';
 import 'package:shiori_core/src/capture/correctors/kana_okurigana_corrector.dart';
+import 'package:shiori_core/src/capture/correctors/korean_meaning_filler.dart';
 import 'package:shiori_core/src/capture/correctors/meaning_punctuation_corrector.dart';
 import 'package:shiori_core/src/capture/correctors/missing_field_flagger.dart';
 import 'package:shiori_core/src/capture/correctors/pos_inference_corrector.dart';
@@ -17,6 +18,7 @@ import 'package:shiori_core/src/models/captured_entry.dart';
 import 'package:shiori_core/src/models/ocr.dart';
 import 'package:shiori_core/src/ports/dictionary.dart';
 import 'package:shiori_core/src/ports/entry_corrector.dart';
+import 'package:shiori_core/src/ports/korean_glossary.dart';
 
 /// OCR scan → line clean-up → template → corrector chain → review draft.
 ///
@@ -31,12 +33,13 @@ final class CapturePipeline {
   /// The blocks the reference scores were measured with.
   factory CapturePipeline.standard({
     Dictionary dictionary = const EmptyDictionary(),
+    KoreanGlossary? glossary,
   }) => CapturePipeline(
     templates: TemplateRegistry(const [
       ListPageTemplate(),
       EntryPageTemplate(),
     ]),
-    correctors: standardCorrectors(dictionary),
+    correctors: standardCorrectors(dictionary, glossary: glossary),
   );
 
   final TemplateRegistry templates;
@@ -69,11 +72,17 @@ final class CapturePipeline {
 
 /// Order matters: fix glyphs first (the POS guess needs the fixed headword),
 /// then offer dictionary candidates for unread headwords, then check the read
-/// ones against the dictionary (which may undo a rule), flag last.
+/// ones against the dictionary (which may undo a rule), then fill an empty
+/// meaning from the Korean glossary (only for a headword the dictionary did
+/// not reject), flag last. Without a [glossary] there is no meaning filler:
+/// the chain the reference scores were measured with.
 ///
 /// The glyph fixes for ML Kit's slips (`のリかえる`, badge `8`, `싸다. 포장하다`)
 /// never change an Apple Vision result, so they run for every engine.
-List<EntryCorrector> standardCorrectors(Dictionary dictionary) => [
+List<EntryCorrector> standardCorrectors(
+  Dictionary dictionary, {
+  KoreanGlossary? glossary,
+}) => [
   const ConfusableGlyphCorrector(),
   const KanaOkuriganaCorrector(),
   const ReadingLookalikeCorrector(),
@@ -83,5 +92,6 @@ List<EntryCorrector> standardCorrectors(Dictionary dictionary) => [
   const CutMeaningFlagger(),
   DictionaryCandidateCorrector(dictionary),
   DictionaryPairCorrector(dictionary),
+  if (glossary != null) KoreanMeaningFiller(glossary),
   const MissingFieldFlagger(),
 ];

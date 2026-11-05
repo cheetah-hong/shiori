@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:shiori/adapters/app_database.dart';
 import 'package:shiori/adapters/bundled_dictionary.dart';
+import 'package:shiori/adapters/bundled_glossary.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori_storage_drift/shiori_storage_drift.dart';
 
@@ -45,6 +46,20 @@ Override bundledDictionaryOverride({
   return bundledDictionaryProvider.overrideWith((ref) {
     ref.onDispose(
       () => unawaited(opening.then((d) => d.close(), onError: (_) {})),
+    );
+    return opening;
+  });
+}
+
+/// The override that plugs the bundled Korean glossary in once it is open
+/// (as [bundledDictionaryOverride]: started now, never awaited).
+Override bundledGlossaryOverride({
+  Future<BundledGlossary> Function() open = openAppGlossary,
+}) {
+  final opening = open();
+  return bundledGlossaryProvider.overrideWith((ref) {
+    ref.onDispose(
+      () => unawaited(opening.then((g) => g.close(), onError: (_) {})),
     );
     return opening;
   });

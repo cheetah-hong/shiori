@@ -44,6 +44,10 @@ dependencies:
   # Dictionary: JMdict (SQLite), unpacked from assets/dict/ on first run.
   jmdict_block:
     path: ../packages/jmdict_block
+  # Korean meanings: the Basic Korean Dictionary (SQLite), unpacked from
+  # assets/dict/ on first run.
+  krdict_block:
+    path: ../packages/krdict_block
   flutter_localizations:
     sdk: flutter
 
@@ -86,9 +90,10 @@ flutter:
     - path: assets/dev_samples/
       flavors:
         - dev
-    # JMdict (full-lean) as gzip plus its edition file, built by
-    # tools/dict/build_app_asset.py; not in git. Without them the app runs with
-    # no dictionary, and release builds stop (android/app/build.gradle.kts).
+    # JMdict (full-lean) and the Korean glossary as gzip plus their edition
+    # files, built by tools/dict/build_app_asset.py and build_ko_glossary.py;
+    # not in git. Without them the app runs with no dictionary, and release
+    # builds stop (android/app/build.gradle.kts, the iOS build phase).
     - assets/dict/
 
   # An image asset can refer to one or more resolution-specific "variants", see
