@@ -27,11 +27,20 @@ final class ShelfItem {
     required this.textbook,
     required this.wordCount,
     required this.days,
+    this.hiddenCount = 0,
   });
 
   final Textbook textbook;
+
+  /// Every word, hidden ones too (as `TextbookStats.wordCount`).
   final int wordCount;
   final List<int> days;
+
+  /// Of [wordCount], the words hidden with 이미 알아요.
+  final int hiddenCount;
+
+  /// What the shelf shows as the word count.
+  int get shownCount => wordCount - hiddenCount;
 }
 
 /// Every textbook with its word count and days, in one storage read.
@@ -40,7 +49,12 @@ final shelfProvider = FutureProvider<List<ShelfItem>>((ref) async {
   final stats = await ref.watch(libraryRepositoryProvider).textbookStats();
   return [
     for (final s in stats)
-      ShelfItem(textbook: s.textbook, wordCount: s.wordCount, days: s.days),
+      ShelfItem(
+        textbook: s.textbook,
+        wordCount: s.wordCount,
+        days: s.days,
+        hiddenCount: s.hiddenCount,
+      ),
   ];
 });
 

@@ -17,6 +17,7 @@ export 'src/models/review.dart';
 export 'src/ports/clock.dart';
 export 'src/ports/dictionary.dart';
 export 'src/ports/entry_corrector.dart';
+export 'src/ports/hidden_word_repository.dart';
 export 'src/ports/lexicon.dart';
 export 'src/ports/image_source.dart';
 export 'src/ports/korean_glossary.dart';

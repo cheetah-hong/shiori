@@ -710,6 +710,15 @@ class $WordsTable extends Words with TableInfo<$WordsTable, WordRow> {
         requiredDuringInsert: true,
       ).withConverter<DateTime>($WordsTable.$convertercreatedAt);
   @override
+  late final GeneratedColumnWithTypeConverter<DateTime?, int> hiddenAt =
+      GeneratedColumn<int>(
+        'hidden_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<DateTime?>($WordsTable.$converterhiddenAtn);
+  @override
   List<GeneratedColumn> get $columns => [
     id,
     textbookId,
@@ -723,6 +732,7 @@ class $WordsTable extends Words with TableInfo<$WordsTable, WordRow> {
     exampleKo,
     page,
     createdAt,
+    hiddenAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -855,6 +865,12 @@ class $WordsTable extends Words with TableInfo<$WordsTable, WordRow> {
           data['${effectivePrefix}created_at'],
         )!,
       ),
+      hiddenAt: $WordsTable.$converterhiddenAtn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}hidden_at'],
+        ),
+      ),
     );
   }
 
@@ -871,6 +887,10 @@ class $WordsTable extends Words with TableInfo<$WordsTable, WordRow> {
       JsonTypeConverter2.asNullable($converterpos);
   static TypeConverter<DateTime, int> $convertercreatedAt =
       const UtcMicrosConverter();
+  static TypeConverter<DateTime, int> $converterhiddenAt =
+      const UtcMicrosConverter();
+  static TypeConverter<DateTime?, int?> $converterhiddenAtn =
+      NullAwareTypeConverter.wrap($converterhiddenAt);
 }
 
 class WordRow extends DataClass implements Insertable<WordRow> {
@@ -890,6 +910,10 @@ class WordRow extends DataClass implements Insertable<WordRow> {
   final String? exampleKo;
   final int? page;
   final DateTime createdAt;
+
+  /// When the learner hid the word (이미 알아요); null while it is shown (v3).
+  /// Not content: saving the word again keeps it.
+  final DateTime? hiddenAt;
   const WordRow({
     required this.id,
     required this.textbookId,
@@ -903,6 +927,7 @@ class WordRow extends DataClass implements Insertable<WordRow> {
     this.exampleKo,
     this.page,
     required this.createdAt,
+    this.hiddenAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -939,6 +964,11 @@ class WordRow extends DataClass implements Insertable<WordRow> {
         $WordsTable.$convertercreatedAt.toSql(createdAt),
       );
     }
+    if (!nullToAbsent || hiddenAt != null) {
+      map['hidden_at'] = Variable<int>(
+        $WordsTable.$converterhiddenAtn.toSql(hiddenAt),
+      );
+    }
     return map;
   }
 
@@ -960,6 +990,9 @@ class WordRow extends DataClass implements Insertable<WordRow> {
           : Value(exampleKo),
       page: page == null && nullToAbsent ? const Value.absent() : Value(page),
       createdAt: Value(createdAt),
+      hiddenAt: hiddenAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(hiddenAt),
     );
   }
 
@@ -983,6 +1016,7 @@ class WordRow extends DataClass implements Insertable<WordRow> {
       exampleKo: serializer.fromJson<String?>(json['exampleKo']),
       page: serializer.fromJson<int?>(json['page']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      hiddenAt: serializer.fromJson<DateTime?>(json['hiddenAt']),
     );
   }
   @override
@@ -1001,6 +1035,7 @@ class WordRow extends DataClass implements Insertable<WordRow> {
       'exampleKo': serializer.toJson<String?>(exampleKo),
       'page': serializer.toJson<int?>(page),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'hiddenAt': serializer.toJson<DateTime?>(hiddenAt),
     };
   }
 
@@ -1017,6 +1052,7 @@ class WordRow extends DataClass implements Insertable<WordRow> {
     Value<String?> exampleKo = const Value.absent(),
     Value<int?> page = const Value.absent(),
     DateTime? createdAt,
+    Value<DateTime?> hiddenAt = const Value.absent(),
   }) => WordRow(
     id: id ?? this.id,
     textbookId: textbookId ?? this.textbookId,
@@ -1030,6 +1066,7 @@ class WordRow extends DataClass implements Insertable<WordRow> {
     exampleKo: exampleKo.present ? exampleKo.value : this.exampleKo,
     page: page.present ? page.value : this.page,
     createdAt: createdAt ?? this.createdAt,
+    hiddenAt: hiddenAt.present ? hiddenAt.value : this.hiddenAt,
   );
   WordRow copyWithCompanion(WordsCompanion data) {
     return WordRow(
@@ -1047,6 +1084,7 @@ class WordRow extends DataClass implements Insertable<WordRow> {
       exampleKo: data.exampleKo.present ? data.exampleKo.value : this.exampleKo,
       page: data.page.present ? data.page.value : this.page,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      hiddenAt: data.hiddenAt.present ? data.hiddenAt.value : this.hiddenAt,
     );
   }
 
@@ -1064,7 +1102,8 @@ class WordRow extends DataClass implements Insertable<WordRow> {
           ..write('exampleJa: $exampleJa, ')
           ..write('exampleKo: $exampleKo, ')
           ..write('page: $page, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('hiddenAt: $hiddenAt')
           ..write(')'))
         .toString();
   }
@@ -1083,6 +1122,7 @@ class WordRow extends DataClass implements Insertable<WordRow> {
     exampleKo,
     page,
     createdAt,
+    hiddenAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -1099,7 +1139,8 @@ class WordRow extends DataClass implements Insertable<WordRow> {
           other.exampleJa == this.exampleJa &&
           other.exampleKo == this.exampleKo &&
           other.page == this.page &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.hiddenAt == this.hiddenAt);
 }
 
 class WordsCompanion extends UpdateCompanion<WordRow> {
@@ -1115,6 +1156,7 @@ class WordsCompanion extends UpdateCompanion<WordRow> {
   final Value<String?> exampleKo;
   final Value<int?> page;
   final Value<DateTime> createdAt;
+  final Value<DateTime?> hiddenAt;
   final Value<int> rowid;
   const WordsCompanion({
     this.id = const Value.absent(),
@@ -1129,6 +1171,7 @@ class WordsCompanion extends UpdateCompanion<WordRow> {
     this.exampleKo = const Value.absent(),
     this.page = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.hiddenAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   WordsCompanion.insert({
@@ -1144,6 +1187,7 @@ class WordsCompanion extends UpdateCompanion<WordRow> {
     this.exampleKo = const Value.absent(),
     this.page = const Value.absent(),
     required DateTime createdAt,
+    this.hiddenAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        textbookId = Value(textbookId),
@@ -1164,6 +1208,7 @@ class WordsCompanion extends UpdateCompanion<WordRow> {
     Expression<String>? exampleKo,
     Expression<int>? page,
     Expression<int>? createdAt,
+    Expression<int>? hiddenAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1179,6 +1224,7 @@ class WordsCompanion extends UpdateCompanion<WordRow> {
       if (exampleKo != null) 'example_ko': exampleKo,
       if (page != null) 'page': page,
       if (createdAt != null) 'created_at': createdAt,
+      if (hiddenAt != null) 'hidden_at': hiddenAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1196,6 +1242,7 @@ class WordsCompanion extends UpdateCompanion<WordRow> {
     Value<String?>? exampleKo,
     Value<int?>? page,
     Value<DateTime>? createdAt,
+    Value<DateTime?>? hiddenAt,
     Value<int>? rowid,
   }) {
     return WordsCompanion(
@@ -1211,6 +1258,7 @@ class WordsCompanion extends UpdateCompanion<WordRow> {
       exampleKo: exampleKo ?? this.exampleKo,
       page: page ?? this.page,
       createdAt: createdAt ?? this.createdAt,
+      hiddenAt: hiddenAt ?? this.hiddenAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1260,6 +1308,11 @@ class WordsCompanion extends UpdateCompanion<WordRow> {
         $WordsTable.$convertercreatedAt.toSql(createdAt.value),
       );
     }
+    if (hiddenAt.present) {
+      map['hidden_at'] = Variable<int>(
+        $WordsTable.$converterhiddenAtn.toSql(hiddenAt.value),
+      );
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1281,6 +1334,7 @@ class WordsCompanion extends UpdateCompanion<WordRow> {
           ..write('exampleKo: $exampleKo, ')
           ..write('page: $page, ')
           ..write('createdAt: $createdAt, ')
+          ..write('hiddenAt: $hiddenAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2881,6 +2935,7 @@ typedef $$WordsTableCreateCompanionBuilder =
       Value<String?> exampleKo,
       Value<int?> page,
       required DateTime createdAt,
+      Value<DateTime?> hiddenAt,
       Value<int> rowid,
     });
 typedef $$WordsTableUpdateCompanionBuilder =
@@ -2897,6 +2952,7 @@ typedef $$WordsTableUpdateCompanionBuilder =
       Value<String?> exampleKo,
       Value<int?> page,
       Value<DateTime> createdAt,
+      Value<DateTime?> hiddenAt,
       Value<int> rowid,
     });
 
@@ -2989,6 +3045,12 @@ class $$WordsTableFilterComposer
         builder: (column) => ColumnWithTypeConverterFilters(column),
       );
 
+  ColumnWithTypeConverterFilters<DateTime?, DateTime, int> get hiddenAt =>
+      $composableBuilder(
+        column: $table.hiddenAt,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
   $$TextbooksTableFilterComposer get textbookId {
     final $$TextbooksTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -3077,6 +3139,11 @@ class $$WordsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get hiddenAt => $composableBuilder(
+    column: $table.hiddenAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$TextbooksTableOrderingComposer get textbookId {
     final $$TextbooksTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -3143,6 +3210,9 @@ class $$WordsTableAnnotationComposer
   GeneratedColumnWithTypeConverter<DateTime, int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
+  GeneratedColumnWithTypeConverter<DateTime?, int> get hiddenAt =>
+      $composableBuilder(column: $table.hiddenAt, builder: (column) => column);
+
   $$TextbooksTableAnnotationComposer get textbookId {
     final $$TextbooksTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -3207,6 +3277,7 @@ class $$WordsTableTableManager
                 Value<String?> exampleKo = const Value.absent(),
                 Value<int?> page = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> hiddenAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => WordsCompanion(
                 id: id,
@@ -3221,6 +3292,7 @@ class $$WordsTableTableManager
                 exampleKo: exampleKo,
                 page: page,
                 createdAt: createdAt,
+                hiddenAt: hiddenAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -3237,6 +3309,7 @@ class $$WordsTableTableManager
                 Value<String?> exampleKo = const Value.absent(),
                 Value<int?> page = const Value.absent(),
                 required DateTime createdAt,
+                Value<DateTime?> hiddenAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => WordsCompanion.insert(
                 id: id,
@@ -3251,6 +3324,7 @@ class $$WordsTableTableManager
                 exampleKo: exampleKo,
                 page: page,
                 createdAt: createdAt,
+                hiddenAt: hiddenAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

@@ -194,8 +194,12 @@ void main() {
 
     test('a file from an unknown schema version is refused', () async {
       final file = File('${dir.path}/newer.sqlite');
+      // One past the version this build writes.
+      final current = ShioriDatabase.memory();
+      final next = current.schemaVersion + 1;
+      await current.close();
       final newer = ShioriDatabase(
-        NativeDatabase(file, setup: (raw) => raw.userVersion = 3),
+        NativeDatabase(file, setup: (raw) => raw.userVersion = next),
       );
       await expectLater(
         newer.customSelect('SELECT 1').get(),

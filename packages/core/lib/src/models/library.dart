@@ -63,6 +63,10 @@ final class TextbookDay {
 }
 
 /// A saved word (content). Its learning state lives in a separate `ReviewCard`.
+///
+/// [hiddenAt] is set when the learner hid the word as one they already know
+/// (이미 알아요). Hidden words stay in the library and keep their card; only
+/// study sessions and the word lists leave them out.
 final class Word {
   const Word({
     required this.id,
@@ -76,6 +80,7 @@ final class Word {
     this.pos,
     this.example,
     this.page,
+    this.hiddenAt,
   });
 
   final String id;
@@ -94,6 +99,31 @@ final class Word {
   final int? page;
   final DateTime createdAt;
 
+  /// When the learner hid the word; null while it is shown.
+  ///
+  /// Only `HiddenWordRepository` changes it: `LibraryRepository.saveWords`
+  /// keeps the stored value, so capturing a page again does not show a word
+  /// the learner hid.
+  final DateTime? hiddenAt;
+
+  bool get isHidden => hiddenAt != null;
+
+  /// The same word, hidden since [at] (null: shown).
+  Word withHiddenAt(DateTime? at) => Word(
+    id: id,
+    textbookId: textbookId,
+    headword: headword,
+    readings: readings,
+    meaning: meaning,
+    createdAt: createdAt,
+    day: day,
+    no: no,
+    pos: pos,
+    example: example,
+    page: page,
+    hiddenAt: at,
+  );
+
   @override
   bool operator ==(Object other) =>
       other is Word &&
@@ -107,7 +137,8 @@ final class Word {
       other.meaning == meaning &&
       other.example == example &&
       other.page == page &&
-      other.createdAt == createdAt;
+      other.createdAt == createdAt &&
+      other.hiddenAt == hiddenAt;
 
   @override
   int get hashCode => Object.hash(
@@ -122,23 +153,34 @@ final class Word {
     example,
     page,
     createdAt,
+    hiddenAt,
   );
 
   @override
-  String toString() => 'Word($id $headword)';
+  String toString() => 'Word($id $headword${isHidden ? ' hidden' : ''})';
 }
 
 /// A textbook with how many words it holds and the days they are on, for the
 /// shelf. Words without a day count but add no day.
+///
+/// [wordCount] and [days] cover every word, hidden ones too (the same words
+/// as `LibraryRepository.words`); [hiddenCount] says how many of them are
+/// hidden and [shownCount] how many are left.
 final class TextbookStats {
   const TextbookStats({
     required this.textbook,
     required this.wordCount,
     required this.days,
+    this.hiddenCount = 0,
   });
 
   final Textbook textbook;
   final int wordCount;
+
+  /// Of [wordCount], the words the learner hid.
+  final int hiddenCount;
+
+  int get shownCount => wordCount - hiddenCount;
 
   /// Day numbers, each once, ascending.
   final List<int> days;
@@ -148,12 +190,15 @@ final class TextbookStats {
       other is TextbookStats &&
       other.textbook == textbook &&
       other.wordCount == wordCount &&
+      other.hiddenCount == hiddenCount &&
       listEquals(other.days, days);
 
   @override
-  int get hashCode => Object.hash(textbook, wordCount, Object.hashAll(days));
+  int get hashCode =>
+      Object.hash(textbook, wordCount, hiddenCount, Object.hashAll(days));
 
   @override
   String toString() =>
-      'TextbookStats(${textbook.id}, words: $wordCount, days: $days)';
+      'TextbookStats(${textbook.id}, words: $wordCount, '
+      'hidden: $hiddenCount, days: $days)';
 }

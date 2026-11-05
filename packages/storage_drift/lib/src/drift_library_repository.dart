@@ -1,9 +1,12 @@
 import 'package:drift/drift.dart';
 import 'package:shiori_core/shiori_core.dart';
+import 'package:shiori_storage_drift/src/chunks.dart';
 import 'package:shiori_storage_drift/src/database.dart';
 
-/// Content storage in SQLite: textbooks, days and words.
-final class DriftLibraryRepository implements LibraryRepository {
+/// Content storage in SQLite: textbooks, days and words, and which words
+/// the learner hid (`words.hidden_at`).
+final class DriftLibraryRepository
+    implements LibraryRepository, HiddenWordRepository {
   DriftLibraryRepository(this._db);
 
   final ShioriDatabase _db;
@@ -73,7 +76,14 @@ final class DriftLibraryRepository implements LibraryRepository {
       );
 
   @override
-  Future<List<Word>> words({String? textbookId, int? day}) async {
+  Future<List<Word>> words({String? textbookId, int? day}) =>
+      _words(textbookId: textbookId, day: day);
+
+  Future<List<Word>> _words({
+    String? textbookId,
+    int? day,
+    bool hiddenOnly = false,
+  }) async {
     final w = _db.words;
     final t = _db.textbooks;
     final query =
@@ -90,6 +100,7 @@ final class DriftLibraryRepository implements LibraryRepository {
           ]);
     if (textbookId != null) query.where(w.textbookId.equals(textbookId));
     if (day != null) query.where(w.day.equals(day));
+    if (hiddenOnly) query.where(w.hiddenAt.isNotNull());
     final rows = await query.get();
     return List.unmodifiable(rows.map((r) => _word(r.readTable(w))));
   }
@@ -109,11 +120,13 @@ final class DriftLibraryRepository implements LibraryRepository {
     final t = _db.textbooks;
     final w = _db.words;
     final count = w.id.count();
+    // COUNT of a column counts the rows where it is not NULL.
+    final hidden = w.hiddenAt.count();
     final query =
         _db.select(t).join([
             leftOuterJoin(w, w.textbookId.equalsExp(t.id), useColumns: false),
           ])
-          ..addColumns([w.day, count])
+          ..addColumns([w.day, count, hidden])
           ..groupBy([t.id, w.day])
           ..orderBy([
             // Same order as textbooks(), then days ascending.
@@ -123,12 +136,15 @@ final class DriftLibraryRepository implements LibraryRepository {
           ]);
     final books = <String, TextbookRow>{};
     final counts = <String, int>{};
+    final hiddenCounts = <String, int>{};
     final days = <String, List<int>>{};
     for (final row in await query.get()) {
       final book = row.readTable(t);
       final day = row.read(w.day);
       books[book.id] = book;
       counts[book.id] = (counts[book.id] ?? 0) + (row.read(count) ?? 0);
+      hiddenCounts[book.id] =
+          (hiddenCounts[book.id] ?? 0) + (row.read(hidden) ?? 0);
       days[book.id] = [...?days[book.id], ?day];
     }
     return List.unmodifiable([
@@ -136,6 +152,7 @@ final class DriftLibraryRepository implements LibraryRepository {
         TextbookStats(
           textbook: _textbook(book),
           wordCount: counts[book.id] ?? 0,
+          hiddenCount: hiddenCounts[book.id] ?? 0,
           days: List.unmodifiable(days[book.id] ?? const <int>[]),
         ),
     ]);
@@ -143,12 +160,61 @@ final class DriftLibraryRepository implements LibraryRepository {
 
   /// Updates existing rows in place (`ON CONFLICT DO UPDATE`): a word is
   /// never deleted and re-inserted, so nothing tied to its id is lost.
+  /// `hidden_at` is left out of the row, so an insert stores the word shown
+  /// and an update keeps what was stored.
   @override
   Future<void> saveWords(List<Word> words) async {
     if (words.isEmpty) return;
     await _db.batch(
-      (b) => b.insertAllOnConflictUpdate(_db.words, words.map(_wordRow)),
+      (b) => b.insertAllOnConflictUpdate(_db.words, words.map(_wordContent)),
     );
+  }
+
+  /// Only rows still shown are written, so a word keeps the time it was
+  /// first hidden.
+  @override
+  Future<void> hideWords(Iterable<String> wordIds, {required DateTime at}) =>
+      _setHidden(wordIds, at);
+
+  @override
+  Future<void> unhideWords(Iterable<String> wordIds) =>
+      _setHidden(wordIds, null);
+
+  @override
+  Future<List<Word>> hiddenWords({String? textbookId}) =>
+      _words(textbookId: textbookId, hiddenOnly: true);
+
+  /// Checks every id, then writes, in one transaction: an unknown id or a
+  /// failed write leaves every word as it was.
+  Future<void> _setHidden(Iterable<String> wordIds, DateTime? at) async {
+    final ids = wordIds.toSet().toList();
+    if (ids.isEmpty) return;
+    final w = _db.words;
+    await _db.transaction(() async {
+      final found = <String>{};
+      for (final chunk in chunked(ids)) {
+        final rows =
+            await (_db.selectOnly(w)
+                  ..addColumns([w.id])
+                  ..where(w.id.isIn(chunk)))
+                .map((r) => r.read(w.id))
+                .get();
+        found.addAll(rows.nonNulls);
+      }
+      final missing = [
+        for (final id in ids)
+          if (!found.contains(id)) id,
+      ];
+      if (missing.isNotEmpty) throw WordNotFoundException(missing);
+      for (final chunk in chunked(ids)) {
+        await (_db.update(w)..where(
+              (r) =>
+                  r.id.isIn(chunk) &
+                  (at == null ? r.hiddenAt.isNotNull() : r.hiddenAt.isNull()),
+            ))
+            .write(WordsCompanion(hiddenAt: Value(at)));
+      }
+    });
   }
 }
 
@@ -173,20 +239,23 @@ Word _word(WordRow r) {
     example: ja != null && ko != null ? Example(ja: ja, ko: ko) : null,
     page: r.page,
     createdAt: r.createdAt,
+    hiddenAt: r.hiddenAt,
   );
 }
 
-WordRow _wordRow(Word w) => WordRow(
-  id: w.id,
-  textbookId: w.textbookId,
-  day: w.day,
-  no: w.no,
-  headword: w.headword,
-  readings: w.readings,
-  pos: w.pos,
-  meaning: w.meaning,
-  exampleJa: w.example?.ja,
-  exampleKo: w.example?.ko,
-  page: w.page,
-  createdAt: w.createdAt,
+/// Every content column of [w], set even when null (so an update clears a
+/// value the page no longer has); `hidden_at` is absent (not content).
+WordsCompanion _wordContent(Word w) => WordsCompanion(
+  id: Value(w.id),
+  textbookId: Value(w.textbookId),
+  day: Value(w.day),
+  no: Value(w.no),
+  headword: Value(w.headword),
+  readings: Value(w.readings),
+  pos: Value(w.pos),
+  meaning: Value(w.meaning),
+  exampleJa: Value(w.example?.ja),
+  exampleKo: Value(w.example?.ko),
+  page: Value(w.page),
+  createdAt: Value(w.createdAt),
 );

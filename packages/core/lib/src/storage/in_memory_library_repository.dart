@@ -1,4 +1,5 @@
 import 'package:shiori_core/src/models/library.dart';
+import 'package:shiori_core/src/ports/hidden_word_repository.dart';
 import 'package:shiori_core/src/ports/repositories.dart';
 import 'package:shiori_core/src/storage/in_memory_transactions.dart';
 
@@ -13,7 +14,8 @@ typedef _LibraryState = (
 ///
 /// Unlike the SQLite block it does not check that a day's or word's textbook
 /// exists (tests save words on their own); `LibraryService` checks it first.
-final class InMemoryLibraryRepository implements LibraryRepository {
+final class InMemoryLibraryRepository
+    implements LibraryRepository, HiddenWordRepository {
   final Map<String, Textbook> _textbooks = {};
   final Map<String, TextbookDay> _days = {};
   final Map<String, Word> _words = {};
@@ -86,9 +88,11 @@ final class InMemoryLibraryRepository implements LibraryRepository {
   @override
   Future<List<TextbookStats>> textbookStats() => _tx.run(() {
     final counts = <String, int>{};
+    final hidden = <String, int>{};
     final days = <String, Set<int>>{};
     for (final w in _words.values) {
       counts[w.textbookId] = (counts[w.textbookId] ?? 0) + 1;
+      if (w.isHidden) hidden[w.textbookId] = (hidden[w.textbookId] ?? 0) + 1;
       if (w.day case final day?) (days[w.textbookId] ??= {}).add(day);
     }
     return List<TextbookStats>.unmodifiable([
@@ -96,6 +100,7 @@ final class InMemoryLibraryRepository implements LibraryRepository {
         TextbookStats(
           textbook: t,
           wordCount: counts[t.id] ?? 0,
+          hiddenCount: hidden[t.id] ?? 0,
           days: List.unmodifiable(
             (days[t.id] ?? const <int>{}).toList()..sort(),
           ),
@@ -103,12 +108,47 @@ final class InMemoryLibraryRepository implements LibraryRepository {
     ]);
   });
 
+  /// Keeps the stored hidden state (`LibraryRepository.saveWords`).
   @override
   Future<void> saveWords(List<Word> words) => _tx.run(() {
     for (final w in words) {
-      _words[w.id] = w;
+      _words[w.id] = w.withHiddenAt(_words[w.id]?.hiddenAt);
     }
   });
+
+  @override
+  Future<void> hideWords(Iterable<String> wordIds, {required DateTime at}) =>
+      _tx.run(() {
+        for (final w in _known(wordIds)) {
+          if (!w.isHidden) _words[w.id] = w.withHiddenAt(at);
+        }
+      });
+
+  @override
+  Future<void> unhideWords(Iterable<String> wordIds) => _tx.run(() {
+    for (final w in _known(wordIds)) {
+      if (w.isHidden) _words[w.id] = w.withHiddenAt(null);
+    }
+  });
+
+  @override
+  Future<List<Word>> hiddenWords({String? textbookId}) => _tx.run(
+    () => List<Word>.unmodifiable(
+      _wordsOf(textbookId, null).where((w) => w.isHidden),
+    ),
+  );
+
+  /// The words of [wordIds], each once; throws before any write when one is
+  /// not in the library.
+  List<Word> _known(Iterable<String> wordIds) {
+    final ids = wordIds.toSet();
+    final missing = [
+      for (final id in ids)
+        if (!_words.containsKey(id)) id,
+    ];
+    if (missing.isNotEmpty) throw WordNotFoundException(missing);
+    return [for (final id in ids) _words[id]!];
+  }
 
   List<Textbook> _sortedTextbooks() => _textbooks.values.toList()
     ..sort((a, b) {

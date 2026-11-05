@@ -8,6 +8,7 @@ import 'package:shiori/features/capture/capture_screen.dart';
 import 'package:shiori/features/library/textbook_screen.dart';
 import 'package:shiori/features/study/study_screen.dart';
 import 'package:shiori/shared/format.dart';
+import 'package:shiori/shared/hide_labels.dart';
 import 'package:shiori/shared/navigation.dart';
 import 'package:shiori/shared/widgets.dart';
 import 'package:shiori_core/shiori_core.dart';
@@ -139,7 +140,7 @@ class HomeScreen extends ConsumerWidget {
   Widget? _shelfCount(BuildContext context, AsyncValue<List<ShelfItem>> shelf) {
     final items = shelf.value;
     if (items == null || items.isEmpty) return null;
-    final words = items.fold<int>(0, (n, i) => n + i.wordCount);
+    final words = items.fold<int>(0, (n, i) => n + i.shownCount);
     return Text('단어 $words개', style: context.text.bodySmall);
   }
 }
@@ -314,7 +315,11 @@ class _ShelfTile extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '$dayText단어 ${item.wordCount}개',
+                        [
+                          '$dayText단어 ${item.shownCount}개',
+                          if (item.hiddenCount > 0)
+                            HideLabels.hiddenCount(item.hiddenCount),
+                        ].join(' · '),
                         style: context.text.bodySmall,
                       ),
                     ],

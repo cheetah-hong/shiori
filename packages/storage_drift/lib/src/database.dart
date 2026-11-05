@@ -28,7 +28,7 @@ final class ShioriDatabase extends _$ShioriDatabase {
   factory ShioriDatabase.memory() => ShioriDatabase(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -46,7 +46,7 @@ final class ShioriDatabase extends _$ShioriDatabase {
           migrator: m,
           from: from,
           to: to,
-          steps: migrationSteps(from1To2: _from1To2),
+          steps: migrationSteps(from1To2: _from1To2, from2To3: _from2To3),
         ),
       );
     },
@@ -62,3 +62,8 @@ final class ShioriDatabase extends _$ShioriDatabase {
 /// without it; every other column and row is copied as it was.
 Future<void> _from1To2(Migrator m, Schema2 schema) =>
     m.alterTable(TableMigration(schema.words));
+
+/// v3: `words.hidden_at` (이미 알아요) is added, empty for every word: nothing
+/// is hidden after the upgrade. Rows are not copied.
+Future<void> _from2To3(Migrator m, Schema3 schema) =>
+    m.addColumn(schema.words, schema.words.hiddenAt);

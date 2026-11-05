@@ -9,6 +9,11 @@
 //   xcrun simctl terminate <simulator> com.nihongoapp.shiori.dev
 //   flutter drive ... (same) --dart-define=SHIORI_PERSISTENCE_STEP=reopen
 //
+// Upgrade check: run the save step with an older build (an older checkout),
+// then, without uninstalling, the upgrade step with this build. It opens the
+// file the older schema wrote and checks that every word and learning record
+// is still there and nothing is hidden.
+//
 // Screenshots land in docs/screenshots/ (see test_driver/integration_test.dart).
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,6 +21,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:shiori/adapters/app_database.dart';
 import 'package:shiori/app/app.dart';
 import 'package:shiori/app/blocks.dart';
+import 'package:shiori/shared/hide_labels.dart';
 import 'package:shiori_storage_drift/shiori_storage_drift.dart';
 
 const _step = String.fromEnvironment('SHIORI_PERSISTENCE_STEP');
@@ -94,4 +100,30 @@ void main() {
     await tester.scrollUntilVisible(find.text('DAY 20  여행·교통'), 400);
     await shot(tester, '16_textbook_after_restart');
   }, skip: _step != 'reopen');
+
+  testWidgets(
+    'a file from the older schema opens with everything kept',
+    (tester) async {
+      final database = await pumpApp(tester);
+      await waitFor(tester, find.text('오늘 6개 외움'));
+
+      final version = await database
+          .customSelect('PRAGMA user_version')
+          .getSingle();
+      expect(version.read<int>('user_version'), database.schemaVersion);
+      final library = DriftLibraryRepository(database);
+      final words = await library.words();
+      final reviews = DriftReviewRepository(database);
+      final levels = (await reviews.cards()).values.map((c) => c.level).toList()
+        ..sort();
+      expect(words.length, 6);
+      expect(words.where((w) => w.isHidden), isEmpty);
+      expect(await library.hiddenWords(), isEmpty);
+      expect(levels, [2, 4, 4, 4, 4, 4]);
+      expect((await reviews.logs()).length, 7);
+      expect(find.textContaining(HideLabels.hiddenCount(1)), findsNothing);
+      expect(find.textContaining('단어 6개'), findsWidgets);
+    },
+    skip: _step != 'upgrade',
+  );
 }

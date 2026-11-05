@@ -1,9 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:shiori_core/shiori_core.dart';
+import 'package:shiori_storage_drift/src/chunks.dart';
 import 'package:shiori_storage_drift/src/database.dart';
-
-/// Ids per `IN (...)` query, well under SQLite's limit on bound variables.
-const int _idsPerQuery = 500;
 
 /// Learning-state storage in SQLite: review cards and the press log.
 final class DriftReviewRepository implements ReviewRepository {
@@ -35,8 +33,7 @@ final class DriftReviewRepository implements ReviewRepository {
   /// between them.
   Future<List<CardRow>> _cardsIn(List<String> ids) => _db.transaction(() async {
     final rows = <CardRow>[];
-    for (var i = 0; i < ids.length; i += _idsPerQuery) {
-      final chunk = ids.sublist(i, (i + _idsPerQuery).clamp(0, ids.length));
+    for (final chunk in chunked(ids)) {
       rows.addAll(
         await (_db.select(
           _db.reviewCards,

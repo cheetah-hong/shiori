@@ -5,45 +5,195 @@ import 'package:shiori/app/theme.dart';
 import 'package:shiori/features/study/study_controller.dart';
 import 'package:shiori/features/study/word_card.dart';
 import 'package:shiori/shared/format.dart';
+import 'package:shiori/shared/hide_labels.dart';
 import 'package:shiori_core/shiori_core.dart';
 
-/// 학습: one card at a time. 다시 학습 sends it to the back, 알고있음 schedules it.
-class StudyScreen extends ConsumerWidget {
+/// 학습: one card at a time. 다시 학습 sends it to the back, 알고있음 schedules it,
+/// 이미 알아요 hides the word (with 되돌리기 right after).
+class StudyScreen extends ConsumerStatefulWidget {
   const StudyScreen({super.key, this.textbookId});
 
   final String? textbookId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<StudyScreen> createState() => _StudyScreenState();
+}
+
+class _StudyScreenState extends ConsumerState<StudyScreen> {
+  /// The card hidden last, for 되돌리기. Cleared by the next answer.
+  SessionItem? _hidden;
+
+  /// A hide or undo that failed, shown in the same place.
+  String? _failure;
+
+  StudyController get _controller =>
+      ref.read(studyControllerProvider(widget.textbookId).notifier);
+
+  Future<void> _hide() => _guard(HideLabels.hideFailed, () async {
+    final item = await _controller.hide();
+    if (mounted && item != null) {
+      setState(() {
+        _hidden = item;
+        _failure = null;
+      });
+    }
+  });
+
+  Future<void> _undo(SessionItem item) =>
+      _guard(HideLabels.restoreFailed, () async {
+        await _controller.unhide(item);
+        if (mounted) setState(_clearNotice);
+      });
+
+  /// Runs a hide or an undo; a failure leaves the session as it was and
+  /// tells the learner instead of ending the session.
+  Future<void> _guard(String failure, Future<void> Function() write) async {
+    try {
+      await write();
+    } on Exception catch (e, stack) {
+      // A storage block failed (a disk error, say).
+      debugPrint('study hide failed: $e\n$stack');
+      _failed(failure);
+    } on Error catch (e, stack) {
+      // A bug in a block: report it like any uncaught error.
+      FlutterError.reportError(
+        FlutterErrorDetails(exception: e, stack: stack, library: 'study'),
+      );
+      _failed(failure);
+    }
+  }
+
+  void _clearNotice() {
+    _hidden = null;
+    _failure = null;
+  }
+
+  void _failed(String message) {
+    if (mounted) setState(() => _failure = message);
+  }
+
+  void _answer(Answer answer) {
+    if (_hidden != null || _failure != null) {
+      setState(_clearNotice);
+    }
+    _controller.answer(answer);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textbookId = widget.textbookId;
     final state = ref.watch(studyControllerProvider(textbookId));
+    final hidden = _hidden;
+    final failure = _failure;
     return Scaffold(
       body: SafeArea(
-        child: switch (state) {
-          AsyncData(value: final s) when s.total == 0 =>
-            const _NothingToStudy(),
-          AsyncData(value: final s) when s.isFinished => _SessionDone(
-            session: s,
+        child: Column(
+          children: [
+            if (failure != null)
+              _Notice(message: failure, failed: true)
+            else if (hidden != null)
+              _Notice(
+                message: HideLabels.hidden(hidden.word.headword),
+                onUndo: () => _undo(hidden),
+              ),
+            Expanded(
+              child: switch (state) {
+                AsyncData(value: final s) when s.total == 0 =>
+                  const _NothingToStudy(),
+                AsyncData(value: final s) when s.isFinished => _SessionDone(
+                  session: s,
+                ),
+                AsyncData(value: final s) => _Session(
+                  session: s,
+                  textbookId: textbookId,
+                  onAnswer: _answer,
+                  onHide: _hide,
+                ),
+                AsyncError(:final error) => _Failure(
+                  message: '$error',
+                  onRetry: () =>
+                      ref.invalidate(studyControllerProvider(textbookId)),
+                ),
+                _ => const Center(child: CircularProgressIndicator()),
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The line above the session after 이미 알아요: what was hidden and
+/// 되돌리기, or why it could not be hidden. It sits above the card, not over
+/// the answer buttons.
+class _Notice extends StatelessWidget {
+  const _Notice({required this.message, this.onUndo, this.failed = false});
+
+  final String message;
+  final VoidCallback? onUndo;
+  final bool failed;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final undo = onUndo;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        Space.gutter,
+        Space.xs,
+        Space.gutter,
+        0,
+      ),
+      child: Semantics(
+        liveRegion: true,
+        container: true,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 48),
+          padding: const EdgeInsets.only(left: Space.md, right: Space.xs),
+          decoration: BoxDecoration(
+            color: t.paper2,
+            borderRadius: BorderRadius.circular(Radii.tile),
           ),
-          AsyncData(value: final s) => _Session(
-            session: s,
-            textbookId: textbookId,
+          child: Row(
+            children: [
+              Icon(
+                failed ? Icons.error_outline : Icons.visibility_off_outlined,
+                size: 18,
+                color: failed ? t.risk : t.ink2,
+              ),
+              const SizedBox(width: Space.sm),
+              Expanded(
+                child: Text(
+                  message,
+                  style: context.text.bodyMedium?.copyWith(
+                    color: failed ? t.risk : t.ink,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              if (undo != null)
+                TextButton(onPressed: undo, child: const Text(HideLabels.undo)),
+            ],
           ),
-          AsyncError(:final error) => _Failure(
-            message: '$error',
-            onRetry: () => ref.invalidate(studyControllerProvider(textbookId)),
-          ),
-          _ => const Center(child: CircularProgressIndicator()),
-        },
+        ),
       ),
     );
   }
 }
 
 class _Session extends ConsumerWidget {
-  const _Session({required this.session, required this.textbookId});
+  const _Session({
+    required this.session,
+    required this.textbookId,
+    required this.onAnswer,
+    required this.onHide,
+  });
 
   final StudySession session;
   final String? textbookId;
+  final ValueChanged<Answer> onAnswer;
+  final VoidCallback onHide;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -129,10 +279,35 @@ class _Session extends ConsumerWidget {
             ),
           ),
         ),
+        // 이미 알아요 is a quiet text button apart from the two answers, so it
+        // is not taken for 알고있음 (which schedules the next review).
         Padding(
           padding: const EdgeInsets.fromLTRB(
             Space.gutter,
-            Space.lg,
+            Space.sm,
+            Space.gutter,
+            0,
+          ),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              style: TextButton.styleFrom(
+                foregroundColor: t.ink2,
+                minimumSize: const Size(48, 48),
+              ),
+              onPressed: onHide,
+              icon: const Icon(Icons.visibility_off_outlined, size: 18),
+              label: Semantics(
+                label: HideLabels.buttonSemantics,
+                child: const ExcludeSemantics(child: Text(HideLabels.button)),
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            Space.gutter,
+            Space.sm,
             Space.gutter,
             Space.lg,
           ),
@@ -150,7 +325,7 @@ class _Session extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(20),
                       ),
                     ),
-                    onPressed: () => controller.answer(Answer.retry),
+                    onPressed: () => onAnswer(Answer.retry),
                     icon: const Icon(Icons.undo_rounded, size: 20),
                     label: const Text('다시 학습'),
                   ),
@@ -167,7 +342,7 @@ class _Session extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(20),
                       ),
                     ),
-                    onPressed: () => controller.answer(Answer.known),
+                    onPressed: () => onAnswer(Answer.known),
                     child: Semantics(
                       label: '알고있음, 다음 복습 $preview',
                       child: ExcludeSemantics(

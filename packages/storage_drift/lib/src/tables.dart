@@ -50,6 +50,11 @@ class Words extends Table {
   IntColumn get page => integer().nullable()();
   IntColumn get createdAt => integer().map(const UtcMicrosConverter())();
 
+  /// When the learner hid the word (이미 알아요); null while it is shown (v3).
+  /// Not content: saving the word again keeps it.
+  IntColumn get hiddenAt =>
+      integer().nullable().map(const UtcMicrosConverter())();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 

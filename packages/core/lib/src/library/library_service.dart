@@ -2,6 +2,7 @@ import 'package:shiori_core/src/models/capture_draft.dart';
 import 'package:shiori_core/src/models/captured_entry.dart';
 import 'package:shiori_core/src/models/library.dart';
 import 'package:shiori_core/src/ports/clock.dart';
+import 'package:shiori_core/src/ports/hidden_word_repository.dart';
 import 'package:shiori_core/src/ports/repositories.dart';
 
 /// A library request the learner can fix (empty title, textbook gone).
@@ -37,7 +38,13 @@ final class DayOverview {
   const DayOverview({required this.day, required this.words});
 
   final TextbookDay day;
+
+  /// Every word of the day, hidden ones too.
   final List<Word> words;
+
+  /// The words that are not hidden.
+  List<Word> get shownWords =>
+      List.unmodifiable(words.where((w) => !w.isHidden));
 }
 
 final class TextbookOverview {
@@ -53,15 +60,53 @@ final class TextbookOverview {
   /// Words whose page had no readable DAY.
   final List<Word> undated;
 
+  /// Every word, hidden ones too.
   int get wordCount => days.fold(undated.length, (n, d) => n + d.words.length);
+
+  /// Hidden words, in textbook order (days, then undated).
+  List<Word> get hiddenWords => List.unmodifiable([
+    for (final d in days) ...d.words.where((w) => w.isHidden),
+    ...undated.where((w) => w.isHidden),
+  ]);
+
+  int get hiddenCount => hiddenWords.length;
+
+  int get shownCount => wordCount - hiddenCount;
 }
 
-/// Library use cases: textbooks, saving a reviewed draft, browsing by DAY.
+/// Library use cases: textbooks, saving a reviewed draft, browsing by DAY,
+/// hiding words the learner already knows.
 final class LibraryService {
-  LibraryService({required this.library, required this.clock});
+  /// [hidden] defaults to [library] when that block also hides words (both
+  /// stock blocks do).
+  LibraryService({
+    required this.library,
+    required this.clock,
+    HiddenWordRepository? hidden,
+  }) : hidden =
+           hidden ??
+           switch (library) {
+             final HiddenWordRepository h => h,
+             _ => null,
+           };
 
   final LibraryRepository library;
   final Clock clock;
+
+  /// Where words are hidden; null when no block can.
+  final HiddenWordRepository? hidden;
+
+  /// Hides [wordIds] now (이미 알아요). Their cards and logs stay.
+  Future<void> hideWords(Iterable<String> wordIds) =>
+      _hidden.hideWords(wordIds, at: clock.now());
+
+  /// Shows [wordIds] again.
+  Future<void> unhideWords(Iterable<String> wordIds) =>
+      _hidden.unhideWords(wordIds);
+
+  HiddenWordRepository get _hidden =>
+      hidden ??
+      (throw StateError('no HiddenWordRepository: words cannot be hidden'));
 
   Future<Textbook> createTextbook(String title, {String? templateId}) async {
     final clean = title.trim();

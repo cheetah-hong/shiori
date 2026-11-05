@@ -1,5 +1,6 @@
 import 'package:shiori_core/src/models/review.dart';
 import 'package:shiori_core/src/ports/clock.dart';
+import 'package:shiori_core/src/ports/hidden_word_repository.dart';
 import 'package:shiori_core/src/ports/repositories.dart';
 import 'package:shiori_core/src/ports/review_scheduler.dart';
 import 'package:shiori_core/src/study/session_builder.dart';
@@ -13,21 +14,30 @@ final class StudySummary {
     required this.newCount,
     required this.knownToday,
     required this.wordCount,
+    this.hiddenCount = 0,
   });
 
-  /// Review cards whose time has come.
+  /// Review cards whose time has come, hidden words left out.
   final int dueCount;
 
-  /// Words never studied.
+  /// Words never studied, hidden words left out.
   final int newCount;
 
   /// 알고있음 presses since the current study day began.
   final int knownToday;
+
+  /// Every word, hidden ones too.
   final int wordCount;
+
+  /// Of [wordCount], the words the learner hid.
+  final int hiddenCount;
 }
 
-/// Study use cases: summary, building a session, answering a card.
+/// Study use cases: summary, building a session, answering a card, hiding a
+/// card the learner already knows.
 final class StudyService {
+  /// [hidden] defaults to [library] when that block also hides words (both
+  /// stock blocks do).
   StudyService({
     required this.library,
     required this.reviews,
@@ -35,9 +45,19 @@ final class StudyService {
     required this.clock,
     this.settings = const StudySettings(),
     this.builder = const SessionBuilder(),
-  }) : calendar = StudyCalendar.checked(settings.dayStartHour);
+    HiddenWordRepository? hidden,
+  }) : calendar = StudyCalendar.checked(settings.dayStartHour),
+       hidden =
+           hidden ??
+           switch (library) {
+             final HiddenWordRepository h => h,
+             _ => null,
+           };
 
   final LibraryRepository library;
+
+  /// Where 이미 알아요 hides words; null when no block can.
+  final HiddenWordRepository? hidden;
   final ReviewRepository reviews;
   final ReviewScheduler scheduler;
   final Clock clock;
@@ -49,15 +69,23 @@ final class StudyService {
     final now = clock.now();
     final words = await library.words(textbookId: textbookId);
     final ids = {for (final w in words) w.id};
+    final shown = {
+      for (final w in words)
+        if (!w.isHidden) w.id,
+    };
     final cards = await reviews.cards(wordIds: ids);
     final todayLogs = await reviews.logs(since: calendar.startOfStudyDay(now));
     return StudySummary(
-      dueCount: cards.values.where((c) => c.isDue(now)).length,
-      newCount: ids.where((id) => !cards.containsKey(id)).length,
+      dueCount: cards.values
+          .where((c) => shown.contains(c.wordId) && c.isDue(now))
+          .length,
+      newCount: shown.where((id) => !cards.containsKey(id)).length,
+      // Presses made before a word was hidden still happened today.
       knownToday: todayLogs
           .where((l) => l.answer == Answer.known && ids.contains(l.wordId))
           .length,
       wordCount: words.length,
+      hiddenCount: words.length - shown.length,
     );
   }
 
@@ -128,6 +156,27 @@ final class StudyService {
         return session.afterRetry();
     }
   }
+
+  /// 이미 알아요: hides the current card's word and moves on. The card and the
+  /// log are not touched. Nothing changes when hiding fails.
+  Future<StudySession> hide(StudySession session) async {
+    final item = session.current;
+    if (item == null) throw StateError('the session is finished');
+    final now = clock.now();
+    await _hidden.hideWords([item.word.id], at: now);
+    return session.afterHidden(at: now);
+  }
+
+  /// Undoes [hide] for [item]: shows its word again and puts it back as the
+  /// current card of [session].
+  Future<StudySession> unhide(StudySession session, SessionItem item) async {
+    await _hidden.unhideWords([item.word.id]);
+    return session.restored(item);
+  }
+
+  HiddenWordRepository get _hidden =>
+      hidden ??
+      (throw StateError('no HiddenWordRepository: words cannot be hidden'));
 
   /// Interval for the 알고있음 button of [item].
   Duration previewKnown(SessionItem item) =>

@@ -85,6 +85,30 @@ final class StudySession {
     );
   }
 
+  /// The current card leaves the session without an answer (이미 알아요):
+  /// it no longer counts toward [total]. [at] is recorded as [finishedAt]
+  /// when no card is left.
+  StudySession afterHidden({DateTime? at}) {
+    _requireCurrent();
+    return _next(
+      queue: queue.skip(1),
+      total: total - 1,
+      knownCount: knownCount,
+      knownNewCount: knownNewCount,
+      retryCount: retryCount,
+      finishedAt: queue.length == 1 ? at : null,
+    );
+  }
+
+  /// [item] comes back as the current card (undoing [afterHidden]).
+  StudySession restored(SessionItem item) => _next(
+    queue: [item, ...queue],
+    total: total + 1,
+    knownCount: knownCount,
+    knownNewCount: knownNewCount,
+    retryCount: retryCount,
+  );
+
   SessionItem _requireCurrent() {
     final item = current;
     if (item == null) throw StateError('the session is finished');
@@ -93,13 +117,14 @@ final class StudySession {
 
   StudySession _next({
     required Iterable<SessionItem> queue,
+    int? total,
     required int knownCount,
     required int knownNewCount,
     required int retryCount,
     DateTime? finishedAt,
   }) => StudySession(
     queue: List.unmodifiable(queue),
-    total: total,
+    total: total ?? this.total,
     startedAt: startedAt,
     knownCount: knownCount,
     knownNewCount: knownNewCount,

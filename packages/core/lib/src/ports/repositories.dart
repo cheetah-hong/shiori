@@ -17,16 +17,23 @@ abstract interface class LibraryRepository {
 
   Future<void> saveDay(TextbookDay day);
 
-  /// Ordered by textbook, day and word number.
+  /// Ordered by textbook, day and word number. Hidden words are included
+  /// (`Word.isHidden` tells them apart).
   Future<List<Word>> words({String? textbookId, int? day});
 
   Future<Word?> word(String id);
 
   /// Every textbook (in the order of [textbooks]) with its word count and
   /// days, in one read: the shelf does not list each textbook's words.
+  /// Counts and days cover hidden words too; `TextbookStats.hiddenCount`
+  /// says how many are hidden.
   Future<List<TextbookStats>> textbookStats();
 
-  /// Inserts or replaces by id.
+  /// Inserts or replaces the content of each word by id.
+  ///
+  /// The hidden state is not content: a word already stored keeps it and a
+  /// new word is stored shown, whatever `Word.hiddenAt` says. Only
+  /// `HiddenWordRepository` hides and shows words.
   Future<void> saveWords(List<Word> words);
 
   /// Runs [action] so that its writes land together or not at all.

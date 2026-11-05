@@ -19,16 +19,16 @@
 | 항목 | 명령 | 결과 |
 |---|---|---|
 | core 정적 분석 | `cd packages/core && dart analyze` | 문제 없음 |
-| core 테스트 | `cd packages/core && dart test` | **401개 통과**, 교재 세트 11개 건너뜀 (13·14절 반영 뒤. 12절 뒤 317개) |
-| core 테스트 (교재 세트 포함) | `SHIORI_PRIVATE_DIR=<로컬 폴더> dart test` | **414개 통과** (13·14절 반영 뒤. 12절 뒤 330개) |
+| core 테스트 | `cd packages/core && dart test` | **427개 통과**, 교재 세트 11개 건너뜀 (16절 반영 뒤. 14절 뒤 401개) |
+| core 테스트 (교재 세트 포함) | `SHIORI_PRIVATE_DIR=<로컬 폴더> dart test` | **440개 통과** (16절 반영 뒤. 14절 뒤 414개) |
 | core 커버리지 | `dart run coverage:test_with_coverage -o coverage` | 줄 커버리지 **97.7%** (1805/1847줄, 교재 세트 없이. `InMemoryLibraryRepository.textbookStats`는 저장 패키지의 계약 테스트가 돌려서 core 숫자에는 안 잡힘) |
 | 사전 패키지 | `cd packages/dict_jmdict && dart analyze && dart test` | 문제 없음, **72개 통과** (테스트 DB 103개 항목, 13절 반영 뒤. 12절 뒤 66개) |
 | 사전 블록 (어댑터) | `cd packages/jmdict_block && dart analyze && dart test` | 문제 없음, **23개 통과** (8절, 12절, 13절) |
 | 사전 asset 스크립트 | `python3 -m unittest discover -s tools/dict -p 'test_*.py'` | **33개 통과** (네트워크 없음. 14절 한국어 뜻 사전 27개 더함, 그 전 6개) |
 | 한국어 뜻 사전 블록 | `cd packages/krdict_block && dart analyze && dart test` | 문제 없음, **74개 통과** (지어낸 견본 30항목, 14절) |
-| 저장 패키지 | `cd packages/storage_drift && dart analyze && dart test` | 문제 없음, **74개 통과** (7절, 9절, 스키마 v2 마이그레이션 10절) |
+| 저장 패키지 | `cd packages/storage_drift && dart analyze && dart test` | 문제 없음, **122개 통과** (7절, 9절, 스키마 v2 마이그레이션 10절, 숨김·스키마 v3 16절) |
 | app 정적 분석 | `cd app && flutter analyze` | 문제 없음 |
-| app 테스트 | `cd app && flutter test` (기본 flavor = dev), `flutter test --flavor dev` | **113개 통과** (14절 반영 뒤. 11절 뒤 101개, 사전 asset 있음·없음 둘 다) |
+| app 테스트 | `cd app && flutter test` (기본 flavor = dev), `flutter test --flavor dev` | **120개 통과** (16절 반영 뒤. 14절 뒤 113개, 사전 asset 있음·없음 둘 다) |
 | iOS 채널 순수 로직 | `cd app/ios && xcodebuild test -workspace Runner.xcworkspace -scheme dev -destination 'id=<시뮬레이터>' -only-testing:RunnerTests` (11절부터 스킴 `dev`) | **5개 통과** (회전 투표·가로세로 바꿈·방향 합성, 6.4절) |
 | Android 채널 순수 로직 | `cd app/android && ./gradlew :app:testDevDebugUnitTest` (JDK 21, 11절부터 flavor 이름이 붙음) | **11개 통과** (조각 자르기·회전·상자 없는 글자, 6.5절) |
 | app 커버리지 | `flutter test --coverage` | 줄 커버리지 **92.2%** (1902/2064줄, 11절 반영 뒤. 10절 뒤 91.6%) |
@@ -405,7 +405,7 @@ ML Kit가 놓친 ★를 사진의 붉은 픽셀 비율로 되찾던 검사(core 
 
 ### 7.2 스키마 버전과 마이그레이션
 
-- 지금 `schemaVersion = 2` (10절). 덤프: `packages/storage_drift/drift_schemas/shiori_database/drift_schema_v1.json`, `drift_schema_v2.json`,
+- 지금 `schemaVersion = 3` (16절, 그 전 v2는 10절). 덤프: `packages/storage_drift/drift_schemas/shiori_database/drift_schema_v1.json`, `drift_schema_v2.json`, `drift_schema_v3.json`,
   단계 파일: `lib/src/database.steps.dart`(생성), 테스트 도우미: `test/migrations/generated/`
   (`dart run drift_dev schema generate drift_schemas/shiori_database/ test/migrations/generated/`).
 - v1 → v2: `words.important` 열을 뺍니다. `Migrator.alterTable(TableMigration(schema.words))`로 SQLite 권장 12단계(새 표 → 복사 → 옛 표 지움 → 이름 바꿈, 색인 다시 만듦)를
@@ -856,3 +856,86 @@ iOS 앱 번들에는 `assets/dict/.gitignore`(71바이트)도 들어갑니다(�
 | `app/test/features/about_glossary_test.dart`, `review_glossary_test.dart` | 정보 화면 출처 문구·판 날짜·라이선스 링크, 라이선스 페이지 항목; 검토 화면에서 鼻의 빈 뜻이 「코」+「추정」 |
 
 결과: core 337개 통과(교재 세트 포함 350개), 사전 블록 74개, Python 33개, app 113개 통과.
+
+## 16. 아는 단어 숨기기 「이미 알아요」 (저장 스키마 v3, 2026-11-06)
+
+사진의 문장에서 나온 단어가 모두 단어장에 들어오면 이미 아는 쉬운 단어도 섞입니다. 그런 단어를 한 번 눌러 학습과 목록에서 빼는 상태를 더했습니다.
+학습 카드의 「알고있음」(다음 복습을 미루는 답 버튼)과는 다른 동작이고, 그 버튼과 「다시 학습」은 그대로입니다.
+
+### 16.1 설계
+
+- **숨김 상태는 단어에 둡니다** — `Word.hiddenAt`(숨긴 시각, 보일 때 null)과 `isHidden`, 저장은 `words.hidden_at`(UTC epoch 마이크로초, NULL 가능).
+  따로 표를 두지 않은 이유: `words()` 한 번으로 숨김 여부까지 읽혀야 하고(사진에서 다시 들어온 표제어를 거르는 쪽이 이 조회를 씀), 교재별 집계도 같은 `textbooks LEFT JOIN words` 쿼리에서
+  `COUNT(hidden_at)` 하나로 끝납니다. 표를 나누면 모든 조회에 조인이 붙고, 단어 없이 숨김 행만 남는 경우를 따로 막아야 합니다.
+- **숨김은 내용이 아닙니다.** `saveWords`는 숨김을 바꾸지 않습니다: 이미 있는 단어는 저장된 숨김을 지키고(drift는 `ON CONFLICT DO UPDATE`의 SET에서 `hidden_at`을 뺌),
+  새 단어는 `Word.hiddenAt`이 무엇이든 보이는 상태로 들어갑니다. 그래서 같은 쪽을 다시 찍어 저장해도 숨긴 단어가 되살아나지 않습니다.
+- **포트 `HiddenWordRepository`**(`packages/core/lib/src/ports/hidden_word_repository.dart`): `hideWords(ids, at:)`, `unhideWords(ids)`, `hiddenWords({textbookId})`.
+  - 모두 또는 하나도 안 함: 없는 단어 ID가 하나라도 있으면 `WordNotFoundException(ids)`을 던지고 아무것도 바꾸지 않습니다(조용히 넘어가지 않음). drift는 확인과 쓰기를 트랜잭션 하나로 합니다.
+  - 두 번 숨겨도 처음 숨긴 시각이 남습니다. 숨기지 않은 단어를 되살리는 것은 아무 일도 하지 않습니다. ID는 500개씩 나눠 `IN`으로 묻습니다.
+  - `LibraryRepository`에 메서드를 더하지 않고 따로 둔 이유: 그 포트를 구현한 블록·테스트용 대역이 여럿이라 포트를 넓히면 모두 고쳐야 합니다. 기본 블록 둘(`InMemoryLibraryRepository`, `DriftLibraryRepository`)이 두 포트를 함께 구현하고,
+    `StudyService`·`LibraryService`는 `hidden:`을 주지 않으면 서재 블록에서 꺼냅니다(숨길 수 없는 블록이면 숨기기는 `StateError`).
+- **숨겨도 학습 기록은 그대로입니다.** 카드(단계·다음 복습 시각·횟수)와 누른 기록을 지우거나 바꾸지 않습니다. 되살리면 같은 카드로 세션에 돌아옵니다.
+- **읽기:** `words()`·`word()`는 숨긴 단어도 돌려줍니다(`isHidden`으로 구분). `textbookStats()`의 `wordCount`·`days`는 숨긴 단어까지 세고 `hiddenCount`가 그중 숨긴 수입니다(`shownCount` = 뺀 수).
+- **학습:** `SessionBuilder`가 숨긴 단어를 뺍니다(복습 예정·새 단어 모두, 목표 장수 자리도 차지하지 않음). `StudySummary`의 `dueCount`·`newCount`에서 빠지고 `hiddenCount`로 따로 셉니다.
+  `wordCount`는 숨긴 단어까지 셉니다(모두 숨겼을 때 홈이 "먼저 교재 페이지를 등록해 주세요"로 잘못 안내하지 않게). 숨기기 전에 누른 「알고있음」은 오늘 외운 수에 그대로 남습니다.
+- **세션:** `StudyService.hide(session)`은 지금 카드의 단어를 숨기고 다음 카드를 돌려줍니다(카드·기록은 쓰지 않음, 세션 장수 −1). `unhide(session, item)`은 그 카드를 맨 앞으로 되돌립니다(장수 +1, 끝난 세션이면 다시 엶).
+
+### 16.2 스키마 v3와 마이그레이션
+
+- `schemaVersion` 2 → 3. v2 → v3 단계는 `ALTER TABLE words ADD COLUMN hidden_at INTEGER NULL` 하나(`Migrator.addColumn`)라 행을 옮기지 않고, 모든 단어가 "안 숨김"으로 시작합니다.
+  v1 파일은 v1 → v2 → v3를 차례로 밟고, 모든 단계가 트랜잭션 하나라 중간에 실패하면 옛 파일이 그대로 남습니다.
+- 덤프 `drift_schema_v3.json`, 단계 파일 `database.steps.dart`(`Schema3`), 테스트 도우미 `test/migrations/generated/schema_v3.dart`를 생성 도구로 만들었습니다.
+  `dart run drift_dev make-migrations`는 `test/migrations/shiori_database/`에 예시 테스트와 도우미 사본을 함께 만드는데, 이 저장소는 `test/migrations/generated/`를 쓰므로 그 폴더는 지웁니다.
+- 생성 코드 확인: `dart run build_runner build --delete-conflicting-outputs`, `make-migrations`, `schema generate`를 다시 돌려도 생성 파일 다섯 개(`database.g.dart`, `database.steps.dart`, v3 덤프, 도우미 둘)가 바뀌지 않음.
+- "이 빌드가 모르는 버전" 테스트(`drift_storage_test.dart`)는 user_version 3을 쓰던 것을 `schemaVersion + 1`로 바꿨습니다(이제 3은 지금 버전).
+
+### 16.3 화면
+
+| 화면 | 동작 |
+|---|---|
+| 학습 카드 | 카드 아래 오른쪽의 글자 버튼 「이미 알아요」(눈 가림 아이콘, 채움 없음)를 누르면 그 단어를 숨기고 다음 카드로 갑니다. 아래의 두 답 버튼(「다시 학습」·「알고있음」)과 자리·모양이 다르고, 화면 읽기 이름도 「이미 알아요: 이 단어를 숨기고 다음 카드로」 / 「알고있음, 다음 복습 …」으로 다릅니다 |
+| 되돌리기 | 숨긴 직후 화면 맨 위(카드 위)에 「「雨」 숨겼어요 · 되돌리기」 줄이 나옵니다. 답 버튼을 가리지 않도록 스낵바 대신 이 줄을 씁니다. 다음 답을 누르면 사라집니다. 마지막 카드를 숨겨 세션이 끝나도 남아 있어 되돌리면 세션이 다시 열립니다. 숨기기가 실패하면 같은 자리에 「숨기지 못했어요」가 나오고 카드는 그대로입니다 |
+| 교재 목록 | 숨긴 단어는 DAY 목록에서 빠지고(모두 숨긴 DAY는 머리글도 빠짐), 맨 아래 「숨긴 단어 n개 보기」로 펼쳐 「되살리기」를 누릅니다. 각 줄 오른쪽의 눈 가림 아이콘으로 목록에서도 숨기고, 스낵바의 「되돌리기」로 되돌립니다. 위의 「단어」 수·학습함·장기 기억, DAY별 개수는 숨기지 않은 단어만 셉니다. 숨기거나 되살린 뒤 목록을 다시 읽는 동안에도 이전 목록을 그대로 두어 스크롤 위치와 펼친 숨긴 단어가 유지됩니다 |
+| 홈 | 교재 카드 「DAY 01 · 단어 8개 · 숨김 2개」(숨긴 것이 없으면 「숨김」 생략), 「내 교재」 옆 합계와 오늘 학습할 수(복습할 단어·새 단어)도 숨기지 않은 단어만 셉니다 |
+
+문구는 `app/lib/shared/hide_labels.dart` 한 곳에 있습니다(버튼 이름을 바꿀 때 이 파일만 고침).
+
+`flutter drive -d <iPhone 17 Pro> --driver=test_driver/integration_test.dart --target=integration_test/known_hide_screenshots_test.dart` (메모리 DB, 합성 샘플 10쪽):
+
+| 파일 (`docs/screenshots/`) | 화면 |
+|---|---|
+| `24_study_hide_button.png` | 학습 카드: 카드 아래 「이미 알아요」, 그 아래 「다시 학습」·「알고있음 21일 후」 |
+| `25_study_hidden_undo.png` | 「이미 알아요」 뒤: 맨 위 「「雨」 숨겼어요 · 되돌리기」, 다음 카드, 0 / 9 |
+| `26_textbook_hidden_open.png` | 교재 목록: DAY 01 8개, 줄마다 숨기기 아이콘, 「숨긴 단어 접기」 아래 雨·雲과 「되살리기」 |
+| `27_home_hidden_count.png` | 홈: 새 단어 8, 「오늘 학습 시작 · 8장」, 「DAY 01 · 단어 8개 · 숨김 2개」 |
+
+### 16.4 옛 앱 데이터가 남는지 (시뮬레이터)
+
+iPhone 17 Pro (iOS 26.5), dev 앱. 스키마 v2 앱(이 변경 바로 전 커밋의 소스)으로 `integration_test/persistence_test.dart`의 `save` 단계를 `--keep-app-running`으로 돌려
+합성 DAY 20 6단어를 저장·학습한 뒤(파일: user_version 2, 단어 6·카드 6·기록 7, `hidden_at` 열 없음), 앱을 지우지 않고 이 빌드로 같은 파일의 새 단계 `upgrade`를 돌렸습니다
+(`--dart-define=SHIORI_PERSISTENCE_STEP=upgrade`).
+
+- 앱 안 단언: user_version = `schemaVersion`(3), 단어 6개 모두 안 숨김, `hiddenWords()` 없음, 카드 단계 [2,4,4,4,4,4], 기록 7개, 홈 「오늘 6개 외움」·숨김 표시 없음 — 통과.
+- 파일 비교(시뮬레이터 컨테이너의 `shiori.sqlite`를 두 시점에 덤프): `textbooks`·`textbook_days`·`review_cards`·`review_logs`의 모든 행이 같고, `words`는 `hidden_at`을 빼면 모든 칸이 같으며 `hidden_at`은 6행 모두 NULL.
+
+### 16.5 테스트
+
+| 파일 | 내용 |
+|---|---|
+| `packages/storage_drift/test/contract/hidden_words_contract.dart` (+ `hidden_words_contract_test.dart`가 InMemory·drift 둘 다 돌림) | 숨김 상태·시각 저장, 되살리기, 두 번 숨겨도 첫 시각, 없는 ID는 이름을 단 오류, 1200개 한 번에; `words()`가 숨긴 단어 포함·필드로 구분, `hiddenWords()` 순서·교재 거르기·바꿀 수 없는 목록, 다시 저장해도 숨김 유지, `saveWords`는 숨기지 않음, 실패한 트랜잭션 안의 숨기기 되돌림; 집계(`wordCount`·`hiddenCount`·`days`, `words()`와 일치); 세션에서 빠짐·카드와 기록 유지·되살리면 같은 카드, 요약 수, 세션 안 숨기기·되돌리기, 같은 쪽 다시 저장해도 숨김 유지; 일부 ID가 없으면 아무것도 안 바뀜 (22개 × 2) |
+| `packages/storage_drift/test/drift_hidden_words_test.dart` | 저장 오류 주입(두 번째 단어 쓰기에서 SQLite `RAISE`): 숨김 0개·카드와 기록 그대로, 학습 화면 경로(`StudyService.hide`)도 같음; 파일을 닫았다 열어도 숨김 유지 |
+| `packages/storage_drift/test/migrations/migration_test.dart` | 지금 스키마 = v3 덤프, 새 DB는 v3이고 `hidden_at` 있음, v1·v2·v3 파일 검증, v1 → v3 모든 칸, **v2 → v3**: 교재 2·DAY 3·단어 5·카드 3·기록 4가 그대로이고 열은 `hidden_at` 하나만 늘고 모두 NULL, 블록으로 읽어도 숨김 0·카드와 기록 그대로 |
+| `packages/core/test/study/known_hide_session_test.dart`, `known_hide_service_test.dart` | 세션 구성에서 빠짐(목표 자리도 안 차지), `afterHidden`·`restored`(진행률, 마지막 카드, 다시 학습한 카드, 끝난 세션), 서비스의 숨기기·되돌리기, 카드 유지, 요약, 숨기기 실패는 아무것도 안 바꿈, 숨길 블록 없음·끝난 세션은 오류 |
+| `packages/core/test/library/known_hide_library_test.dart` | `LibraryService.hideWords`·`unhideWords`, 개요의 숨긴 단어·수, 모델 같음 비교·`TextbookStats.hiddenCount` |
+| `app/test/features/known_hide_study_test.dart` | 「이미 알아요」 → 카드 사라짐·다음 카드·되돌리기로 되살아남, 「알고있음」 동작·표시 그대로, 두 버튼의 화면 읽기 이름이 다름, 마지막 카드를 숨겨 끝난 세션 되돌리기, 숨기기 실패 안내 |
+| `app/test/features/known_hide_textbook_test.dart` | 교재 목록: 숨긴 단어 기본으로 안 보임·「숨긴 단어 n개 보기」로 펼쳐 되살리기, 목록에서 숨기기와 되돌리기; 홈 교재 카드·합계·오늘 학습할 수 |
+
+결과(16절 반영 뒤):
+
+| 항목 | 결과 |
+|---|---|
+| 정적 분석 | core·storage_drift `dart analyze`, app `flutter analyze` 문제 없음 |
+| 테스트 | core **427개**(교재 세트 포함 **440개**), storage_drift **122개**, app **120개** 통과 |
+| 캡처 회귀 | 합성 row 31/35 그대로(이 변경은 캡처를 건드리지 않음), 기준 구현과 다른 칸 0 |
+| 빌드 | `flutter build apk --debug --flavor dev` 성공 (`app-dev-debug.apk`, 195 MB) |
+| 시뮬레이터 | 16.3절 스크린샷 4장, 16.4절 v2 → v3 덮어 설치 데이터 보존 |
