@@ -1,0 +1,3 @@
+# downloaded engines, models, dictionaries, audio: never commit
+.cache/
+__pycache__/
