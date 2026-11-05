@@ -1,0 +1,461 @@
+{
+ "_note": "Synthetic pages made by tools/synthetic/make_general_pages.py. Every word, meaning, sentence and translation is invented; no textbook content. vocab: word pairs printed on the page (headword, printed or dictionary readings, printed meaning; readings [] for kana-only words, meaning null when none is printed; な-adjective headwords keep the printed だ). sentence_words: dictionary forms of the content words of the Japanese sentences (nouns, verbs, adjectives, adverbs; a する verb is given as its noun). ignore: things that may come out without penalty (headers, speaker names, the neighbouring page's cut text, function verbs).",
+ "format": "general-1",
+ "pages": [
+  {
+   "page": "g01",
+   "fixture": "g01",
+   "kind": "box",
+   "vocab": [
+    {
+     "headword": "料理",
+     "readings": [
+      "りょうり"
+     ],
+     "meaning": "요리"
+    },
+    {
+     "headword": "旅行",
+     "readings": [
+      "りょこう"
+     ],
+     "meaning": "여행"
+    },
+    {
+     "headword": "地図",
+     "readings": [
+      "ちず"
+     ],
+     "meaning": "지도"
+    },
+    {
+     "headword": "両親",
+     "readings": [
+      "りょうしん"
+     ],
+     "meaning": "양친, 부모"
+    },
+    {
+     "headword": "利用",
+     "readings": [
+      "りよう"
+     ],
+     "meaning": "이용"
+    },
+    {
+     "headword": "予約",
+     "readings": [
+      "よやく"
+     ],
+     "meaning": "(뒤에 する가 붙어) 예약하다"
+    },
+    {
+     "headword": "走る",
+     "readings": [
+      "はしる"
+     ],
+     "meaning": "달리다"
+    },
+    {
+     "headword": "選ぶ",
+     "readings": [
+      "えらぶ"
+     ],
+     "meaning": "고르다, 여럿 가운데서 가려 뽑다"
+    },
+    {
+     "headword": "景色",
+     "readings": [
+      "けしき"
+     ],
+     "meaning": "경치, 눈에 보이는 산과 들의 모습"
+    },
+    {
+     "headword": "入場券",
+     "readings": [
+      "にゅうじょうけん"
+     ],
+     "meaning": "입장권"
+    },
+    {
+     "headword": "ゆっくり",
+     "readings": [],
+     "meaning": "천천히"
+    },
+    {
+     "headword": "すっかり",
+     "readings": [],
+     "meaning": "완전히, 남김없이"
+    },
+    {
+     "headword": "カメラ",
+     "readings": [],
+     "meaning": "카메라"
+    },
+    {
+     "headword": "ノート",
+     "readings": [],
+     "meaning": "노트, 공책"
+    }
+   ],
+   "sentence_words": [
+    "日曜日",
+    "公園",
+    "散歩",
+    "朝",
+    "弁当",
+    "作る",
+    "駅",
+    "前",
+    "待つ"
+   ],
+   "ignore": [
+    "第7課",
+    "第",
+    "課",
+    "週末",
+    "予定",
+    "ユナ",
+    "ケン",
+    "단어",
+    "ロ",
+    "口",
+    "■",
+    "□",
+    "38",
+    "する",
+    "散歩する",
+    "いる",
+    "チケット",
+    "티켓",
+    "紙",
+    "手紙",
+    "出す",
+    "早い",
+    "休む"
+   ]
+  },
+  {
+   "page": "g02",
+   "fixture": "g02",
+   "kind": "sentence",
+   "vocab": [],
+   "sentence_words": [
+    "妹",
+    "毎晩",
+    "ピアノ",
+    "練習",
+    "昨日",
+    "デパート",
+    "新しい",
+    "靴",
+    "買う",
+    "起きる",
+    "顔",
+    "洗う",
+    "スープ",
+    "辛い",
+    "弟",
+    "牛乳",
+    "飲む",
+    "有名",
+    "絵"
+   ],
+   "ignore": [
+    "〜",
+    "문장 연습",
+    "52",
+    "わたし",
+    "医者",
+    "する",
+    "練習する",
+    "この",
+    "これ",
+    "猫",
+    "寝る",
+    "いる",
+    "帰る"
+   ]
+  },
+  {
+   "page": "g03",
+   "fixture": "g03",
+   "kind": "noreading",
+   "vocab": [
+    {
+     "headword": "季節",
+     "readings": [
+      "きせつ"
+     ],
+     "meaning": "계절"
+    },
+    {
+     "headword": "台風",
+     "readings": [
+      "たいふう"
+     ],
+     "meaning": "태풍"
+    },
+    {
+     "headword": "冷蔵庫",
+     "readings": [
+      "れいぞうこ"
+     ],
+     "meaning": "냉장고"
+    },
+    {
+     "headword": "洗濯",
+     "readings": [
+      "せんたく"
+     ],
+     "meaning": "세탁, 빨래"
+    },
+    {
+     "headword": "忘れる",
+     "readings": [
+      "わすれる"
+     ],
+     "meaning": "잊다, 잊어버리다"
+    },
+    {
+     "headword": "届く",
+     "readings": [
+      "とどく"
+     ],
+     "meaning": "닿다, 도착하다"
+    },
+    {
+     "headword": "暖かい",
+     "readings": [
+      "あたたかい"
+     ],
+     "meaning": "따뜻하다"
+    },
+    {
+     "headword": "きれい",
+     "readings": [],
+     "meaning": "예쁘다, 깨끗하다"
+    },
+    {
+     "headword": "タオル",
+     "readings": [],
+     "meaning": "수건, 타월"
+    },
+    {
+     "headword": "歴史",
+     "readings": [
+      "れきし"
+     ],
+     "meaning": "역사"
+    }
+   ],
+   "sentence_words": [],
+   "ignore": [
+    "확인 단어",
+    "73",
+    "電話",
+    "話",
+    "かける"
+   ]
+  },
+  {
+   "page": "g04",
+   "fixture": "g04",
+   "kind": "warped",
+   "vocab": [
+    {
+     "headword": "店",
+     "readings": [
+      "みせ"
+     ],
+     "meaning": "가게"
+    },
+    {
+     "headword": "財布",
+     "readings": [
+      "さいふ"
+     ],
+     "meaning": "지갑"
+    },
+    {
+     "headword": "品物",
+     "readings": [
+      "しなもの"
+     ],
+     "meaning": "물건, 상품"
+    },
+    {
+     "headword": "売店",
+     "readings": [
+      "ばいてん"
+     ],
+     "meaning": "매점"
+    },
+    {
+     "headword": "傘",
+     "readings": [
+      "かさ"
+     ],
+     "meaning": "우산"
+    },
+    {
+     "headword": "帽子",
+     "readings": [
+      "ぼうし"
+     ],
+     "meaning": "모자"
+    },
+    {
+     "headword": "お釣り",
+     "readings": [
+      "おつり"
+     ],
+     "meaning": "거스름돈"
+    },
+    {
+     "headword": "袋",
+     "readings": [
+      "ふくろ"
+     ],
+     "meaning": "봉투, 자루"
+    },
+    {
+     "headword": "並ぶ",
+     "readings": [
+      "ならぶ"
+     ],
+     "meaning": "줄을 서다, 늘어서다"
+    },
+    {
+     "headword": "払う",
+     "readings": [
+      "はらう"
+     ],
+     "meaning": "지불하다, 치르다"
+    },
+    {
+     "headword": "安い",
+     "readings": [
+      "やすい"
+     ],
+     "meaning": "싸다"
+    },
+    {
+     "headword": "丈夫だ",
+     "readings": [
+      "じょうぶだ"
+     ],
+     "meaning": "튼튼하다"
+    },
+    {
+     "headword": "便利だ",
+     "readings": [
+      "べんりだ"
+     ],
+     "meaning": "편리하다"
+    },
+    {
+     "headword": "レジ",
+     "readings": [],
+     "meaning": "계산대"
+    },
+    {
+     "headword": "混む",
+     "readings": [
+      "こむ"
+     ],
+     "meaning": "붐비다, 혼잡하다"
+    }
+   ],
+   "sentence_words": [],
+   "ignore": [
+    "DAY",
+    "05",
+    "가게, 물건",
+    "ロロロ",
+    "橋",
+    "渡る"
+   ]
+  },
+  {
+   "page": "g05",
+   "fixture": "g05",
+   "kind": "sidebar",
+   "vocab": [
+    {
+     "headword": "祖父",
+     "readings": [
+      "そふ"
+     ],
+     "meaning": "할아버지"
+    },
+    {
+     "headword": "畑",
+     "readings": [
+      "はたけ"
+     ],
+     "meaning": "밭"
+    },
+    {
+     "headword": "野菜",
+     "readings": [
+      "やさい"
+     ],
+     "meaning": "채소, 야채"
+    },
+    {
+     "headword": "育てる",
+     "readings": [
+      "そだてる"
+     ],
+     "meaning": "기르다, 키우다"
+    },
+    {
+     "headword": "叔父",
+     "readings": [
+      "おじ"
+     ],
+     "meaning": "삼촌(부모의 남자 형제)"
+    },
+    {
+     "headword": "収穫",
+     "readings": [
+      "しゅうかく"
+     ],
+     "meaning": "수확"
+    },
+    {
+     "headword": "手伝う",
+     "readings": [
+      "てつだう"
+     ],
+     "meaning": "돕다"
+    }
+   ],
+   "sentence_words": [
+    "祖父",
+    "畑",
+    "野菜",
+    "育てる",
+    "秋",
+    "叔父",
+    "収穫",
+    "手伝う",
+    "トマト",
+    "甘い",
+    "おいしい"
+   ],
+   "ignore": [
+    "단어",
+    "읽어 봅시다",
+    "17",
+    "いる",
+    "なる",
+    "くれる",
+    "乗る",
+    "昼寝",
+    "する"
+   ]
+  }
+ ]
+}

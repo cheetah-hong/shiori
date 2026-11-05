@@ -1,0 +1,1741 @@
+{
+ "_note": "Dictionary facts for every Japanese word on the pages of tools/synthetic/make_general_pages.py, taken from JMdict (EDRDG, CC BY-SA 4.0): id = ent_seq, pos = codes of all senses, pri = priority bitmask (news1 news2 ichi1 ichi2 spec1 spec2 gai1 gai2) and nf = nfXX band of the form used, uk = some sense is usually written in kana.",
+ "entries": [
+  {
+   "id": 2029010,
+   "kanji": [],
+   "readings": [
+    "を"
+   ],
+   "pos": [
+    "prt"
+   ],
+   "pri": 16,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 2028990,
+   "kanji": [],
+   "readings": [
+    "に"
+   ],
+   "pos": [
+    "prt",
+    "conj"
+   ],
+   "pri": 16,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 2028930,
+   "kanji": [],
+   "readings": [
+    "が"
+   ],
+   "pos": [
+    "prt",
+    "conj"
+   ],
+   "pri": 16,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 2028920,
+   "kanji": [],
+   "readings": [
+    "は"
+   ],
+   "pos": [
+    "prt"
+   ],
+   "pri": 16,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 2028980,
+   "kanji": [],
+   "readings": [
+    "で"
+   ],
+   "pos": [
+    "prt",
+    "conj"
+   ],
+   "pri": 16,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 1008490,
+   "kanji": [],
+   "readings": [
+    "と"
+   ],
+   "pos": [
+    "prt",
+    "conj"
+   ],
+   "pri": 16,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 2028940,
+   "kanji": [],
+   "readings": [
+    "も"
+   ],
+   "pos": [
+    "prt",
+    "adv"
+   ],
+   "pri": 16,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 1469800,
+   "kanji": [],
+   "readings": [
+    "の"
+   ],
+   "pos": [
+    "prt"
+   ],
+   "pri": 16,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 2029000,
+   "kanji": [],
+   "readings": [
+    "へ"
+   ],
+   "pos": [
+    "prt"
+   ],
+   "pri": 16,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 1002980,
+   "kanji": [],
+   "readings": [
+    "から"
+   ],
+   "pos": [
+    "prt",
+    "conj"
+   ],
+   "pri": 16,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 1525680,
+   "kanji": [],
+   "readings": [
+    "まで"
+   ],
+   "pos": [
+    "prt"
+   ],
+   "pri": 18,
+   "nf": 46,
+   "uk": true
+  },
+  {
+   "id": 1628500,
+   "kanji": [],
+   "readings": [
+    "です"
+   ],
+   "pos": [
+    "cop",
+    "aux-v"
+   ],
+   "pri": 16,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 2089020,
+   "kanji": [],
+   "readings": [
+    "だ"
+   ],
+   "pos": [
+    "aux-v",
+    "cop"
+   ],
+   "pri": 16,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 1577980,
+   "kanji": [
+    "居る"
+   ],
+   "readings": [
+    "いる"
+   ],
+   "pos": [
+    "v1",
+    "vi",
+    "aux-v"
+   ],
+   "pri": 4,
+   "nf": null,
+   "uk": true
+  },
+  {
+   "id": 1157170,
+   "kanji": [
+    "為る"
+   ],
+   "readings": [
+    "する"
+   ],
+   "pos": [
+    "vs-i",
+    "vi",
+    "vt",
+    "suf",
+    "aux-v"
+   ],
+   "pri": 4,
+   "nf": null,
+   "uk": true
+  },
+  {
+   "id": 1375610,
+   "kanji": [
+    "成る"
+   ],
+   "readings": [
+    "なる"
+   ],
+   "pos": [
+    "v5r",
+    "vi",
+    "aux-v"
+   ],
+   "pri": 6,
+   "nf": 34,
+   "uk": true
+  },
+  {
+   "id": 1269130,
+   "kanji": [
+    "呉れる"
+   ],
+   "readings": [
+    "くれる"
+   ],
+   "pos": [
+    "v1-s",
+    "vt",
+    "aux-v"
+   ],
+   "pri": 4,
+   "nf": null,
+   "uk": true
+  },
+  {
+   "id": 1554310,
+   "kanji": [
+    "料理"
+   ],
+   "readings": [
+    "りょうり"
+   ],
+   "pos": [
+    "n",
+    "vs",
+    "vt"
+   ],
+   "pri": 5,
+   "nf": 2,
+   "uk": false
+  },
+  {
+   "id": 1553170,
+   "kanji": [
+    "旅行"
+   ],
+   "readings": [
+    "りょこう"
+   ],
+   "pos": [
+    "n",
+    "vs",
+    "vi"
+   ],
+   "pri": 5,
+   "nf": 2,
+   "uk": false
+  },
+  {
+   "id": 1421290,
+   "kanji": [
+    "地図"
+   ],
+   "readings": [
+    "ちず"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 5,
+   "uk": false
+  },
+  {
+   "id": 1602710,
+   "kanji": [
+    "両親"
+   ],
+   "readings": [
+    "りょうしん"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 3,
+   "uk": false
+  },
+  {
+   "id": 1549660,
+   "kanji": [
+    "利用"
+   ],
+   "readings": [
+    "りよう"
+   ],
+   "pos": [
+    "n",
+    "vs",
+    "vt"
+   ],
+   "pri": 5,
+   "nf": 2,
+   "uk": false
+  },
+  {
+   "id": 1543750,
+   "kanji": [
+    "予約"
+   ],
+   "readings": [
+    "よやく"
+   ],
+   "pos": [
+    "n",
+    "vs",
+    "vt"
+   ],
+   "pri": 5,
+   "nf": 6,
+   "uk": false
+  },
+  {
+   "id": 1402540,
+   "kanji": [
+    "走る"
+   ],
+   "readings": [
+    "はしる"
+   ],
+   "pos": [
+    "v5r",
+    "vi"
+   ],
+   "pri": 5,
+   "nf": 10,
+   "uk": false
+  },
+  {
+   "id": 1588730,
+   "kanji": [
+    "選ぶ"
+   ],
+   "readings": [
+    "えらぶ"
+   ],
+   "pos": [
+    "v5b",
+    "vt"
+   ],
+   "pri": 5,
+   "nf": 2,
+   "uk": false
+  },
+  {
+   "id": 1250870,
+   "kanji": [
+    "景色"
+   ],
+   "readings": [
+    "けしき"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 14,
+   "uk": false
+  },
+  {
+   "id": 1466380,
+   "kanji": [
+    "入場券"
+   ],
+   "readings": [
+    "にゅうじょうけん"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 13,
+   "uk": false
+  },
+  {
+   "id": 1013050,
+   "kanji": [],
+   "readings": [
+    "ゆっくり"
+   ],
+   "pos": [
+    "adv",
+    "adv-to",
+    "vs"
+   ],
+   "pri": 4,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 1006110,
+   "kanji": [],
+   "readings": [
+    "すっかり"
+   ],
+   "pos": [
+    "adv",
+    "adv-to"
+   ],
+   "pri": 4,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 1038350,
+   "kanji": [],
+   "readings": [
+    "カメラ"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 68,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 1093450,
+   "kanji": [],
+   "readings": [
+    "ノート"
+   ],
+   "pos": [
+    "n",
+    "vs",
+    "vt"
+   ],
+   "pri": 68,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 1464900,
+   "kanji": [
+    "日曜日"
+   ],
+   "readings": [
+    "にちようび"
+   ],
+   "pos": [
+    "n",
+    "adv"
+   ],
+   "pri": 4,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 1273270,
+   "kanji": [
+    "公園"
+   ],
+   "readings": [
+    "こうえん"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 2,
+   "uk": false
+  },
+  {
+   "id": 1303620,
+   "kanji": [
+    "散歩"
+   ],
+   "readings": [
+    "さんぽ"
+   ],
+   "pos": [
+    "n",
+    "vs",
+    "vi"
+   ],
+   "pri": 5,
+   "nf": 10,
+   "uk": false
+  },
+  {
+   "id": 1428280,
+   "kanji": [
+    "朝"
+   ],
+   "readings": [
+    "あさ"
+   ],
+   "pos": [
+    "n",
+    "adv"
+   ],
+   "pri": 5,
+   "nf": 9,
+   "uk": false
+  },
+  {
+   "id": 1513060,
+   "kanji": [
+    "弁当"
+   ],
+   "readings": [
+    "べんとう"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 7,
+   "uk": false
+  },
+  {
+   "id": 1597890,
+   "kanji": [
+    "作る"
+   ],
+   "readings": [
+    "つくる"
+   ],
+   "pos": [
+    "v5r",
+    "vt"
+   ],
+   "pri": 5,
+   "nf": 4,
+   "uk": false
+  },
+  {
+   "id": 1175140,
+   "kanji": [
+    "駅"
+   ],
+   "readings": [
+    "えき"
+   ],
+   "pos": [
+    "n",
+    "ctr"
+   ],
+   "pri": 5,
+   "nf": 5,
+   "uk": false
+  },
+  {
+   "id": 1392580,
+   "kanji": [
+    "前"
+   ],
+   "readings": [
+    "まえ"
+   ],
+   "pos": [
+    "n",
+    "adj-no",
+    "adv",
+    "suf"
+   ],
+   "pri": 4,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 1410590,
+   "kanji": [
+    "待つ"
+   ],
+   "readings": [
+    "まつ"
+   ],
+   "pos": [
+    "v5t",
+    "vt",
+    "vi"
+   ],
+   "pri": 5,
+   "nf": 18,
+   "uk": false
+  },
+  {
+   "id": 1333520,
+   "kanji": [
+    "週末"
+   ],
+   "readings": [
+    "しゅうまつ"
+   ],
+   "pos": [
+    "adv",
+    "n"
+   ],
+   "pri": 5,
+   "nf": 6,
+   "uk": false
+  },
+  {
+   "id": 1543240,
+   "kanji": [
+    "予定"
+   ],
+   "readings": [
+    "よてい"
+   ],
+   "pos": [
+    "n",
+    "vs",
+    "vt"
+   ],
+   "pri": 5,
+   "nf": 1,
+   "uk": false
+  },
+  {
+   "id": 1415260,
+   "kanji": [
+    "第"
+   ],
+   "readings": [
+    "だい"
+   ],
+   "pos": [
+    "pref"
+   ],
+   "pri": 16,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 1195710,
+   "kanji": [
+    "課"
+   ],
+   "readings": [
+    "か"
+   ],
+   "pos": [
+    "n",
+    "n-suf",
+    "ctr"
+   ],
+   "pri": 5,
+   "nf": 8,
+   "uk": false
+  },
+  {
+   "id": 1311530,
+   "kanji": [
+    "紙"
+   ],
+   "readings": [
+    "かみ"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 3,
+   "uk": false
+  },
+  {
+   "id": 1338180,
+   "kanji": [
+    "出す"
+   ],
+   "readings": [
+    "だす"
+   ],
+   "pos": [
+    "v5s",
+    "vt",
+    "suf"
+   ],
+   "pri": 5,
+   "nf": 3,
+   "uk": false
+  },
+  {
+   "id": 1404975,
+   "kanji": [
+    "早い"
+   ],
+   "readings": [
+    "はやい"
+   ],
+   "pos": [
+    "adj-i"
+   ],
+   "pri": 5,
+   "nf": 16,
+   "uk": false
+  },
+  {
+   "id": 1227560,
+   "kanji": [
+    "休む"
+   ],
+   "readings": [
+    "やすむ"
+   ],
+   "pos": [
+    "v5m",
+    "vi"
+   ],
+   "pri": 5,
+   "nf": 20,
+   "uk": false
+  },
+  {
+   "id": 1524590,
+   "kanji": [
+    "妹"
+   ],
+   "readings": [
+    "いもうと"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 6,
+   "uk": false
+  },
+  {
+   "id": 1524730,
+   "kanji": [
+    "毎晩"
+   ],
+   "readings": [
+    "まいばん"
+   ],
+   "pos": [
+    "n",
+    "adv"
+   ],
+   "pri": 5,
+   "nf": 18,
+   "uk": false
+  },
+  {
+   "id": 1106400,
+   "kanji": [],
+   "readings": [
+    "ピアノ"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 68,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 1559160,
+   "kanji": [
+    "練習"
+   ],
+   "readings": [
+    "れんしゅう"
+   ],
+   "pos": [
+    "n",
+    "vs",
+    "vt"
+   ],
+   "pri": 5,
+   "nf": 2,
+   "uk": false
+  },
+  {
+   "id": 1579260,
+   "kanji": [
+    "昨日"
+   ],
+   "readings": [
+    "きのう"
+   ],
+   "pos": [
+    "n",
+    "adv"
+   ],
+   "pri": 5,
+   "nf": 10,
+   "uk": false
+  },
+  {
+   "id": 1083590,
+   "kanji": [],
+   "readings": [
+    "デパート"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 68,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 1361490,
+   "kanji": [
+    "新しい"
+   ],
+   "readings": [
+    "あたらしい"
+   ],
+   "pos": [
+    "adj-i"
+   ],
+   "pri": 5,
+   "nf": 8,
+   "uk": false
+  },
+  {
+   "id": 1246700,
+   "kanji": [
+    "靴"
+   ],
+   "readings": [
+    "くつ"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 6,
+   "uk": false
+  },
+  {
+   "id": 1473740,
+   "kanji": [
+    "買う"
+   ],
+   "readings": [
+    "かう"
+   ],
+   "pos": [
+    "v5u",
+    "vt"
+   ],
+   "pri": 5,
+   "nf": 10,
+   "uk": false
+  },
+  {
+   "id": 1223640,
+   "kanji": [
+    "起きる"
+   ],
+   "readings": [
+    "おきる"
+   ],
+   "pos": [
+    "v1",
+    "vi"
+   ],
+   "pri": 6,
+   "nf": 31,
+   "uk": false
+  },
+  {
+   "id": 1217730,
+   "kanji": [
+    "顔"
+   ],
+   "readings": [
+    "かお"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 1,
+   "uk": false
+  },
+  {
+   "id": 1390930,
+   "kanji": [
+    "洗う"
+   ],
+   "readings": [
+    "あらう"
+   ],
+   "pos": [
+    "v5u",
+    "vt"
+   ],
+   "pri": 5,
+   "nf": 23,
+   "uk": false
+  },
+  {
+   "id": 1067040,
+   "kanji": [],
+   "readings": [
+    "スープ"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 68,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 1365850,
+   "kanji": [
+    "辛い"
+   ],
+   "readings": [
+    "からい"
+   ],
+   "pos": [
+    "adj-i"
+   ],
+   "pri": 5,
+   "nf": 24,
+   "uk": false
+  },
+  {
+   "id": 1581930,
+   "kanji": [
+    "弟"
+   ],
+   "readings": [
+    "おとうと"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 4,
+   "uk": false
+  },
+  {
+   "id": 1231590,
+   "kanji": [
+    "牛乳"
+   ],
+   "readings": [
+    "ぎゅうにゅう"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 8,
+   "uk": false
+  },
+  {
+   "id": 1169870,
+   "kanji": [
+    "飲む"
+   ],
+   "readings": [
+    "のむ"
+   ],
+   "pos": [
+    "v5m",
+    "vt"
+   ],
+   "pri": 6,
+   "nf": 35,
+   "uk": false
+  },
+  {
+   "id": 1541620,
+   "kanji": [
+    "有名"
+   ],
+   "readings": [
+    "ゆうめい"
+   ],
+   "pos": [
+    "adj-na"
+   ],
+   "pri": 5,
+   "nf": 3,
+   "uk": false
+  },
+  {
+   "id": 1202270,
+   "kanji": [
+    "絵"
+   ],
+   "readings": [
+    "え"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 1,
+   "nf": 2,
+   "uk": false
+  },
+  {
+   "id": 1467640,
+   "kanji": [
+    "猫"
+   ],
+   "readings": [
+    "ねこ"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 7,
+   "uk": true
+  },
+  {
+   "id": 1360010,
+   "kanji": [
+    "寝る"
+   ],
+   "readings": [
+    "ねる"
+   ],
+   "pos": [
+    "v1",
+    "vi"
+   ],
+   "pri": 5,
+   "nf": 15,
+   "uk": false
+  },
+  {
+   "id": 1221270,
+   "kanji": [
+    "帰る"
+   ],
+   "readings": [
+    "かえる"
+   ],
+   "pos": [
+    "v5r",
+    "vi"
+   ],
+   "pri": 6,
+   "nf": 37,
+   "uk": false
+  },
+  {
+   "id": 1222840,
+   "kanji": [
+    "季節"
+   ],
+   "readings": [
+    "きせつ"
+   ],
+   "pos": [
+    "n",
+    "adj-no"
+   ],
+   "pri": 5,
+   "nf": 4,
+   "uk": false
+  },
+  {
+   "id": 1596780,
+   "kanji": [
+    "台風"
+   ],
+   "readings": [
+    "たいふう"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 4,
+   "uk": false
+  },
+  {
+   "id": 1557110,
+   "kanji": [
+    "冷蔵庫"
+   ],
+   "readings": [
+    "れいぞうこ"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 8,
+   "uk": false
+  },
+  {
+   "id": 1390980,
+   "kanji": [
+    "洗濯"
+   ],
+   "readings": [
+    "せんたく"
+   ],
+   "pos": [
+    "n",
+    "vs",
+    "vt"
+   ],
+   "pri": 5,
+   "nf": 9,
+   "uk": false
+  },
+  {
+   "id": 1519210,
+   "kanji": [
+    "忘れる"
+   ],
+   "readings": [
+    "わすれる"
+   ],
+   "pos": [
+    "v1",
+    "vt"
+   ],
+   "pri": 4,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 1457200,
+   "kanji": [
+    "届く"
+   ],
+   "readings": [
+    "とどく"
+   ],
+   "pos": [
+    "v5k",
+    "vi"
+   ],
+   "pri": 4,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 1586420,
+   "kanji": [
+    "暖かい"
+   ],
+   "readings": [
+    "あたたかい"
+   ],
+   "pos": [
+    "adj-i"
+   ],
+   "pri": 4,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 1591900,
+   "kanji": [
+    "綺麗"
+   ],
+   "readings": [
+    "きれい"
+   ],
+   "pos": [
+    "adj-na"
+   ],
+   "pri": 4,
+   "nf": null,
+   "uk": true
+  },
+  {
+   "id": 1076170,
+   "kanji": [],
+   "readings": [
+    "タオル"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 68,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 1558050,
+   "kanji": [
+    "歴史"
+   ],
+   "readings": [
+    "れきし"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 1,
+   "uk": false
+  },
+  {
+   "id": 1443840,
+   "kanji": [
+    "電話"
+   ],
+   "readings": [
+    "でんわ"
+   ],
+   "pos": [
+    "n",
+    "vs",
+    "vt",
+    "vi"
+   ],
+   "pri": 5,
+   "nf": 1,
+   "uk": false
+  },
+  {
+   "id": 1600900,
+   "kanji": [
+    "話"
+   ],
+   "readings": [
+    "はなし"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 1,
+   "uk": false
+  },
+  {
+   "id": 1207610,
+   "kanji": [
+    "掛ける"
+   ],
+   "readings": [
+    "かける"
+   ],
+   "pos": [
+    "v1",
+    "vt",
+    "suf"
+   ],
+   "pri": 5,
+   "nf": 20,
+   "uk": true
+  },
+  {
+   "id": 1582120,
+   "kanji": [
+    "店"
+   ],
+   "readings": [
+    "みせ"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 4,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 1296970,
+   "kanji": [
+    "財布"
+   ],
+   "readings": [
+    "さいふ"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 10,
+   "uk": false
+  },
+  {
+   "id": 1490670,
+   "kanji": [
+    "品物"
+   ],
+   "readings": [
+    "しなもの"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 14,
+   "uk": false
+  },
+  {
+   "id": 1474040,
+   "kanji": [
+    "売店"
+   ],
+   "readings": [
+    "ばいてん"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 16,
+   "uk": false
+  },
+  {
+   "id": 1301940,
+   "kanji": [
+    "傘"
+   ],
+   "readings": [
+    "かさ"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 11,
+   "uk": false
+  },
+  {
+   "id": 1519170,
+   "kanji": [
+    "帽子"
+   ],
+   "readings": [
+    "ぼうし"
+   ],
+   "pos": [
+    "n",
+    "vs",
+    "vi"
+   ],
+   "pri": 5,
+   "nf": 9,
+   "uk": true
+  },
+  {
+   "id": 1270550,
+   "kanji": [
+    "お釣り"
+   ],
+   "readings": [
+    "おつり"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 4,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 1411070,
+   "kanji": [
+    "袋"
+   ],
+   "readings": [
+    "ふくろ"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 8,
+   "uk": false
+  },
+  {
+   "id": 1508380,
+   "kanji": [
+    "並ぶ"
+   ],
+   "readings": [
+    "ならぶ"
+   ],
+   "pos": [
+    "v5b",
+    "vi"
+   ],
+   "pri": 6,
+   "nf": 29,
+   "uk": false
+  },
+  {
+   "id": 1501620,
+   "kanji": [
+    "払う"
+   ],
+   "readings": [
+    "はらう"
+   ],
+   "pos": [
+    "v5u",
+    "vt"
+   ],
+   "pri": 5,
+   "nf": 21,
+   "uk": false
+  },
+  {
+   "id": 1153670,
+   "kanji": [
+    "安い"
+   ],
+   "readings": [
+    "やすい"
+   ],
+   "pos": [
+    "adj-i"
+   ],
+   "pri": 6,
+   "nf": 47,
+   "uk": false
+  },
+  {
+   "id": 1580480,
+   "kanji": [
+    "丈夫"
+   ],
+   "readings": [
+    "じょうぶ"
+   ],
+   "pos": [
+    "adj-na"
+   ],
+   "pri": 5,
+   "nf": 15,
+   "uk": false
+  },
+  {
+   "id": 1512610,
+   "kanji": [
+    "便利"
+   ],
+   "readings": [
+    "べんり"
+   ],
+   "pos": [
+    "adj-na"
+   ],
+   "pri": 5,
+   "nf": 6,
+   "uk": false
+  },
+  {
+   "id": 1145130,
+   "kanji": [],
+   "readings": [
+    "レジ"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 64,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 2849867,
+   "kanji": [
+    "混む"
+   ],
+   "readings": [
+    "こむ"
+   ],
+   "pos": [
+    "v5m",
+    "vi"
+   ],
+   "pri": 4,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 1237410,
+   "kanji": [
+    "橋"
+   ],
+   "readings": [
+    "はし"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 5,
+   "uk": false
+  },
+  {
+   "id": 1444680,
+   "kanji": [
+    "渡る"
+   ],
+   "readings": [
+    "わたる"
+   ],
+   "pos": [
+    "v5r",
+    "vi"
+   ],
+   "pri": 6,
+   "nf": 41,
+   "uk": true
+  },
+  {
+   "id": 1396840,
+   "kanji": [
+    "祖父"
+   ],
+   "readings": [
+    "そふ"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 9,
+   "uk": false
+  },
+  {
+   "id": 1476520,
+   "kanji": [
+    "畑"
+   ],
+   "readings": [
+    "はたけ"
+   ],
+   "pos": [
+    "n",
+    "n-suf"
+   ],
+   "pri": 5,
+   "nf": 4,
+   "uk": false
+  },
+  {
+   "id": 1537370,
+   "kanji": [
+    "野菜"
+   ],
+   "readings": [
+    "やさい"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 3,
+   "uk": false
+  },
+  {
+   "id": 1160570,
+   "kanji": [
+    "育てる"
+   ],
+   "readings": [
+    "そだてる"
+   ],
+   "pos": [
+    "v1",
+    "vt"
+   ],
+   "pri": 4,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 1330510,
+   "kanji": [
+    "収穫"
+   ],
+   "readings": [
+    "しゅうかく"
+   ],
+   "pos": [
+    "n",
+    "vs",
+    "vt"
+   ],
+   "pri": 5,
+   "nf": 7,
+   "uk": false
+  },
+  {
+   "id": 1607070,
+   "kanji": [
+    "叔父"
+   ],
+   "readings": [
+    "おじ"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 16,
+   "uk": false
+  },
+  {
+   "id": 1328190,
+   "kanji": [
+    "手伝う"
+   ],
+   "readings": [
+    "てつだう"
+   ],
+   "pos": [
+    "v5u",
+    "vt"
+   ],
+   "pri": 6,
+   "nf": 46,
+   "uk": false
+  },
+  {
+   "id": 1332650,
+   "kanji": [
+    "秋"
+   ],
+   "readings": [
+    "あき"
+   ],
+   "pos": [
+    "n",
+    "adv"
+   ],
+   "pri": 5,
+   "nf": 1,
+   "uk": false
+  },
+  {
+   "id": 1085420,
+   "kanji": [],
+   "readings": [
+    "トマト"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 68,
+   "nf": null,
+   "uk": false
+  },
+  {
+   "id": 1213400,
+   "kanji": [
+    "甘い"
+   ],
+   "readings": [
+    "あまい"
+   ],
+   "pos": [
+    "adj-i"
+   ],
+   "pri": 5,
+   "nf": 19,
+   "uk": false
+  },
+  {
+   "id": 1486650,
+   "kanji": [
+    "美味しい"
+   ],
+   "readings": [
+    "おいしい"
+   ],
+   "pos": [
+    "adj-i"
+   ],
+   "pri": 4,
+   "nf": null,
+   "uk": true
+  },
+  {
+   "id": 1355120,
+   "kanji": [
+    "乗る"
+   ],
+   "readings": [
+    "のる"
+   ],
+   "pos": [
+    "v5r",
+    "vi"
+   ],
+   "pri": 5,
+   "nf": 21,
+   "uk": false
+  },
+  {
+   "id": 1426370,
+   "kanji": [
+    "昼寝"
+   ],
+   "readings": [
+    "ひるね"
+   ],
+   "pos": [
+    "n",
+    "vs",
+    "vi"
+   ],
+   "pri": 5,
+   "nf": 22,
+   "uk": false
+  }
+ ]
+}

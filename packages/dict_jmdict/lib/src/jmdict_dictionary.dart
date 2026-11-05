@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:dict_jmdict/src/confusables.dart';
+import 'package:dict_jmdict/src/form_lookup.dart' as forms;
 import 'package:dict_jmdict/src/kana.dart';
 import 'package:dict_jmdict/src/models.dart';
 import 'package:dict_jmdict/src/priority.dart';
@@ -139,6 +140,19 @@ final class JmdictDictionary {
         return byPriority != 0 ? byPriority : a.$1.compareTo(b.$1);
       });
     return List.unmodifiable(ordered.take(limit).map((w) => w.$2));
+  }
+
+  /// Entries spelled as each of [forms], in one query per kind of form.
+  ///
+  /// A kanji form matches the entry's kanji forms; a kana form matches its
+  /// readings in either script. Search-only spellings (sK, sk) never match.
+  /// Forms with no entry are left out.
+  Map<String, List<forms.FormEntry>> lookupForms(Iterable<String> spellings) {
+    _ensureOpen();
+    return forms.lookupForms(
+      spellings,
+      (sql, args) => [for (final row in _select(sql, args)) row.values],
+    );
   }
 
   /// Whether the dictionary has [headword] read as [reading], exactly.

@@ -12,6 +12,7 @@ export 'src/confusables.dart'
         areConfusable,
         glyphEdits,
         glyphVariants;
+export 'src/form_lookup.dart' show FormEntry;
 export 'src/jmdict_dictionary.dart'
     show
         DictionaryWord,

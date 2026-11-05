@@ -19,16 +19,16 @@
 | 항목 | 명령 | 결과 |
 |---|---|---|
 | core 정적 분석 | `cd packages/core && dart analyze` | 문제 없음 |
-| core 테스트 | `cd packages/core && dart test` | **317개 통과**, 교재 세트 11개 건너뜀 (12절 반영 뒤. 10절 뒤 302개) |
-| core 테스트 (교재 세트 포함) | `SHIORI_PRIVATE_DIR=<로컬 폴더> dart test` | **330개 통과** (12절 반영 뒤. 그 전 314개) |
+| core 테스트 | `cd packages/core && dart test` | **401개 통과**, 교재 세트 11개 건너뜀 (13·14절 반영 뒤. 12절 뒤 317개) |
+| core 테스트 (교재 세트 포함) | `SHIORI_PRIVATE_DIR=<로컬 폴더> dart test` | **414개 통과** (13·14절 반영 뒤. 12절 뒤 330개) |
 | core 커버리지 | `dart run coverage:test_with_coverage -o coverage` | 줄 커버리지 **97.7%** (1805/1847줄, 교재 세트 없이. `InMemoryLibraryRepository.textbookStats`는 저장 패키지의 계약 테스트가 돌려서 core 숫자에는 안 잡힘) |
-| 사전 패키지 | `cd packages/dict_jmdict && dart analyze && dart test` | 문제 없음, **66개 통과** (테스트 DB 103개 항목, 12절 반영 뒤. 그 전 63개) |
-| 사전 블록 (어댑터) | `cd packages/jmdict_block && dart analyze && dart test` | 문제 없음, **20개 통과** (8절, 12절) |
+| 사전 패키지 | `cd packages/dict_jmdict && dart analyze && dart test` | 문제 없음, **72개 통과** (테스트 DB 103개 항목, 13절 반영 뒤. 12절 뒤 66개) |
+| 사전 블록 (어댑터) | `cd packages/jmdict_block && dart analyze && dart test` | 문제 없음, **23개 통과** (8절, 12절, 13절) |
 | 사전 asset 스크립트 | `python3 -m unittest discover -s tools/dict -p 'test_*.py'` | **33개 통과** (네트워크 없음. 14절 한국어 뜻 사전 27개 더함, 그 전 6개) |
 | 한국어 뜻 사전 블록 | `cd packages/krdict_block && dart analyze && dart test` | 문제 없음, **74개 통과** (지어낸 견본 30항목, 14절) |
 | 저장 패키지 | `cd packages/storage_drift && dart analyze && dart test` | 문제 없음, **74개 통과** (7절, 9절, 스키마 v2 마이그레이션 10절) |
 | app 정적 분석 | `cd app && flutter analyze` | 문제 없음 |
-| app 테스트 | `cd app && flutter test` (기본 flavor = dev), `flutter test --flavor dev` | **101개 통과** (11절 반영 뒤. 그 전 79개, 사전 asset 있음·없음 둘 다) |
+| app 테스트 | `cd app && flutter test` (기본 flavor = dev), `flutter test --flavor dev` | **113개 통과** (14절 반영 뒤. 11절 뒤 101개, 사전 asset 있음·없음 둘 다) |
 | iOS 채널 순수 로직 | `cd app/ios && xcodebuild test -workspace Runner.xcworkspace -scheme dev -destination 'id=<시뮬레이터>' -only-testing:RunnerTests` (11절부터 스킴 `dev`) | **5개 통과** (회전 투표·가로세로 바꿈·방향 합성, 6.4절) |
 | Android 채널 순수 로직 | `cd app/android && ./gradlew :app:testDevDebugUnitTest` (JDK 21, 11절부터 flavor 이름이 붙음) | **11개 통과** (조각 자르기·회전·상자 없는 글자, 6.5절) |
 | app 커버리지 | `flutter test --coverage` | 줄 커버리지 **92.2%** (1902/2064줄, 11절 반영 뒤. 10절 뒤 91.6%) |
@@ -38,6 +38,10 @@
 | 합성 세트 점수표 (ML Kit형) | `dart run tool/eval_capture.dart --fixtures test/fixtures/synthetic_mlkit` | 16/18 (6.3절) |
 | 교재 세트 점수표 | `dart run tool/eval_capture.dart --fixtures "$SHIORI_PRIVATE_DIR/textbook/vocab_n5n3"` | 55/59, 기준 구현과 다른 칸 0개 (2.2절) |
 | 합성 생성기 | `python3 tools/synthetic/make_pages.py --check` | 저장소 파일과 같음 |
+| 범용 추출 합성 생성기 | `python3 tools/synthetic/make_general_pages.py --check` | 저장소 파일과 같음 (13절) |
+| 범용 추출 데이터 표 | `python3 tools/extract/build_extract_data.py --check` (Unihan zip: 캐시 또는 내려받기, sha256 고정) | 생성 파일과 같음 (13절) |
+| 범용 추출 점수표 (메모리 사전) | `cd packages/core && dart run tool/eval_extract.dart --template` | 합성 범용 5쪽 찾음 46/46, 읽기 46/46, 뜻 46/46, 문장 단어 39/39 (13절) |
+| 범용 추출 점수표 (JMdict) | `cd packages/jmdict_block && dart run tool/eval_extract_dict.dart --db <JMdict SQLite> --template` | 13절 비교표 |
 | 배포 빌드 (prod) | `flutter build apk --flavor prod --release`, `flutter build appbundle --flavor prod --release`, `flutter build ios --flavor prod --release --no-codesign` | 사전 asset과 서명 키(Android)가 있으면 **성공**, 결과물에 `dev_samples` 없음. 사전 asset이나 `key.properties`가 없으면 **분명한 메시지로 실패** (11절) |
 | 배포 빌드 차단 (dev) | `flutter build apk --flavor dev --release`, `flutter build ios --flavor dev --release --no-codesign` (`--flavor` 없는 release도 dev) | **의도대로 실패**: dev flavor는 개발 샘플을 묶으므로 release로 빌드하지 않음 (11절) |
 | 연구 도구 테스트 | `python3 -m unittest test_tools` (`research/scan/tools`, `research/ocr-android/tools`) | 27개, 16개 통과 |
@@ -736,6 +740,62 @@ iOS 앱 번들에는 `assets/dict/.gitignore`(71바이트)도 들어갑니다(�
 
 - 기준 구현과 다른 칸: 합성·교재 세트 모두 0개(`tool/reference_diff.dart`).
 - 실기기 쪽은 줄 밀림이 그대로라 배지 줄이 버려지는 행이 있어 품사가 하나만 늘었습니다. 사전을 켜면 な형용사 표제어 한 개의 「사전에 없음」이 사라집니다(오탐 2 → 1, 남은 하나는 밀린 읽기 때문).
+
+## 13. 범용 추출 (배치에 기대지 않는 단어 추출, 2026-11-05)
+
+가로줄 틀 해석기 옆에 **범용 추출기**를 새 모듈로 두었습니다(설계: `docs/extraction.md`). 앱 화면·저장소·학습 코드와 가로줄 틀 코드는 바꾸지 않았습니다.
+
+### 13.1 바꾼 것
+
+| 항목 | 위치 |
+|---|---|
+| 추출기 | `packages/core/lib/src/extract/**` (조각 수집·분류, 활용 되돌리기, lattice 분할, 한자음 대조, 헝가리안 배정, 결과 모델), 공개: `shiori_core.dart` |
+| 새 포트 `Lexicon` | `packages/core/lib/src/ports/lexicon.dart` (메모리 블록 `InMemoryLexicon` 포함). 기존 `Dictionary` 포트는 그대로 |
+| JMdict 일괄 조회 | `packages/dict_jmdict/lib/src/form_lookup.dart` (`JmdictDictionary.lookupForms`), 어댑터 `packages/jmdict_block/lib/src/jmdict_lexicon_adapter.dart` |
+| 채점기 | `packages/core/lib/src/eval/extract_truth.dart`, `extract_scorer.dart` (표제어 기준, 가로줄 틀도 같은 잣대) |
+| 도구 | `packages/core/tool/eval_extract.dart`, `packages/jmdict_block/tool/eval_extract_dict.dart`, `tools/extract/build_extract_data.py`, `tools/extract/convert_truth.py`, `tools/synthetic/make_general_pages.py` |
+| 외부 데이터 | `packages/core/third_party/jl/` (활용 되돌리기 규칙, Apache-2.0), `packages/core/third_party/unihan/` (한국 한자음, Unicode License v3) — 앱 정보 화면 표기는 앱 연결 단계에서 |
+| 합성 범용 세트 | `packages/core/test/fixtures/synthetic_general/` (5쪽, 지어낸 내용만) |
+
+### 13.2 테스트
+
+| 패키지 | 결과 |
+|---|---|
+| core | **381개 통과**, 교재 세트 11개 건너뜀 (`SHIORI_PRIVATE_DIR` 지정 시 394개 통과). 새 테스트: `test/extract/**`(조각 수집·원형화·lattice·헝가리안·짝짓기·문장 단어·합성 세트·채점기·결과 모델·한자음·메모리 사전), `test/tool/eval_extract_tool_test.dart` |
+| dict_jmdict | **72개 통과** (`form_lookup_test.dart` 6개 추가) |
+| jmdict_block | **23개 통과** (`lexicon_adapter_test.dart` 3개 추가) |
+| app | `flutter analyze` 문제 없음, `flutter test` **101개 통과**, `flutter build apk --debug --flavor dev` 성공 |
+| 기존 회귀 | 합성 31/35, 합성 ML Kit형 16/18, 교재 Vision 55/59, 교재 ML Kit 조각 51/59, 기준 구현과 다른 칸 0 (그대로) |
+
+### 13.3 비교표 (표제어 기준 채점, 쪽당 시간은 데스크톱 Dart VM)
+
+범용은 실제 JMdict(`full-lean`, 2026-11-04)를 붙인 결과, 가로줄 틀은 `CapturePipeline.standard`(JMdict)입니다. 읽기·뜻은 찾은 단어 중에서 셉니다.
+문장 단어는 재현율 / 정밀도. 교재 쪽은 숫자만 적습니다(로컬 전용 세트).
+
+| 세트 | 방식 | 찾음 | 읽기 | 뜻 | 문장 단어 | 여분 | 높음인데 틀림 | ms/쪽 |
+|---|---|---|---|---|---|---|---|---|
+| 합성 기존 (4쪽 35단어) | 틀 | 33/35 | 33/33 | 31/33 | - | 1 (+중복 1) | - | 18 |
+| | 범용 | 27/35 | 27/27 | 19/27 | - | 28 | 0 | 81 |
+| 합성 범용 (5쪽 46단어, 문장 단어 39) | 틀 | 15/46 | 13/15 | 8/15 | 0/39 | 1 (+중복 2) | - | 13~32 |
+| | 범용 | **46/46** | **46/46** | **45/46** | **39/39 / 32/32** | 1 | 0 | 37~117 |
+| 　└ 박스형 g01 | 틀 / 범용 | 0/14 / 14/14 | - / 14 | - / 14 | 0/9 / 9/9 | | | |
+| 　└ 문장 위주 g02 | 틀 / 범용 | - | - | - | 0/19 / 19/19 | | | |
+| 　└ 읽기 없는 목록 g03 | 틀 / 범용 | 0/10 / 10/10 | - / 10 | - / 10 | | | | |
+| 　└ 휜 단어장 g04 | 틀 / 범용 | 15/15 / 15/15 | 13 / 15 | 8 / 14 | | | | |
+| 　└ 옆 칸 인라인 g05 | 틀 / 범용 | 0/7 / 7/7 | - / 7 | - / 7 | 0/11 / 11/11 | | | |
+| 교재 단어장 5쪽 (59단어, 로컬) | 틀 | 57/59 | 57/57 | 55/57 | - | 1 (+중복 1) | - | 14 |
+| | 범용 | 56/59 | 56/56 | 48/56 | - | 16 | 0 | 56~62 |
+| 실기기 촬영 휜 쪽 1쪽 (15단어, 로컬) | 틀 | 13/15 | 9/13 | 7/13 | - | 3 (+중복 2) | - | 62 |
+| | 범용 | 13/15 | **13/13** | **12/13** | - | 3 | 0 | 81~103 |
+| 다른 교재 3쪽 (15단어, 문장 단어 33, 로컬, 정답 초안) | 틀 | 0/15 | - | - | 0/33 | 0 | - | 11 |
+| | 범용 | **15/15** | **15/15** | **11/15** | **30/33 / 29/62** | 35 | 0 | 80~115 |
+
+- 사전 없이(메모리 사전도 없이) 돌린 범용 추출: 합성 범용 46/46·읽기 36/46·뜻 43/46·문장 단어 7/39, 교재 5쪽 50/59·46/50·40/50.
+  합성 범용 세트의 메모리 사전(`lexicon.json`)으로는 46/46·46/46·46/46·39/39, 여분 0.
+- 한국어 뜻 조회 흉내(`korean_glosses.json`, 고유어 11개)를 붙여도 높음은 0개입니다. 뜻 짝이 높음이 되려면 한자음과 뜻 조회가 함께 맞아야 하는데,
+  흉내 표에는 고유어만 있어 한자음과 겹치지 않습니다. 한자어까지 담은 한국어 뜻 사전이 붙으면 한자어 단어부터 높음이 생깁니다.
+- 합성 기존 세트에서 범용이 낮은 것은 그 쪽들이 가로줄 틀의 보정 규칙(헷갈리는 가타카나, 못 읽은 표제어, 예문 상자)을 시험하려고 일부러 망가뜨린 판독이기 때문입니다.
+- 다른 교재 쪽의 여분 35개 대부분은 한국어 설명 단락 속 일본어를 일본어 패스가 엉터리로 읽은 조각입니다(`docs/extraction.md` 8절).
 
 ## 14. 한국어 뜻 사전 (한국어기초사전 역색인, 2026-11-05)
 

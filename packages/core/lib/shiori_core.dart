@@ -17,6 +17,7 @@ export 'src/models/review.dart';
 export 'src/ports/clock.dart';
 export 'src/ports/dictionary.dart';
 export 'src/ports/entry_corrector.dart';
+export 'src/ports/lexicon.dart';
 export 'src/ports/image_source.dart';
 export 'src/ports/korean_glossary.dart';
 export 'src/ports/repositories.dart';
@@ -43,6 +44,11 @@ export 'src/capture/learner_edits.dart';
 export 'src/capture/vocab/entry_template.dart';
 export 'src/capture/vocab/list_template.dart';
 export 'src/capture/template_registry.dart';
+
+// Word extraction that does not depend on a page layout
+export 'src/extract/extracted_word.dart';
+export 'src/extract/fragment.dart';
+export 'src/extract/general_extractor.dart';
 
 // Library and study use cases
 export 'src/library/library_service.dart';

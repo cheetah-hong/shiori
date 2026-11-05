@@ -1,0 +1,45 @@
+{
+ "_note": "A small stand-in for a Japanese-Korean gloss table, made by tools/synthetic/make_general_pages.py: about half of the words whose Korean meaning does not follow the Sino-Korean reading.",
+ "glosses": {
+  "走る": [
+   "달리다",
+   "뛰다"
+  ],
+  "景色": [
+   "경치",
+   "풍경"
+  ],
+  "忘れる": [
+   "잊다"
+  ],
+  "暖かい": [
+   "따뜻하다"
+  ],
+  "財布": [
+   "지갑"
+  ],
+  "袋": [
+   "봉지",
+   "자루"
+  ],
+  "払う": [
+   "지불하다",
+   "치르다"
+  ],
+  "丈夫": [
+   "튼튼하다",
+   "건강하다"
+  ],
+  "混む": [
+   "붐비다",
+   "혼잡하다"
+  ],
+  "畑": [
+   "밭"
+  ],
+  "叔父": [
+   "삼촌",
+   "숙부"
+  ]
+ }
+}
