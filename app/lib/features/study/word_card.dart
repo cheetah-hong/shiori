@@ -31,7 +31,6 @@ class _WordCardState extends State<WordCard> {
     final t = context.tokens;
     final item = widget.item;
     final w = item.word;
-    final source = wordSourceLabel(w);
 
     final (badge, badgeBg, badgeFg) = switch (item) {
       SessionItem(retries: > 0) => ('다시 ${item.retries}', t.paper3, t.ink),
@@ -64,13 +63,6 @@ class _WordCardState extends State<WordCard> {
             children: [
               Pill(badge, background: badgeBg, foreground: badgeFg),
               const Spacer(),
-              if (source.isNotEmpty)
-                Pill(
-                  source,
-                  background: t.paper,
-                  foreground: t.ink2,
-                  icon: Icons.menu_book_outlined,
-                ),
             ],
           ),
           Expanded(

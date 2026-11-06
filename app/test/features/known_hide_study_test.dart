@@ -150,5 +150,5 @@ final class _FailingHide implements HiddenWordRepository {
       Future.error(Exception('disk full'));
 
   @override
-  Future<List<Word>> hiddenWords({String? textbookId}) async => const [];
+  Future<List<Word>> hiddenWords({String? playlistId}) async => const [];
 }

@@ -160,7 +160,7 @@ void main() {
   testWidgets('summary: the words skipped as known', (tester) async {
     await _pump(tester);
 
-    expect(find.text('이미 있는 단어 1개 건너뜀'), findsOneWidget);
+    expect(find.text('숨긴 단어 1개는 뺐어요'), findsOneWidget);
   });
 
   testWidgets('each cell names its source: 사진 or 사전', (tester) async {
@@ -271,7 +271,7 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.text('단어 5개 저장'), findsOneWidget);
+    expect(find.text('단어 5개 추가'), findsOneWidget);
   });
 
   testWidgets('a sentence word shows its sentence and translation', (

@@ -3,6 +3,8 @@
 import 'package:shiori_core/shiori_core.dart';
 import 'package:test/test.dart';
 
+import '../support/library_seed.dart';
+
 void main() {
   final start = DateTime(2026, 11, 5, 21);
   late InMemoryLibraryRepository library;
@@ -24,22 +26,10 @@ void main() {
   setUp(() async {
     library = InMemoryLibraryRepository();
     reviews = InMemoryReviewRepository();
-    await library.saveTextbook(
-      Textbook(id: 'tb', title: '단어장', createdAt: start),
-    );
-    await library.saveWords([
+    await seedPlaylist(library, 'tb', [
       for (var i = 1; i <= 4; i++)
-        Word(
-          id: 'tb:000$i',
-          textbookId: 'tb',
-          day: 1,
-          no: '000$i',
-          headword: '語$i',
-          readings: const ['ご'],
-          meaning: '말 $i',
-          createdAt: start,
-        ),
-    ]);
+        seedWord('tb:000$i', '語$i', at: start, meaning: '말 $i'),
+    ], at: start);
   });
 
   test('the in-memory library is where words are hidden by default', () {
@@ -185,7 +175,7 @@ final class _FailingHide implements HiddenWordRepository {
       Future.error(StateError('disk full'));
 
   @override
-  Future<List<Word>> hiddenWords({String? textbookId}) async => const [];
+  Future<List<Word>> hiddenWords({String? playlistId}) async => const [];
 }
 
 /// A library block that cannot hide words.
@@ -195,34 +185,16 @@ final class _PlainLibrary implements LibraryRepository {
   final LibraryRepository _inner;
 
   @override
-  Future<List<Textbook>> textbooks() => _inner.textbooks();
-
-  @override
-  Future<Textbook?> textbook(String id) => _inner.textbook(id);
-
-  @override
-  Future<void> saveTextbook(Textbook textbook) => _inner.saveTextbook(textbook);
-
-  @override
-  Future<List<TextbookDay>> days(String textbookId) => _inner.days(textbookId);
-
-  @override
-  Future<void> saveDay(TextbookDay day) => _inner.saveDay(day);
-
-  @override
-  Future<List<Word>> words({String? textbookId, int? day}) =>
-      _inner.words(textbookId: textbookId, day: day);
+  Future<List<Word>> words({String? playlistId}) =>
+      _inner.words(playlistId: playlistId);
 
   @override
   Future<Word?> word(String id) => _inner.word(id);
 
   @override
-  Future<List<TextbookStats>> textbookStats() => _inner.textbookStats();
-
-  @override
-  Future<void> saveWords(List<Word> words) => _inner.saveWords(words);
-
-  @override
   Future<T> transaction<T>(Future<T> Function() action) =>
       _inner.transaction(action);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

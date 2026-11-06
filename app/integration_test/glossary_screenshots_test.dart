@@ -41,7 +41,7 @@ void main() {
         child: const ShioriApp(),
       ),
     );
-    await waitFor(tester, find.text('먼저 교재 페이지를 등록해 주세요'));
+    await waitFor(tester, find.text('먼저 페이지를 등록해 주세요'));
 
     await tester.tap(find.byTooltip('정보'));
     await tester.pumpAndSettle();

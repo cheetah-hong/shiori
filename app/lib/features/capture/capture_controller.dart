@@ -113,12 +113,17 @@ final class CaptureController extends Notifier<CaptureState> {
 
   static void _ignore(Object _) {}
 
-  /// Every headword in the library (hidden words too: the repository lists
-  /// them all), for the extractor to skip.
-  Future<Set<String>> _knownHeadwords() async => {
-    for (final w in await ref.read(libraryRepositoryProvider).words())
-      w.headword,
-  };
+  /// The headwords the learner hid (이미 알아요), for the extractor to skip.
+  /// Other library words stay on the review: which playlist they go to is
+  /// picked after it, and a word already there is skipped then.
+  Future<Set<String>> _knownHeadwords() async {
+    final library = ref.read(libraryRepositoryProvider);
+    if (library is! HiddenWordRepository) return const {};
+    return {
+      for (final w in await (library as HiddenWordRepository).hiddenWords())
+        w.headword,
+    };
+  }
 
   Future<void> _read(
     PageImage image,

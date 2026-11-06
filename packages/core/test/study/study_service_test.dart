@@ -1,6 +1,8 @@
 import 'package:shiori_core/shiori_core.dart';
 import 'package:test/test.dart';
 
+import '../support/library_seed.dart';
+
 void main() {
   final start = DateTime(2026, 11, 5, 21);
   late InMemoryLibraryRepository library;
@@ -17,22 +19,10 @@ void main() {
   setUp(() async {
     library = InMemoryLibraryRepository();
     reviews = InMemoryReviewRepository();
-    await library.saveTextbook(
-      Textbook(id: 'tb', title: '단어장', createdAt: start),
-    );
-    await library.saveWords([
+    await seedPlaylist(library, 'tb', [
       for (var i = 1; i <= 3; i++)
-        Word(
-          id: 'tb:000$i',
-          textbookId: 'tb',
-          day: 1,
-          no: '000$i',
-          headword: '語$i',
-          readings: const ['ご'],
-          meaning: '말 $i',
-          createdAt: start,
-        ),
-    ]);
+        seedWord('tb:000$i', '語$i', at: start, meaning: '말 $i'),
+    ], at: start);
   });
 
   test('summary counts new words and due reviews', () async {
@@ -118,21 +108,13 @@ void main() {
     expect((await serviceAt(DateTime(2026, 11, 6, 3)).summary()).knownToday, 1);
   });
 
-  test('a session can be limited to one textbook', () async {
-    await library.saveTextbook(
-      Textbook(id: 'other', title: '다른 책', createdAt: start),
-    );
-    await library.saveWords([
-      Word(
-        id: 'other:1',
-        textbookId: 'other',
-        headword: '他',
-        readings: const ['た'],
-        meaning: '다른',
-        createdAt: start,
-      ),
-    ]);
-    final session = await serviceAt(start).startSession(textbookId: 'other');
+  test('a session can be limited to one playlist', () async {
+    await seedPlaylist(library, 'other', [
+      seedWord('other:1', '他', at: start, meaning: '다른'),
+    ], at: start);
+    final session = await serviceAt(
+      start,
+    ).startSession(scope: const PlaylistOnly('other'));
     expect(session.queue.map((i) => i.word.id), ['other:1']);
   });
 
@@ -165,11 +147,16 @@ final class _FailingLog implements ReviewRepository {
   final _inner = InMemoryReviewRepository();
 
   @override
-  Future<ReviewCard?> card(String wordId) => _inner.card(wordId);
+  Future<ReviewCard?> card(
+    String wordId, {
+    CardScope scope = CardScope.shared,
+  }) => _inner.card(wordId, scope: scope);
 
   @override
-  Future<Map<String, ReviewCard>> cards({Iterable<String>? wordIds}) =>
-      _inner.cards(wordIds: wordIds);
+  Future<Map<String, ReviewCard>> cards({
+    Iterable<String>? wordIds,
+    CardScope scope = CardScope.shared,
+  }) => _inner.cards(wordIds: wordIds, scope: scope);
 
   @override
   Future<void> saveCard(ReviewCard card) => _inner.saveCard(card);
@@ -178,7 +165,8 @@ final class _FailingLog implements ReviewRepository {
   Future<void> addLog(ReviewLog log) => Future.error(StateError('disk full'));
 
   @override
-  Future<List<ReviewLog>> logs({DateTime? since}) => _inner.logs(since: since);
+  Future<List<ReviewLog>> logs({DateTime? since, CardScope? scope}) =>
+      _inner.logs(since: since, scope: scope);
 
   @override
   Future<T> transaction<T>(Future<T> Function() action) =>

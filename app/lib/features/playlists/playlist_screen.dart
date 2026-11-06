@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/data.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/features/playlists/playlist_actions.dart';
+import 'package:shiori/features/playlists/playlist_picker.dart';
 import 'package:shiori/features/study/study_screen.dart';
 import 'package:shiori/shared/format.dart';
 import 'package:shiori/shared/hide_labels.dart';
@@ -10,37 +12,39 @@ import 'package:shiori/shared/navigation.dart';
 import 'package:shiori/shared/widgets.dart';
 import 'package:shiori_core/shiori_core.dart';
 
-/// 교재: textbook › DAY › words, with each word's memory level. Words hidden
-/// with 이미 알아요 are left out of the days and listed under 「숨긴 단어 n개
-/// 보기」, where they can be shown again.
-class TextbookScreen extends ConsumerWidget {
-  const TextbookScreen({super.key, required this.textbookId});
+/// One playlist: its words in order with their memory level, studying only
+/// them, taking a word out, adding it to another playlist, renaming and
+/// deleting the playlist. Words hidden with 이미 알아요 are listed under
+/// 「숨긴 단어 n개 보기」, where they can be shown again.
+class PlaylistScreen extends ConsumerWidget {
+  const PlaylistScreen({super.key, required this.playlistId});
 
-  final String textbookId;
+  final String playlistId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final overview = ref.watch(textbookOverviewProvider(textbookId));
+    final view = ref.watch(playlistViewProvider(playlistId));
     final cardsState = ref.watch(cardsProvider);
-    final cards = cardsState.value ?? const <String, ReviewCard>{};
-    final maxLevel = ref.watch(reviewSchedulerProvider).maxLevel;
-    final summary = ref.watch(textbookSummaryProvider(textbookId)).value;
+    final summary = ref.watch(playlistSummaryProvider(playlistId)).value;
 
     return Scaffold(
-      appBar: AppBar(title: Text(overview.value?.textbook.title ?? '교재')),
-      body: switch (overview) {
-        // While a save (hiding a word, say) reloads the overview, the last
-        // value stays on screen: the list keeps its scroll position and the
-        // hidden words stay open.
+      appBar: AppBar(
+        title: Text(view.value?.playlist.name ?? '재생목록'),
+        actions: [if (view.value case final v?) _PlaylistMenu(view: v)],
+      ),
+      body: switch (view) {
+        // While a change (hiding or taking out a word) reloads the view, the
+        // last value stays on screen: the list keeps its scroll position and
+        // the hidden words stay open.
         AsyncValue(:final value?, hasError: false) => _Body(
-          overview: value,
-          cards: cards,
+          view: value,
+          cards: cardsState.value ?? const <String, ReviewCard>{},
           cardsFailed: cardsState.hasError,
           studyCards: summary == null ? 0 : summary.dueCount + summary.newCount,
-          maxLevel: maxLevel,
+          maxLevel: ref.watch(reviewSchedulerProvider).maxLevel,
         ),
         AsyncError(:final error) => Center(
-          child: Text('교재를 불러오지 못했어요: $error'),
+          child: Text('재생목록을 불러오지 못했어요: $error'),
         ),
         _ => const Center(child: CircularProgressIndicator()),
       },
@@ -48,22 +52,53 @@ class TextbookScreen extends ConsumerWidget {
   }
 }
 
+class _PlaylistMenu extends ConsumerWidget {
+  const _PlaylistMenu({required this.view});
+
+  final PlaylistView view;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => PopupMenuButton<String>(
+    tooltip: '재생목록 메뉴',
+    onSelected: (action) async {
+      switch (action) {
+        case 'rename':
+          await renamePlaylist(context, ref, view.playlist);
+        case 'delete':
+          final deleted = await deletePlaylist(
+            context,
+            ref,
+            view.playlist,
+            wordCount: view.words.length,
+          );
+          if (deleted && context.mounted) {
+            Navigator.of(context).popUntil((route) => route.isFirst);
+          }
+      }
+    },
+    itemBuilder: (_) => const [
+      PopupMenuItem(value: 'rename', child: Text('이름 바꾸기')),
+      PopupMenuItem(value: 'delete', child: Text('삭제')),
+    ],
+  );
+}
+
 class _Body extends ConsumerStatefulWidget {
   const _Body({
-    required this.overview,
+    required this.view,
     required this.cards,
     required this.cardsFailed,
     required this.studyCards,
     required this.maxLevel,
   });
 
-  final TextbookOverview overview;
+  final PlaylistView view;
   final Map<String, ReviewCard> cards;
 
   /// Memory levels could not be loaded; the meters would all read "new".
   final bool cardsFailed;
 
-  /// Due reviews plus new words of this textbook.
+  /// Due reviews plus new words of this playlist.
   final int studyCards;
   final int maxLevel;
 
@@ -74,7 +109,7 @@ class _Body extends ConsumerStatefulWidget {
 class _BodyState extends ConsumerState<_Body> {
   bool _showHidden = false;
 
-  void _setHidden(Word word, {required bool hidden}) => _setWordHidden(
+  void _setHidden(Word word, {required bool hidden}) => setWordHidden(
     messenger: ScaffoldMessenger.of(context),
     library: ref.read(libraryServiceProvider),
     revision: ref.read(dataRevisionProvider.notifier),
@@ -82,22 +117,53 @@ class _BodyState extends ConsumerState<_Body> {
     hidden: hidden,
   );
 
+  Future<void> _wordAction(Word word, _WordAction action) => switch (action) {
+    _WordAction.remove => removeFromPlaylist(
+      messenger: ScaffoldMessenger.of(context),
+      library: ref.read(libraryServiceProvider),
+      revision: ref.read(dataRevisionProvider.notifier),
+      playlistId: widget.view.playlist.id,
+      word: word,
+    ),
+    _WordAction.addElsewhere => _addElsewhere(word),
+  };
+
+  Future<void> _addElsewhere(Word word) async {
+    final messenger = ScaffoldMessenger.of(context);
+    // The picker shows whether each playlist holds the word; without the
+    // preview (a read that failed) it still works, only without that.
+    AddPreview? preview;
+    try {
+      preview = await ref.read(libraryServiceProvider).previewAdd([
+        word.headword,
+      ]);
+    } on Exception catch (e, stack) {
+      debugPrint('preview for adding elsewhere: $e\n$stack');
+    }
+    if (!mounted) return;
+    final target = await showPlaylistPicker(
+      context,
+      exceptPlaylistId: widget.view.playlist.id,
+      preview: preview,
+    );
+    if (target == null || !mounted) return;
+    await addWordsTo(
+      messenger: messenger,
+      library: ref.read(libraryServiceProvider),
+      revision: ref.read(dataRevisionProvider.notifier),
+      wordIds: [word.id],
+      target: target,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final overview = widget.overview;
+    final view = widget.view;
     final cards = widget.cards;
     final maxLevel = widget.maxLevel;
-    final studyCards = widget.studyCards;
-    final words = [
-      for (final d in overview.days) ...d.shownWords,
-      ...overview.undated.where((w) => !w.isHidden),
-    ];
-    final hiddenWords = overview.hiddenWords;
-    final undated = [
-      for (final w in overview.undated)
-        if (!w.isHidden) w,
-    ];
+    final words = view.shownWords;
+    final hiddenWords = view.hiddenWords;
     final longTerm = words
         .where((w) => (cards[w.id]?.level ?? 0) >= maxLevel)
         .length;
@@ -119,7 +185,7 @@ class _BodyState extends ConsumerState<_Body> {
                 children: [
                   Row(
                     children: [
-                      _Stat(value: overview.shownCount, label: '단어'),
+                      _Stat(value: view.shownCount, label: '단어'),
                       _Stat(value: learned, label: '학습함'),
                       _Stat(value: longTerm, label: '장기 기억', color: t.ok),
                     ],
@@ -128,15 +194,17 @@ class _BodyState extends ConsumerState<_Body> {
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
-                      onPressed: studyCards == 0
+                      onPressed: widget.studyCards == 0
                           ? null
                           : () => pushScreen<void>(
                               context,
-                              StudyScreen(textbookId: overview.textbook.id),
+                              StudyScreen(
+                                scope: PlaylistOnly(view.playlist.id),
+                              ),
                             ),
                       icon: const Icon(Icons.play_arrow_rounded),
                       label: Text(
-                        studyCards == 0 ? '지금은 학습할 카드가 없어요' : '이 교재로 학습',
+                        widget.studyCards == 0 ? '지금은 학습할 카드가 없어요' : '이 목록 학습',
                       ),
                     ),
                   ),
@@ -156,40 +224,35 @@ class _BodyState extends ConsumerState<_Body> {
             ),
           ),
         ),
-        for (final day in overview.days)
-          if (day.shownWords.isNotEmpty) ...[
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
-              sliver: SliverToBoxAdapter(
-                child: SectionLabel(
-                  [
-                    dayNumber(day.day.number),
-                    day.day.title,
-                  ].where((s) => s.isNotEmpty).join('  '),
-                  trailing: Text(
-                    '${day.shownWords.length}개',
-                    style: context.text.bodySmall,
-                  ),
+        if (view.words.isEmpty)
+          SliverPadding(
+            padding: const EdgeInsets.all(Space.gutter),
+            sliver: SliverToBoxAdapter(
+              child: Text(
+                '이 목록에는 아직 단어가 없어요',
+                style: context.text.bodyMedium?.copyWith(color: t.ink2),
+              ),
+            ),
+          ),
+        if (words.isNotEmpty) ...[
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
+            sliver: SliverToBoxAdapter(
+              child: SectionLabel(
+                '단어',
+                trailing: Text(
+                  '${words.length}개',
+                  style: context.text.bodySmall,
                 ),
               ),
             ),
-            _WordList(
-              words: day.shownWords,
-              cards: cards,
-              maxLevel: maxLevel,
-              onHide: (w) => _setHidden(w, hidden: true),
-            ),
-          ],
-        if (undated.isNotEmpty) ...[
-          const SliverPadding(
-            padding: EdgeInsets.symmetric(horizontal: Space.gutter),
-            sliver: SliverToBoxAdapter(child: SectionLabel('DAY 모름')),
           ),
           _WordList(
-            words: undated,
+            words: words,
             cards: cards,
             maxLevel: maxLevel,
             onHide: (w) => _setHidden(w, hidden: true),
+            onAction: _wordAction,
           ),
         ],
         if (hiddenWords.isNotEmpty) ...[
@@ -230,60 +293,7 @@ class _BodyState extends ConsumerState<_Body> {
   }
 }
 
-/// Hides or shows [word] and says so, with 되돌리기 after hiding. Uses no
-/// [BuildContext], so 되돌리기 still works once the screen is gone.
-Future<void> _setWordHidden({
-  required ScaffoldMessengerState messenger,
-  required LibraryService library,
-  required DataRevision revision,
-  required Word word,
-  required bool hidden,
-}) async {
-  void say(String message, {SnackBarAction? action}) => messenger
-    ..removeCurrentSnackBar()
-    ..showSnackBar(
-      SnackBar(content: Text(message), action: action, persist: false),
-    );
-
-  final failure = hidden ? HideLabels.hideFailed : HideLabels.restoreFailed;
-  try {
-    if (hidden) {
-      await library.hideWords([word.id]);
-    } else {
-      await library.unhideWords([word.id]);
-    }
-  } on Exception catch (e, stack) {
-    // A storage block failed (a disk error, say).
-    debugPrint('textbook hide failed: $e\n$stack');
-    say(failure);
-    return;
-  } on Error catch (e, stack) {
-    // A bug in a block: report it like any uncaught error.
-    FlutterError.reportError(
-      FlutterErrorDetails(exception: e, stack: stack, library: 'textbook'),
-    );
-    say(failure);
-    return;
-  }
-  revision.bump();
-  if (!hidden) {
-    say(HideLabels.restored(word.headword));
-    return;
-  }
-  say(
-    HideLabels.hidden(word.headword),
-    action: SnackBarAction(
-      label: HideLabels.undo,
-      onPressed: () => _setWordHidden(
-        messenger: messenger,
-        library: library,
-        revision: revision,
-        word: word,
-        hidden: false,
-      ),
-    ),
-  );
-}
+enum _WordAction { remove, addElsewhere }
 
 class _Stat extends StatelessWidget {
   const _Stat({required this.value, required this.label, this.color});
@@ -318,12 +328,14 @@ class _WordList extends StatelessWidget {
     required this.cards,
     required this.maxLevel,
     required this.onHide,
+    required this.onAction,
   });
 
   final List<Word> words;
   final Map<String, ReviewCard> cards;
   final int maxLevel;
   final ValueChanged<Word> onHide;
+  final Future<void> Function(Word, _WordAction) onAction;
 
   @override
   Widget build(BuildContext context) {
@@ -342,6 +354,7 @@ class _WordList extends StatelessWidget {
           itemBuilder: (context, i) {
             final w = words[i];
             return Padding(
+              key: ValueKey('word-${w.id}'),
               padding: const EdgeInsets.fromLTRB(
                 Space.lg,
                 Space.xs,
@@ -350,16 +363,6 @@ class _WordList extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  SizedBox(
-                    width: 44,
-                    child: Text(
-                      w.no ?? '',
-                      style: context.text.labelSmall?.copyWith(
-                        color: t.ink3,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
-                    ),
-                  ),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -400,6 +403,21 @@ class _WordList extends StatelessWidget {
                     onPressed: () => onHide(w),
                     icon: const Icon(Icons.visibility_off_outlined),
                   ),
+                  PopupMenuButton<_WordAction>(
+                    tooltip: '${w.headword} 메뉴',
+                    iconColor: t.ink3,
+                    onSelected: (action) => onAction(w, action),
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(
+                        value: _WordAction.remove,
+                        child: Text('이 목록에서 빼기'),
+                      ),
+                      PopupMenuItem(
+                        value: _WordAction.addElsewhere,
+                        child: Text('다른 목록에 추가'),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             );
@@ -433,7 +451,6 @@ class _HiddenList extends StatelessWidget {
               const Divider(indent: Space.lg, endIndent: Space.lg),
           itemBuilder: (context, i) {
             final w = words[i];
-            final day = w.day;
             return Padding(
               padding: const EdgeInsets.fromLTRB(
                 Space.lg,
@@ -453,10 +470,7 @@ class _HiddenList extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          [
-                            if (day != null) dayNumber(day),
-                            w.meaning,
-                          ].where((s) => s.isNotEmpty).join(' · '),
+                          w.meaning,
                           style: context.text.bodySmall?.copyWith(
                             color: t.ink3,
                           ),

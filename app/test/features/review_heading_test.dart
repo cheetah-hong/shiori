@@ -1,5 +1,5 @@
 // D11: the review screen's head without page info (no DAY, title or page is
-// read from the page) and the save into a new textbook. Made-up words only.
+// read from the page) and adding into a new playlist. Made-up words only.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shiori/features/capture/review_screen.dart';
@@ -48,30 +48,35 @@ void main() {
     expect(find.textContaining('칸 위치'), findsNothing);
   });
 
-  testWidgets('with no textbook yet the words go to a new 「내 단어장」, saved '
-      'in the photo\'s order with no number, DAY or page', (tester) async {
+  testWidgets('with no playlist yet the words go to a new 「내 단어장」, in '
+      'the photo\'s order', (tester) async {
     usePhoneSize(tester);
     final blocks = TestBlocks();
     await tester.pumpWidget(screen(blocks, ReviewScreen(draft: _draft)));
     await tester.pumpAndSettle();
 
-    expect(find.text('새 교재 · 내 단어장'), findsOneWidget);
-    await tester.tap(find.text('단어 3개 저장'));
-    // The screen is the only route here: the save spinner stays, so pump a
+    await tester.tap(find.text('단어 3개 추가'));
+    await tester.pumpAndSettle();
+    expect(find.text('어느 재생목록에 추가할까요?'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.widgetWithText(TextField, '재생목록 이름'),
+        matching: find.text('내 단어장'),
+      ),
+      findsOneWidget,
+      reason: 'the new-playlist form is open with the default name',
+    );
+    await tester.tap(find.text('만들고 추가'));
+    // The screen is the only route here: the add spinner stays, so pump a
     // few frames instead of settling.
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
-    expect(find.text('단어 3개를 저장했어요'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text("'내 단어장'에 단어 3개 추가"), findsOneWidget);
 
-    final textbook = (await blocks.library.textbooks()).single;
-    expect(textbook.title, '내 단어장');
-    expect(textbook.templateId, isNull);
-    final words = await blocks.library.words(textbookId: textbook.id);
+    final playlist = (await blocks.library.playlists()).single;
+    expect(playlist.name, '내 단어장');
+    final words = await blocks.library.words(playlistId: playlist.id);
     expect(words.map((w) => w.headword), ['雨', '雪', '風']);
-    expect(
-      words.every((w) => w.no == null && w.day == null && w.page == null),
-      isTrue,
-    );
-    expect(await blocks.library.days(textbook.id), isEmpty);
   });
 }

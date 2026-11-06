@@ -12,6 +12,8 @@ export 'src/models/ocr.dart';
 export 'src/models/page_image.dart';
 export 'src/models/part_of_speech.dart';
 export 'src/models/review.dart';
+export 'src/models/study_preferences.dart';
+export 'src/models/word_key.dart';
 
 // Ports: the slots blocks plug into
 export 'src/ports/clock.dart';
@@ -22,6 +24,7 @@ export 'src/ports/korean_glossary.dart';
 export 'src/ports/repositories.dart';
 export 'src/ports/review_scheduler.dart';
 export 'src/ports/speech.dart';
+export 'src/ports/study_preferences_repository.dart';
 export 'src/ports/text_recognizer.dart';
 
 // Capture: the review screen's edits, recorded OCR
@@ -47,3 +50,4 @@ export 'src/study/study_settings.dart';
 // First storage blocks
 export 'src/storage/in_memory_library_repository.dart';
 export 'src/storage/in_memory_review_repository.dart';
+export 'src/storage/in_memory_study_preferences_repository.dart';

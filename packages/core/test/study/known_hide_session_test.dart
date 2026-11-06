@@ -9,7 +9,6 @@ void main() {
 
   Word word(String id, {DateTime? hiddenAt}) => Word(
     id: id,
-    textbookId: 'tb',
     headword: id,
     readings: const ['よみ'],
     meaning: '뜻',

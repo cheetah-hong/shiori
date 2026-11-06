@@ -1,4 +1,6 @@
+import 'package:shiori_core/src/models/library.dart';
 import 'package:shiori_core/src/models/review.dart';
+import 'package:shiori_core/src/models/study_preferences.dart';
 import 'package:shiori_core/src/ports/clock.dart';
 import 'package:shiori_core/src/ports/hidden_word_repository.dart';
 import 'package:shiori_core/src/ports/repositories.dart';
@@ -7,6 +9,36 @@ import 'package:shiori_core/src/study/session_builder.dart';
 import 'package:shiori_core/src/study/study_calendar.dart';
 import 'package:shiori_core/src/study/study_session.dart';
 import 'package:shiori_core/src/study/study_settings.dart';
+
+/// Which words a summary or a session is about.
+sealed class StudyScope {
+  const StudyScope();
+}
+
+/// Every word in at least one playlist (전체 복습).
+final class AllWords extends StudyScope {
+  const AllWords();
+
+  @override
+  bool operator ==(Object other) => other is AllWords;
+
+  @override
+  int get hashCode => (AllWords).hashCode;
+}
+
+/// The words of one playlist.
+final class PlaylistOnly extends StudyScope {
+  const PlaylistOnly(this.playlistId);
+
+  final String playlistId;
+
+  @override
+  bool operator ==(Object other) =>
+      other is PlaylistOnly && other.playlistId == playlistId;
+
+  @override
+  int get hashCode => playlistId.hashCode;
+}
 
 final class StudySummary {
   const StudySummary({
@@ -45,6 +77,7 @@ final class StudyService {
     required this.clock,
     this.settings = const StudySettings(),
     this.builder = const SessionBuilder(),
+    this.preferences = const StudyPreferences(),
     HiddenWordRepository? hidden,
   }) : calendar = StudyCalendar.checked(settings.dayStartHour),
        hidden =
@@ -65,16 +98,28 @@ final class StudyService {
   final SessionBuilder builder;
   final StudyCalendar calendar;
 
-  Future<StudySummary> summary({String? textbookId}) async {
+  /// The learner's options. [RecordMode.perPlaylist] is not built yet:
+  /// study keeps one shared record per word whatever is stored.
+  final StudyPreferences preferences;
+
+  /// Whose record [scope]'s cards are. The one place a per-playlist record
+  /// would start: today every scope uses [CardScope.shared].
+  CardScope cardScopeFor(StudyScope scope) => CardScope.shared;
+
+  Future<StudySummary> summary({StudyScope scope = const AllWords()}) async {
     final now = clock.now();
-    final words = await library.words(textbookId: textbookId);
+    final cardScope = cardScopeFor(scope);
+    final words = await _wordsOf(scope);
     final ids = {for (final w in words) w.id};
     final shown = {
       for (final w in words)
         if (!w.isHidden) w.id,
     };
-    final cards = await reviews.cards(wordIds: ids);
-    final todayLogs = await reviews.logs(since: calendar.startOfStudyDay(now));
+    final cards = await reviews.cards(wordIds: ids, scope: cardScope);
+    final todayLogs = await reviews.logs(
+      since: calendar.startOfStudyDay(now),
+      scope: cardScope,
+    );
     return StudySummary(
       dueCount: cards.values
           .where((c) => shown.contains(c.wordId) && c.isDue(now))
@@ -89,9 +134,20 @@ final class StudyService {
     );
   }
 
-  Future<StudySession> startSession({String? textbookId, int? goal}) async {
-    final words = await library.words(textbookId: textbookId);
-    final cards = await reviews.cards(wordIds: words.map((w) => w.id));
+  Future<List<Word>> _wordsOf(StudyScope scope) => switch (scope) {
+    AllWords() => library.words(),
+    PlaylistOnly(:final playlistId) => library.words(playlistId: playlistId),
+  };
+
+  Future<StudySession> startSession({
+    StudyScope scope = const AllWords(),
+    int? goal,
+  }) async {
+    final words = await _wordsOf(scope);
+    final cards = await reviews.cards(
+      wordIds: words.map((w) => w.id),
+      scope: cardScopeFor(scope),
+    );
     return builder.build(
       words: words,
       cards: cards,

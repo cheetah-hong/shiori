@@ -1,3 +1,51 @@
+/// Whose learning state a card or a press is: the word's one record shared
+/// by every playlist ([shared], the only one the app uses now), or a record
+/// of the word inside one playlist (for a later "per playlist" setting).
+final class CardScope {
+  const CardScope._(this.key);
+
+  /// The word's record inside playlist [playlistId]. Stored as `p:<id>`.
+  factory CardScope.playlist(String playlistId) {
+    if (playlistId.isEmpty) {
+      throw ArgumentError.value(playlistId, 'playlistId', 'must not be empty');
+    }
+    return CardScope._('$_playlistPrefix$playlistId');
+  }
+
+  /// The scope stored as [key]; a [FormatException] for anything else.
+  factory CardScope.fromKey(String key) {
+    if (key.isEmpty) return shared;
+    if (key.startsWith(_playlistPrefix) &&
+        key.length > _playlistPrefix.length) {
+      return CardScope._(key);
+    }
+    throw FormatException('not a card scope', key);
+  }
+
+  /// One record per word, whatever playlists hold it. Stored as `''`.
+  static const CardScope shared = CardScope._('');
+
+  static const String _playlistPrefix = 'p:';
+
+  /// How the scope is stored.
+  final String key;
+
+  bool get isShared => key.isEmpty;
+
+  /// The playlist of a per-playlist scope; null for [shared].
+  String? get playlistId =>
+      isShared ? null : key.substring(_playlistPrefix.length);
+
+  @override
+  bool operator ==(Object other) => other is CardScope && other.key == key;
+
+  @override
+  int get hashCode => key.hashCode;
+
+  @override
+  String toString() => isShared ? 'CardScope.shared' : 'CardScope($key)';
+}
+
 /// Learning state of one word: memory level and next review.
 ///
 /// A word without a card is a new word.
@@ -9,9 +57,13 @@ final class ReviewCard {
     required this.lastReviewedAt,
     this.reviewCount = 0,
     this.lapseCount = 0,
+    this.scope = CardScope.shared,
   });
 
   final String wordId;
+
+  /// Whose record this is ([CardScope.shared] unless per-playlist).
+  final CardScope scope;
 
   /// Memory level, 1 to the scheduler's maximum (4 = 장기 기억).
   final int level;
@@ -39,12 +91,14 @@ final class ReviewCard {
     lastReviewedAt: lastReviewedAt ?? this.lastReviewedAt,
     reviewCount: reviewCount ?? this.reviewCount,
     lapseCount: lapseCount ?? this.lapseCount,
+    scope: scope,
   );
 
   @override
   bool operator ==(Object other) =>
       other is ReviewCard &&
       other.wordId == wordId &&
+      other.scope == scope &&
       other.level == level &&
       other.dueAt == dueAt &&
       other.lastReviewedAt == lastReviewedAt &&
@@ -54,6 +108,7 @@ final class ReviewCard {
   @override
   int get hashCode => Object.hash(
     wordId,
+    scope,
     level,
     dueAt,
     lastReviewedAt,
@@ -83,9 +138,13 @@ final class ReviewLog {
     required this.levelBefore,
     required this.levelAfter,
     required this.retriesInSession,
+    this.scope = CardScope.shared,
   });
 
   final String wordId;
+
+  /// The record the press went to (as `ReviewCard.scope`).
+  final CardScope scope;
   final Answer answer;
   final DateTime at;
 

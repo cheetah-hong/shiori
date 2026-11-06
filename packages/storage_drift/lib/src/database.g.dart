@@ -5,584 +5,6 @@
 part of 'database.dart';
 
 // ignore_for_file: type=lint
-class $TextbooksTable extends Textbooks
-    with TableInfo<$TextbooksTable, TextbookRow> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $TextbooksTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
-  @override
-  late final GeneratedColumn<String> id = GeneratedColumn<String>(
-    'id',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _titleMeta = const VerificationMeta('title');
-  @override
-  late final GeneratedColumn<String> title = GeneratedColumn<String>(
-    'title',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  @override
-  late final GeneratedColumnWithTypeConverter<DateTime, int> createdAt =
-      GeneratedColumn<int>(
-        'created_at',
-        aliasedName,
-        false,
-        type: DriftSqlType.int,
-        requiredDuringInsert: true,
-      ).withConverter<DateTime>($TextbooksTable.$convertercreatedAt);
-  static const VerificationMeta _templateIdMeta = const VerificationMeta(
-    'templateId',
-  );
-  @override
-  late final GeneratedColumn<String> templateId = GeneratedColumn<String>(
-    'template_id',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  @override
-  List<GeneratedColumn> get $columns => [id, title, createdAt, templateId];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'textbooks';
-  @override
-  VerificationContext validateIntegrity(
-    Insertable<TextbookRow> instance, {
-    bool isInserting = false,
-  }) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    } else if (isInserting) {
-      context.missing(_idMeta);
-    }
-    if (data.containsKey('title')) {
-      context.handle(
-        _titleMeta,
-        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_titleMeta);
-    }
-    if (data.containsKey('template_id')) {
-      context.handle(
-        _templateIdMeta,
-        templateId.isAcceptableOrUnknown(data['template_id']!, _templateIdMeta),
-      );
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {id};
-  @override
-  TextbookRow map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return TextbookRow(
-      id: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}id'],
-      )!,
-      title: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}title'],
-      )!,
-      createdAt: $TextbooksTable.$convertercreatedAt.fromSql(
-        attachedDatabase.typeMapping.read(
-          DriftSqlType.int,
-          data['${effectivePrefix}created_at'],
-        )!,
-      ),
-      templateId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}template_id'],
-      ),
-    );
-  }
-
-  @override
-  $TextbooksTable createAlias(String alias) {
-    return $TextbooksTable(attachedDatabase, alias);
-  }
-
-  static TypeConverter<DateTime, int> $convertercreatedAt =
-      const UtcMicrosConverter();
-}
-
-class TextbookRow extends DataClass implements Insertable<TextbookRow> {
-  final String id;
-  final String title;
-  final DateTime createdAt;
-  final String? templateId;
-  const TextbookRow({
-    required this.id,
-    required this.title,
-    required this.createdAt,
-    this.templateId,
-  });
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['id'] = Variable<String>(id);
-    map['title'] = Variable<String>(title);
-    {
-      map['created_at'] = Variable<int>(
-        $TextbooksTable.$convertercreatedAt.toSql(createdAt),
-      );
-    }
-    if (!nullToAbsent || templateId != null) {
-      map['template_id'] = Variable<String>(templateId);
-    }
-    return map;
-  }
-
-  TextbooksCompanion toCompanion(bool nullToAbsent) {
-    return TextbooksCompanion(
-      id: Value(id),
-      title: Value(title),
-      createdAt: Value(createdAt),
-      templateId: templateId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(templateId),
-    );
-  }
-
-  factory TextbookRow.fromJson(
-    Map<String, dynamic> json, {
-    ValueSerializer? serializer,
-  }) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return TextbookRow(
-      id: serializer.fromJson<String>(json['id']),
-      title: serializer.fromJson<String>(json['title']),
-      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
-      templateId: serializer.fromJson<String?>(json['templateId']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'id': serializer.toJson<String>(id),
-      'title': serializer.toJson<String>(title),
-      'createdAt': serializer.toJson<DateTime>(createdAt),
-      'templateId': serializer.toJson<String?>(templateId),
-    };
-  }
-
-  TextbookRow copyWith({
-    String? id,
-    String? title,
-    DateTime? createdAt,
-    Value<String?> templateId = const Value.absent(),
-  }) => TextbookRow(
-    id: id ?? this.id,
-    title: title ?? this.title,
-    createdAt: createdAt ?? this.createdAt,
-    templateId: templateId.present ? templateId.value : this.templateId,
-  );
-  TextbookRow copyWithCompanion(TextbooksCompanion data) {
-    return TextbookRow(
-      id: data.id.present ? data.id.value : this.id,
-      title: data.title.present ? data.title.value : this.title,
-      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
-      templateId: data.templateId.present
-          ? data.templateId.value
-          : this.templateId,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('TextbookRow(')
-          ..write('id: $id, ')
-          ..write('title: $title, ')
-          ..write('createdAt: $createdAt, ')
-          ..write('templateId: $templateId')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode => Object.hash(id, title, createdAt, templateId);
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is TextbookRow &&
-          other.id == this.id &&
-          other.title == this.title &&
-          other.createdAt == this.createdAt &&
-          other.templateId == this.templateId);
-}
-
-class TextbooksCompanion extends UpdateCompanion<TextbookRow> {
-  final Value<String> id;
-  final Value<String> title;
-  final Value<DateTime> createdAt;
-  final Value<String?> templateId;
-  final Value<int> rowid;
-  const TextbooksCompanion({
-    this.id = const Value.absent(),
-    this.title = const Value.absent(),
-    this.createdAt = const Value.absent(),
-    this.templateId = const Value.absent(),
-    this.rowid = const Value.absent(),
-  });
-  TextbooksCompanion.insert({
-    required String id,
-    required String title,
-    required DateTime createdAt,
-    this.templateId = const Value.absent(),
-    this.rowid = const Value.absent(),
-  }) : id = Value(id),
-       title = Value(title),
-       createdAt = Value(createdAt);
-  static Insertable<TextbookRow> custom({
-    Expression<String>? id,
-    Expression<String>? title,
-    Expression<int>? createdAt,
-    Expression<String>? templateId,
-    Expression<int>? rowid,
-  }) {
-    return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (title != null) 'title': title,
-      if (createdAt != null) 'created_at': createdAt,
-      if (templateId != null) 'template_id': templateId,
-      if (rowid != null) 'rowid': rowid,
-    });
-  }
-
-  TextbooksCompanion copyWith({
-    Value<String>? id,
-    Value<String>? title,
-    Value<DateTime>? createdAt,
-    Value<String?>? templateId,
-    Value<int>? rowid,
-  }) {
-    return TextbooksCompanion(
-      id: id ?? this.id,
-      title: title ?? this.title,
-      createdAt: createdAt ?? this.createdAt,
-      templateId: templateId ?? this.templateId,
-      rowid: rowid ?? this.rowid,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (id.present) {
-      map['id'] = Variable<String>(id.value);
-    }
-    if (title.present) {
-      map['title'] = Variable<String>(title.value);
-    }
-    if (createdAt.present) {
-      map['created_at'] = Variable<int>(
-        $TextbooksTable.$convertercreatedAt.toSql(createdAt.value),
-      );
-    }
-    if (templateId.present) {
-      map['template_id'] = Variable<String>(templateId.value);
-    }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('TextbooksCompanion(')
-          ..write('id: $id, ')
-          ..write('title: $title, ')
-          ..write('createdAt: $createdAt, ')
-          ..write('templateId: $templateId, ')
-          ..write('rowid: $rowid')
-          ..write(')'))
-        .toString();
-  }
-}
-
-class $TextbookDaysTable extends TextbookDays
-    with TableInfo<$TextbookDaysTable, DayRow> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $TextbookDaysTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _textbookIdMeta = const VerificationMeta(
-    'textbookId',
-  );
-  @override
-  late final GeneratedColumn<String> textbookId = GeneratedColumn<String>(
-    'textbook_id',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES textbooks (id)',
-    ),
-  );
-  static const VerificationMeta _numberMeta = const VerificationMeta('number');
-  @override
-  late final GeneratedColumn<int> number = GeneratedColumn<int>(
-    'number',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _titleMeta = const VerificationMeta('title');
-  @override
-  late final GeneratedColumn<String> title = GeneratedColumn<String>(
-    'title',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  @override
-  List<GeneratedColumn> get $columns => [textbookId, number, title];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'textbook_days';
-  @override
-  VerificationContext validateIntegrity(
-    Insertable<DayRow> instance, {
-    bool isInserting = false,
-  }) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('textbook_id')) {
-      context.handle(
-        _textbookIdMeta,
-        textbookId.isAcceptableOrUnknown(data['textbook_id']!, _textbookIdMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_textbookIdMeta);
-    }
-    if (data.containsKey('number')) {
-      context.handle(
-        _numberMeta,
-        number.isAcceptableOrUnknown(data['number']!, _numberMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_numberMeta);
-    }
-    if (data.containsKey('title')) {
-      context.handle(
-        _titleMeta,
-        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_titleMeta);
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {textbookId, number};
-  @override
-  DayRow map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return DayRow(
-      textbookId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}textbook_id'],
-      )!,
-      number: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}number'],
-      )!,
-      title: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}title'],
-      )!,
-    );
-  }
-
-  @override
-  $TextbookDaysTable createAlias(String alias) {
-    return $TextbookDaysTable(attachedDatabase, alias);
-  }
-}
-
-class DayRow extends DataClass implements Insertable<DayRow> {
-  final String textbookId;
-  final int number;
-  final String title;
-  const DayRow({
-    required this.textbookId,
-    required this.number,
-    required this.title,
-  });
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['textbook_id'] = Variable<String>(textbookId);
-    map['number'] = Variable<int>(number);
-    map['title'] = Variable<String>(title);
-    return map;
-  }
-
-  TextbookDaysCompanion toCompanion(bool nullToAbsent) {
-    return TextbookDaysCompanion(
-      textbookId: Value(textbookId),
-      number: Value(number),
-      title: Value(title),
-    );
-  }
-
-  factory DayRow.fromJson(
-    Map<String, dynamic> json, {
-    ValueSerializer? serializer,
-  }) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return DayRow(
-      textbookId: serializer.fromJson<String>(json['textbookId']),
-      number: serializer.fromJson<int>(json['number']),
-      title: serializer.fromJson<String>(json['title']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'textbookId': serializer.toJson<String>(textbookId),
-      'number': serializer.toJson<int>(number),
-      'title': serializer.toJson<String>(title),
-    };
-  }
-
-  DayRow copyWith({String? textbookId, int? number, String? title}) => DayRow(
-    textbookId: textbookId ?? this.textbookId,
-    number: number ?? this.number,
-    title: title ?? this.title,
-  );
-  DayRow copyWithCompanion(TextbookDaysCompanion data) {
-    return DayRow(
-      textbookId: data.textbookId.present
-          ? data.textbookId.value
-          : this.textbookId,
-      number: data.number.present ? data.number.value : this.number,
-      title: data.title.present ? data.title.value : this.title,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('DayRow(')
-          ..write('textbookId: $textbookId, ')
-          ..write('number: $number, ')
-          ..write('title: $title')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode => Object.hash(textbookId, number, title);
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is DayRow &&
-          other.textbookId == this.textbookId &&
-          other.number == this.number &&
-          other.title == this.title);
-}
-
-class TextbookDaysCompanion extends UpdateCompanion<DayRow> {
-  final Value<String> textbookId;
-  final Value<int> number;
-  final Value<String> title;
-  final Value<int> rowid;
-  const TextbookDaysCompanion({
-    this.textbookId = const Value.absent(),
-    this.number = const Value.absent(),
-    this.title = const Value.absent(),
-    this.rowid = const Value.absent(),
-  });
-  TextbookDaysCompanion.insert({
-    required String textbookId,
-    required int number,
-    required String title,
-    this.rowid = const Value.absent(),
-  }) : textbookId = Value(textbookId),
-       number = Value(number),
-       title = Value(title);
-  static Insertable<DayRow> custom({
-    Expression<String>? textbookId,
-    Expression<int>? number,
-    Expression<String>? title,
-    Expression<int>? rowid,
-  }) {
-    return RawValuesInsertable({
-      if (textbookId != null) 'textbook_id': textbookId,
-      if (number != null) 'number': number,
-      if (title != null) 'title': title,
-      if (rowid != null) 'rowid': rowid,
-    });
-  }
-
-  TextbookDaysCompanion copyWith({
-    Value<String>? textbookId,
-    Value<int>? number,
-    Value<String>? title,
-    Value<int>? rowid,
-  }) {
-    return TextbookDaysCompanion(
-      textbookId: textbookId ?? this.textbookId,
-      number: number ?? this.number,
-      title: title ?? this.title,
-      rowid: rowid ?? this.rowid,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (textbookId.present) {
-      map['textbook_id'] = Variable<String>(textbookId.value);
-    }
-    if (number.present) {
-      map['number'] = Variable<int>(number.value);
-    }
-    if (title.present) {
-      map['title'] = Variable<String>(title.value);
-    }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('TextbookDaysCompanion(')
-          ..write('textbookId: $textbookId, ')
-          ..write('number: $number, ')
-          ..write('title: $title, ')
-          ..write('rowid: $rowid')
-          ..write(')'))
-        .toString();
-  }
-}
-
 class $WordsTable extends Words with TableInfo<$WordsTable, WordRow> {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -597,37 +19,15 @@ class $WordsTable extends Words with TableInfo<$WordsTable, WordRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _textbookIdMeta = const VerificationMeta(
-    'textbookId',
-  );
+  static const VerificationMeta _keyMeta = const VerificationMeta('key');
   @override
-  late final GeneratedColumn<String> textbookId = GeneratedColumn<String>(
-    'textbook_id',
+  late final GeneratedColumn<String> key = GeneratedColumn<String>(
+    'key',
     aliasedName,
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES textbooks (id)',
-    ),
-  );
-  static const VerificationMeta _dayMeta = const VerificationMeta('day');
-  @override
-  late final GeneratedColumn<int> day = GeneratedColumn<int>(
-    'day',
-    aliasedName,
-    true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _noMeta = const VerificationMeta('no');
-  @override
-  late final GeneratedColumn<String> no = GeneratedColumn<String>(
-    'no',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
   );
   static const VerificationMeta _headwordMeta = const VerificationMeta(
     'headword',
@@ -691,15 +91,6 @@ class $WordsTable extends Words with TableInfo<$WordsTable, WordRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _pageMeta = const VerificationMeta('page');
-  @override
-  late final GeneratedColumn<int> page = GeneratedColumn<int>(
-    'page',
-    aliasedName,
-    true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-  );
   @override
   late final GeneratedColumnWithTypeConverter<DateTime, int> createdAt =
       GeneratedColumn<int>(
@@ -721,16 +112,13 @@ class $WordsTable extends Words with TableInfo<$WordsTable, WordRow> {
   @override
   List<GeneratedColumn> get $columns => [
     id,
-    textbookId,
-    day,
-    no,
+    key,
     headword,
     readings,
     pos,
     meaning,
     exampleJa,
     exampleKo,
-    page,
     createdAt,
     hiddenAt,
   ];
@@ -751,22 +139,13 @@ class $WordsTable extends Words with TableInfo<$WordsTable, WordRow> {
     } else if (isInserting) {
       context.missing(_idMeta);
     }
-    if (data.containsKey('textbook_id')) {
+    if (data.containsKey('key')) {
       context.handle(
-        _textbookIdMeta,
-        textbookId.isAcceptableOrUnknown(data['textbook_id']!, _textbookIdMeta),
+        _keyMeta,
+        key.isAcceptableOrUnknown(data['key']!, _keyMeta),
       );
     } else if (isInserting) {
-      context.missing(_textbookIdMeta);
-    }
-    if (data.containsKey('day')) {
-      context.handle(
-        _dayMeta,
-        day.isAcceptableOrUnknown(data['day']!, _dayMeta),
-      );
-    }
-    if (data.containsKey('no')) {
-      context.handle(_noMeta, no.isAcceptableOrUnknown(data['no']!, _noMeta));
+      context.missing(_keyMeta);
     }
     if (data.containsKey('headword')) {
       context.handle(
@@ -796,12 +175,6 @@ class $WordsTable extends Words with TableInfo<$WordsTable, WordRow> {
         exampleKo.isAcceptableOrUnknown(data['example_ko']!, _exampleKoMeta),
       );
     }
-    if (data.containsKey('page')) {
-      context.handle(
-        _pageMeta,
-        page.isAcceptableOrUnknown(data['page']!, _pageMeta),
-      );
-    }
     return context;
   }
 
@@ -815,18 +188,10 @@ class $WordsTable extends Words with TableInfo<$WordsTable, WordRow> {
         DriftSqlType.string,
         data['${effectivePrefix}id'],
       )!,
-      textbookId: attachedDatabase.typeMapping.read(
+      key: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}textbook_id'],
+        data['${effectivePrefix}key'],
       )!,
-      day: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}day'],
-      ),
-      no: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}no'],
-      ),
       headword: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}headword'],
@@ -854,10 +219,6 @@ class $WordsTable extends Words with TableInfo<$WordsTable, WordRow> {
       exampleKo: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}example_ko'],
-      ),
-      page: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}page'],
       ),
       createdAt: $WordsTable.$convertercreatedAt.fromSql(
         attachedDatabase.typeMapping.read(
@@ -895,9 +256,9 @@ class $WordsTable extends Words with TableInfo<$WordsTable, WordRow> {
 
 class WordRow extends DataClass implements Insertable<WordRow> {
   final String id;
-  final String textbookId;
-  final int? day;
-  final String? no;
+
+  /// What makes two words the same word (`wordKey`). Unique.
+  final String key;
   final String headword;
 
   /// JSON array: always read and written with the word, never queried alone.
@@ -908,24 +269,20 @@ class WordRow extends DataClass implements Insertable<WordRow> {
   /// The example sentence and its translation come as a pair or not at all.
   final String? exampleJa;
   final String? exampleKo;
-  final int? page;
   final DateTime createdAt;
 
-  /// When the learner hid the word (이미 알아요); null while it is shown (v3).
-  /// Not content: saving the word again keeps it.
+  /// When the learner hid the word (이미 알아요); null while it is shown.
+  /// Per word: hidden in every playlist that holds it.
   final DateTime? hiddenAt;
   const WordRow({
     required this.id,
-    required this.textbookId,
-    this.day,
-    this.no,
+    required this.key,
     required this.headword,
     required this.readings,
     this.pos,
     required this.meaning,
     this.exampleJa,
     this.exampleKo,
-    this.page,
     required this.createdAt,
     this.hiddenAt,
   });
@@ -933,13 +290,7 @@ class WordRow extends DataClass implements Insertable<WordRow> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
-    map['textbook_id'] = Variable<String>(textbookId);
-    if (!nullToAbsent || day != null) {
-      map['day'] = Variable<int>(day);
-    }
-    if (!nullToAbsent || no != null) {
-      map['no'] = Variable<String>(no);
-    }
+    map['key'] = Variable<String>(key);
     map['headword'] = Variable<String>(headword);
     {
       map['readings'] = Variable<String>(
@@ -955,9 +306,6 @@ class WordRow extends DataClass implements Insertable<WordRow> {
     }
     if (!nullToAbsent || exampleKo != null) {
       map['example_ko'] = Variable<String>(exampleKo);
-    }
-    if (!nullToAbsent || page != null) {
-      map['page'] = Variable<int>(page);
     }
     {
       map['created_at'] = Variable<int>(
@@ -975,9 +323,7 @@ class WordRow extends DataClass implements Insertable<WordRow> {
   WordsCompanion toCompanion(bool nullToAbsent) {
     return WordsCompanion(
       id: Value(id),
-      textbookId: Value(textbookId),
-      day: day == null && nullToAbsent ? const Value.absent() : Value(day),
-      no: no == null && nullToAbsent ? const Value.absent() : Value(no),
+      key: Value(key),
       headword: Value(headword),
       readings: Value(readings),
       pos: pos == null && nullToAbsent ? const Value.absent() : Value(pos),
@@ -988,7 +334,6 @@ class WordRow extends DataClass implements Insertable<WordRow> {
       exampleKo: exampleKo == null && nullToAbsent
           ? const Value.absent()
           : Value(exampleKo),
-      page: page == null && nullToAbsent ? const Value.absent() : Value(page),
       createdAt: Value(createdAt),
       hiddenAt: hiddenAt == null && nullToAbsent
           ? const Value.absent()
@@ -1003,9 +348,7 @@ class WordRow extends DataClass implements Insertable<WordRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return WordRow(
       id: serializer.fromJson<String>(json['id']),
-      textbookId: serializer.fromJson<String>(json['textbookId']),
-      day: serializer.fromJson<int?>(json['day']),
-      no: serializer.fromJson<String?>(json['no']),
+      key: serializer.fromJson<String>(json['key']),
       headword: serializer.fromJson<String>(json['headword']),
       readings: serializer.fromJson<List<String>>(json['readings']),
       pos: $WordsTable.$converterposn.fromJson(
@@ -1014,7 +357,6 @@ class WordRow extends DataClass implements Insertable<WordRow> {
       meaning: serializer.fromJson<String>(json['meaning']),
       exampleJa: serializer.fromJson<String?>(json['exampleJa']),
       exampleKo: serializer.fromJson<String?>(json['exampleKo']),
-      page: serializer.fromJson<int?>(json['page']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       hiddenAt: serializer.fromJson<DateTime?>(json['hiddenAt']),
     );
@@ -1024,16 +366,13 @@ class WordRow extends DataClass implements Insertable<WordRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'textbookId': serializer.toJson<String>(textbookId),
-      'day': serializer.toJson<int?>(day),
-      'no': serializer.toJson<String?>(no),
+      'key': serializer.toJson<String>(key),
       'headword': serializer.toJson<String>(headword),
       'readings': serializer.toJson<List<String>>(readings),
       'pos': serializer.toJson<String?>($WordsTable.$converterposn.toJson(pos)),
       'meaning': serializer.toJson<String>(meaning),
       'exampleJa': serializer.toJson<String?>(exampleJa),
       'exampleKo': serializer.toJson<String?>(exampleKo),
-      'page': serializer.toJson<int?>(page),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'hiddenAt': serializer.toJson<DateTime?>(hiddenAt),
     };
@@ -1041,48 +380,37 @@ class WordRow extends DataClass implements Insertable<WordRow> {
 
   WordRow copyWith({
     String? id,
-    String? textbookId,
-    Value<int?> day = const Value.absent(),
-    Value<String?> no = const Value.absent(),
+    String? key,
     String? headword,
     List<String>? readings,
     Value<PartOfSpeech?> pos = const Value.absent(),
     String? meaning,
     Value<String?> exampleJa = const Value.absent(),
     Value<String?> exampleKo = const Value.absent(),
-    Value<int?> page = const Value.absent(),
     DateTime? createdAt,
     Value<DateTime?> hiddenAt = const Value.absent(),
   }) => WordRow(
     id: id ?? this.id,
-    textbookId: textbookId ?? this.textbookId,
-    day: day.present ? day.value : this.day,
-    no: no.present ? no.value : this.no,
+    key: key ?? this.key,
     headword: headword ?? this.headword,
     readings: readings ?? this.readings,
     pos: pos.present ? pos.value : this.pos,
     meaning: meaning ?? this.meaning,
     exampleJa: exampleJa.present ? exampleJa.value : this.exampleJa,
     exampleKo: exampleKo.present ? exampleKo.value : this.exampleKo,
-    page: page.present ? page.value : this.page,
     createdAt: createdAt ?? this.createdAt,
     hiddenAt: hiddenAt.present ? hiddenAt.value : this.hiddenAt,
   );
   WordRow copyWithCompanion(WordsCompanion data) {
     return WordRow(
       id: data.id.present ? data.id.value : this.id,
-      textbookId: data.textbookId.present
-          ? data.textbookId.value
-          : this.textbookId,
-      day: data.day.present ? data.day.value : this.day,
-      no: data.no.present ? data.no.value : this.no,
+      key: data.key.present ? data.key.value : this.key,
       headword: data.headword.present ? data.headword.value : this.headword,
       readings: data.readings.present ? data.readings.value : this.readings,
       pos: data.pos.present ? data.pos.value : this.pos,
       meaning: data.meaning.present ? data.meaning.value : this.meaning,
       exampleJa: data.exampleJa.present ? data.exampleJa.value : this.exampleJa,
       exampleKo: data.exampleKo.present ? data.exampleKo.value : this.exampleKo,
-      page: data.page.present ? data.page.value : this.page,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       hiddenAt: data.hiddenAt.present ? data.hiddenAt.value : this.hiddenAt,
     );
@@ -1092,16 +420,13 @@ class WordRow extends DataClass implements Insertable<WordRow> {
   String toString() {
     return (StringBuffer('WordRow(')
           ..write('id: $id, ')
-          ..write('textbookId: $textbookId, ')
-          ..write('day: $day, ')
-          ..write('no: $no, ')
+          ..write('key: $key, ')
           ..write('headword: $headword, ')
           ..write('readings: $readings, ')
           ..write('pos: $pos, ')
           ..write('meaning: $meaning, ')
           ..write('exampleJa: $exampleJa, ')
           ..write('exampleKo: $exampleKo, ')
-          ..write('page: $page, ')
           ..write('createdAt: $createdAt, ')
           ..write('hiddenAt: $hiddenAt')
           ..write(')'))
@@ -1111,16 +436,13 @@ class WordRow extends DataClass implements Insertable<WordRow> {
   @override
   int get hashCode => Object.hash(
     id,
-    textbookId,
-    day,
-    no,
+    key,
     headword,
     readings,
     pos,
     meaning,
     exampleJa,
     exampleKo,
-    page,
     createdAt,
     hiddenAt,
   );
@@ -1129,100 +451,82 @@ class WordRow extends DataClass implements Insertable<WordRow> {
       identical(this, other) ||
       (other is WordRow &&
           other.id == this.id &&
-          other.textbookId == this.textbookId &&
-          other.day == this.day &&
-          other.no == this.no &&
+          other.key == this.key &&
           other.headword == this.headword &&
           other.readings == this.readings &&
           other.pos == this.pos &&
           other.meaning == this.meaning &&
           other.exampleJa == this.exampleJa &&
           other.exampleKo == this.exampleKo &&
-          other.page == this.page &&
           other.createdAt == this.createdAt &&
           other.hiddenAt == this.hiddenAt);
 }
 
 class WordsCompanion extends UpdateCompanion<WordRow> {
   final Value<String> id;
-  final Value<String> textbookId;
-  final Value<int?> day;
-  final Value<String?> no;
+  final Value<String> key;
   final Value<String> headword;
   final Value<List<String>> readings;
   final Value<PartOfSpeech?> pos;
   final Value<String> meaning;
   final Value<String?> exampleJa;
   final Value<String?> exampleKo;
-  final Value<int?> page;
   final Value<DateTime> createdAt;
   final Value<DateTime?> hiddenAt;
   final Value<int> rowid;
   const WordsCompanion({
     this.id = const Value.absent(),
-    this.textbookId = const Value.absent(),
-    this.day = const Value.absent(),
-    this.no = const Value.absent(),
+    this.key = const Value.absent(),
     this.headword = const Value.absent(),
     this.readings = const Value.absent(),
     this.pos = const Value.absent(),
     this.meaning = const Value.absent(),
     this.exampleJa = const Value.absent(),
     this.exampleKo = const Value.absent(),
-    this.page = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.hiddenAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   WordsCompanion.insert({
     required String id,
-    required String textbookId,
-    this.day = const Value.absent(),
-    this.no = const Value.absent(),
+    required String key,
     required String headword,
     required List<String> readings,
     this.pos = const Value.absent(),
     required String meaning,
     this.exampleJa = const Value.absent(),
     this.exampleKo = const Value.absent(),
-    this.page = const Value.absent(),
     required DateTime createdAt,
     this.hiddenAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
-       textbookId = Value(textbookId),
+       key = Value(key),
        headword = Value(headword),
        readings = Value(readings),
        meaning = Value(meaning),
        createdAt = Value(createdAt);
   static Insertable<WordRow> custom({
     Expression<String>? id,
-    Expression<String>? textbookId,
-    Expression<int>? day,
-    Expression<String>? no,
+    Expression<String>? key,
     Expression<String>? headword,
     Expression<String>? readings,
     Expression<String>? pos,
     Expression<String>? meaning,
     Expression<String>? exampleJa,
     Expression<String>? exampleKo,
-    Expression<int>? page,
     Expression<int>? createdAt,
     Expression<int>? hiddenAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (textbookId != null) 'textbook_id': textbookId,
-      if (day != null) 'day': day,
-      if (no != null) 'no': no,
+      if (key != null) 'key': key,
       if (headword != null) 'headword': headword,
       if (readings != null) 'readings': readings,
       if (pos != null) 'pos': pos,
       if (meaning != null) 'meaning': meaning,
       if (exampleJa != null) 'example_ja': exampleJa,
       if (exampleKo != null) 'example_ko': exampleKo,
-      if (page != null) 'page': page,
       if (createdAt != null) 'created_at': createdAt,
       if (hiddenAt != null) 'hidden_at': hiddenAt,
       if (rowid != null) 'rowid': rowid,
@@ -1231,32 +535,26 @@ class WordsCompanion extends UpdateCompanion<WordRow> {
 
   WordsCompanion copyWith({
     Value<String>? id,
-    Value<String>? textbookId,
-    Value<int?>? day,
-    Value<String?>? no,
+    Value<String>? key,
     Value<String>? headword,
     Value<List<String>>? readings,
     Value<PartOfSpeech?>? pos,
     Value<String>? meaning,
     Value<String?>? exampleJa,
     Value<String?>? exampleKo,
-    Value<int?>? page,
     Value<DateTime>? createdAt,
     Value<DateTime?>? hiddenAt,
     Value<int>? rowid,
   }) {
     return WordsCompanion(
       id: id ?? this.id,
-      textbookId: textbookId ?? this.textbookId,
-      day: day ?? this.day,
-      no: no ?? this.no,
+      key: key ?? this.key,
       headword: headword ?? this.headword,
       readings: readings ?? this.readings,
       pos: pos ?? this.pos,
       meaning: meaning ?? this.meaning,
       exampleJa: exampleJa ?? this.exampleJa,
       exampleKo: exampleKo ?? this.exampleKo,
-      page: page ?? this.page,
       createdAt: createdAt ?? this.createdAt,
       hiddenAt: hiddenAt ?? this.hiddenAt,
       rowid: rowid ?? this.rowid,
@@ -1269,14 +567,8 @@ class WordsCompanion extends UpdateCompanion<WordRow> {
     if (id.present) {
       map['id'] = Variable<String>(id.value);
     }
-    if (textbookId.present) {
-      map['textbook_id'] = Variable<String>(textbookId.value);
-    }
-    if (day.present) {
-      map['day'] = Variable<int>(day.value);
-    }
-    if (no.present) {
-      map['no'] = Variable<String>(no.value);
+    if (key.present) {
+      map['key'] = Variable<String>(key.value);
     }
     if (headword.present) {
       map['headword'] = Variable<String>(headword.value);
@@ -1300,9 +592,6 @@ class WordsCompanion extends UpdateCompanion<WordRow> {
     if (exampleKo.present) {
       map['example_ko'] = Variable<String>(exampleKo.value);
     }
-    if (page.present) {
-      map['page'] = Variable<int>(page.value);
-    }
     if (createdAt.present) {
       map['created_at'] = Variable<int>(
         $WordsTable.$convertercreatedAt.toSql(createdAt.value),
@@ -1323,18 +612,646 @@ class WordsCompanion extends UpdateCompanion<WordRow> {
   String toString() {
     return (StringBuffer('WordsCompanion(')
           ..write('id: $id, ')
-          ..write('textbookId: $textbookId, ')
-          ..write('day: $day, ')
-          ..write('no: $no, ')
+          ..write('key: $key, ')
           ..write('headword: $headword, ')
           ..write('readings: $readings, ')
           ..write('pos: $pos, ')
           ..write('meaning: $meaning, ')
           ..write('exampleJa: $exampleJa, ')
           ..write('exampleKo: $exampleKo, ')
-          ..write('page: $page, ')
           ..write('createdAt: $createdAt, ')
           ..write('hiddenAt: $hiddenAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PlaylistsTable extends Playlists
+    with TableInfo<$PlaylistsTable, PlaylistRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PlaylistsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime, int> createdAt =
+      GeneratedColumn<int>(
+        'created_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: true,
+      ).withConverter<DateTime>($PlaylistsTable.$convertercreatedAt);
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<int> position = GeneratedColumn<int>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, name, createdAt, position];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'playlists';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PlaylistRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_positionMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PlaylistRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PlaylistRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      createdAt: $PlaylistsTable.$convertercreatedAt.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}created_at'],
+        )!,
+      ),
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
+      )!,
+    );
+  }
+
+  @override
+  $PlaylistsTable createAlias(String alias) {
+    return $PlaylistsTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<DateTime, int> $convertercreatedAt =
+      const UtcMicrosConverter();
+}
+
+class PlaylistRow extends DataClass implements Insertable<PlaylistRow> {
+  final String id;
+  final String name;
+  final DateTime createdAt;
+  final int position;
+  const PlaylistRow({
+    required this.id,
+    required this.name,
+    required this.createdAt,
+    required this.position,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    {
+      map['created_at'] = Variable<int>(
+        $PlaylistsTable.$convertercreatedAt.toSql(createdAt),
+      );
+    }
+    map['position'] = Variable<int>(position);
+    return map;
+  }
+
+  PlaylistsCompanion toCompanion(bool nullToAbsent) {
+    return PlaylistsCompanion(
+      id: Value(id),
+      name: Value(name),
+      createdAt: Value(createdAt),
+      position: Value(position),
+    );
+  }
+
+  factory PlaylistRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PlaylistRow(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      position: serializer.fromJson<int>(json['position']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'position': serializer.toJson<int>(position),
+    };
+  }
+
+  PlaylistRow copyWith({
+    String? id,
+    String? name,
+    DateTime? createdAt,
+    int? position,
+  }) => PlaylistRow(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    createdAt: createdAt ?? this.createdAt,
+    position: position ?? this.position,
+  );
+  PlaylistRow copyWithCompanion(PlaylistsCompanion data) {
+    return PlaylistRow(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      position: data.position.present ? data.position.value : this.position,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PlaylistRow(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('position: $position')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, createdAt, position);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PlaylistRow &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.createdAt == this.createdAt &&
+          other.position == this.position);
+}
+
+class PlaylistsCompanion extends UpdateCompanion<PlaylistRow> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<DateTime> createdAt;
+  final Value<int> position;
+  final Value<int> rowid;
+  const PlaylistsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.position = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PlaylistsCompanion.insert({
+    required String id,
+    required String name,
+    required DateTime createdAt,
+    required int position,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       createdAt = Value(createdAt),
+       position = Value(position);
+  static Insertable<PlaylistRow> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<int>? createdAt,
+    Expression<int>? position,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (createdAt != null) 'created_at': createdAt,
+      if (position != null) 'position': position,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PlaylistsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<DateTime>? createdAt,
+    Value<int>? position,
+    Value<int>? rowid,
+  }) {
+    return PlaylistsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      createdAt: createdAt ?? this.createdAt,
+      position: position ?? this.position,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(
+        $PlaylistsTable.$convertercreatedAt.toSql(createdAt.value),
+      );
+    }
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PlaylistsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('position: $position, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PlaylistWordsTable extends PlaylistWords
+    with TableInfo<$PlaylistWordsTable, PlaylistWordRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PlaylistWordsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _playlistIdMeta = const VerificationMeta(
+    'playlistId',
+  );
+  @override
+  late final GeneratedColumn<String> playlistId = GeneratedColumn<String>(
+    'playlist_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES playlists (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _wordIdMeta = const VerificationMeta('wordId');
+  @override
+  late final GeneratedColumn<String> wordId = GeneratedColumn<String>(
+    'word_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES words (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<int> position = GeneratedColumn<int>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime, int> addedAt =
+      GeneratedColumn<int>(
+        'added_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: true,
+      ).withConverter<DateTime>($PlaylistWordsTable.$converteraddedAt);
+  @override
+  List<GeneratedColumn> get $columns => [playlistId, wordId, position, addedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'playlist_words';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PlaylistWordRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('playlist_id')) {
+      context.handle(
+        _playlistIdMeta,
+        playlistId.isAcceptableOrUnknown(data['playlist_id']!, _playlistIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_playlistIdMeta);
+    }
+    if (data.containsKey('word_id')) {
+      context.handle(
+        _wordIdMeta,
+        wordId.isAcceptableOrUnknown(data['word_id']!, _wordIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_wordIdMeta);
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_positionMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {playlistId, wordId};
+  @override
+  PlaylistWordRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PlaylistWordRow(
+      playlistId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}playlist_id'],
+      )!,
+      wordId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}word_id'],
+      )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
+      )!,
+      addedAt: $PlaylistWordsTable.$converteraddedAt.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}added_at'],
+        )!,
+      ),
+    );
+  }
+
+  @override
+  $PlaylistWordsTable createAlias(String alias) {
+    return $PlaylistWordsTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<DateTime, int> $converteraddedAt =
+      const UtcMicrosConverter();
+}
+
+class PlaylistWordRow extends DataClass implements Insertable<PlaylistWordRow> {
+  final String playlistId;
+  final String wordId;
+  final int position;
+  final DateTime addedAt;
+  const PlaylistWordRow({
+    required this.playlistId,
+    required this.wordId,
+    required this.position,
+    required this.addedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['playlist_id'] = Variable<String>(playlistId);
+    map['word_id'] = Variable<String>(wordId);
+    map['position'] = Variable<int>(position);
+    {
+      map['added_at'] = Variable<int>(
+        $PlaylistWordsTable.$converteraddedAt.toSql(addedAt),
+      );
+    }
+    return map;
+  }
+
+  PlaylistWordsCompanion toCompanion(bool nullToAbsent) {
+    return PlaylistWordsCompanion(
+      playlistId: Value(playlistId),
+      wordId: Value(wordId),
+      position: Value(position),
+      addedAt: Value(addedAt),
+    );
+  }
+
+  factory PlaylistWordRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PlaylistWordRow(
+      playlistId: serializer.fromJson<String>(json['playlistId']),
+      wordId: serializer.fromJson<String>(json['wordId']),
+      position: serializer.fromJson<int>(json['position']),
+      addedAt: serializer.fromJson<DateTime>(json['addedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'playlistId': serializer.toJson<String>(playlistId),
+      'wordId': serializer.toJson<String>(wordId),
+      'position': serializer.toJson<int>(position),
+      'addedAt': serializer.toJson<DateTime>(addedAt),
+    };
+  }
+
+  PlaylistWordRow copyWith({
+    String? playlistId,
+    String? wordId,
+    int? position,
+    DateTime? addedAt,
+  }) => PlaylistWordRow(
+    playlistId: playlistId ?? this.playlistId,
+    wordId: wordId ?? this.wordId,
+    position: position ?? this.position,
+    addedAt: addedAt ?? this.addedAt,
+  );
+  PlaylistWordRow copyWithCompanion(PlaylistWordsCompanion data) {
+    return PlaylistWordRow(
+      playlistId: data.playlistId.present
+          ? data.playlistId.value
+          : this.playlistId,
+      wordId: data.wordId.present ? data.wordId.value : this.wordId,
+      position: data.position.present ? data.position.value : this.position,
+      addedAt: data.addedAt.present ? data.addedAt.value : this.addedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PlaylistWordRow(')
+          ..write('playlistId: $playlistId, ')
+          ..write('wordId: $wordId, ')
+          ..write('position: $position, ')
+          ..write('addedAt: $addedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(playlistId, wordId, position, addedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PlaylistWordRow &&
+          other.playlistId == this.playlistId &&
+          other.wordId == this.wordId &&
+          other.position == this.position &&
+          other.addedAt == this.addedAt);
+}
+
+class PlaylistWordsCompanion extends UpdateCompanion<PlaylistWordRow> {
+  final Value<String> playlistId;
+  final Value<String> wordId;
+  final Value<int> position;
+  final Value<DateTime> addedAt;
+  final Value<int> rowid;
+  const PlaylistWordsCompanion({
+    this.playlistId = const Value.absent(),
+    this.wordId = const Value.absent(),
+    this.position = const Value.absent(),
+    this.addedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PlaylistWordsCompanion.insert({
+    required String playlistId,
+    required String wordId,
+    required int position,
+    required DateTime addedAt,
+    this.rowid = const Value.absent(),
+  }) : playlistId = Value(playlistId),
+       wordId = Value(wordId),
+       position = Value(position),
+       addedAt = Value(addedAt);
+  static Insertable<PlaylistWordRow> custom({
+    Expression<String>? playlistId,
+    Expression<String>? wordId,
+    Expression<int>? position,
+    Expression<int>? addedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (playlistId != null) 'playlist_id': playlistId,
+      if (wordId != null) 'word_id': wordId,
+      if (position != null) 'position': position,
+      if (addedAt != null) 'added_at': addedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PlaylistWordsCompanion copyWith({
+    Value<String>? playlistId,
+    Value<String>? wordId,
+    Value<int>? position,
+    Value<DateTime>? addedAt,
+    Value<int>? rowid,
+  }) {
+    return PlaylistWordsCompanion(
+      playlistId: playlistId ?? this.playlistId,
+      wordId: wordId ?? this.wordId,
+      position: position ?? this.position,
+      addedAt: addedAt ?? this.addedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (playlistId.present) {
+      map['playlist_id'] = Variable<String>(playlistId.value);
+    }
+    if (wordId.present) {
+      map['word_id'] = Variable<String>(wordId.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
+    }
+    if (addedAt.present) {
+      map['added_at'] = Variable<int>(
+        $PlaylistWordsTable.$converteraddedAt.toSql(addedAt.value),
+      );
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PlaylistWordsCompanion(')
+          ..write('playlistId: $playlistId, ')
+          ..write('wordId: $wordId, ')
+          ..write('position: $position, ')
+          ..write('addedAt: $addedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1347,6 +1264,15 @@ class $ReviewCardsTable extends ReviewCards
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $ReviewCardsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _scopeMeta = const VerificationMeta('scope');
+  @override
+  late final GeneratedColumn<String> scope = GeneratedColumn<String>(
+    'scope',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _wordIdMeta = const VerificationMeta('wordId');
   @override
   late final GeneratedColumn<String> wordId = GeneratedColumn<String>(
@@ -1355,6 +1281,9 @@ class $ReviewCardsTable extends ReviewCards
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES words (id) ON DELETE CASCADE',
+    ),
   );
   static const VerificationMeta _levelMeta = const VerificationMeta('level');
   @override
@@ -1407,6 +1336,7 @@ class $ReviewCardsTable extends ReviewCards
   );
   @override
   List<GeneratedColumn> get $columns => [
+    scope,
     wordId,
     level,
     dueAt,
@@ -1426,6 +1356,14 @@ class $ReviewCardsTable extends ReviewCards
   }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
+    if (data.containsKey('scope')) {
+      context.handle(
+        _scopeMeta,
+        scope.isAcceptableOrUnknown(data['scope']!, _scopeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_scopeMeta);
+    }
     if (data.containsKey('word_id')) {
       context.handle(
         _wordIdMeta,
@@ -1465,11 +1403,15 @@ class $ReviewCardsTable extends ReviewCards
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {wordId};
+  Set<GeneratedColumn> get $primaryKey => {scope, wordId};
   @override
   CardRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return CardRow(
+      scope: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}scope'],
+      )!,
       wordId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}word_id'],
@@ -1513,6 +1455,7 @@ class $ReviewCardsTable extends ReviewCards
 }
 
 class CardRow extends DataClass implements Insertable<CardRow> {
+  final String scope;
   final String wordId;
   final int level;
   final DateTime dueAt;
@@ -1520,6 +1463,7 @@ class CardRow extends DataClass implements Insertable<CardRow> {
   final int reviewCount;
   final int lapseCount;
   const CardRow({
+    required this.scope,
     required this.wordId,
     required this.level,
     required this.dueAt,
@@ -1530,6 +1474,7 @@ class CardRow extends DataClass implements Insertable<CardRow> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    map['scope'] = Variable<String>(scope);
     map['word_id'] = Variable<String>(wordId);
     map['level'] = Variable<int>(level);
     {
@@ -1549,6 +1494,7 @@ class CardRow extends DataClass implements Insertable<CardRow> {
 
   ReviewCardsCompanion toCompanion(bool nullToAbsent) {
     return ReviewCardsCompanion(
+      scope: Value(scope),
       wordId: Value(wordId),
       level: Value(level),
       dueAt: Value(dueAt),
@@ -1564,6 +1510,7 @@ class CardRow extends DataClass implements Insertable<CardRow> {
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return CardRow(
+      scope: serializer.fromJson<String>(json['scope']),
       wordId: serializer.fromJson<String>(json['wordId']),
       level: serializer.fromJson<int>(json['level']),
       dueAt: serializer.fromJson<DateTime>(json['dueAt']),
@@ -1576,6 +1523,7 @@ class CardRow extends DataClass implements Insertable<CardRow> {
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
+      'scope': serializer.toJson<String>(scope),
       'wordId': serializer.toJson<String>(wordId),
       'level': serializer.toJson<int>(level),
       'dueAt': serializer.toJson<DateTime>(dueAt),
@@ -1586,6 +1534,7 @@ class CardRow extends DataClass implements Insertable<CardRow> {
   }
 
   CardRow copyWith({
+    String? scope,
     String? wordId,
     int? level,
     DateTime? dueAt,
@@ -1593,6 +1542,7 @@ class CardRow extends DataClass implements Insertable<CardRow> {
     int? reviewCount,
     int? lapseCount,
   }) => CardRow(
+    scope: scope ?? this.scope,
     wordId: wordId ?? this.wordId,
     level: level ?? this.level,
     dueAt: dueAt ?? this.dueAt,
@@ -1602,6 +1552,7 @@ class CardRow extends DataClass implements Insertable<CardRow> {
   );
   CardRow copyWithCompanion(ReviewCardsCompanion data) {
     return CardRow(
+      scope: data.scope.present ? data.scope.value : this.scope,
       wordId: data.wordId.present ? data.wordId.value : this.wordId,
       level: data.level.present ? data.level.value : this.level,
       dueAt: data.dueAt.present ? data.dueAt.value : this.dueAt,
@@ -1620,6 +1571,7 @@ class CardRow extends DataClass implements Insertable<CardRow> {
   @override
   String toString() {
     return (StringBuffer('CardRow(')
+          ..write('scope: $scope, ')
           ..write('wordId: $wordId, ')
           ..write('level: $level, ')
           ..write('dueAt: $dueAt, ')
@@ -1632,6 +1584,7 @@ class CardRow extends DataClass implements Insertable<CardRow> {
 
   @override
   int get hashCode => Object.hash(
+    scope,
     wordId,
     level,
     dueAt,
@@ -1643,6 +1596,7 @@ class CardRow extends DataClass implements Insertable<CardRow> {
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is CardRow &&
+          other.scope == this.scope &&
           other.wordId == this.wordId &&
           other.level == this.level &&
           other.dueAt == this.dueAt &&
@@ -1652,6 +1606,7 @@ class CardRow extends DataClass implements Insertable<CardRow> {
 }
 
 class ReviewCardsCompanion extends UpdateCompanion<CardRow> {
+  final Value<String> scope;
   final Value<String> wordId;
   final Value<int> level;
   final Value<DateTime> dueAt;
@@ -1660,6 +1615,7 @@ class ReviewCardsCompanion extends UpdateCompanion<CardRow> {
   final Value<int> lapseCount;
   final Value<int> rowid;
   const ReviewCardsCompanion({
+    this.scope = const Value.absent(),
     this.wordId = const Value.absent(),
     this.level = const Value.absent(),
     this.dueAt = const Value.absent(),
@@ -1669,6 +1625,7 @@ class ReviewCardsCompanion extends UpdateCompanion<CardRow> {
     this.rowid = const Value.absent(),
   });
   ReviewCardsCompanion.insert({
+    required String scope,
     required String wordId,
     required int level,
     required DateTime dueAt,
@@ -1676,13 +1633,15 @@ class ReviewCardsCompanion extends UpdateCompanion<CardRow> {
     required int reviewCount,
     required int lapseCount,
     this.rowid = const Value.absent(),
-  }) : wordId = Value(wordId),
+  }) : scope = Value(scope),
+       wordId = Value(wordId),
        level = Value(level),
        dueAt = Value(dueAt),
        lastReviewedAt = Value(lastReviewedAt),
        reviewCount = Value(reviewCount),
        lapseCount = Value(lapseCount);
   static Insertable<CardRow> custom({
+    Expression<String>? scope,
     Expression<String>? wordId,
     Expression<int>? level,
     Expression<int>? dueAt,
@@ -1692,6 +1651,7 @@ class ReviewCardsCompanion extends UpdateCompanion<CardRow> {
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
+      if (scope != null) 'scope': scope,
       if (wordId != null) 'word_id': wordId,
       if (level != null) 'level': level,
       if (dueAt != null) 'due_at': dueAt,
@@ -1703,6 +1663,7 @@ class ReviewCardsCompanion extends UpdateCompanion<CardRow> {
   }
 
   ReviewCardsCompanion copyWith({
+    Value<String>? scope,
     Value<String>? wordId,
     Value<int>? level,
     Value<DateTime>? dueAt,
@@ -1712,6 +1673,7 @@ class ReviewCardsCompanion extends UpdateCompanion<CardRow> {
     Value<int>? rowid,
   }) {
     return ReviewCardsCompanion(
+      scope: scope ?? this.scope,
       wordId: wordId ?? this.wordId,
       level: level ?? this.level,
       dueAt: dueAt ?? this.dueAt,
@@ -1725,6 +1687,9 @@ class ReviewCardsCompanion extends UpdateCompanion<CardRow> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    if (scope.present) {
+      map['scope'] = Variable<String>(scope.value);
+    }
     if (wordId.present) {
       map['word_id'] = Variable<String>(wordId.value);
     }
@@ -1756,6 +1721,7 @@ class ReviewCardsCompanion extends UpdateCompanion<CardRow> {
   @override
   String toString() {
     return (StringBuffer('ReviewCardsCompanion(')
+          ..write('scope: $scope, ')
           ..write('wordId: $wordId, ')
           ..write('level: $level, ')
           ..write('dueAt: $dueAt, ')
@@ -1786,6 +1752,15 @@ class $ReviewLogsTable extends ReviewLogs
     defaultConstraints: GeneratedColumn.constraintIsAlways(
       'PRIMARY KEY AUTOINCREMENT',
     ),
+  );
+  static const VerificationMeta _scopeMeta = const VerificationMeta('scope');
+  @override
+  late final GeneratedColumn<String> scope = GeneratedColumn<String>(
+    'scope',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
   );
   static const VerificationMeta _wordIdMeta = const VerificationMeta('wordId');
   @override
@@ -1850,6 +1825,7 @@ class $ReviewLogsTable extends ReviewLogs
   @override
   List<GeneratedColumn> get $columns => [
     id,
+    scope,
     wordId,
     answer,
     at,
@@ -1871,6 +1847,14 @@ class $ReviewLogsTable extends ReviewLogs
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('scope')) {
+      context.handle(
+        _scopeMeta,
+        scope.isAcceptableOrUnknown(data['scope']!, _scopeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_scopeMeta);
     }
     if (data.containsKey('word_id')) {
       context.handle(
@@ -1923,6 +1907,10 @@ class $ReviewLogsTable extends ReviewLogs
         DriftSqlType.int,
         data['${effectivePrefix}id'],
       )!,
+      scope: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}scope'],
+      )!,
       wordId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}word_id'],
@@ -1966,6 +1954,7 @@ class $ReviewLogsTable extends ReviewLogs
 
 class LogRow extends DataClass implements Insertable<LogRow> {
   final int id;
+  final String scope;
   final String wordId;
   final Answer answer;
   final DateTime at;
@@ -1974,6 +1963,7 @@ class LogRow extends DataClass implements Insertable<LogRow> {
   final int retriesInSession;
   const LogRow({
     required this.id,
+    required this.scope,
     required this.wordId,
     required this.answer,
     required this.at,
@@ -1985,6 +1975,7 @@ class LogRow extends DataClass implements Insertable<LogRow> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
+    map['scope'] = Variable<String>(scope);
     map['word_id'] = Variable<String>(wordId);
     {
       map['answer'] = Variable<String>(
@@ -2003,6 +1994,7 @@ class LogRow extends DataClass implements Insertable<LogRow> {
   ReviewLogsCompanion toCompanion(bool nullToAbsent) {
     return ReviewLogsCompanion(
       id: Value(id),
+      scope: Value(scope),
       wordId: Value(wordId),
       answer: Value(answer),
       at: Value(at),
@@ -2019,6 +2011,7 @@ class LogRow extends DataClass implements Insertable<LogRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return LogRow(
       id: serializer.fromJson<int>(json['id']),
+      scope: serializer.fromJson<String>(json['scope']),
       wordId: serializer.fromJson<String>(json['wordId']),
       answer: $ReviewLogsTable.$converteranswer.fromJson(
         serializer.fromJson<String>(json['answer']),
@@ -2034,6 +2027,7 @@ class LogRow extends DataClass implements Insertable<LogRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
+      'scope': serializer.toJson<String>(scope),
       'wordId': serializer.toJson<String>(wordId),
       'answer': serializer.toJson<String>(
         $ReviewLogsTable.$converteranswer.toJson(answer),
@@ -2047,6 +2041,7 @@ class LogRow extends DataClass implements Insertable<LogRow> {
 
   LogRow copyWith({
     int? id,
+    String? scope,
     String? wordId,
     Answer? answer,
     DateTime? at,
@@ -2055,6 +2050,7 @@ class LogRow extends DataClass implements Insertable<LogRow> {
     int? retriesInSession,
   }) => LogRow(
     id: id ?? this.id,
+    scope: scope ?? this.scope,
     wordId: wordId ?? this.wordId,
     answer: answer ?? this.answer,
     at: at ?? this.at,
@@ -2065,6 +2061,7 @@ class LogRow extends DataClass implements Insertable<LogRow> {
   LogRow copyWithCompanion(ReviewLogsCompanion data) {
     return LogRow(
       id: data.id.present ? data.id.value : this.id,
+      scope: data.scope.present ? data.scope.value : this.scope,
       wordId: data.wordId.present ? data.wordId.value : this.wordId,
       answer: data.answer.present ? data.answer.value : this.answer,
       at: data.at.present ? data.at.value : this.at,
@@ -2084,6 +2081,7 @@ class LogRow extends DataClass implements Insertable<LogRow> {
   String toString() {
     return (StringBuffer('LogRow(')
           ..write('id: $id, ')
+          ..write('scope: $scope, ')
           ..write('wordId: $wordId, ')
           ..write('answer: $answer, ')
           ..write('at: $at, ')
@@ -2097,6 +2095,7 @@ class LogRow extends DataClass implements Insertable<LogRow> {
   @override
   int get hashCode => Object.hash(
     id,
+    scope,
     wordId,
     answer,
     at,
@@ -2109,6 +2108,7 @@ class LogRow extends DataClass implements Insertable<LogRow> {
       identical(this, other) ||
       (other is LogRow &&
           other.id == this.id &&
+          other.scope == this.scope &&
           other.wordId == this.wordId &&
           other.answer == this.answer &&
           other.at == this.at &&
@@ -2119,6 +2119,7 @@ class LogRow extends DataClass implements Insertable<LogRow> {
 
 class ReviewLogsCompanion extends UpdateCompanion<LogRow> {
   final Value<int> id;
+  final Value<String> scope;
   final Value<String> wordId;
   final Value<Answer> answer;
   final Value<DateTime> at;
@@ -2127,6 +2128,7 @@ class ReviewLogsCompanion extends UpdateCompanion<LogRow> {
   final Value<int> retriesInSession;
   const ReviewLogsCompanion({
     this.id = const Value.absent(),
+    this.scope = const Value.absent(),
     this.wordId = const Value.absent(),
     this.answer = const Value.absent(),
     this.at = const Value.absent(),
@@ -2136,13 +2138,15 @@ class ReviewLogsCompanion extends UpdateCompanion<LogRow> {
   });
   ReviewLogsCompanion.insert({
     this.id = const Value.absent(),
+    required String scope,
     required String wordId,
     required Answer answer,
     required DateTime at,
     required int levelBefore,
     required int levelAfter,
     required int retriesInSession,
-  }) : wordId = Value(wordId),
+  }) : scope = Value(scope),
+       wordId = Value(wordId),
        answer = Value(answer),
        at = Value(at),
        levelBefore = Value(levelBefore),
@@ -2150,6 +2154,7 @@ class ReviewLogsCompanion extends UpdateCompanion<LogRow> {
        retriesInSession = Value(retriesInSession);
   static Insertable<LogRow> custom({
     Expression<int>? id,
+    Expression<String>? scope,
     Expression<String>? wordId,
     Expression<String>? answer,
     Expression<int>? at,
@@ -2159,6 +2164,7 @@ class ReviewLogsCompanion extends UpdateCompanion<LogRow> {
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (scope != null) 'scope': scope,
       if (wordId != null) 'word_id': wordId,
       if (answer != null) 'answer': answer,
       if (at != null) 'at': at,
@@ -2170,6 +2176,7 @@ class ReviewLogsCompanion extends UpdateCompanion<LogRow> {
 
   ReviewLogsCompanion copyWith({
     Value<int>? id,
+    Value<String>? scope,
     Value<String>? wordId,
     Value<Answer>? answer,
     Value<DateTime>? at,
@@ -2179,6 +2186,7 @@ class ReviewLogsCompanion extends UpdateCompanion<LogRow> {
   }) {
     return ReviewLogsCompanion(
       id: id ?? this.id,
+      scope: scope ?? this.scope,
       wordId: wordId ?? this.wordId,
       answer: answer ?? this.answer,
       at: at ?? this.at,
@@ -2193,6 +2201,9 @@ class ReviewLogsCompanion extends UpdateCompanion<LogRow> {
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<int>(id.value);
+    }
+    if (scope.present) {
+      map['scope'] = Variable<String>(scope.value);
     }
     if (wordId.present) {
       map['word_id'] = Variable<String>(wordId.value);
@@ -2221,6 +2232,7 @@ class ReviewLogsCompanion extends UpdateCompanion<LogRow> {
   String toString() {
     return (StringBuffer('ReviewLogsCompanion(')
           ..write('id: $id, ')
+          ..write('scope: $scope, ')
           ..write('wordId: $wordId, ')
           ..write('answer: $answer, ')
           ..write('at: $at, ')
@@ -2232,17 +2244,226 @@ class ReviewLogsCompanion extends UpdateCompanion<LogRow> {
   }
 }
 
+class $SettingsTable extends Settings
+    with TableInfo<$SettingsTable, SettingRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SettingsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _keyMeta = const VerificationMeta('key');
+  @override
+  late final GeneratedColumn<String> key = GeneratedColumn<String>(
+    'key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _valueMeta = const VerificationMeta('value');
+  @override
+  late final GeneratedColumn<String> value = GeneratedColumn<String>(
+    'value',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [key, value];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'settings';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SettingRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('key')) {
+      context.handle(
+        _keyMeta,
+        key.isAcceptableOrUnknown(data['key']!, _keyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_keyMeta);
+    }
+    if (data.containsKey('value')) {
+      context.handle(
+        _valueMeta,
+        value.isAcceptableOrUnknown(data['value']!, _valueMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_valueMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {key};
+  @override
+  SettingRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SettingRow(
+      key: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}key'],
+      )!,
+      value: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}value'],
+      )!,
+    );
+  }
+
+  @override
+  $SettingsTable createAlias(String alias) {
+    return $SettingsTable(attachedDatabase, alias);
+  }
+}
+
+class SettingRow extends DataClass implements Insertable<SettingRow> {
+  final String key;
+  final String value;
+  const SettingRow({required this.key, required this.value});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['key'] = Variable<String>(key);
+    map['value'] = Variable<String>(value);
+    return map;
+  }
+
+  SettingsCompanion toCompanion(bool nullToAbsent) {
+    return SettingsCompanion(key: Value(key), value: Value(value));
+  }
+
+  factory SettingRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SettingRow(
+      key: serializer.fromJson<String>(json['key']),
+      value: serializer.fromJson<String>(json['value']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'key': serializer.toJson<String>(key),
+      'value': serializer.toJson<String>(value),
+    };
+  }
+
+  SettingRow copyWith({String? key, String? value}) =>
+      SettingRow(key: key ?? this.key, value: value ?? this.value);
+  SettingRow copyWithCompanion(SettingsCompanion data) {
+    return SettingRow(
+      key: data.key.present ? data.key.value : this.key,
+      value: data.value.present ? data.value.value : this.value,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SettingRow(')
+          ..write('key: $key, ')
+          ..write('value: $value')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(key, value);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SettingRow &&
+          other.key == this.key &&
+          other.value == this.value);
+}
+
+class SettingsCompanion extends UpdateCompanion<SettingRow> {
+  final Value<String> key;
+  final Value<String> value;
+  final Value<int> rowid;
+  const SettingsCompanion({
+    this.key = const Value.absent(),
+    this.value = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SettingsCompanion.insert({
+    required String key,
+    required String value,
+    this.rowid = const Value.absent(),
+  }) : key = Value(key),
+       value = Value(value);
+  static Insertable<SettingRow> custom({
+    Expression<String>? key,
+    Expression<String>? value,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (key != null) 'key': key,
+      if (value != null) 'value': value,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SettingsCompanion copyWith({
+    Value<String>? key,
+    Value<String>? value,
+    Value<int>? rowid,
+  }) {
+    return SettingsCompanion(
+      key: key ?? this.key,
+      value: value ?? this.value,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (key.present) {
+      map['key'] = Variable<String>(key.value);
+    }
+    if (value.present) {
+      map['value'] = Variable<String>(value.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SettingsCompanion(')
+          ..write('key: $key, ')
+          ..write('value: $value, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$ShioriDatabase extends GeneratedDatabase {
   _$ShioriDatabase(QueryExecutor e) : super(e);
   $ShioriDatabaseManager get managers => $ShioriDatabaseManager(this);
-  late final $TextbooksTable textbooks = $TextbooksTable(this);
-  late final $TextbookDaysTable textbookDays = $TextbookDaysTable(this);
   late final $WordsTable words = $WordsTable(this);
+  late final $PlaylistsTable playlists = $PlaylistsTable(this);
+  late final $PlaylistWordsTable playlistWords = $PlaylistWordsTable(this);
   late final $ReviewCardsTable reviewCards = $ReviewCardsTable(this);
   late final $ReviewLogsTable reviewLogs = $ReviewLogsTable(this);
-  late final Index wordsByPlace = Index(
-    'words_by_place',
-    'CREATE INDEX words_by_place ON words (textbook_id, day, "no")',
+  late final $SettingsTable settings = $SettingsTable(this);
+  late final Index playlistWordsByWord = Index(
+    'playlist_words_by_word',
+    'CREATE INDEX playlist_words_by_word ON playlist_words (word_id)',
   );
   late final Index reviewLogsByTime = Index(
     'review_logs_by_time',
@@ -2253,687 +2474,51 @@ abstract class _$ShioriDatabase extends GeneratedDatabase {
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
-    textbooks,
-    textbookDays,
     words,
+    playlists,
+    playlistWords,
     reviewCards,
     reviewLogs,
-    wordsByPlace,
+    settings,
+    playlistWordsByWord,
     reviewLogsByTime,
   ];
+  @override
+  StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'playlists',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('playlist_words', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'words',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('playlist_words', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'words',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('review_cards', kind: UpdateKind.delete)],
+    ),
+  ]);
 }
 
-typedef $$TextbooksTableCreateCompanionBuilder =
-    TextbooksCompanion Function({
-      required String id,
-      required String title,
-      required DateTime createdAt,
-      Value<String?> templateId,
-      Value<int> rowid,
-    });
-typedef $$TextbooksTableUpdateCompanionBuilder =
-    TextbooksCompanion Function({
-      Value<String> id,
-      Value<String> title,
-      Value<DateTime> createdAt,
-      Value<String?> templateId,
-      Value<int> rowid,
-    });
-
-final class $$TextbooksTableReferences
-    extends BaseReferences<_$ShioriDatabase, $TextbooksTable, TextbookRow> {
-  $$TextbooksTableReferences(super.$_db, super.$_table, super.$_typedResult);
-
-  static MultiTypedResultKey<$TextbookDaysTable, List<DayRow>>
-  _textbookDaysRefsTable(_$ShioriDatabase db) => MultiTypedResultKey.fromTable(
-    db.textbookDays,
-    aliasName: 'textbooks__id__textbook_days__textbook_id',
-  );
-
-  $$TextbookDaysTableProcessedTableManager get textbookDaysRefs {
-    final manager = $$TextbookDaysTableTableManager(
-      $_db,
-      $_db.textbookDays,
-    ).filter((f) => f.textbookId.id.sqlEquals($_itemColumn<String>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(_textbookDaysRefsTable($_db));
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
-    );
-  }
-
-  static MultiTypedResultKey<$WordsTable, List<WordRow>> _wordsRefsTable(
-    _$ShioriDatabase db,
-  ) => MultiTypedResultKey.fromTable(
-    db.words,
-    aliasName: 'textbooks__id__words__textbook_id',
-  );
-
-  $$WordsTableProcessedTableManager get wordsRefs {
-    final manager = $$WordsTableTableManager(
-      $_db,
-      $_db.words,
-    ).filter((f) => f.textbookId.id.sqlEquals($_itemColumn<String>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(_wordsRefsTable($_db));
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
-    );
-  }
-}
-
-class $$TextbooksTableFilterComposer
-    extends Composer<_$ShioriDatabase, $TextbooksTable> {
-  $$TextbooksTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<String> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get title => $composableBuilder(
-    column: $table.title,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnWithTypeConverterFilters<DateTime, DateTime, int> get createdAt =>
-      $composableBuilder(
-        column: $table.createdAt,
-        builder: (column) => ColumnWithTypeConverterFilters(column),
-      );
-
-  ColumnFilters<String> get templateId => $composableBuilder(
-    column: $table.templateId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  Expression<bool> textbookDaysRefs(
-    Expression<bool> Function($$TextbookDaysTableFilterComposer f) f,
-  ) {
-    final $$TextbookDaysTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.textbookDays,
-      getReferencedColumn: (t) => t.textbookId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$TextbookDaysTableFilterComposer(
-            $db: $db,
-            $table: $db.textbookDays,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-
-  Expression<bool> wordsRefs(
-    Expression<bool> Function($$WordsTableFilterComposer f) f,
-  ) {
-    final $$WordsTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.words,
-      getReferencedColumn: (t) => t.textbookId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$WordsTableFilterComposer(
-            $db: $db,
-            $table: $db.words,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-}
-
-class $$TextbooksTableOrderingComposer
-    extends Composer<_$ShioriDatabase, $TextbooksTable> {
-  $$TextbooksTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<String> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get title => $composableBuilder(
-    column: $table.title,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get createdAt => $composableBuilder(
-    column: $table.createdAt,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get templateId => $composableBuilder(
-    column: $table.templateId,
-    builder: (column) => ColumnOrderings(column),
-  );
-}
-
-class $$TextbooksTableAnnotationComposer
-    extends Composer<_$ShioriDatabase, $TextbooksTable> {
-  $$TextbooksTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<String> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get title =>
-      $composableBuilder(column: $table.title, builder: (column) => column);
-
-  GeneratedColumnWithTypeConverter<DateTime, int> get createdAt =>
-      $composableBuilder(column: $table.createdAt, builder: (column) => column);
-
-  GeneratedColumn<String> get templateId => $composableBuilder(
-    column: $table.templateId,
-    builder: (column) => column,
-  );
-
-  Expression<T> textbookDaysRefs<T extends Object>(
-    Expression<T> Function($$TextbookDaysTableAnnotationComposer a) f,
-  ) {
-    final $$TextbookDaysTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.textbookDays,
-      getReferencedColumn: (t) => t.textbookId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$TextbookDaysTableAnnotationComposer(
-            $db: $db,
-            $table: $db.textbookDays,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-
-  Expression<T> wordsRefs<T extends Object>(
-    Expression<T> Function($$WordsTableAnnotationComposer a) f,
-  ) {
-    final $$WordsTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.words,
-      getReferencedColumn: (t) => t.textbookId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$WordsTableAnnotationComposer(
-            $db: $db,
-            $table: $db.words,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
-}
-
-class $$TextbooksTableTableManager
-    extends
-        RootTableManager<
-          _$ShioriDatabase,
-          $TextbooksTable,
-          TextbookRow,
-          $$TextbooksTableFilterComposer,
-          $$TextbooksTableOrderingComposer,
-          $$TextbooksTableAnnotationComposer,
-          $$TextbooksTableCreateCompanionBuilder,
-          $$TextbooksTableUpdateCompanionBuilder,
-          (TextbookRow, $$TextbooksTableReferences),
-          TextbookRow,
-          PrefetchHooks Function({bool textbookDaysRefs, bool wordsRefs})
-        > {
-  $$TextbooksTableTableManager(_$ShioriDatabase db, $TextbooksTable table)
-    : super(
-        TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$TextbooksTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$TextbooksTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$TextbooksTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<String> id = const Value.absent(),
-                Value<String> title = const Value.absent(),
-                Value<DateTime> createdAt = const Value.absent(),
-                Value<String?> templateId = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
-              }) => TextbooksCompanion(
-                id: id,
-                title: title,
-                createdAt: createdAt,
-                templateId: templateId,
-                rowid: rowid,
-              ),
-          createCompanionCallback:
-              ({
-                required String id,
-                required String title,
-                required DateTime createdAt,
-                Value<String?> templateId = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
-              }) => TextbooksCompanion.insert(
-                id: id,
-                title: title,
-                createdAt: createdAt,
-                templateId: templateId,
-                rowid: rowid,
-              ),
-          withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable<$TextbooksTable, TextbookRow>(table),
-                  $$TextbooksTableReferences(db, table, e),
-                ),
-              )
-              .toList(),
-          prefetchHooksCallback:
-              ({textbookDaysRefs = false, wordsRefs = false}) {
-                return PrefetchHooks(
-                  db: db,
-                  explicitlyWatchedTables: [
-                    if (textbookDaysRefs) db.textbookDays,
-                    if (wordsRefs) db.words,
-                  ],
-                  addJoins: null,
-                  getPrefetchedDataCallback: (items) async {
-                    return [
-                      if (textbookDaysRefs)
-                        await $_getPrefetchedDataByColumns<
-                          TextbookRow,
-                          $TextbooksTable,
-                          DayRow,
-                          $TextbookDaysTable
-                        >(
-                          currentTable: table,
-                          referencedTable: $$TextbooksTableReferences
-                              ._textbookDaysRefsTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$TextbooksTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).textbookDaysRefs,
-                          currentColumn: 'id',
-                          referencedColumn: 'textbook_id',
-                          typedResults: items,
-                        ),
-                      if (wordsRefs)
-                        await $_getPrefetchedDataByColumns<
-                          TextbookRow,
-                          $TextbooksTable,
-                          WordRow,
-                          $WordsTable
-                        >(
-                          currentTable: table,
-                          referencedTable: $$TextbooksTableReferences
-                              ._wordsRefsTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$TextbooksTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).wordsRefs,
-                          currentColumn: 'id',
-                          referencedColumn: 'textbook_id',
-                          typedResults: items,
-                        ),
-                    ];
-                  },
-                );
-              },
-        ),
-      );
-}
-
-typedef $$TextbooksTableProcessedTableManager =
-    ProcessedTableManager<
-      _$ShioriDatabase,
-      $TextbooksTable,
-      TextbookRow,
-      $$TextbooksTableFilterComposer,
-      $$TextbooksTableOrderingComposer,
-      $$TextbooksTableAnnotationComposer,
-      $$TextbooksTableCreateCompanionBuilder,
-      $$TextbooksTableUpdateCompanionBuilder,
-      (TextbookRow, $$TextbooksTableReferences),
-      TextbookRow,
-      PrefetchHooks Function({bool textbookDaysRefs, bool wordsRefs})
-    >;
-typedef $$TextbookDaysTableCreateCompanionBuilder =
-    TextbookDaysCompanion Function({
-      required String textbookId,
-      required int number,
-      required String title,
-      Value<int> rowid,
-    });
-typedef $$TextbookDaysTableUpdateCompanionBuilder =
-    TextbookDaysCompanion Function({
-      Value<String> textbookId,
-      Value<int> number,
-      Value<String> title,
-      Value<int> rowid,
-    });
-
-final class $$TextbookDaysTableReferences
-    extends BaseReferences<_$ShioriDatabase, $TextbookDaysTable, DayRow> {
-  $$TextbookDaysTableReferences(super.$_db, super.$_table, super.$_typedResult);
-
-  static $TextbooksTable _textbookIdTable(_$ShioriDatabase db) =>
-      db.textbooks.createAlias('textbook_days__textbook_id__textbooks__id');
-
-  $$TextbooksTableProcessedTableManager get textbookId {
-    final $_column = $_itemColumn<String>('textbook_id')!;
-
-    final manager = $$TextbooksTableTableManager(
-      $_db,
-      $_db.textbooks,
-    ).filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_textbookIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: [item]),
-    );
-  }
-}
-
-class $$TextbookDaysTableFilterComposer
-    extends Composer<_$ShioriDatabase, $TextbookDaysTable> {
-  $$TextbookDaysTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<int> get number => $composableBuilder(
-    column: $table.number,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get title => $composableBuilder(
-    column: $table.title,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  $$TextbooksTableFilterComposer get textbookId {
-    final $$TextbooksTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.textbookId,
-      referencedTable: $db.textbooks,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$TextbooksTableFilterComposer(
-            $db: $db,
-            $table: $db.textbooks,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-}
-
-class $$TextbookDaysTableOrderingComposer
-    extends Composer<_$ShioriDatabase, $TextbookDaysTable> {
-  $$TextbookDaysTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<int> get number => $composableBuilder(
-    column: $table.number,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get title => $composableBuilder(
-    column: $table.title,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  $$TextbooksTableOrderingComposer get textbookId {
-    final $$TextbooksTableOrderingComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.textbookId,
-      referencedTable: $db.textbooks,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$TextbooksTableOrderingComposer(
-            $db: $db,
-            $table: $db.textbooks,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-}
-
-class $$TextbookDaysTableAnnotationComposer
-    extends Composer<_$ShioriDatabase, $TextbookDaysTable> {
-  $$TextbookDaysTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<int> get number =>
-      $composableBuilder(column: $table.number, builder: (column) => column);
-
-  GeneratedColumn<String> get title =>
-      $composableBuilder(column: $table.title, builder: (column) => column);
-
-  $$TextbooksTableAnnotationComposer get textbookId {
-    final $$TextbooksTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.textbookId,
-      referencedTable: $db.textbooks,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$TextbooksTableAnnotationComposer(
-            $db: $db,
-            $table: $db.textbooks,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-}
-
-class $$TextbookDaysTableTableManager
-    extends
-        RootTableManager<
-          _$ShioriDatabase,
-          $TextbookDaysTable,
-          DayRow,
-          $$TextbookDaysTableFilterComposer,
-          $$TextbookDaysTableOrderingComposer,
-          $$TextbookDaysTableAnnotationComposer,
-          $$TextbookDaysTableCreateCompanionBuilder,
-          $$TextbookDaysTableUpdateCompanionBuilder,
-          (DayRow, $$TextbookDaysTableReferences),
-          DayRow,
-          PrefetchHooks Function({bool textbookId})
-        > {
-  $$TextbookDaysTableTableManager(_$ShioriDatabase db, $TextbookDaysTable table)
-    : super(
-        TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$TextbookDaysTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$TextbookDaysTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$TextbookDaysTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<String> textbookId = const Value.absent(),
-                Value<int> number = const Value.absent(),
-                Value<String> title = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
-              }) => TextbookDaysCompanion(
-                textbookId: textbookId,
-                number: number,
-                title: title,
-                rowid: rowid,
-              ),
-          createCompanionCallback:
-              ({
-                required String textbookId,
-                required int number,
-                required String title,
-                Value<int> rowid = const Value.absent(),
-              }) => TextbookDaysCompanion.insert(
-                textbookId: textbookId,
-                number: number,
-                title: title,
-                rowid: rowid,
-              ),
-          withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable<$TextbookDaysTable, DayRow>(table),
-                  $$TextbookDaysTableReferences(db, table, e),
-                ),
-              )
-              .toList(),
-          prefetchHooksCallback: ({textbookId = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [],
-              addJoins:
-                  <
-                    T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic
-                    >
-                  >(state) {
-                    if (textbookId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.textbookId,
-                                referencedTable: $$TextbookDaysTableReferences
-                                    ._textbookIdTable(db),
-                                referencedColumn: $$TextbookDaysTableReferences
-                                    ._textbookIdTable(db)
-                                    .id,
-                              )
-                              as T;
-                    }
-
-                    return state;
-                  },
-              getPrefetchedDataCallback: (items) async {
-                return [];
-              },
-            );
-          },
-        ),
-      );
-}
-
-typedef $$TextbookDaysTableProcessedTableManager =
-    ProcessedTableManager<
-      _$ShioriDatabase,
-      $TextbookDaysTable,
-      DayRow,
-      $$TextbookDaysTableFilterComposer,
-      $$TextbookDaysTableOrderingComposer,
-      $$TextbookDaysTableAnnotationComposer,
-      $$TextbookDaysTableCreateCompanionBuilder,
-      $$TextbookDaysTableUpdateCompanionBuilder,
-      (DayRow, $$TextbookDaysTableReferences),
-      DayRow,
-      PrefetchHooks Function({bool textbookId})
-    >;
 typedef $$WordsTableCreateCompanionBuilder =
     WordsCompanion Function({
       required String id,
-      required String textbookId,
-      Value<int?> day,
-      Value<String?> no,
+      required String key,
       required String headword,
       required List<String> readings,
       Value<PartOfSpeech?> pos,
       required String meaning,
       Value<String?> exampleJa,
       Value<String?> exampleKo,
-      Value<int?> page,
       required DateTime createdAt,
       Value<DateTime?> hiddenAt,
       Value<int> rowid,
@@ -2941,16 +2526,13 @@ typedef $$WordsTableCreateCompanionBuilder =
 typedef $$WordsTableUpdateCompanionBuilder =
     WordsCompanion Function({
       Value<String> id,
-      Value<String> textbookId,
-      Value<int?> day,
-      Value<String?> no,
+      Value<String> key,
       Value<String> headword,
       Value<List<String>> readings,
       Value<PartOfSpeech?> pos,
       Value<String> meaning,
       Value<String?> exampleJa,
       Value<String?> exampleKo,
-      Value<int?> page,
       Value<DateTime> createdAt,
       Value<DateTime?> hiddenAt,
       Value<int> rowid,
@@ -2960,20 +2542,39 @@ final class $$WordsTableReferences
     extends BaseReferences<_$ShioriDatabase, $WordsTable, WordRow> {
   $$WordsTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
-  static $TextbooksTable _textbookIdTable(_$ShioriDatabase db) =>
-      db.textbooks.createAlias('words__textbook_id__textbooks__id');
+  static MultiTypedResultKey<$PlaylistWordsTable, List<PlaylistWordRow>>
+  _playlistWordsRefsTable(_$ShioriDatabase db) => MultiTypedResultKey.fromTable(
+    db.playlistWords,
+    aliasName: 'words__id__playlist_words__word_id',
+  );
 
-  $$TextbooksTableProcessedTableManager get textbookId {
-    final $_column = $_itemColumn<String>('textbook_id')!;
-
-    final manager = $$TextbooksTableTableManager(
+  $$PlaylistWordsTableProcessedTableManager get playlistWordsRefs {
+    final manager = $$PlaylistWordsTableTableManager(
       $_db,
-      $_db.textbooks,
-    ).filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_textbookIdTable($_db));
-    if (item == null) return manager;
+      $_db.playlistWords,
+    ).filter((f) => f.wordId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_playlistWordsRefsTable($_db));
     return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: [item]),
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$ReviewCardsTable, List<CardRow>>
+  _reviewCardsRefsTable(_$ShioriDatabase db) => MultiTypedResultKey.fromTable(
+    db.reviewCards,
+    aliasName: 'words__id__review_cards__word_id',
+  );
+
+  $$ReviewCardsTableProcessedTableManager get reviewCardsRefs {
+    final manager = $$ReviewCardsTableTableManager(
+      $_db,
+      $_db.reviewCards,
+    ).filter((f) => f.wordId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_reviewCardsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
     );
   }
 }
@@ -2992,13 +2593,8 @@ class $$WordsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get day => $composableBuilder(
-    column: $table.day,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get no => $composableBuilder(
-    column: $table.no,
+  ColumnFilters<String> get key => $composableBuilder(
+    column: $table.key,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3034,11 +2630,6 @@ class $$WordsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get page => $composableBuilder(
-    column: $table.page,
-    builder: (column) => ColumnFilters(column),
-  );
-
   ColumnWithTypeConverterFilters<DateTime, DateTime, int> get createdAt =>
       $composableBuilder(
         column: $table.createdAt,
@@ -3051,27 +2642,54 @@ class $$WordsTableFilterComposer
         builder: (column) => ColumnWithTypeConverterFilters(column),
       );
 
-  $$TextbooksTableFilterComposer get textbookId {
-    final $$TextbooksTableFilterComposer composer = $composerBuilder(
+  Expression<bool> playlistWordsRefs(
+    Expression<bool> Function($$PlaylistWordsTableFilterComposer f) f,
+  ) {
+    final $$PlaylistWordsTableFilterComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.textbookId,
-      referencedTable: $db.textbooks,
-      getReferencedColumn: (t) => t.id,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.playlistWords,
+      getReferencedColumn: (t) => t.wordId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$TextbooksTableFilterComposer(
+          }) => $$PlaylistWordsTableFilterComposer(
             $db: $db,
-            $table: $db.textbooks,
+            $table: $db.playlistWords,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
                 $removeJoinBuilderFromRootComposer,
           ),
     );
-    return composer;
+    return f(composer);
+  }
+
+  Expression<bool> reviewCardsRefs(
+    Expression<bool> Function($$ReviewCardsTableFilterComposer f) f,
+  ) {
+    final $$ReviewCardsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.reviewCards,
+      getReferencedColumn: (t) => t.wordId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ReviewCardsTableFilterComposer(
+            $db: $db,
+            $table: $db.reviewCards,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
   }
 }
 
@@ -3089,13 +2707,8 @@ class $$WordsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get day => $composableBuilder(
-    column: $table.day,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get no => $composableBuilder(
-    column: $table.no,
+  ColumnOrderings<String> get key => $composableBuilder(
+    column: $table.key,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -3129,11 +2742,6 @@ class $$WordsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get page => $composableBuilder(
-    column: $table.page,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -3143,29 +2751,6 @@ class $$WordsTableOrderingComposer
     column: $table.hiddenAt,
     builder: (column) => ColumnOrderings(column),
   );
-
-  $$TextbooksTableOrderingComposer get textbookId {
-    final $$TextbooksTableOrderingComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.textbookId,
-      referencedTable: $db.textbooks,
-      getReferencedColumn: (t) => t.id,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$TextbooksTableOrderingComposer(
-            $db: $db,
-            $table: $db.textbooks,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
 }
 
 class $$WordsTableAnnotationComposer
@@ -3180,11 +2765,8 @@ class $$WordsTableAnnotationComposer
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<int> get day =>
-      $composableBuilder(column: $table.day, builder: (column) => column);
-
-  GeneratedColumn<String> get no =>
-      $composableBuilder(column: $table.no, builder: (column) => column);
+  GeneratedColumn<String> get key =>
+      $composableBuilder(column: $table.key, builder: (column) => column);
 
   GeneratedColumn<String> get headword =>
       $composableBuilder(column: $table.headword, builder: (column) => column);
@@ -3204,36 +2786,60 @@ class $$WordsTableAnnotationComposer
   GeneratedColumn<String> get exampleKo =>
       $composableBuilder(column: $table.exampleKo, builder: (column) => column);
 
-  GeneratedColumn<int> get page =>
-      $composableBuilder(column: $table.page, builder: (column) => column);
-
   GeneratedColumnWithTypeConverter<DateTime, int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
   GeneratedColumnWithTypeConverter<DateTime?, int> get hiddenAt =>
       $composableBuilder(column: $table.hiddenAt, builder: (column) => column);
 
-  $$TextbooksTableAnnotationComposer get textbookId {
-    final $$TextbooksTableAnnotationComposer composer = $composerBuilder(
+  Expression<T> playlistWordsRefs<T extends Object>(
+    Expression<T> Function($$PlaylistWordsTableAnnotationComposer a) f,
+  ) {
+    final $$PlaylistWordsTableAnnotationComposer composer = $composerBuilder(
       composer: this,
-      getCurrentColumn: (t) => t.textbookId,
-      referencedTable: $db.textbooks,
-      getReferencedColumn: (t) => t.id,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.playlistWords,
+      getReferencedColumn: (t) => t.wordId,
       builder:
           (
             joinBuilder, {
             $addJoinBuilderToRootComposer,
             $removeJoinBuilderFromRootComposer,
-          }) => $$TextbooksTableAnnotationComposer(
+          }) => $$PlaylistWordsTableAnnotationComposer(
             $db: $db,
-            $table: $db.textbooks,
+            $table: $db.playlistWords,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
                 $removeJoinBuilderFromRootComposer,
           ),
     );
-    return composer;
+    return f(composer);
+  }
+
+  Expression<T> reviewCardsRefs<T extends Object>(
+    Expression<T> Function($$ReviewCardsTableAnnotationComposer a) f,
+  ) {
+    final $$ReviewCardsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.reviewCards,
+      getReferencedColumn: (t) => t.wordId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ReviewCardsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.reviewCards,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
   }
 }
 
@@ -3250,7 +2856,7 @@ class $$WordsTableTableManager
           $$WordsTableUpdateCompanionBuilder,
           (WordRow, $$WordsTableReferences),
           WordRow,
-          PrefetchHooks Function({bool textbookId})
+          PrefetchHooks Function({bool playlistWordsRefs, bool reviewCardsRefs})
         > {
   $$WordsTableTableManager(_$ShioriDatabase db, $WordsTable table)
     : super(
@@ -3266,31 +2872,25 @@ class $$WordsTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> id = const Value.absent(),
-                Value<String> textbookId = const Value.absent(),
-                Value<int?> day = const Value.absent(),
-                Value<String?> no = const Value.absent(),
+                Value<String> key = const Value.absent(),
                 Value<String> headword = const Value.absent(),
                 Value<List<String>> readings = const Value.absent(),
                 Value<PartOfSpeech?> pos = const Value.absent(),
                 Value<String> meaning = const Value.absent(),
                 Value<String?> exampleJa = const Value.absent(),
                 Value<String?> exampleKo = const Value.absent(),
-                Value<int?> page = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> hiddenAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => WordsCompanion(
                 id: id,
-                textbookId: textbookId,
-                day: day,
-                no: no,
+                key: key,
                 headword: headword,
                 readings: readings,
                 pos: pos,
                 meaning: meaning,
                 exampleJa: exampleJa,
                 exampleKo: exampleKo,
-                page: page,
                 createdAt: createdAt,
                 hiddenAt: hiddenAt,
                 rowid: rowid,
@@ -3298,31 +2898,25 @@ class $$WordsTableTableManager
           createCompanionCallback:
               ({
                 required String id,
-                required String textbookId,
-                Value<int?> day = const Value.absent(),
-                Value<String?> no = const Value.absent(),
+                required String key,
                 required String headword,
                 required List<String> readings,
                 Value<PartOfSpeech?> pos = const Value.absent(),
                 required String meaning,
                 Value<String?> exampleJa = const Value.absent(),
                 Value<String?> exampleKo = const Value.absent(),
-                Value<int?> page = const Value.absent(),
                 required DateTime createdAt,
                 Value<DateTime?> hiddenAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => WordsCompanion.insert(
                 id: id,
-                textbookId: textbookId,
-                day: day,
-                no: no,
+                key: key,
                 headword: headword,
                 readings: readings,
                 pos: pos,
                 meaning: meaning,
                 exampleJa: exampleJa,
                 exampleKo: exampleKo,
-                page: page,
                 createdAt: createdAt,
                 hiddenAt: hiddenAt,
                 rowid: rowid,
@@ -3335,7 +2929,686 @@ class $$WordsTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({textbookId = false}) {
+          prefetchHooksCallback:
+              ({playlistWordsRefs = false, reviewCardsRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (playlistWordsRefs) db.playlistWords,
+                    if (reviewCardsRefs) db.reviewCards,
+                  ],
+                  addJoins: null,
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (playlistWordsRefs)
+                        await $_getPrefetchedDataByColumns<
+                          WordRow,
+                          $WordsTable,
+                          PlaylistWordRow,
+                          $PlaylistWordsTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$WordsTableReferences
+                              ._playlistWordsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$WordsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).playlistWordsRefs,
+                          currentColumn: 'id',
+                          referencedColumn: 'word_id',
+                          typedResults: items,
+                        ),
+                      if (reviewCardsRefs)
+                        await $_getPrefetchedDataByColumns<
+                          WordRow,
+                          $WordsTable,
+                          CardRow,
+                          $ReviewCardsTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$WordsTableReferences
+                              ._reviewCardsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$WordsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).reviewCardsRefs,
+                          currentColumn: 'id',
+                          referencedColumn: 'word_id',
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$WordsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$ShioriDatabase,
+      $WordsTable,
+      WordRow,
+      $$WordsTableFilterComposer,
+      $$WordsTableOrderingComposer,
+      $$WordsTableAnnotationComposer,
+      $$WordsTableCreateCompanionBuilder,
+      $$WordsTableUpdateCompanionBuilder,
+      (WordRow, $$WordsTableReferences),
+      WordRow,
+      PrefetchHooks Function({bool playlistWordsRefs, bool reviewCardsRefs})
+    >;
+typedef $$PlaylistsTableCreateCompanionBuilder =
+    PlaylistsCompanion Function({
+      required String id,
+      required String name,
+      required DateTime createdAt,
+      required int position,
+      Value<int> rowid,
+    });
+typedef $$PlaylistsTableUpdateCompanionBuilder =
+    PlaylistsCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<DateTime> createdAt,
+      Value<int> position,
+      Value<int> rowid,
+    });
+
+final class $$PlaylistsTableReferences
+    extends BaseReferences<_$ShioriDatabase, $PlaylistsTable, PlaylistRow> {
+  $$PlaylistsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$PlaylistWordsTable, List<PlaylistWordRow>>
+  _playlistWordsRefsTable(_$ShioriDatabase db) => MultiTypedResultKey.fromTable(
+    db.playlistWords,
+    aliasName: 'playlists__id__playlist_words__playlist_id',
+  );
+
+  $$PlaylistWordsTableProcessedTableManager get playlistWordsRefs {
+    final manager = $$PlaylistWordsTableTableManager(
+      $_db,
+      $_db.playlistWords,
+    ).filter((f) => f.playlistId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_playlistWordsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$PlaylistsTableFilterComposer
+    extends Composer<_$ShioriDatabase, $PlaylistsTable> {
+  $$PlaylistsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<DateTime, DateTime, int> get createdAt =>
+      $composableBuilder(
+        column: $table.createdAt,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> playlistWordsRefs(
+    Expression<bool> Function($$PlaylistWordsTableFilterComposer f) f,
+  ) {
+    final $$PlaylistWordsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.playlistWords,
+      getReferencedColumn: (t) => t.playlistId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PlaylistWordsTableFilterComposer(
+            $db: $db,
+            $table: $db.playlistWords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$PlaylistsTableOrderingComposer
+    extends Composer<_$ShioriDatabase, $PlaylistsTable> {
+  $$PlaylistsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PlaylistsTableAnnotationComposer
+    extends Composer<_$ShioriDatabase, $PlaylistsTable> {
+  $$PlaylistsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DateTime, int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+
+  Expression<T> playlistWordsRefs<T extends Object>(
+    Expression<T> Function($$PlaylistWordsTableAnnotationComposer a) f,
+  ) {
+    final $$PlaylistWordsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.playlistWords,
+      getReferencedColumn: (t) => t.playlistId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PlaylistWordsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.playlistWords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$PlaylistsTableTableManager
+    extends
+        RootTableManager<
+          _$ShioriDatabase,
+          $PlaylistsTable,
+          PlaylistRow,
+          $$PlaylistsTableFilterComposer,
+          $$PlaylistsTableOrderingComposer,
+          $$PlaylistsTableAnnotationComposer,
+          $$PlaylistsTableCreateCompanionBuilder,
+          $$PlaylistsTableUpdateCompanionBuilder,
+          (PlaylistRow, $$PlaylistsTableReferences),
+          PlaylistRow,
+          PrefetchHooks Function({bool playlistWordsRefs})
+        > {
+  $$PlaylistsTableTableManager(_$ShioriDatabase db, $PlaylistsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PlaylistsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PlaylistsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PlaylistsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> position = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PlaylistsCompanion(
+                id: id,
+                name: name,
+                createdAt: createdAt,
+                position: position,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                required DateTime createdAt,
+                required int position,
+                Value<int> rowid = const Value.absent(),
+              }) => PlaylistsCompanion.insert(
+                id: id,
+                name: name,
+                createdAt: createdAt,
+                position: position,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$PlaylistsTable, PlaylistRow>(table),
+                  $$PlaylistsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({playlistWordsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (playlistWordsRefs) db.playlistWords,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (playlistWordsRefs)
+                    await $_getPrefetchedDataByColumns<
+                      PlaylistRow,
+                      $PlaylistsTable,
+                      PlaylistWordRow,
+                      $PlaylistWordsTable
+                    >(
+                      currentTable: table,
+                      referencedTable: $$PlaylistsTableReferences
+                          ._playlistWordsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$PlaylistsTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).playlistWordsRefs,
+                      currentColumn: 'id',
+                      referencedColumn: 'playlist_id',
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$PlaylistsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$ShioriDatabase,
+      $PlaylistsTable,
+      PlaylistRow,
+      $$PlaylistsTableFilterComposer,
+      $$PlaylistsTableOrderingComposer,
+      $$PlaylistsTableAnnotationComposer,
+      $$PlaylistsTableCreateCompanionBuilder,
+      $$PlaylistsTableUpdateCompanionBuilder,
+      (PlaylistRow, $$PlaylistsTableReferences),
+      PlaylistRow,
+      PrefetchHooks Function({bool playlistWordsRefs})
+    >;
+typedef $$PlaylistWordsTableCreateCompanionBuilder =
+    PlaylistWordsCompanion Function({
+      required String playlistId,
+      required String wordId,
+      required int position,
+      required DateTime addedAt,
+      Value<int> rowid,
+    });
+typedef $$PlaylistWordsTableUpdateCompanionBuilder =
+    PlaylistWordsCompanion Function({
+      Value<String> playlistId,
+      Value<String> wordId,
+      Value<int> position,
+      Value<DateTime> addedAt,
+      Value<int> rowid,
+    });
+
+final class $$PlaylistWordsTableReferences
+    extends
+        BaseReferences<_$ShioriDatabase, $PlaylistWordsTable, PlaylistWordRow> {
+  $$PlaylistWordsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $PlaylistsTable _playlistIdTable(_$ShioriDatabase db) =>
+      db.playlists.createAlias('playlist_words__playlist_id__playlists__id');
+
+  $$PlaylistsTableProcessedTableManager get playlistId {
+    final $_column = $_itemColumn<String>('playlist_id')!;
+
+    final manager = $$PlaylistsTableTableManager(
+      $_db,
+      $_db.playlists,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_playlistIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $WordsTable _wordIdTable(_$ShioriDatabase db) =>
+      db.words.createAlias('playlist_words__word_id__words__id');
+
+  $$WordsTableProcessedTableManager get wordId {
+    final $_column = $_itemColumn<String>('word_id')!;
+
+    final manager = $$WordsTableTableManager(
+      $_db,
+      $_db.words,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_wordIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$PlaylistWordsTableFilterComposer
+    extends Composer<_$ShioriDatabase, $PlaylistWordsTable> {
+  $$PlaylistWordsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<DateTime, DateTime, int> get addedAt =>
+      $composableBuilder(
+        column: $table.addedAt,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  $$PlaylistsTableFilterComposer get playlistId {
+    final $$PlaylistsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.playlistId,
+      referencedTable: $db.playlists,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PlaylistsTableFilterComposer(
+            $db: $db,
+            $table: $db.playlists,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$WordsTableFilterComposer get wordId {
+    final $$WordsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.wordId,
+      referencedTable: $db.words,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$WordsTableFilterComposer(
+            $db: $db,
+            $table: $db.words,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PlaylistWordsTableOrderingComposer
+    extends Composer<_$ShioriDatabase, $PlaylistWordsTable> {
+  $$PlaylistWordsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get addedAt => $composableBuilder(
+    column: $table.addedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$PlaylistsTableOrderingComposer get playlistId {
+    final $$PlaylistsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.playlistId,
+      referencedTable: $db.playlists,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PlaylistsTableOrderingComposer(
+            $db: $db,
+            $table: $db.playlists,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$WordsTableOrderingComposer get wordId {
+    final $$WordsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.wordId,
+      referencedTable: $db.words,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$WordsTableOrderingComposer(
+            $db: $db,
+            $table: $db.words,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PlaylistWordsTableAnnotationComposer
+    extends Composer<_$ShioriDatabase, $PlaylistWordsTable> {
+  $$PlaylistWordsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DateTime, int> get addedAt =>
+      $composableBuilder(column: $table.addedAt, builder: (column) => column);
+
+  $$PlaylistsTableAnnotationComposer get playlistId {
+    final $$PlaylistsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.playlistId,
+      referencedTable: $db.playlists,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PlaylistsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.playlists,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$WordsTableAnnotationComposer get wordId {
+    final $$WordsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.wordId,
+      referencedTable: $db.words,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$WordsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.words,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PlaylistWordsTableTableManager
+    extends
+        RootTableManager<
+          _$ShioriDatabase,
+          $PlaylistWordsTable,
+          PlaylistWordRow,
+          $$PlaylistWordsTableFilterComposer,
+          $$PlaylistWordsTableOrderingComposer,
+          $$PlaylistWordsTableAnnotationComposer,
+          $$PlaylistWordsTableCreateCompanionBuilder,
+          $$PlaylistWordsTableUpdateCompanionBuilder,
+          (PlaylistWordRow, $$PlaylistWordsTableReferences),
+          PlaylistWordRow,
+          PrefetchHooks Function({bool playlistId, bool wordId})
+        > {
+  $$PlaylistWordsTableTableManager(
+    _$ShioriDatabase db,
+    $PlaylistWordsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PlaylistWordsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PlaylistWordsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PlaylistWordsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> playlistId = const Value.absent(),
+                Value<String> wordId = const Value.absent(),
+                Value<int> position = const Value.absent(),
+                Value<DateTime> addedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PlaylistWordsCompanion(
+                playlistId: playlistId,
+                wordId: wordId,
+                position: position,
+                addedAt: addedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String playlistId,
+                required String wordId,
+                required int position,
+                required DateTime addedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => PlaylistWordsCompanion.insert(
+                playlistId: playlistId,
+                wordId: wordId,
+                position: position,
+                addedAt: addedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$PlaylistWordsTable, PlaylistWordRow>(table),
+                  $$PlaylistWordsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({playlistId = false, wordId = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [],
@@ -3355,15 +3628,28 @@ class $$WordsTableTableManager
                       dynamic
                     >
                   >(state) {
-                    if (textbookId) {
+                    if (playlistId) {
                       state =
                           state.withJoin(
                                 currentTable: table,
-                                currentColumn: table.textbookId,
-                                referencedTable: $$WordsTableReferences
-                                    ._textbookIdTable(db),
-                                referencedColumn: $$WordsTableReferences
-                                    ._textbookIdTable(db)
+                                currentColumn: table.playlistId,
+                                referencedTable: $$PlaylistWordsTableReferences
+                                    ._playlistIdTable(db),
+                                referencedColumn: $$PlaylistWordsTableReferences
+                                    ._playlistIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+                    if (wordId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.wordId,
+                                referencedTable: $$PlaylistWordsTableReferences
+                                    ._wordIdTable(db),
+                                referencedColumn: $$PlaylistWordsTableReferences
+                                    ._wordIdTable(db)
                                     .id,
                               )
                               as T;
@@ -3380,22 +3666,23 @@ class $$WordsTableTableManager
       );
 }
 
-typedef $$WordsTableProcessedTableManager =
+typedef $$PlaylistWordsTableProcessedTableManager =
     ProcessedTableManager<
       _$ShioriDatabase,
-      $WordsTable,
-      WordRow,
-      $$WordsTableFilterComposer,
-      $$WordsTableOrderingComposer,
-      $$WordsTableAnnotationComposer,
-      $$WordsTableCreateCompanionBuilder,
-      $$WordsTableUpdateCompanionBuilder,
-      (WordRow, $$WordsTableReferences),
-      WordRow,
-      PrefetchHooks Function({bool textbookId})
+      $PlaylistWordsTable,
+      PlaylistWordRow,
+      $$PlaylistWordsTableFilterComposer,
+      $$PlaylistWordsTableOrderingComposer,
+      $$PlaylistWordsTableAnnotationComposer,
+      $$PlaylistWordsTableCreateCompanionBuilder,
+      $$PlaylistWordsTableUpdateCompanionBuilder,
+      (PlaylistWordRow, $$PlaylistWordsTableReferences),
+      PlaylistWordRow,
+      PrefetchHooks Function({bool playlistId, bool wordId})
     >;
 typedef $$ReviewCardsTableCreateCompanionBuilder =
     ReviewCardsCompanion Function({
+      required String scope,
       required String wordId,
       required int level,
       required DateTime dueAt,
@@ -3406,6 +3693,7 @@ typedef $$ReviewCardsTableCreateCompanionBuilder =
     });
 typedef $$ReviewCardsTableUpdateCompanionBuilder =
     ReviewCardsCompanion Function({
+      Value<String> scope,
       Value<String> wordId,
       Value<int> level,
       Value<DateTime> dueAt,
@@ -3414,6 +3702,28 @@ typedef $$ReviewCardsTableUpdateCompanionBuilder =
       Value<int> lapseCount,
       Value<int> rowid,
     });
+
+final class $$ReviewCardsTableReferences
+    extends BaseReferences<_$ShioriDatabase, $ReviewCardsTable, CardRow> {
+  $$ReviewCardsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $WordsTable _wordIdTable(_$ShioriDatabase db) =>
+      db.words.createAlias('review_cards__word_id__words__id');
+
+  $$WordsTableProcessedTableManager get wordId {
+    final $_column = $_itemColumn<String>('word_id')!;
+
+    final manager = $$WordsTableTableManager(
+      $_db,
+      $_db.words,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_wordIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
 
 class $$ReviewCardsTableFilterComposer
     extends Composer<_$ShioriDatabase, $ReviewCardsTable> {
@@ -3424,8 +3734,8 @@ class $$ReviewCardsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<String> get wordId => $composableBuilder(
-    column: $table.wordId,
+  ColumnFilters<String> get scope => $composableBuilder(
+    column: $table.scope,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3455,6 +3765,29 @@ class $$ReviewCardsTableFilterComposer
     column: $table.lapseCount,
     builder: (column) => ColumnFilters(column),
   );
+
+  $$WordsTableFilterComposer get wordId {
+    final $$WordsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.wordId,
+      referencedTable: $db.words,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$WordsTableFilterComposer(
+            $db: $db,
+            $table: $db.words,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$ReviewCardsTableOrderingComposer
@@ -3466,8 +3799,8 @@ class $$ReviewCardsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<String> get wordId => $composableBuilder(
-    column: $table.wordId,
+  ColumnOrderings<String> get scope => $composableBuilder(
+    column: $table.scope,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -3495,6 +3828,29 @@ class $$ReviewCardsTableOrderingComposer
     column: $table.lapseCount,
     builder: (column) => ColumnOrderings(column),
   );
+
+  $$WordsTableOrderingComposer get wordId {
+    final $$WordsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.wordId,
+      referencedTable: $db.words,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$WordsTableOrderingComposer(
+            $db: $db,
+            $table: $db.words,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$ReviewCardsTableAnnotationComposer
@@ -3506,8 +3862,8 @@ class $$ReviewCardsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get wordId =>
-      $composableBuilder(column: $table.wordId, builder: (column) => column);
+  GeneratedColumn<String> get scope =>
+      $composableBuilder(column: $table.scope, builder: (column) => column);
 
   GeneratedColumn<int> get level =>
       $composableBuilder(column: $table.level, builder: (column) => column);
@@ -3530,6 +3886,29 @@ class $$ReviewCardsTableAnnotationComposer
     column: $table.lapseCount,
     builder: (column) => column,
   );
+
+  $$WordsTableAnnotationComposer get wordId {
+    final $$WordsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.wordId,
+      referencedTable: $db.words,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$WordsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.words,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$ReviewCardsTableTableManager
@@ -3543,12 +3922,9 @@ class $$ReviewCardsTableTableManager
           $$ReviewCardsTableAnnotationComposer,
           $$ReviewCardsTableCreateCompanionBuilder,
           $$ReviewCardsTableUpdateCompanionBuilder,
-          (
-            CardRow,
-            BaseReferences<_$ShioriDatabase, $ReviewCardsTable, CardRow>,
-          ),
+          (CardRow, $$ReviewCardsTableReferences),
           CardRow,
-          PrefetchHooks Function()
+          PrefetchHooks Function({bool wordId})
         > {
   $$ReviewCardsTableTableManager(_$ShioriDatabase db, $ReviewCardsTable table)
     : super(
@@ -3563,6 +3939,7 @@ class $$ReviewCardsTableTableManager
               $$ReviewCardsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
+                Value<String> scope = const Value.absent(),
                 Value<String> wordId = const Value.absent(),
                 Value<int> level = const Value.absent(),
                 Value<DateTime> dueAt = const Value.absent(),
@@ -3571,6 +3948,7 @@ class $$ReviewCardsTableTableManager
                 Value<int> lapseCount = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ReviewCardsCompanion(
+                scope: scope,
                 wordId: wordId,
                 level: level,
                 dueAt: dueAt,
@@ -3581,6 +3959,7 @@ class $$ReviewCardsTableTableManager
               ),
           createCompanionCallback:
               ({
+                required String scope,
                 required String wordId,
                 required int level,
                 required DateTime dueAt,
@@ -3589,6 +3968,7 @@ class $$ReviewCardsTableTableManager
                 required int lapseCount,
                 Value<int> rowid = const Value.absent(),
               }) => ReviewCardsCompanion.insert(
+                scope: scope,
                 wordId: wordId,
                 level: level,
                 dueAt: dueAt,
@@ -3601,15 +3981,51 @@ class $$ReviewCardsTableTableManager
               .map(
                 (e) => (
                   e.readTable<$ReviewCardsTable, CardRow>(table),
-                  BaseReferences<_$ShioriDatabase, $ReviewCardsTable, CardRow>(
-                    db,
-                    table,
-                    e,
-                  ),
+                  $$ReviewCardsTableReferences(db, table, e),
                 ),
               )
               .toList(),
-          prefetchHooksCallback: null,
+          prefetchHooksCallback: ({wordId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (wordId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.wordId,
+                                referencedTable: $$ReviewCardsTableReferences
+                                    ._wordIdTable(db),
+                                referencedColumn: $$ReviewCardsTableReferences
+                                    ._wordIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
         ),
       );
 }
@@ -3624,13 +4040,14 @@ typedef $$ReviewCardsTableProcessedTableManager =
       $$ReviewCardsTableAnnotationComposer,
       $$ReviewCardsTableCreateCompanionBuilder,
       $$ReviewCardsTableUpdateCompanionBuilder,
-      (CardRow, BaseReferences<_$ShioriDatabase, $ReviewCardsTable, CardRow>),
+      (CardRow, $$ReviewCardsTableReferences),
       CardRow,
-      PrefetchHooks Function()
+      PrefetchHooks Function({bool wordId})
     >;
 typedef $$ReviewLogsTableCreateCompanionBuilder =
     ReviewLogsCompanion Function({
       Value<int> id,
+      required String scope,
       required String wordId,
       required Answer answer,
       required DateTime at,
@@ -3641,6 +4058,7 @@ typedef $$ReviewLogsTableCreateCompanionBuilder =
 typedef $$ReviewLogsTableUpdateCompanionBuilder =
     ReviewLogsCompanion Function({
       Value<int> id,
+      Value<String> scope,
       Value<String> wordId,
       Value<Answer> answer,
       Value<DateTime> at,
@@ -3660,6 +4078,11 @@ class $$ReviewLogsTableFilterComposer
   });
   ColumnFilters<int> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get scope => $composableBuilder(
+    column: $table.scope,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3710,6 +4133,11 @@ class $$ReviewLogsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get scope => $composableBuilder(
+    column: $table.scope,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get wordId => $composableBuilder(
     column: $table.wordId,
     builder: (column) => ColumnOrderings(column),
@@ -3752,6 +4180,9 @@ class $$ReviewLogsTableAnnotationComposer
   });
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get scope =>
+      $composableBuilder(column: $table.scope, builder: (column) => column);
 
   GeneratedColumn<String> get wordId =>
       $composableBuilder(column: $table.wordId, builder: (column) => column);
@@ -3807,6 +4238,7 @@ class $$ReviewLogsTableTableManager
           updateCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
+                Value<String> scope = const Value.absent(),
                 Value<String> wordId = const Value.absent(),
                 Value<Answer> answer = const Value.absent(),
                 Value<DateTime> at = const Value.absent(),
@@ -3815,6 +4247,7 @@ class $$ReviewLogsTableTableManager
                 Value<int> retriesInSession = const Value.absent(),
               }) => ReviewLogsCompanion(
                 id: id,
+                scope: scope,
                 wordId: wordId,
                 answer: answer,
                 at: at,
@@ -3825,6 +4258,7 @@ class $$ReviewLogsTableTableManager
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
+                required String scope,
                 required String wordId,
                 required Answer answer,
                 required DateTime at,
@@ -3833,6 +4267,7 @@ class $$ReviewLogsTableTableManager
                 required int retriesInSession,
               }) => ReviewLogsCompanion.insert(
                 id: id,
+                scope: scope,
                 wordId: wordId,
                 answer: answer,
                 at: at,
@@ -3871,18 +4306,168 @@ typedef $$ReviewLogsTableProcessedTableManager =
       LogRow,
       PrefetchHooks Function()
     >;
+typedef $$SettingsTableCreateCompanionBuilder =
+    SettingsCompanion Function({
+      required String key,
+      required String value,
+      Value<int> rowid,
+    });
+typedef $$SettingsTableUpdateCompanionBuilder =
+    SettingsCompanion Function({
+      Value<String> key,
+      Value<String> value,
+      Value<int> rowid,
+    });
+
+class $$SettingsTableFilterComposer
+    extends Composer<_$ShioriDatabase, $SettingsTable> {
+  $$SettingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SettingsTableOrderingComposer
+    extends Composer<_$ShioriDatabase, $SettingsTable> {
+  $$SettingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SettingsTableAnnotationComposer
+    extends Composer<_$ShioriDatabase, $SettingsTable> {
+  $$SettingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get key =>
+      $composableBuilder(column: $table.key, builder: (column) => column);
+
+  GeneratedColumn<String> get value =>
+      $composableBuilder(column: $table.value, builder: (column) => column);
+}
+
+class $$SettingsTableTableManager
+    extends
+        RootTableManager<
+          _$ShioriDatabase,
+          $SettingsTable,
+          SettingRow,
+          $$SettingsTableFilterComposer,
+          $$SettingsTableOrderingComposer,
+          $$SettingsTableAnnotationComposer,
+          $$SettingsTableCreateCompanionBuilder,
+          $$SettingsTableUpdateCompanionBuilder,
+          (
+            SettingRow,
+            BaseReferences<_$ShioriDatabase, $SettingsTable, SettingRow>,
+          ),
+          SettingRow,
+          PrefetchHooks Function()
+        > {
+  $$SettingsTableTableManager(_$ShioriDatabase db, $SettingsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SettingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SettingsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SettingsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> key = const Value.absent(),
+                Value<String> value = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SettingsCompanion(key: key, value: value, rowid: rowid),
+          createCompanionCallback:
+              ({
+                required String key,
+                required String value,
+                Value<int> rowid = const Value.absent(),
+              }) => SettingsCompanion.insert(
+                key: key,
+                value: value,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$SettingsTable, SettingRow>(table),
+                  BaseReferences<_$ShioriDatabase, $SettingsTable, SettingRow>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SettingsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$ShioriDatabase,
+      $SettingsTable,
+      SettingRow,
+      $$SettingsTableFilterComposer,
+      $$SettingsTableOrderingComposer,
+      $$SettingsTableAnnotationComposer,
+      $$SettingsTableCreateCompanionBuilder,
+      $$SettingsTableUpdateCompanionBuilder,
+      (
+        SettingRow,
+        BaseReferences<_$ShioriDatabase, $SettingsTable, SettingRow>,
+      ),
+      SettingRow,
+      PrefetchHooks Function()
+    >;
 
 class $ShioriDatabaseManager {
   final _$ShioriDatabase _db;
   $ShioriDatabaseManager(this._db);
-  $$TextbooksTableTableManager get textbooks =>
-      $$TextbooksTableTableManager(_db, _db.textbooks);
-  $$TextbookDaysTableTableManager get textbookDays =>
-      $$TextbookDaysTableTableManager(_db, _db.textbookDays);
   $$WordsTableTableManager get words =>
       $$WordsTableTableManager(_db, _db.words);
+  $$PlaylistsTableTableManager get playlists =>
+      $$PlaylistsTableTableManager(_db, _db.playlists);
+  $$PlaylistWordsTableTableManager get playlistWords =>
+      $$PlaylistWordsTableTableManager(_db, _db.playlistWords);
   $$ReviewCardsTableTableManager get reviewCards =>
       $$ReviewCardsTableTableManager(_db, _db.reviewCards);
   $$ReviewLogsTableTableManager get reviewLogs =>
       $$ReviewLogsTableTableManager(_db, _db.reviewLogs);
+  $$SettingsTableTableManager get settings =>
+      $$SettingsTableTableManager(_db, _db.settings);
 }

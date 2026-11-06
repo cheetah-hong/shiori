@@ -20,20 +20,20 @@
 | 항목 | 명령 | 결과 |
 |---|---|---|
 | core 정적 분석 | `cd packages/core && dart analyze` | 문제 없음 |
-| core 테스트 | `cd packages/core && dart test` | **337개 통과** (20절 반영 뒤. 가로줄 틀·보정기·기준 구현 대조 테스트를 걷어냄, 19절 뒤 626개) |
-| core 테스트 (교재 세트 포함) | `SHIORI_PRIVATE_DIR=<로컬 폴더> dart test` | **337개 통과** (20절 뒤. 교재 세트 테스트는 jmdict_block의 로컬 테스트로 옮겨져 core에는 남지 않음) |
-| core 커버리지 | `dart run coverage:test_with_coverage -o coverage` | 줄 커버리지 **92.9%** (3475/3742줄, 20절 뒤) |
+| core 테스트 | `cd packages/core && dart test` | **361개 통과** (21절 반영 뒤. 20절 뒤 337개) |
+| core 테스트 (교재 세트 포함) | `SHIORI_PRIVATE_DIR=<로컬 폴더> dart test` | **361개 통과** (21절 뒤. 교재 세트 테스트는 jmdict_block의 로컬 테스트로 옮겨져 core에는 남지 않음) |
+| core 커버리지 | `dart run coverage:test_with_coverage -o coverage` | 줄 커버리지 **93.2%** (3665/3932줄, 21절 뒤) |
 | 사전 패키지 | `cd packages/dict_jmdict && dart analyze && dart test` | 문제 없음, **11개 통과** (20절: 짝 확인·후보 질의를 걷어내 `lookupForms`·열기만) |
 | 사전 블록 (어댑터) | `cd packages/jmdict_block && dart analyze && dart test` | 문제 없음, **6개 통과**, 로컬 세트 9개 건너뜀 (지정 시 15개 통과, 20절) |
 | 사전 asset 스크립트 | `python3 -m unittest discover -s tools/dict -p 'test_*.py'` | **33개 통과** (네트워크 없음) |
 | 한국어 뜻 사전 블록 | `cd packages/krdict_block && dart analyze && dart test` | 문제 없음, **80개 통과** (지어낸 견본 30항목, 14절. 역조회 6개, 18절) |
-| 저장 패키지 | `cd packages/storage_drift && dart analyze && dart test` | 문제 없음, **124개 통과** (20절: 사진 순서 저장 계약 2개 더함. 스키마 그대로 v3) |
+| 저장 패키지 | `cd packages/storage_drift && dart analyze && dart test` | 문제 없음, **154개 통과** (21절: 스키마 v4, 재생목록·설정 계약, v1~v3 비우기) |
 | app 정적 분석 | `cd app && flutter analyze` | 문제 없음 |
-| app 테스트 | `cd app && flutter test` (기본 flavor = dev), `flutter test --flavor dev` | **132개 통과** (20절 반영 뒤. 19절 뒤 148개) |
+| app 테스트 | `cd app && flutter test` (기본 flavor = dev), `flutter test --flavor dev` | **170개 통과** (21절 반영 뒤. 20절 뒤 132개) |
 | iOS 채널 순수 로직 | `cd app/ios && xcodebuild test -workspace Runner.xcworkspace -scheme dev -destination 'id=<시뮬레이터>' -only-testing:RunnerTests` (11절부터 스킴 `dev`) | **5개 통과** (회전 투표·가로세로 바꿈·방향 합성, 6.4절) |
 | Android 채널 순수 로직 | `cd app/android && ./gradlew :app:testDevDebugUnitTest` (JDK 21, 11절부터 flavor 이름이 붙음) | **11개 통과** (조각 자르기·회전·상자 없는 글자, 6.5절) |
-| app 커버리지 | `flutter test --coverage` | 줄 커버리지 **90.8%** (2498/2752줄, 20절 반영 뒤. 11절 뒤 92.2%) |
-| iOS 흐름 | `flutter drive ... integration_test/word_book_screenshots_test.dart` | 통과, 스크린샷 48~53 (20절, 시뮬레이터 디버그 빌드) |
+| app 커버리지 | `flutter test --coverage` | 줄 커버리지 **91.4%** (2785/3048줄, 21절 반영 뒤. 20절 뒤 90.8%) |
+| iOS 흐름 | `flutter drive ... integration_test/playlists_screenshots_test.dart` | 통과, 스크린샷 54~66 (21절, iPhone 17 시뮬레이터 디버그 빌드) |
 | Android 빌드 | `flutter build apk --debug` (= dev flavor, `app-dev-debug.apk`) | 성공 (Kotlin ML Kit 채널 컴파일, 디버그 APK 약 186MB = 177MiB, 빌드 환경에 따라 조금 다름) |
 | 합성 세트 점수표 | `cd packages/core && dart run tool/eval_extract.dart --fixtures test/fixtures/synthetic` (메모리 사전) · `cd packages/jmdict_block && dart run tool/eval_extract_dict.dart --db … --glossary … --fixtures ../core/test/fixtures/synthetic` | 실제 사전 33/35·뜻 32/33·여분 2 (20절. 가로줄 틀 점수표 `eval_capture`·기준 구현 대조는 걷어냄) |
 | 합성 세트 점수표 (ML Kit형) | 위와 같은 도구 `--fixtures …/synthetic_mlkit` | 실제 사전 17/18·16/17·여분 1 (20절) |
@@ -1383,3 +1383,97 @@ Android 채널 11 · iOS RunnerTests 5 통과, 생성기 `--check` 2개 같음. 
 
 예전 틀 검토 화면 스크린샷(03·10·11·12·19·20·23·34~36)은 앞 절의 기록으로 남깁니다.
 
+
+## 21. 재생목록: 교재·DAY를 걷어내고 재생목록으로 단어 모으기 (저장 스키마 v4, 2026-11-06)
+
+어떤 교재인지 자동으로 가리지 않습니다. 사진을 인식해 검토한 뒤 「단어 N개 추가」를 누르면 어느 재생목록에 넣을지 고릅니다. 단어는 라이브러리에 한 번만 있고 재생목록이 그 단어를 가리킵니다. DAY·UNIT 같은 묶음은 학습자가 재생목록으로 만듭니다.
+
+### 21.1 결정
+
+| 항목 | 결정 |
+|---|---|
+| 같은 단어의 기준 | **표제어만**: `wordKey` = NFKC, 공백 제거, 한자가 있는 표제어 끝의 な형용사 「だ」 제거(추출기가 한 쪽 안에서 같은 단어를 합치는 기준 `headwordKey`와 같음). 읽기는 넣지 않음(읽기 가나는 판독 오류가 가장 많고 여러 개일 수 있음). 같은 한자 다른 단어(上手 じょうず/うわて 등)는 하나로 합쳐짐 |
+| 같은 단어가 여러 재생목록에 | 단어 하나, **학습 기록 하나를 공유**. 「재생목록마다 따로」는 설정에 「준비 중」으로 보이고 저장 구조(`scope` 칸)만 준비 |
+| 다른 목록에 있는 단어를 다시 추가 | 저장된 내용(읽기·뜻·예문)과 학습 기록 그대로 **연결만**. 검토 화면에서 그 항목에 「이미 라이브러리에 있음 · 저장된 뜻 유지」, 요약에 「이미 있는 단어 n개는 저장된 뜻을 그대로 써요」 |
+| 같은 목록에 같은 단어 | 하나만(DB 기본 키 + 서비스), 스낵바 「… · 이미 있음 k」 |
+| 어느 목록에도 없게 된 단어 | **라이브러리에 남김**. 어디에도 안 보이고 학습(전체 포함)에도 안 나오며, 다시 추가하면 기록이 이어짐 |
+| 숨긴 단어(이미 알아요)가 사진에 다시 | 추출에서 뺌(요약 「숨긴 단어 n개는 뺐어요」). 추출에 넘기는 `knownHeadwords`가 라이브러리 전체에서 **숨긴 단어만**으로 바뀜(추출 규칙은 그대로) |
+| 숨김 | 단어 단위(모든 재생목록에서 숨겨짐) |
+| 재생목록 이름 | 비면 안 됨, 다른 목록과 같으면 안 됨(앞뒤 공백·대소문자·NFKC 폭 무시) |
+| 학습 범위 | 기본: 「오늘 학습 시작」은 전체(어느 재생목록에든 있는 단어, 각 단어 한 번), 「재생목록 골라 학습」은 목록 하나 |
+| 기존 데이터 | v1~v3 파일은 **옮기지 않고 비움**(아래 21.2) |
+
+### 21.2 스키마 v4와 v3 이하 파일
+
+| 테이블 | 내용 |
+|---|---|
+| `words` | `id`, `key`(유일), `headword`, `readings`(JSON), `pos`, `meaning`, `example_ja`·`example_ko`(둘 다 있거나 없음), `created_at`, `hidden_at`. 교재·DAY·번호·쪽 열 없음. 새 단어 id는 `w<저장 시각 µs>-<순번 4자리>` |
+| `playlists` | `id`, `name`(빈 이름 CHECK), `created_at`, `position`(홈·편집 화면 순서) |
+| `playlist_words` | 기본 키 (`playlist_id`, `word_id`), `position`(목록 안 순서, 추가할 때 뒤에), `added_at`. 목록·단어 FK `ON DELETE CASCADE`, 색인 `playlist_words_by_word` |
+| `review_cards` | 기본 키 (`scope`, `word_id`), 단어 FK `ON DELETE CASCADE`. `scope`: `''` 공유(지금 유일하게 씀), `p:<목록 id>` 목록마다 따로(나중) |
+| `review_logs` | `scope` 칸 더함(오늘 외운 수를 모드별로 셀 수 있게). 단어 FK 없음(기록은 역사) |
+| `settings` | 키-값. `study.record_mode`(`shared`/`per_playlist`), `study.scope_mode`(`all_or_playlist`/`playlist_only`). 모르는 값은 기본값으로 읽고 행은 그대로 둠 |
+
+- `schemaVersion` 3 → 4. `onUpgrade`에서 `from < 4`이면 **트랜잭션 하나로** 파일의 모든 테이블·뷰·트리거(색인은 테이블과 함께)를 지우고 v4를 만듭니다. 옛 단계(v1→v2 표 다시 만들기, v2→v3 열 더하기)는 밟지 않습니다. 이상한 옛 데이터 때문에 그 단계가 실패해 앱이 열리지 않는 길을 없애기 위해서입니다.
+- 비우기가 실패하면 트랜잭션이 되돌려 옛 파일이 그대로 남습니다. drift는 마이그레이션에 실패한 연결을 계속 실패시키므로, `appDatabaseProvider`가 만들어질 때마다 **새 연결**을 엽니다(`startup.dart`). 홈의 「다시 불러오기」가 그 provider부터 다시 만들어 새 연결로 다시 시도합니다.
+- 지운 데이터는 SQLite 빈 페이지에 남을 수 있습니다(`VACUUM`은 트랜잭션 안에서 못 돌림). 앱 전용 폴더라 그대로 둡니다.
+- 생성 파일: 덤프 `drift_schema_v4.json`, `database.g.dart`, `database.steps.dart`(Schema4, 앱은 쓰지 않음), 테스트 도우미 `schema_v4.dart`·`schema.dart`. `build_runner build`, `make-migrations`, `schema generate`를 다시 돌려도 다섯 파일이 바뀌지 않음.
+
+### 21.3 포트·유스케이스
+
+- `LibraryRepository`: `words({playlistId})`(null이면 어느 목록에든 있는 단어를 만든 순), `wordsByKey`, `insertWords`(같은 key·id면 `DuplicateWordException`, 아무것도 안 씀), `playlists`·`savePlaylist`·`deletePlaylist`(단어는 안 지움), `playlistStats`(한 쿼리: 단어 수·숨김 수·마지막 추가), `addToPlaylist`(뒤에 붙임, 있는 단어는 제자리), `removeFromPlaylist`→`restoreEntries`(되돌리기는 제자리로), `playlistsOf`.
+- `ReviewRepository`: 모든 읽기·쓰기에 `CardScope`(기본 공유). 새 포트 `StudyPreferencesRepository`(`load`·`save`).
+- `LibraryService`: `createPlaylist`·`renamePlaylist`·`deletePlaylist`(남은 목록 번호 다시 매김)·`reorderPlaylists`, `previewAdd`(라이브러리에 있는 key, 목록마다 이미 있는 수), `addDraft(draft, to: ExistingPlaylist | NewPlaylist)`(새 목록 만들기까지 트랜잭션 하나), `addWords`(다른 목록에 추가), `removeWords`·`restoreWords`, `playlistView`.
+- `StudyService.summary/startSession({scope: AllWords() | PlaylistOnly(id)})`. 카드 scope는 `cardScopeFor` 한 곳에서 정하고 지금은 늘 공유(설정에 「따로」가 저장돼 있어도 공유로 동작).
+
+### 21.4 화면
+
+| 화면 | 동작 |
+|---|---|
+| 홈 | 오늘 카드(전체), 「오늘 학습 시작 · n장」, 재생목록이 있으면 「재생목록 골라 학습」. 「재생목록」 머리와 「편집」, 목록 타일(「단어 n개 · 숨김 k개」). 비었으면 「페이지를 등록하고 재생목록에 단어를 모아 보세요」. 앱바에 설정·정보 |
+| 검토 | 교재 줄 없음. 아래 버튼 「단어 N개 추가」 → 재생목록 고르기 시트 → 추가 뒤 홈, 스낵바 「'목록'에 단어 n개 추가 · 이미 있음 k」 |
+| 재생목록 고르기 시트 | 「어느 재생목록에 추가할까요?」, 「새 재생목록」(목록이 없으면 처음부터 펼침, 이름 기본 「내 단어장」, 중복이면 「같은 이름의 재생목록이 있어요」), 마지막에 추가한 목록이 위, 줄마다 「단어 n개 · 이미 있음 k」 |
+| 재생목록 화면 | 단어(목록 순서)·기억 단계, 「이 목록 학습」, 단어 메뉴 「이 목록에서 빼기」(되돌리기)·「다른 목록에 추가」, 숨기기·숨긴 단어 펼치기, 메뉴 「이름 바꾸기」·「삭제」(「단어와 학습 기록은 남아요」) |
+| 재생목록 편집 | 끌어서 순서 바꾸기, 줄 메뉴 「위로 옮기기」·「아래로 옮기기」·「이름 바꾸기」·「삭제」, 「새 재생목록」 |
+| 학습 범위 시트 | 「무엇을 학습할까요?」: 전체와 목록마다 「복습 d · 새 단어 n」, 할 것 없는 줄은 「오늘 할 것 없음」으로 비활성 |
+| 설정 | 학습 기록: 재생목록끼리 공유 / 재생목록마다 따로(준비 중, 비활성). 학습 범위: 전체 복습 + 재생목록 골라 학습 / 항상 재생목록 하나씩(준비 중, 비활성). 화면 읽기에 선택 상태 |
+
+`flutter drive -d <iPhone 17> --flavor dev --driver=test_driver/integration_test.dart --target=integration_test/playlists_screenshots_test.dart` (메모리 DB, 합성 샘플, 실제 JMdict·한국어 뜻 사전 asset):
+
+| 파일 (`docs/screenshots/`) | 화면 |
+|---|---|
+| `54_home_no_playlists.png` | 빈 홈 |
+| `55_review_add_button.png` | 검토: 「단어 N개 추가」 |
+| `56_picker_first_playlist.png` | 첫 재생목록: 폼이 펼쳐져 「내 단어장」 |
+| `57_picker_new_playlist_name.png` | 목록이 있을 때 새 재생목록 이름 입력 |
+| `58_home_playlists.png` | 두 목록이 있는 홈, 「재생목록 골라 학습」 |
+| `59_review_in_library.png` | 같은 쪽 다시: 「이미 라이브러리에 있음 · 저장된 뜻 유지」 |
+| `60_picker_already_in.png` | 고르기 시트: 최근 목록이 위, 「이미 있음 12」 |
+| `61_playlist_screen.png` | 재생목록 화면 |
+| `62_playlist_word_menu.png` | 단어 메뉴(빼기·다른 목록에 추가) |
+| `63_study_scope_sheet.png` | 학습 범위: 전체 41(두 목록의 12+29에서 겹친 12를 한 번), 목록마다 |
+| `64_study_all.png` | 전체 학습 카드 |
+| `65_settings.png` | 설정(준비 중 비활성) |
+| `66_playlists_edit.png` | 재생목록 편집 |
+
+앞 절의 교재·DAY 스크린샷(14·15·16·26·53 등)은 기록으로 남깁니다.
+
+### 21.5 테스트
+
+| 파일 | 내용 |
+|---|---|
+| `packages/core/test/library/playlist_service_test.dart` (새, `library_service_test.dart` 대체) | 목록 만들기(이름 정리·빈 이름·같은 이름: 공백·대소문자·폭 무시)·이름 바꾸기·순서·삭제(단어·기록 남김, 번호 다시 매김), 초안 추가(사진 순서, 같은 목록 두 번 → 하나·이미 있음 1, 초안 안 중복, 다른 목록 단어 연결·카드 하나·내용 그대로, だ·공백 같은 단어, 목록 밖 단어가 기록과 함께 돌아옴, 없는 목록·이름 충돌이면 아무것도 안 남음, 같은 시각 두 번 저장), 미리보기, 다른 목록에 추가, 빼기·되돌리기, 숨김은 단어 단위 |
+| `packages/core/test/study/study_scope_test.dart` (새) | 전체·목록 범위의 오늘 복습·새 단어, 두 목록의 단어는 전체에서 한 번, 숨긴 단어는 둘 다에서 빠짐, 한 목록에서 공부하면 다른 목록에도 반영(카드 하나), 빼기·목록 삭제 뒤 범위와 카드, 「따로」 값이 저장돼도 공유로 동작 |
+| `packages/core/test/models_and_ports_test.dart` 외 | `wordKey`, `Playlist`·`PlaylistEntry`·`CardScope`·`StudyPreferences`, 인메모리 저장소 트랜잭션·scope·설정, 기존 학습·숨김 테스트를 재생목록 기준으로 |
+| `packages/storage_drift/test/contract/repository_contract.dart` (다시 씀, InMemory·drift 둘 다) | 단어 key 유일·한 번에 1200개, 목록 순서·추가·빼기·되돌리기·삭제·`playlistsOf`, 목록 통계 한 쿼리, 트랜잭션, 카드·기록 scope, 유스케이스(공유 기록, 사진 순서, 오늘 외운 수 04시 경계) |
+| `…/contract/hidden_words_contract.dart`, `preferences_contract.dart`(새) | 숨김(목록 밖 숨긴 단어 포함, 모든 목록에서 숨김), 설정 저장·복원(따로 모드 값 포함)·모르는 값은 기본값 |
+| `packages/storage_drift/test/migrations/migration_test.dart` (다시 씀) | 지금 스키마 = v4 덤프, 빈 v1·v2·v3 → v4 검증, 데이터가 있는 v1·v2와 **디스크의 v3 파일**(교재 2·DAY 3·단어 40·카드 25·기록 25·앱이 만들지 않은 색인) → 빈 v4·새 DB와 같은 객체·추가와 학습 정상·다시 열면 v4 데이터 유지, **비우기 중 실패 → v3 파일 그대로(버전·객체·모든 행), 다음 연결에서 비워짐** |
+| `packages/storage_drift/test/drift_storage_test.dart` | v4 테이블, 외래 키(목록·단어·카드), 목록 안 중복·key 유일·빈 이름을 표가 막음, scope 저장, 시간·읽기 형식, v4 파일 다시 열기 |
+| `app/test/app/storage_retry_test.dart` (새) | 실제 v3 파일 위에서 앱 시작 → 빈 홈, 샘플 캡처 → 추가 → 홈에 목록, 앱 다시 열어도 유지; 비우기 실패 → 「불러오지 못했어요」·옛 파일 그대로 → 「다시 불러오기」가 새 연결로 비우고 빈 홈 |
+| `app/test/features/playlist_picker_test.dart`·`playlist_screen_test.dart`·`playlists_edit_test.dart`·`study_scope_test.dart`·`settings_screen_test.dart`·`home_playlists_test.dart`·`known_hide_playlist_test.dart` (새) | 고르기 시트, 재생목록 화면(학습·빼기·되돌리기·다른 목록·이름 바꾸기·삭제), 편집(만들기·이름·삭제·옮기기), 학습 범위 시트, 설정(준비 중 비활성·화면 읽기), 홈 타일·숨김 수 |
+| 기존 앱 테스트 | 캡처·검토(「단어 N개 추가」, 이미 라이브러리에 있음 표시, 숨긴 단어만 뺌), 시작(새 연결 다시 열기), 블록 지도 |
+
+- 테스트 동결은 두 단계(core·storage_drift 먼저, app 뒤)로 했고, 동결 뒤 발견한 테스트 결함 7개(레코드 안 리스트 비교, 백그라운드 isolate가 감싼 오류, 옛 문구 등)는 승인을 받아 고쳤습니다.
+- 추출 회귀(`eval_extract.dart`, 로컬 세트 15개): 이 변경 전과 같음(추출 규칙 그대로, `headwordKey`는 `models/word_key.dart`로 옮기기만).
+
+결과: core **361** · storage_drift **154** · app **170** · jmdict_block **6**(로컬 지정 **15**) · krdict_block **80** · dict_jmdict **11** 통과, analyze 문제 없음, Android 채널 11 · iOS RunnerTests 5 통과, `flutter build apk --debug --flavor dev` 성공.

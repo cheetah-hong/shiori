@@ -13,7 +13,6 @@ void main() {
 
   Word word(String id) => Word(
     id: id,
-    textbookId: 'tb',
     headword: '語$id',
     readings: const ['ご'],
     meaning: '말',
@@ -34,8 +33,11 @@ void main() {
   ) async {
     final library = DriftLibraryRepository(db);
     final reviews = DriftReviewRepository(db);
-    await library.saveTextbook(Textbook(id: 'tb', title: '단어장', createdAt: t0));
-    await library.saveWords([word('tb:a'), word('tb:b'), word('tb:c')]);
+    await library.savePlaylist(
+      Playlist(id: 'tb', name: '단어장', createdAt: t0, position: 0),
+    );
+    await library.insertWords([word('tb:a'), word('tb:b'), word('tb:c')]);
+    await library.addToPlaylist('tb', ['tb:a', 'tb:b', 'tb:c'], at: t0);
     await reviews.saveCard(card);
     await reviews.addLog(
       ReviewLog(

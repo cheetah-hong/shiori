@@ -17,63 +17,45 @@ final dataRevisionProvider = NotifierProvider<DataRevision, int>(
   DataRevision.new,
 );
 
+/// 전체: due reviews and new words of every playlist.
 final homeSummaryProvider = FutureProvider<StudySummary>((ref) {
   ref.watch(dataRevisionProvider);
   return ref.watch(studyServiceProvider).summary();
 });
 
-final class ShelfItem {
-  const ShelfItem({
-    required this.textbook,
-    required this.wordCount,
-    required this.days,
-    this.hiddenCount = 0,
-  });
-
-  final Textbook textbook;
-
-  /// Every word, hidden ones too (as `TextbookStats.wordCount`).
-  final int wordCount;
-  final List<int> days;
-
-  /// Of [wordCount], the words hidden with 이미 알아요.
-  final int hiddenCount;
-
-  /// What the shelf shows as the word count.
-  int get shownCount => wordCount - hiddenCount;
-}
-
-/// Every textbook with its word count and days, in one storage read.
-final shelfProvider = FutureProvider<List<ShelfItem>>((ref) async {
+/// Every playlist with its word counts, in one storage read, in the order
+/// the learner gave them.
+final playlistsProvider = FutureProvider<List<PlaylistStats>>((ref) {
   ref.watch(dataRevisionProvider);
-  final stats = await ref.watch(libraryRepositoryProvider).textbookStats();
-  return [
-    for (final s in stats)
-      ShelfItem(
-        textbook: s.textbook,
-        wordCount: s.wordCount,
-        days: s.days,
-        hiddenCount: s.hiddenCount,
-      ),
-  ];
+  return ref.watch(libraryRepositoryProvider).playlistStats();
 });
 
-/// Due reviews and new words of one textbook (for its study button).
-final textbookSummaryProvider = FutureProvider.family<StudySummary, String>((
+/// Due reviews and new words of one playlist (its study button, the study
+/// scope sheet).
+final playlistSummaryProvider = FutureProvider.family<StudySummary, String>((
   ref,
   id,
 ) {
   ref.watch(dataRevisionProvider);
-  return ref.watch(studyServiceProvider).summary(textbookId: id);
+  return ref.watch(studyServiceProvider).summary(scope: PlaylistOnly(id));
 });
 
-final textbookOverviewProvider =
-    FutureProvider.family<TextbookOverview, String>((ref, id) {
-      ref.watch(dataRevisionProvider);
-      return ref.watch(libraryServiceProvider).overview(id);
-    });
+final playlistViewProvider = FutureProvider.family<PlaylistView, String>((
+  ref,
+  id,
+) {
+  ref.watch(dataRevisionProvider);
+  return ref.watch(libraryServiceProvider).playlistView(id);
+});
 
 final cardsProvider = FutureProvider<Map<String, ReviewCard>>((ref) {
   ref.watch(dataRevisionProvider);
   return ref.watch(reviewRepositoryProvider).cards();
 });
+
+/// Tries storage again after a load error: a new database connection (an
+/// older file that failed to be emptied is tried again), then every read.
+void retryStorage(WidgetRef ref) {
+  ref.invalidate(appDatabaseProvider);
+  ref.read(dataRevisionProvider.notifier).bump();
+}

@@ -1,5 +1,6 @@
 // Checks on a simulator that words and learning state outlive the app process.
-// Uses the real database file (openAppDatabase) and a synthetic sample page.
+// Uses the real database file (ShioriDatabase.file over appDatabaseFile())
+// and a synthetic sample page.
 //
 //   cd app
 //   xcrun simctl uninstall <simulator> com.nihongoapp.shiori.dev   # start empty (dev flavor)
@@ -9,19 +10,21 @@
 //   xcrun simctl terminate <simulator> com.nihongoapp.shiori.dev
 //   flutter drive ... (same) --dart-define=SHIORI_PERSISTENCE_STEP=reopen
 //
-// Upgrade check: run the save step with an older build (an older checkout),
-// then, without uninstalling, the upgrade step with this build. It opens the
-// file the older schema wrote and checks that every word and learning record
-// is still there and nothing is hidden.
+// Upgrade check: run the save step with an older build (an older checkout,
+// schema v3), then, without uninstalling, the upgrade step with this build.
+// Playlists are new in schema v4, so the older file's words and learning
+// records cannot carry over to one: opening it upgrades to an empty v4
+// database instead (user_version 4, no playlists, no words) rather than
+// keeping anything from the old schema.
 //
 // Screenshots land in docs/screenshots/ (see test_driver/integration_test.dart).
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:shiori/adapters/app_database.dart';
 import 'package:shiori/app/app.dart';
 import 'package:shiori/app/blocks.dart';
-import 'package:shiori/shared/hide_labels.dart';
 import 'package:shiori_storage_drift/shiori_storage_drift.dart';
 
 const _step = String.fromEnvironment('SHIORI_PERSISTENCE_STEP');
@@ -42,8 +45,12 @@ void main() {
     expect(finder, findsWidgets);
   }
 
-  Future<void> tapText(WidgetTester tester, String text) async {
-    final finder = find.text(text).first;
+  Future<void> tapText(
+    WidgetTester tester,
+    String text, {
+    bool last = false,
+  }) async {
+    final finder = last ? find.text(text).last : find.text(text).first;
     await tester.ensureVisible(finder);
     await tester.pumpAndSettle();
     await tester.tap(finder);
@@ -51,7 +58,7 @@ void main() {
   }
 
   Future<ShioriDatabase> pumpApp(WidgetTester tester) async {
-    final database = await openAppDatabase();
+    final database = ShioriDatabase.file(await appDatabaseFile());
     addTearDown(database.close);
     await tester.pumpWidget(
       ProviderScope(
@@ -64,11 +71,15 @@ void main() {
 
   testWidgets('save a page and study it', (tester) async {
     await pumpApp(tester);
-    await waitFor(tester, find.text('먼저 교재 페이지를 등록해 주세요'));
+    await waitFor(tester, find.text('먼저 페이지를 등록해 주세요'));
 
     await tapText(tester, '페이지 등록');
     await tapText(tester, 'DAY 20 여행·교통');
-    await tapText(tester, '단어 6개 저장');
+    await tapText(tester, '단어 6개 추가');
+    // A fresh database has no playlist yet: the new-playlist form is already
+    // open with 내 단어장 filled in.
+    await waitFor(tester, find.text('만들고 추가'));
+    await tapText(tester, '만들고 추가');
     await tapText(tester, '오늘 학습 시작 · 6장');
     await tapText(tester, '다시 학습');
     for (var i = 0; i < 6; i++) {
@@ -84,7 +95,7 @@ void main() {
   ) async {
     final database = await pumpApp(tester);
     await waitFor(tester, find.text('오늘 6개 외움'));
-    expect(find.text('먼저 교재 페이지를 등록해 주세요'), findsNothing);
+    expect(find.text('먼저 페이지를 등록해 주세요'), findsNothing);
 
     // Read back from the file: 6 words; the retried word at level 2, the
     // others at level 4; 7 presses (one 다시 학습, six 알고있음).
@@ -96,33 +107,32 @@ void main() {
     expect(levels, [2, 4, 4, 4, 4, 4]);
     expect((await reviews.logs()).length, 7);
 
-    await tapText(tester, 'JLPT 단어장');
-    await tester.scrollUntilVisible(find.text('DAY 20  여행·교통'), 400);
+    await tapText(tester, '내 단어장');
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -400));
+    await tester.pumpAndSettle();
     await shot(tester, '16_textbook_after_restart');
   }, skip: _step != 'reopen');
 
   testWidgets(
-    'a file from the older schema opens with everything kept',
+    'a file from the older schema opens as an empty v4 database',
     (tester) async {
       final database = await pumpApp(tester);
-      await waitFor(tester, find.text('오늘 6개 외움'));
+      await waitFor(tester, find.text('먼저 페이지를 등록해 주세요'));
 
       final version = await database
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), database.schemaVersion);
+      expect(version.read<int>('user_version'), 4);
+      expect(database.schemaVersion, 4);
+
       final library = DriftLibraryRepository(database);
-      final words = await library.words();
+      expect(await library.playlists(), isEmpty);
+      expect(await library.words(), isEmpty);
       final reviews = DriftReviewRepository(database);
-      final levels = (await reviews.cards()).values.map((c) => c.level).toList()
-        ..sort();
-      expect(words.length, 6);
-      expect(words.where((w) => w.isHidden), isEmpty);
-      expect(await library.hiddenWords(), isEmpty);
-      expect(levels, [2, 4, 4, 4, 4, 4]);
-      expect((await reviews.logs()).length, 7);
-      expect(find.textContaining(HideLabels.hiddenCount(1)), findsNothing);
-      expect(find.textContaining('단어 6개'), findsWidgets);
+      expect(await reviews.cards(), isEmpty);
+      expect(await reviews.logs(), isEmpty);
+
+      await waitFor(tester, find.text('페이지를 등록하고 재생목록에 단어를 모아 보세요'));
     },
     skip: _step != 'upgrade',
   );

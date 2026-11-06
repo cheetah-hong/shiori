@@ -125,7 +125,7 @@ void main() {
     expect(_mark(EntryField.headword, FieldStatus.corrected), findsOneWidget);
     expect(find.text('표제어 없음'), findsNothing);
     expect(find.text('확인 필요 2'), findsWidgets);
-    expect(find.text('단어 4개 저장'), findsOneWidget);
+    expect(find.text('단어 4개 추가'), findsOneWidget);
   });
 
   testWidgets('a doubtful headword needs a look', (tester) async {

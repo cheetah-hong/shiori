@@ -1,5 +1,3 @@
-import 'package:shiori_core/shiori_core.dart';
-
 const List<String> _weekdays = ['월', '화', '수', '목', '금', '토', '일'];
 
 /// `11월 5일 수요일`
@@ -20,17 +18,6 @@ String elapsedLabel(Duration d) {
   final m = safe.inMinutes;
   final s = safe.inSeconds % 60;
   return m == 0 ? '$s초' : '$m분 $s초';
-}
-
-/// `DAY 01`
-String dayNumber(int day) => 'DAY ${day.toString().padLeft(2, '0')}';
-
-/// `DAY 01 · 12쪽` for a saved word.
-String wordSourceLabel(Word w) {
-  final day = w.day;
-  final page = w.page;
-  final parts = [if (day != null) dayNumber(day), if (page != null) '$page쪽'];
-  return parts.join(' · ');
 }
 
 String readingsLabel(List<String> readings) =>

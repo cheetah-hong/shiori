@@ -9,14 +9,16 @@ import 'package:test/test.dart';
 void main() {
   final t0 = DateTime(2026, 11, 5, 21, 0, 0, 0, 7);
 
-  Word word(String id, {String tb = 'tb'}) => Word(
+  Word word(String id, {String headword = '雨'}) => Word(
     id: id,
-    textbookId: tb,
-    headword: '雨',
+    headword: headword,
     readings: const ['あめ'],
     meaning: '비',
     createdAt: t0,
   );
+
+  Playlist list(String id, {int position = 0}) =>
+      Playlist(id: id, name: '목록 $id', createdAt: t0, position: position);
 
   group('tables', () {
     late ShioriDatabase db;
@@ -27,82 +29,162 @@ void main() {
       db = ShioriDatabase.memory();
       library = DriftLibraryRepository(db);
       reviews = DriftReviewRepository(db);
-      await library.saveTextbook(
-        Textbook(id: 'tb', title: '단어장', createdAt: t0),
-      );
+      await library.savePlaylist(list('pl'));
     });
 
     tearDown(() => db.close());
 
-    test('content and learning state are separate tables', () async {
-      final tables = await db
-          .customSelect(
-            "SELECT name FROM sqlite_master WHERE type = 'table' "
-            "AND name NOT LIKE 'sqlite_%' ORDER BY name",
-          )
-          .map((r) => r.read<String>('name'))
-          .get();
-      expect(tables, [
-        'review_cards',
-        'review_logs',
-        'textbook_days',
-        'textbooks',
-        'words',
-      ]);
-    });
+    test(
+      'words, playlists, learning state and settings, no textbooks',
+      () async {
+        final tables = await db
+            .customSelect(
+              "SELECT name FROM sqlite_master WHERE type = 'table' "
+              "AND name NOT LIKE 'sqlite_%' ORDER BY name",
+            )
+            .map((r) => r.read<String>('name'))
+            .get();
+        expect(tables, [
+          'playlist_words',
+          'playlists',
+          'review_cards',
+          'review_logs',
+          'settings',
+          'words',
+        ]);
+      },
+    );
 
-    test('foreign keys are on: a word needs its textbook', () async {
-      final on = await db.customSelect('PRAGMA foreign_keys').getSingle();
-      expect(on.read<int>('foreign_keys'), 1);
+    test(
+      'foreign keys are on: an entry needs its playlist and its word',
+      () async {
+        final on = await db.customSelect('PRAGMA foreign_keys').getSingle();
+        expect(on.read<int>('foreign_keys'), 1);
+        await library.insertWords([word('w1')]);
+        await expectLater(
+          db.customStatement(
+            'INSERT INTO playlist_words (playlist_id, word_id, position, '
+            "added_at) VALUES ('missing', 'w1', 0, 0)",
+          ),
+          throwsA(isA<SqliteException>()),
+        );
+        await expectLater(
+          db.customStatement(
+            'INSERT INTO playlist_words (playlist_id, word_id, position, '
+            "added_at) VALUES ('pl', 'missing', 0, 0)",
+          ),
+          throwsA(isA<SqliteException>()),
+        );
+      },
+    );
+
+    test('a word is once per playlist (primary key)', () async {
+      await library.insertWords([word('w1')]);
+      await library.addToPlaylist('pl', ['w1'], at: t0);
       await expectLater(
-        library.saveWords([word('x:1', tb: 'missing')]),
-        throwsA(isA<SqliteException>()),
-      );
-      await expectLater(
-        library.saveDay(
-          const TextbookDay(textbookId: 'missing', number: 1, title: ''),
+        db.customStatement(
+          'INSERT INTO playlist_words (playlist_id, word_id, position, '
+          "added_at) VALUES ('pl', 'w1', 5, 0)",
         ),
         throwsA(isA<SqliteException>()),
       );
     });
 
+    test('a word key is unique in the table itself', () async {
+      await library.insertWords([word('w1')]);
+      await expectLater(
+        db.customStatement(
+          'INSERT INTO words (id, key, headword, readings, meaning, '
+          "created_at) VALUES ('w2', '雨', '雨', '[]', '', 0)",
+        ),
+        throwsA(isA<SqliteException>()),
+      );
+    });
+
+    test('a blank playlist name is refused by the table', () async {
+      await expectLater(
+        db.customStatement(
+          'INSERT INTO playlists (id, name, created_at, position) '
+          "VALUES ('x', '   ', 0, 1)",
+        ),
+        throwsA(isA<SqliteException>()),
+      );
+    });
+
+    test('a card needs its word; deleting a playlist keeps both', () async {
+      await expectLater(
+        reviews.saveCard(
+          ReviewCard(wordId: 'gone', level: 1, dueAt: t0, lastReviewedAt: t0),
+        ),
+        throwsA(isA<SqliteException>()),
+      );
+      await library.insertWords([word('w1')]);
+      await library.addToPlaylist('pl', ['w1'], at: t0);
+      final card = ReviewCard(
+        wordId: 'w1',
+        level: 3,
+        dueAt: t0.add(const Duration(days: 7)),
+        lastReviewedAt: t0,
+        reviewCount: 2,
+      );
+      await reviews.saveCard(card);
+      await library.deletePlaylist('pl');
+      expect(await db.select(db.playlistWords).get(), isEmpty);
+      expect(await library.word('w1'), word('w1'));
+      expect(await reviews.card('w1'), card);
+    });
+
     test(
-      'rewriting a word keeps its card, even with foreign keys on',
+      'cards are stored by scope; the shared scope is an empty key',
       () async {
-        await library.saveWords([word('tb:0001')]);
-        final card = ReviewCard(
-          wordId: 'tb:0001',
-          level: 3,
-          dueAt: t0.add(const Duration(days: 7)),
-          lastReviewedAt: t0,
-          reviewCount: 2,
+        await library.insertWords([word('w1')]);
+        await reviews.saveCard(
+          ReviewCard(wordId: 'w1', level: 1, dueAt: t0, lastReviewedAt: t0),
         );
-        await reviews.saveCard(card);
-        for (var i = 0; i < 3; i++) {
-          await library.saveWords([word('tb:0001'), word('tb:0002')]);
-        }
-        expect(await reviews.card('tb:0001'), card);
-        final rows = await db.select(db.words).get();
-        expect(rows.length, 2);
+        await reviews.saveCard(
+          ReviewCard(
+            wordId: 'w1',
+            level: 2,
+            dueAt: t0,
+            lastReviewedAt: t0,
+            scope: CardScope.playlist('pl'),
+          ),
+        );
+        final rows = await db
+            .customSelect(
+              'SELECT scope, level FROM review_cards ORDER BY scope',
+            )
+            .map((r) => (r.read<String>('scope'), r.read<int>('level')))
+            .get();
+        expect(rows, [('', 1), ('p:pl', 2)]);
       },
     );
 
-    test('a card does not need a word row (state outlives content)', () async {
-      final card = ReviewCard(
-        wordId: 'gone:1',
-        level: 1,
-        dueAt: t0,
-        lastReviewedAt: t0,
+    test('a stored scope that is not one fails loudly', () async {
+      await library.insertWords([word('w1')]);
+      await db.customStatement(
+        'INSERT INTO review_cards (scope, word_id, level, due_at, '
+        "last_reviewed_at, review_count, lapse_count) VALUES ('x', 'w1', 1, "
+        '0, 0, 0, 0)',
       );
-      await reviews.saveCard(card);
-      expect(await reviews.card('gone:1'), card);
+      await expectLater(
+        reviews.cards(scope: CardScope.fromKey('p:x')),
+        completion(isEmpty),
+      );
+      await expectLater(reviews.logs(), completion(isEmpty));
+      await db.customStatement(
+        'INSERT INTO review_logs (scope, word_id, answer, at, level_before, '
+        "level_after, retries_in_session) VALUES ('x', 'w1', 'known', 0, 0, "
+        '1, 0)',
+      );
+      await expectLater(reviews.logs(), throwsFormatException);
     });
 
     test('an example must have both sentence and translation', () async {
       await expectLater(
         db.customStatement(
-          'INSERT INTO words (id, textbook_id, headword, readings, meaning, '
-          "example_ja, created_at) VALUES ('tb:9', 'tb', 'x', "
+          'INSERT INTO words (id, key, headword, readings, meaning, '
+          "example_ja, created_at) VALUES ('w9', 'x', 'x', "
           "'[]', '', 'ja only', 0)",
         ),
         throwsA(isA<SqliteException>()),
@@ -110,20 +192,28 @@ void main() {
     });
 
     test('times are stored as UTC microseconds since the epoch', () async {
-      await library.saveWords([word('tb:0001')]);
+      await library.insertWords([word('w1')]);
       final raw = await db
-          .customSelect("SELECT created_at FROM words WHERE id = 'tb:0001'")
+          .customSelect("SELECT created_at FROM words WHERE id = 'w1'")
           .getSingle();
       expect(raw.read<int>('created_at'), t0.toUtc().microsecondsSinceEpoch);
-      expect((await library.word('tb:0001'))?.createdAt, t0);
+      expect((await library.word('w1'))?.createdAt, t0);
+    });
+
+    test('the stored key is the word key of the headword', () async {
+      await library.insertWords([word('w1', headword: '丈夫だ')]);
+      final raw = await db
+          .customSelect("SELECT key FROM words WHERE id = 'w1'")
+          .getSingle();
+      expect(raw.read<String>('key'), '丈夫');
     });
 
     test('broken readings fail loudly instead of reading as empty', () async {
       await db.customStatement(
-        'INSERT INTO words (id, textbook_id, headword, readings, meaning, '
-        "created_at) VALUES ('tb:9', 'tb', 'x', '{\"a\":1}', '', 0)",
+        'INSERT INTO words (id, key, headword, readings, meaning, '
+        "created_at) VALUES ('w9', 'x', 'x', '{\"a\":1}', '', 0)",
       );
-      await expectLater(library.word('tb:9'), throwsFormatException);
+      await expectLater(library.word('w9'), throwsFormatException);
     });
   });
 
@@ -152,45 +242,57 @@ void main() {
     setUp(() => dir = Directory.systemTemp.createTempSync('shiori_db_'));
     tearDown(() => dir.deleteSync(recursive: true));
 
-    test('words and learning state survive closing and reopening', () async {
-      final file = File('${dir.path}/shiori.sqlite');
-      final first = ShioriDatabase.file(file);
-      final lib1 = DriftLibraryRepository(first);
-      final rev1 = DriftReviewRepository(first);
-      await lib1.saveTextbook(Textbook(id: 'tb', title: '단어장', createdAt: t0));
-      await lib1.saveWords([word('tb:0001')]);
-      final card = ReviewCard(
-        wordId: 'tb:0001',
-        level: 4,
-        dueAt: t0.add(const Duration(days: 21)),
-        lastReviewedAt: t0,
-        reviewCount: 1,
-      );
-      await rev1.transaction(() async {
-        await rev1.saveCard(card);
-        await rev1.addLog(
-          ReviewLog(
-            wordId: 'tb:0001',
-            answer: Answer.known,
-            at: t0,
-            levelBefore: 0,
-            levelAfter: 4,
-            retriesInSession: 0,
-          ),
+    test(
+      'a v4 file keeps words, playlists, learning state and settings',
+      () async {
+        final file = File('${dir.path}/shiori.sqlite');
+        final first = ShioriDatabase.file(file);
+        final lib1 = DriftLibraryRepository(first);
+        final rev1 = DriftReviewRepository(first);
+        await lib1.savePlaylist(list('pl'));
+        await lib1.insertWords([word('w1')]);
+        await lib1.addToPlaylist('pl', ['w1'], at: t0);
+        await lib1.hideWords(['w1'], at: t0);
+        final card = ReviewCard(
+          wordId: 'w1',
+          level: 4,
+          dueAt: t0.add(const Duration(days: 21)),
+          lastReviewedAt: t0,
+          reviewCount: 1,
         );
-      });
-      await first.close();
+        await rev1.transaction(() async {
+          await rev1.saveCard(card);
+          await rev1.addLog(
+            ReviewLog(
+              wordId: 'w1',
+              answer: Answer.known,
+              at: t0,
+              levelBefore: 0,
+              levelAfter: 4,
+              retriesInSession: 0,
+            ),
+          );
+        });
+        const prefs = StudyPreferences(recordMode: RecordMode.perPlaylist);
+        await DriftStudyPreferencesRepository(first).save(prefs);
+        await first.close();
 
-      final second = ShioriDatabase.file(file);
-      addTearDown(second.close);
-      expect(
-        await DriftLibraryRepository(second).word('tb:0001'),
-        word('tb:0001'),
-      );
-      final rev2 = DriftReviewRepository(second);
-      expect(await rev2.card('tb:0001'), card);
-      expect((await rev2.logs()).single.at, t0);
-    });
+        final second = ShioriDatabase.file(file);
+        addTearDown(second.close);
+        final lib2 = DriftLibraryRepository(second);
+        expect(await lib2.word('w1'), word('w1').withHiddenAt(t0));
+        expect(await lib2.playlists(), [list('pl')]);
+        expect((await lib2.words(playlistId: 'pl')).single.id, 'w1');
+        final rev2 = DriftReviewRepository(second);
+        expect(await rev2.card('w1'), card);
+        expect((await rev2.logs()).single.at, t0);
+        expect(await DriftStudyPreferencesRepository(second).load(), prefs);
+        final version = await second
+            .customSelect('PRAGMA user_version')
+            .getSingle();
+        expect(version.read<int>('user_version'), 4);
+      },
+    );
 
     test('a file from an unknown schema version is refused', () async {
       final file = File('${dir.path}/newer.sqlite');

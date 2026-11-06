@@ -1,6 +1,6 @@
 // E7 (app side) and the general sample page: every page goes through the
-// word extractor, and words already in the library (every word the
-// repository lists) are skipped and counted.
+// word extractor. A word the learner hid is left out and counted; a word
+// already in the library stays, marked as keeping its stored meaning.
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -24,22 +24,31 @@ Future<void> _openGeneralSample(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-Future<void> _seedWord(LibraryRepository library, String headword) async {
+/// Puts [headword] into the library, in a playlist.
+Future<Word> _seedWord(LibraryRepository library, String headword) async {
   final created = DateTime(2026, 11, 1);
-  await library.saveTextbook(
-    Textbook(id: 'tb-1', title: 'JLPT 단어장', createdAt: created),
+  await library.savePlaylist(
+    Playlist(id: 'pl-1', name: 'JLPT 단어장', createdAt: created, position: 0),
   );
-  await library.saveWords([
-    Word(
-      id: 'tb-1:0001',
-      textbookId: 'tb-1',
-      headword: headword,
-      readings: const ['がっこう'],
-      meaning: '학교',
-      createdAt: created,
-    ),
-  ]);
+  final word = Word(
+    id: 'w-1',
+    headword: headword,
+    readings: const ['がっこう'],
+    meaning: '학교',
+    createdAt: created,
+  );
+  await library.insertWords([word]);
+  await library.addToPlaylist('pl-1', [word.id], at: created);
+  return word;
 }
+
+const _inLibraryMark = '이미 라이브러리에 있음 · 저장된 뜻 유지';
+
+final _entryTile = find.byWidgetPredicate(
+  (w) =>
+      w.key is ValueKey<String> &&
+      (w.key! as ValueKey<String>).value.startsWith('entry-'),
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -80,8 +89,8 @@ void main() {
     expect(find.textContaining('건너뜀'), findsNothing);
   });
 
-  testWidgets('a word already saved (hidden ones too: every listed word) is '
-      'skipped and counted in the summary', (tester) async {
+  testWidgets('a word already in the library stays on the review, marked '
+      'as keeping its stored meaning', (tester) async {
     usePhoneSize(tester);
     final blocks = TestBlocks();
     await _seedWord(blocks.library, '学校');
@@ -90,7 +99,41 @@ void main() {
 
     await _openGeneralSample(tester);
 
-    expect(find.text('이미 있는 단어 1개 건너뜀'), findsOneWidget);
+    expect(find.text('이미 있는 단어 1개는 저장된 뜻을 그대로 써요'), findsOneWidget);
+    expect(find.textContaining('숨긴 단어'), findsNothing);
+    await tester.scrollUntilVisible(
+      find.text(_inLibraryMark),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text(_inLibraryMark), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.ancestor(of: find.text(_inLibraryMark), matching: _entryTile),
+        matching: find.text('学校'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a hidden word is left out and counted in the summary', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    final blocks = TestBlocks();
+    final word = await _seedWord(blocks.library, '学校');
+    await LibraryService(
+      library: blocks.library,
+      clock: blocks.clock,
+    ).hideWords([word.id]);
+    await tester.pumpWidget(app(blocks));
+    await tester.pumpAndSettle();
+
+    await _openGeneralSample(tester);
+
+    expect(find.text('숨긴 단어 1개는 뺐어요'), findsOneWidget);
+    expect(find.textContaining('이미 있는 단어'), findsNothing);
+    expect(find.text(_inLibraryMark), findsNothing);
     expect(find.byKey(const ValueKey('cell-0-headword')), findsOneWidget);
     expect(
       find.descendant(

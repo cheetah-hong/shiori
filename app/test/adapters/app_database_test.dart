@@ -28,23 +28,28 @@ void main() {
 
   tearDown(() => root.deleteSync(recursive: true));
 
-  test('opens the database file in the app support folder', () async {
+  test('the database file sits in the app support folder, made on first '
+      'launch', () async {
+    final file = await appDatabaseFile();
+
+    expect(file.path, '${root.path}/support/shiori.sqlite');
+    expect(Directory('${root.path}/support').existsSync(), isTrue);
+  });
+
+  test('a database file keeps what was written across a reopen', () async {
     final at = DateTime(2026, 11, 5, 21);
-    final db = await openAppDatabase();
+    final file = await appDatabaseFile();
+    final db = ShioriDatabase.file(file);
     await DriftLibraryRepository(
       db,
-    ).saveTextbook(Textbook(id: 'tb', title: '단어장', createdAt: at));
+    ).savePlaylist(Playlist(id: 'pl', name: '단어장', createdAt: at, position: 0));
     await db.close();
 
-    expect(
-      File('${root.path}/support/$appDatabaseFileName').existsSync(),
-      isTrue,
-    );
-    final again = await openAppDatabase();
+    expect(file.existsSync(), isTrue);
+    final again = ShioriDatabase.file(await appDatabaseFile());
     addTearDown(again.close);
-    expect(
-      (await DriftLibraryRepository(again).textbooks()).single.createdAt,
-      at,
-    );
+    final playlist = (await DriftLibraryRepository(again).playlists()).single;
+    expect(playlist.name, '단어장');
+    expect(playlist.createdAt, at);
   });
 }

@@ -26,6 +26,7 @@ import 'package:shiori_core/src/extract/pairing.dart';
 import 'package:shiori_core/src/extract/read_back.dart';
 import 'package:shiori_core/src/extract/script_runs.dart';
 import 'package:shiori_core/src/models/ocr.dart';
+import 'package:shiori_core/src/models/word_key.dart';
 import 'package:shiori_core/src/ports/korean_glossary.dart';
 import 'package:shiori_core/src/ports/lexicon.dart';
 
@@ -1403,13 +1404,6 @@ bool _glossMatches(List<String> glosses, String korean) {
 }
 
 String _bare(String s) => s.replaceAll(RegExp(r'\([^)]*\)|[^가-힣]'), '');
-
-/// A headword as one word: a な-adjective's printed だ does not count
-/// (`丈夫だ` from a word list and `丈夫` from a sentence are one word).
-String headwordKey(String headword) =>
-    headword.length > 1 && headword.endsWith('だ') && headword.runes.any(isKanji)
-    ? headword.substring(0, headword.length - 1)
-    : headword;
 
 bool _isKnown(String headword, Set<String> known) =>
     known.contains(headword) ||

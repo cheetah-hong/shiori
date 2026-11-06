@@ -13,39 +13,60 @@ import 'package:shiori_storage_drift/shiori_storage_drift.dart';
 
 import '../support/dictionary.dart';
 
+/// Where the database file would be; the tests open memory databases.
+Future<File> _locate() async => File('shiori.sqlite');
+
 void main() {
   test('an opened database is plugged into the storage blocks', () async {
     final db = ShioriDatabase.memory();
-    addTearDown(db.close);
+    final opened = <File>[];
     final c = ProviderContainer.test(
-      overrides: [await appDatabaseOverride(open: () async => db)],
+      overrides: [
+        await appDatabaseOverride(
+          locate: _locate,
+          open: (file) {
+            opened.add(file);
+            return db;
+          },
+        ),
+      ],
     );
     expect(c.read(appDatabaseProvider), same(db));
     expect(c.read(libraryRepositoryProvider), isA<DriftLibraryRepository>());
+    expect(opened.map((f) => f.path), ['shiori.sqlite']);
   });
 
   test(
     'a folder failure still starts the app and surfaces the error',
     () async {
       const failure = FileSystemException('no space left');
+      var opens = 0;
       final c = ProviderContainer.test(
         overrides: [
-          await appDatabaseOverride(open: () => Future.error(failure)),
+          await appDatabaseOverride(
+            locate: () => Future.error(failure),
+            open: (file) {
+              opens++;
+              return ShioriDatabase.memory();
+            },
+          ),
         ],
       );
       expect(
         () => c.read(libraryRepositoryProvider),
         throwsA(predicate((e) => '$e'.contains('no space left'))),
       );
+      expect(opens, 0, reason: 'no file to open');
     },
   );
 
   test('a folder lookup that hangs times out instead of blocking', () async {
-    final never = Completer<ShioriDatabase>();
+    final never = Completer<File>();
     final c = ProviderContainer.test(
       overrides: [
         await appDatabaseOverride(
-          open: () => never.future,
+          locate: () => never.future,
+          open: (file) => ShioriDatabase.memory(),
           timeout: const Duration(milliseconds: 10),
         ),
       ],
@@ -56,12 +77,44 @@ void main() {
     );
   });
 
+  test('invalidating the database opens a new connection and closes the '
+      'old one', () async {
+    final opened = <ShioriDatabase>[];
+    final c = ProviderContainer.test(
+      overrides: [
+        await appDatabaseOverride(
+          locate: _locate,
+          open: (file) {
+            final db = ShioriDatabase.memory();
+            opened.add(db);
+            return db;
+          },
+        ),
+      ],
+    );
+    final first = c.read(appDatabaseProvider);
+    expect(await DriftLibraryRepository(first).playlists(), isEmpty);
+
+    c.invalidate(appDatabaseProvider);
+    final second = c.read(appDatabaseProvider);
+
+    expect(opened, hasLength(2));
+    expect(second, isNot(same(first)));
+    expect(c.read(libraryRepositoryProvider), isA<DriftLibraryRepository>());
+    expect(await DriftLibraryRepository(second).playlists(), isEmpty);
+    await expectLater(
+      DriftLibraryRepository(first).playlists(),
+      throwsA(isStateError),
+      reason: 'the first connection is closed',
+    );
+  });
+
   testWidgets('the home screen shows the load error instead of hanging', (
     tester,
   ) async {
     const failure = FileSystemException('no space left');
     final override = await tester.runAsync(
-      () => appDatabaseOverride(open: () => Future.error(failure)),
+      () => appDatabaseOverride(locate: () => Future.error(failure)),
     );
     await tester.pumpWidget(
       ProviderScope(

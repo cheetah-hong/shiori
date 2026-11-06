@@ -7,37 +7,114 @@ void main() {
   group('value equality', () {
     test('Word', () {
       Word w({String meaning = '강, 개천'}) => Word(
-        id: 'tb:0015',
-        textbookId: 'tb',
-        day: 1,
-        no: '0015',
+        id: 'w1',
         headword: '川',
         readings: const ['かわ'],
         pos: PartOfSpeech.noun,
         meaning: meaning,
         example: const Example(ja: '川で泳ぐ。', ko: '강에서 헤엄치다.'),
-        page: 11,
         createdAt: t0,
       );
       expect(w(), w());
       expect(w().hashCode, w().hashCode);
       expect(w(), isNot(w(meaning: '강')));
       expect(w().toString(), contains('川'));
+      expect(w().key, '川');
     });
 
-    test('Textbook, TextbookDay, PageMeta, PageImage, EntryIssue, Example', () {
+    test('wordKey: the headword alone, without spaces, width or だ', () {
+      expect(wordKey(' 食べる '), '食べる');
+      expect(wordKey('食 べる'), '食べる');
+      expect(wordKey('丈夫だ'), '丈夫');
+      expect(wordKey('だ'), 'だ', reason: 'a lone だ is a word');
+      expect(wordKey('まだ'), 'まだ', reason: 'no kanji: not a な-adjective');
+      expect(wordKey('ﾃｽﾄ'), 'テスト');
       expect(
-        Textbook(id: 'a', title: 'A', createdAt: t0),
-        Textbook(id: 'a', title: 'A', createdAt: t0),
+        Word(
+          id: 'a',
+          headword: '丈夫だ',
+          readings: const [],
+          meaning: '',
+          createdAt: t0,
+        ).key,
+        '丈夫',
+      );
+    });
+
+    test('Playlist, PlaylistEntry, playlistNameKey', () {
+      final p = Playlist(id: 'p', name: 'A', createdAt: t0, position: 0);
+      expect(p, Playlist(id: 'p', name: 'A', createdAt: t0, position: 0));
+      expect(p.hashCode, p.copyWith().hashCode);
+      expect(p.copyWith(name: 'B').name, 'B');
+      expect(p.copyWith(position: 2).position, 2);
+      expect(p.copyWith(name: 'B'), isNot(p));
+      expect(p.toString(), contains('A'));
+      final e = PlaylistEntry(
+        playlistId: 'p',
+        wordId: 'w',
+        position: 3,
+        addedAt: t0,
       );
       expect(
-        Textbook(id: 'a', title: 'A', createdAt: t0).copyWith(title: 'B').title,
-        'B',
+        e,
+        PlaylistEntry(playlistId: 'p', wordId: 'w', position: 3, addedAt: t0),
+      );
+      expect(e.hashCode, isNot(0));
+      expect(e.toString(), contains('w'));
+      expect(playlistNameKey(' JLPT Ｎ５ '), 'jlpt n5');
+    });
+
+    test('CardScope', () {
+      expect(CardScope.shared.key, '');
+      expect(CardScope.shared.isShared, isTrue);
+      expect(CardScope.shared.playlistId, isNull);
+      final p = CardScope.playlist('pl-1');
+      expect((p.key, p.isShared, p.playlistId), ('p:pl-1', false, 'pl-1'));
+      expect(CardScope.fromKey('p:pl-1'), p);
+      expect(CardScope.fromKey(''), CardScope.shared);
+      expect(p.hashCode, CardScope.playlist('pl-1').hashCode);
+      expect(() => CardScope.fromKey('x'), throwsFormatException);
+      expect(() => CardScope.fromKey('p:'), throwsFormatException);
+      expect(() => CardScope.playlist(''), throwsArgumentError);
+      expect(CardScope.shared.toString(), contains('shared'));
+      expect(p.toString(), contains('p:pl-1'));
+    });
+
+    test('StudyPreferences and stored values', () {
+      const p = StudyPreferences();
+      expect(
+        (p.recordMode, p.scopeMode),
+        (RecordMode.shared, StudyScopeMode.allOrPlaylist),
+      );
+      expect(p, const StudyPreferences());
+      expect(p.hashCode, const StudyPreferences().hashCode);
+      final per = p.copyWith(recordMode: RecordMode.perPlaylist);
+      expect(per, isNot(p));
+      expect(per.copyWith(), per);
+      expect(
+        p.copyWith(scopeMode: StudyScopeMode.playlistOnly).scopeMode,
+        StudyScopeMode.playlistOnly,
+      );
+      expect(per.toString(), contains('perPlaylist'));
+      for (final m in RecordMode.values) {
+        expect(RecordMode.fromStored(m.storedAs), m);
+      }
+      for (final m in StudyScopeMode.values) {
+        expect(StudyScopeMode.fromStored(m.storedAs), m);
+      }
+      expect(RecordMode.fromStored('later'), isNull);
+      expect(StudyScopeMode.fromStored(''), isNull);
+      expect(
+        [for (final m in RecordMode.values) m.storedAs],
+        ['shared', 'per_playlist'],
       );
       expect(
-        const TextbookDay(textbookId: 'a', number: 1, title: 'x').hashCode,
-        const TextbookDay(textbookId: 'a', number: 1, title: 'x').hashCode,
+        [for (final m in StudyScopeMode.values) m.storedAs],
+        ['all_or_playlist', 'playlist_only'],
       );
+    });
+
+    test('PageImage, EntryIssue, Example', () {
       expect(
         const PageImage('s010', label: '10쪽'),
         const PageImage('s010', label: '10쪽'),
@@ -82,17 +159,6 @@ void main() {
       expect(d(), isNot(d().replaceEntry(0, e().copyWith(included: false))));
     });
 
-    test('TextbookStats', () {
-      final book = Textbook(id: 'a', title: 'A', createdAt: t0);
-      TextbookStats s({int count = 2, List<int> days = const [1]}) =>
-          TextbookStats(textbook: book, wordCount: count, days: days);
-      expect(s(), s());
-      expect(s().hashCode, s().hashCode);
-      expect(s(), isNot(s(days: const [2])));
-      expect(s(), isNot(s(count: 3)));
-      expect(s().toString(), contains('2'));
-    });
-
     test('ReviewCard', () {
       final c = ReviewCard(
         wordId: 'w',
@@ -106,6 +172,16 @@ void main() {
       expect(c.isDue(t0), isTrue);
       expect(c.isDue(t0.subtract(const Duration(seconds: 1))), isFalse);
       expect(c.toString(), contains('L2'));
+      expect(c.scope, CardScope.shared);
+      final other = ReviewCard(
+        wordId: 'w',
+        level: 2,
+        dueAt: t0,
+        lastReviewedAt: t0,
+        scope: CardScope.playlist('p'),
+      );
+      expect(other, isNot(c));
+      expect(other.copyWith(level: 3).scope, CardScope.playlist('p'));
     });
 
     test('PartOfSpeech from badge', () {

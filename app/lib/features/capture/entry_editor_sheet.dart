@@ -96,9 +96,7 @@ class _EntryEditorSheetState extends State<EntryEditorSheet> {
             // Actions sit at the top so the keyboard never covers them.
             Row(
               children: [
-                Expanded(
-                  child: Text('고치기', style: context.text.titleLarge),
-                ),
+                Expanded(child: Text('고치기', style: context.text.titleLarge)),
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
                   child: const Text('취소'),

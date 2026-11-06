@@ -1,5 +1,5 @@
 // 이미 알아요 on a simulator: the study card's hide button and 되돌리기, the
-// textbook list with its hidden words opened, and the home shelf count.
+// playlist screen with its hidden words opened, and the home shelf count.
 //
 //   cd app && flutter drive -d <simulator> \
 //     --driver=test_driver/integration_test.dart \
@@ -39,7 +39,9 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('hide from the study card and the textbook list', (tester) async {
+  testWidgets('hide from the study card and the playlist screen', (
+    tester,
+  ) async {
     final database = ShioriDatabase.memory();
     addTearDown(database.close);
     await tester.pumpWidget(
@@ -48,13 +50,17 @@ void main() {
         child: const ShioriApp(),
       ),
     );
-    await waitFor(tester, find.text('먼저 교재 페이지를 등록해 주세요'));
+    await waitFor(tester, find.text('먼저 페이지를 등록해 주세요'));
 
     // Page 10 of the samples: DAY 01, 12 words.
     await tap(tester, find.text('페이지 등록'));
     await tap(tester, find.text('DAY 01 자연, 몸').first);
-    await waitFor(tester, find.textContaining('개 저장'));
-    await tap(tester, find.textContaining('개 저장').first);
+    await waitFor(tester, find.textContaining('개 추가'));
+    await tap(tester, find.textContaining('개 추가').first);
+    // A fresh database has no playlist yet: the new-playlist form is already
+    // open with 내 단어장 filled in.
+    await waitFor(tester, find.text('만들고 추가'));
+    await tap(tester, find.text('만들고 추가'));
     await waitFor(tester, find.textContaining('오늘 학습 시작'));
 
     await tap(tester, find.textContaining('오늘 학습 시작'));
@@ -71,10 +77,10 @@ void main() {
     expect(find.text(headword), findsOneWidget);
     await tap(tester, find.text(HideLabels.button));
 
-    // Back home, then the textbook: hide one more word from the list.
+    // Back home, then the playlist: hide one more word from the list.
     await tap(tester, find.byTooltip('학습 그만하기'));
     await waitFor(tester, find.textContaining(HideLabels.hiddenCount(1)));
-    await tap(tester, find.text('JLPT 단어장').first);
+    await tap(tester, find.text('내 단어장').first);
     final second = (await first.words())[2].headword;
     await tap(tester, find.byTooltip(HideLabels.hideWord(second)));
     await tester.pump(const Duration(seconds: 5));

@@ -4,15 +4,12 @@ import 'package:test/test.dart';
 void main() {
   final now = DateTime(2026, 11, 5, 21);
 
-  Word word(String id, {int? day, String? no}) => Word(
+  Word word(String id) => Word(
     id: id,
-    textbookId: 'tb',
     headword: id,
     readings: const ['よみ'],
     meaning: '뜻',
     createdAt: now,
-    day: day,
-    no: no,
   );
 
   ReviewCard due(String id, Duration ago) => ReviewCard(
@@ -24,9 +21,7 @@ void main() {
 
   group('SessionBuilder', () {
     const builder = SessionBuilder();
-    final words = [
-      for (var i = 1; i <= 6; i++) word('w$i', day: 1, no: '000$i'),
-    ];
+    final words = [for (var i = 1; i <= 6; i++) word('w$i')];
 
     test(
       'puts due cards first (oldest due first), then fills with new words',

@@ -41,7 +41,12 @@ final class DevSample {
 const List<DevSample> devSamples = [
   DevSample(id: 's010', page: 10, detail: 'DAY 01 자연, 몸', layout: '합성 단어장'),
   DevSample(id: 's011', page: 11, detail: 'DAY 01 자연, 몸', layout: '합성 단어장'),
-  DevSample(id: 's140', page: 140, detail: 'DAY 20 여행·교통', layout: '합성 단어장 · 예문'),
+  DevSample(
+    id: 's140',
+    page: 140,
+    detail: 'DAY 20 여행·교통',
+    layout: '합성 단어장 · 예문',
+  ),
   DevSample(id: 's147', page: 147, detail: 'DAY 21 쇼핑', layout: '합성 단어장 · 예문'),
 ];
 

@@ -4,6 +4,9 @@ import 'package:shiori/features/capture/evidence_view.dart';
 import 'package:shiori/shared/widgets.dart';
 import 'package:shiori_core/shiori_core.dart';
 
+/// The mark on an entry whose word is in the library already.
+const String inLibraryLabel = '이미 라이브러리에 있음 · 저장된 뜻 유지';
+
 /// One word on the review screen.
 ///
 /// Every cell names where it came from (사진 / 사전 / 번역) and, for the
@@ -22,7 +25,12 @@ class EvidenceEntryTile extends StatelessWidget {
     required this.onToggle,
     required this.onShowEvidence,
     required this.onPickCandidate,
+    this.inLibrary = false,
   });
+
+  /// The word is in the learner's library already: adding it links the
+  /// stored word, whose meaning and readings stay as they are.
+  final bool inLibrary;
 
   /// Position on the review screen (in the keys tests and tools find).
   final int index;
@@ -109,6 +117,29 @@ class EvidenceEntryTile extends StatelessWidget {
                           ),
                         ],
                       ),
+                      if (inLibrary)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: Space.xs),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.library_add_check_outlined,
+                                size: 16,
+                                color: t.ink2,
+                              ),
+                              const SizedBox(width: Space.xs),
+                              Flexible(
+                                child: Text(
+                                  inLibraryLabel,
+                                  style: context.text.bodySmall?.copyWith(
+                                    color: t.ink2,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       _Cell(
                         index: index,
                         entry: e,

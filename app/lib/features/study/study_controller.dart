@@ -3,18 +3,18 @@ import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/data.dart';
 import 'package:shiori_core/shiori_core.dart';
 
-/// Holds one study session. The argument limits it to a textbook (null = all).
+/// Holds one study session over [scope] (전체 or one playlist).
 final class StudyController extends AsyncNotifier<StudySession> {
-  StudyController(this.textbookId);
+  StudyController(this.scope);
 
-  final String? textbookId;
+  final StudyScope scope;
 
   /// A write is on its way; presses meanwhile are ignored.
   bool _busy = false;
 
   @override
   Future<StudySession> build() =>
-      ref.read(studyServiceProvider).startSession(textbookId: textbookId);
+      ref.read(studyServiceProvider).startSession(scope: scope);
 
   Future<void> answer(Answer answer) async {
     final session = state.value;
@@ -74,4 +74,4 @@ final class StudyController extends AsyncNotifier<StudySession> {
 }
 
 final studyControllerProvider = AsyncNotifierProvider.autoDispose
-    .family<StudyController, StudySession, String?>(StudyController.new);
+    .family<StudyController, StudySession, StudyScope>(StudyController.new);

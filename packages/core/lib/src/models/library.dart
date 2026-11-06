@@ -1,110 +1,44 @@
-import 'package:shiori_core/src/models/list_equality.dart';
+import 'package:shiori_core/src/capture/text/chars.dart' show nfkc;
 import 'package:shiori_core/src/models/captured_entry.dart';
+import 'package:shiori_core/src/models/list_equality.dart';
 import 'package:shiori_core/src/models/part_of_speech.dart';
+import 'package:shiori_core/src/models/word_key.dart';
 
-/// A textbook the learner collects pages from.
-final class Textbook {
-  const Textbook({
-    required this.id,
-    required this.title,
-    required this.createdAt,
-    this.templateId,
-  });
-
-  final String id;
-  final String title;
-  final DateTime createdAt;
-
-  /// Layout the pages of this book were read with, kept from earlier app
-  /// versions (`vocab.list`, `vocab.entry`); null for books made since.
-  final String? templateId;
-
-  Textbook copyWith({String? title}) => Textbook(
-    id: id,
-    title: title ?? this.title,
-    createdAt: createdAt,
-    templateId: templateId,
-  );
-
-  @override
-  bool operator ==(Object other) =>
-      other is Textbook &&
-      other.id == id &&
-      other.title == title &&
-      other.createdAt == createdAt &&
-      other.templateId == templateId;
-
-  @override
-  int get hashCode => Object.hash(id, title, createdAt, templateId);
-}
-
-/// A chapter of a textbook. Word books call them `DAY 01`, `DAY 02`, ...
-final class TextbookDay {
-  const TextbookDay({
-    required this.textbookId,
-    required this.number,
-    required this.title,
-  });
-
-  final String textbookId;
-  final int number;
-  final String title;
-
-  String get key => '$textbookId#$number';
-
-  @override
-  bool operator ==(Object other) =>
-      other is TextbookDay &&
-      other.textbookId == textbookId &&
-      other.number == number &&
-      other.title == title;
-
-  @override
-  int get hashCode => Object.hash(textbookId, number, title);
-}
-
-/// A saved word (content). Its learning state lives in a separate `ReviewCard`.
+/// A saved word (content), once in the library however many playlists hold
+/// it. Its learning state lives in a separate `ReviewCard`.
+///
+/// [key] (from the headword, `wordKey`) is what makes two words the same:
+/// the library holds one word per key.
 ///
 /// [hiddenAt] is set when the learner hid the word as one they already know
-/// (이미 알아요). Hidden words stay in the library and keep their card; only
-/// study sessions and the word lists leave them out.
+/// (이미 알아요). Hiding is per word, not per playlist: a hidden word stays in
+/// its playlists and keeps its card; only study sessions and the word lists
+/// leave it out.
 final class Word {
-  const Word({
+  Word({
     required this.id,
-    required this.textbookId,
     required this.headword,
     required this.readings,
     required this.meaning,
     required this.createdAt,
-    this.day,
-    this.no,
     this.pos,
     this.example,
-    this.page,
     this.hiddenAt,
-  });
+  }) : key = wordKey(headword);
 
   final String id;
-  final String textbookId;
-  final int? day;
-
-  /// Number printed in the textbook, for example `0016`.
-  final String? no;
+  final String key;
   final String headword;
   final List<String> readings;
   final PartOfSpeech? pos;
   final String meaning;
   final Example? example;
-
-  /// Page the word was captured from.
-  final int? page;
   final DateTime createdAt;
 
   /// When the learner hid the word; null while it is shown.
   ///
-  /// Only `HiddenWordRepository` changes it: `LibraryRepository.saveWords`
-  /// keeps the stored value, so capturing a page again does not show a word
-  /// the learner hid.
+  /// Only `HiddenWordRepository` changes it: `LibraryRepository.insertWords`
+  /// stores a new word shown.
   final DateTime? hiddenAt;
 
   bool get isHidden => hiddenAt != null;
@@ -112,16 +46,12 @@ final class Word {
   /// The same word, hidden since [at] (null: shown).
   Word withHiddenAt(DateTime? at) => Word(
     id: id,
-    textbookId: textbookId,
     headword: headword,
     readings: readings,
     meaning: meaning,
     createdAt: createdAt,
-    day: day,
-    no: no,
     pos: pos,
     example: example,
-    page: page,
     hiddenAt: at,
   );
 
@@ -129,30 +59,22 @@ final class Word {
   bool operator ==(Object other) =>
       other is Word &&
       other.id == id &&
-      other.textbookId == textbookId &&
-      other.day == day &&
-      other.no == no &&
       other.headword == headword &&
       listEquals(other.readings, readings) &&
       other.pos == pos &&
       other.meaning == meaning &&
       other.example == example &&
-      other.page == page &&
       other.createdAt == createdAt &&
       other.hiddenAt == hiddenAt;
 
   @override
   int get hashCode => Object.hash(
     id,
-    textbookId,
-    day,
-    no,
     headword,
     Object.hashAll(readings),
     pos,
     meaning,
     example,
-    page,
     createdAt,
     hiddenAt,
   );
@@ -161,45 +83,115 @@ final class Word {
   String toString() => 'Word($id $headword${isHidden ? ' hidden' : ''})';
 }
 
-/// A textbook with how many words it holds and the days they are on, for the
-/// shelf. Words without a day count but add no day.
-///
-/// [wordCount] and [days] cover every word, hidden ones too (the same words
-/// as `LibraryRepository.words`); [hiddenCount] says how many of them are
-/// hidden and [shownCount] how many are left.
-final class TextbookStats {
-  const TextbookStats({
-    required this.textbook,
-    required this.wordCount,
-    required this.days,
-    this.hiddenCount = 0,
+/// A list of words the learner made (like a music playlist). It points at
+/// library words; the same word can be in several playlists.
+final class Playlist {
+  const Playlist({
+    required this.id,
+    required this.name,
+    required this.createdAt,
+    required this.position,
   });
 
-  final Textbook textbook;
-  final int wordCount;
+  final String id;
+  final String name;
+  final DateTime createdAt;
 
-  /// Of [wordCount], the words the learner hid.
-  final int hiddenCount;
+  /// Place on the home screen and the playlist list, from 0.
+  final int position;
 
-  int get shownCount => wordCount - hiddenCount;
-
-  /// Day numbers, each once, ascending.
-  final List<int> days;
+  Playlist copyWith({String? name, int? position}) => Playlist(
+    id: id,
+    name: name ?? this.name,
+    createdAt: createdAt,
+    position: position ?? this.position,
+  );
 
   @override
   bool operator ==(Object other) =>
-      other is TextbookStats &&
-      other.textbook == textbook &&
+      other is Playlist &&
+      other.id == id &&
+      other.name == name &&
+      other.createdAt == createdAt &&
+      other.position == position;
+
+  @override
+  int get hashCode => Object.hash(id, name, createdAt, position);
+
+  @override
+  String toString() => 'Playlist($id $name @$position)';
+}
+
+/// What makes two playlist names the same: spaces around them, letter case
+/// and NFKC width do not count.
+String playlistNameKey(String name) => nfkc(name.trim()).toLowerCase();
+
+/// One word's place in one playlist.
+final class PlaylistEntry {
+  const PlaylistEntry({
+    required this.playlistId,
+    required this.wordId,
+    required this.position,
+    required this.addedAt,
+  });
+
+  final String playlistId;
+  final String wordId;
+
+  /// Order inside the playlist (words added later come after).
+  final int position;
+  final DateTime addedAt;
+
+  @override
+  bool operator ==(Object other) =>
+      other is PlaylistEntry &&
+      other.playlistId == playlistId &&
+      other.wordId == wordId &&
+      other.position == position &&
+      other.addedAt == addedAt;
+
+  @override
+  int get hashCode => Object.hash(playlistId, wordId, position, addedAt);
+
+  @override
+  String toString() => 'PlaylistEntry($playlistId $wordId @$position)';
+}
+
+/// A playlist with how many words it holds, for the home screen and the
+/// playlist picker, in one read.
+///
+/// [wordCount] covers every word of the playlist, hidden ones too;
+/// [hiddenCount] says how many of them are hidden. [lastAddedAt] is when a
+/// word was last added (null while the playlist is empty).
+final class PlaylistStats {
+  const PlaylistStats({
+    required this.playlist,
+    required this.wordCount,
+    this.hiddenCount = 0,
+    this.lastAddedAt,
+  });
+
+  final Playlist playlist;
+  final int wordCount;
+  final int hiddenCount;
+  final DateTime? lastAddedAt;
+
+  int get shownCount => wordCount - hiddenCount;
+
+  @override
+  bool operator ==(Object other) =>
+      other is PlaylistStats &&
+      other.playlist == playlist &&
       other.wordCount == wordCount &&
       other.hiddenCount == hiddenCount &&
-      listEquals(other.days, days);
+      other.lastAddedAt == lastAddedAt;
 
   @override
   int get hashCode =>
-      Object.hash(textbook, wordCount, hiddenCount, Object.hashAll(days));
+      Object.hash(playlist, wordCount, hiddenCount, lastAddedAt);
 
   @override
   String toString() =>
-      'TextbookStats(${textbook.id}, words: $wordCount, '
-      'hidden: $hiddenCount, days: $days)';
+      'PlaylistStats(${playlist.id}, words: $wordCount, '
+      'hidden: $hiddenCount, last: $lastAddedAt)';
 }

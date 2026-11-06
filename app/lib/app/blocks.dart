@@ -87,16 +87,19 @@ final lexiconProvider = Provider<Lexicon>(
       const EmptyLexicon(),
 );
 
-/// The SQLite file behind both storage blocks. `main.dart` opens it (the app
-/// support folder is only known asynchronously) and overrides this provider.
-/// Tests override the repositories, or this with `ShioriDatabase.memory()`.
+/// The SQLite file behind the storage blocks. `main.dart` finds it (the app
+/// support folder is only known asynchronously) and overrides this provider
+/// with one that opens it (`startup.dart`); invalidating it opens a fresh
+/// connection. Tests override the repositories, or this with
+/// `ShioriDatabase.memory()`.
 final appDatabaseProvider = Provider<ShioriDatabase>(
   (ref) => throw StateError(
     'appDatabaseProvider is not set: open the database in main.dart',
   ),
 );
 
-/// Content storage: SQLite (drift). Tests: `InMemoryLibraryRepository`.
+/// Library storage (words, playlists): SQLite (drift). Tests:
+/// `InMemoryLibraryRepository`.
 final libraryRepositoryProvider = Provider<LibraryRepository>(
   (ref) => DriftLibraryRepository(ref.watch(appDatabaseProvider)),
 );
@@ -104,6 +107,18 @@ final libraryRepositoryProvider = Provider<LibraryRepository>(
 /// Learning state storage: SQLite (drift). Tests: `InMemoryReviewRepository`.
 final reviewRepositoryProvider = Provider<ReviewRepository>(
   (ref) => DriftReviewRepository(ref.watch(appDatabaseProvider)),
+);
+
+/// The learner's study options (설정): SQLite (drift). Tests:
+/// `InMemoryStudyPreferencesRepository`.
+final studyPreferencesRepositoryProvider = Provider<StudyPreferencesRepository>(
+  (ref) => DriftStudyPreferencesRepository(ref.watch(appDatabaseProvider)),
+);
+
+/// The stored study options, read once and again after the settings screen
+/// saves (it invalidates this).
+final studyPreferencesProvider = FutureProvider<StudyPreferences>(
+  (ref) => ref.watch(studyPreferencesRepositoryProvider).load(),
 );
 
 /// Intervals, day start hour, session size.
@@ -158,5 +173,8 @@ final studyServiceProvider = Provider<StudyService>(
     scheduler: ref.watch(reviewSchedulerProvider),
     clock: ref.watch(clockProvider),
     settings: ref.watch(studySettingsProvider),
+    // Until the options are read (or when they cannot be), the defaults.
+    preferences:
+        ref.watch(studyPreferencesProvider).value ?? const StudyPreferences(),
   ),
 );

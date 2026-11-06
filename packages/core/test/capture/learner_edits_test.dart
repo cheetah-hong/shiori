@@ -78,13 +78,12 @@ void main() {
         library: repo,
         clock: FixedClock(DateTime(2026, 11, 5, 21)),
       );
-      final tb = await service.createTextbook('내 단어장');
-      final result = await service.saveDraft(
+      final result = await service.addDraft(
         draft.replaceEntry(1, pick(unread, '日')),
-        textbookId: tb.id,
+        to: const NewPlaylist(defaultPlaylistName),
       );
-      expect(result.saved, 2);
-      final words = await repo.words(textbookId: tb.id);
+      expect(result.added, 2);
+      final words = await repo.words(playlistId: result.playlist.id);
       expect(words.map((w) => w.headword), ['一日', '日']);
     });
   });

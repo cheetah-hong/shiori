@@ -6,167 +6,136 @@ import 'package:test/test.dart';
 void main() {
   final t0 = DateTime(2026, 11, 5);
 
-  Word word(
-    String id, {
-    String tb = 'tb',
-    int? day,
-    String? no,
-    DateTime? at,
-  }) => Word(
+  Word word(String id, {DateTime? at}) => Word(
     id: id,
-    textbookId: tb,
-    day: day,
-    no: no,
     headword: id,
     readings: const [],
     meaning: '',
     createdAt: at ?? t0,
   );
 
+  Playlist list(String id, {int position = 0}) =>
+      Playlist(id: id, name: id, createdAt: t0, position: position);
+
   group('InMemoryLibraryRepository', () {
-    test('lists textbooks oldest first', () async {
-      final repo = InMemoryLibraryRepository();
-      await repo.saveTextbook(
-        Textbook(
-          id: 'b',
-          title: 'B',
-          createdAt: t0.add(const Duration(days: 1)),
-        ),
-      );
-      await repo.saveTextbook(Textbook(id: 'a', title: 'A', createdAt: t0));
-      expect((await repo.textbooks()).map((t) => t.id), ['a', 'b']);
-      expect((await repo.textbook('b'))?.title, 'B');
-      expect(await repo.textbook('zz'), isNull);
-    });
-
-    test('orders words by textbook, day and number, and filters', () async {
-      final repo = InMemoryLibraryRepository();
-      await repo.saveTextbook(Textbook(id: 'tb', title: 'T', createdAt: t0));
-      await repo.saveTextbook(
-        Textbook(
-          id: 'tb2',
-          title: 'T2',
-          createdAt: t0.add(const Duration(days: 1)),
-        ),
-      );
-      await repo.saveWords([
-        word('tb2:1', tb: 'tb2', day: 1, no: '0001'),
-        word('c', day: 2, no: '0031'),
-        word('b', day: 1, no: '0016'),
-        word('a', day: 1, no: '0001'),
-        word('x'), // no day: last
-      ]);
-      expect((await repo.words()).map((w) => w.id), [
-        'a',
-        'b',
-        'c',
-        'x',
-        'tb2:1',
-      ]);
-      expect((await repo.words(textbookId: 'tb', day: 1)).map((w) => w.id), [
-        'a',
-        'b',
-      ]);
-      expect((await repo.word('c'))?.day, 2);
-    });
-
-    test('saveWords replaces by id', () async {
-      final repo = InMemoryLibraryRepository();
-      await repo.saveWords([word('a', no: '0001')]);
-      await repo.saveWords([word('a', no: '0002')]);
-      expect((await repo.words()).single.no, '0002');
-    });
-
-    test('days are ordered by number and replaced by number', () async {
-      final repo = InMemoryLibraryRepository();
-      await repo.saveDay(
-        const TextbookDay(textbookId: 'tb', number: 2, title: '둘'),
-      );
-      await repo.saveDay(
-        const TextbookDay(textbookId: 'tb', number: 1, title: '하나'),
-      );
-      await repo.saveDay(
-        const TextbookDay(textbookId: 'tb', number: 1, title: '자연, 몸'),
-      );
-      expect((await repo.days('tb')).map((d) => (d.number, d.title)), [
-        (1, '자연, 몸'),
-        (2, '둘'),
-      ]);
-    });
-
     test('a failed transaction leaves the library as it was', () async {
       final repo = InMemoryLibraryRepository();
-      await repo.saveWords([word('a', no: '0001')]);
+      await repo.savePlaylist(list('p'));
+      await repo.insertWords([word('a')]);
+      await repo.addToPlaylist('p', ['a'], at: t0);
       await expectLater(
         repo.transaction(() async {
-          await repo.saveDay(
-            const TextbookDay(textbookId: 'tb', number: 1, title: '하나'),
-          );
-          await repo.saveWords([word('a', no: '0002'), word('b')]);
+          await repo.savePlaylist(list('q', position: 1));
+          await repo.insertWords([word('b')]);
+          await repo.addToPlaylist('q', ['a', 'b'], at: t0);
+          await repo.removeFromPlaylist('p', ['a']);
+          await repo.hideWords(['a'], at: t0);
           expect((await repo.words()).length, 2, reason: 'sees its writes');
           throw StateError('disk full');
         }),
         throwsStateError,
       );
-      expect(await repo.days('tb'), isEmpty);
-      expect((await repo.words()).single.no, '0001');
+      expect(await repo.playlists(), [list('p')]);
+      expect((await repo.words(playlistId: 'p')).map((w) => w.id), ['a']);
+      expect(await repo.word('b'), isNull);
+      expect((await repo.word('a'))?.isHidden, isFalse);
     });
 
     test('a transaction returns its value and keeps its writes', () async {
       final repo = InMemoryLibraryRepository();
       final n = await repo.transaction(() async {
-        await repo.saveWords([word('a'), word('b')]);
-        return (await repo.words()).length;
+        await repo.insertWords([word('a'), word('b')]);
+        return (await repo.wordsByKey(['a', 'b'])).length;
       });
       expect(n, 2);
-      expect((await repo.words()).length, 2);
+      expect(await repo.word('b'), isNotNull);
     });
 
     test('a nested transaction that fails undoes only its writes', () async {
       final repo = InMemoryLibraryRepository();
       await repo.transaction(() async {
-        await repo.saveWords([word('a')]);
+        await repo.insertWords([word('a')]);
         try {
           await repo.transaction(() async {
-            await repo.saveWords([word('b')]);
+            await repo.insertWords([word('b')]);
             throw StateError('inner');
           });
         } on StateError {
           // The outer action goes on.
         }
       });
-      expect((await repo.words()).map((w) => w.id), ['a']);
+      expect((await repo.wordsByKey(['a', 'b'])).keys, ['a']);
     });
 
     test('calls from outside wait for a running transaction', () async {
       final repo = InMemoryLibraryRepository();
       final gate = Completer<void>();
       final tx = repo.transaction(() async {
-        await repo.saveWords([word('a')]);
+        await repo.insertWords([word('a')]);
         await gate.future;
         throw StateError('rolled back');
       });
-      final outsideWrite = repo.saveWords([word('b')]);
-      final outsideRead = repo.words();
+      final outsideWrite = repo.insertWords([word('b')]);
+      final outsideRead = repo.wordsByKey(['a', 'b']);
       gate.complete();
       await expectLater(tx, throwsStateError);
       await outsideWrite;
       // Queued behind the transaction: never sees the rolled-back word.
-      expect((await outsideRead).map((w) => w.id), ['b']);
-      expect((await repo.words()).map((w) => w.id), ['b']);
+      expect((await outsideRead).keys, ['b']);
     });
 
-    test('returned lists cannot be changed by callers', () async {
+    test('returned collections cannot be changed by callers', () async {
       final repo = InMemoryLibraryRepository();
-      await repo.saveWords([word('a')]);
-      final list = await repo.words();
-      expect(() => list.add(word('b')), throwsUnsupportedError);
+      await repo.savePlaylist(list('p'));
+      await repo.insertWords([word('a')]);
+      await repo.addToPlaylist('p', ['a'], at: t0);
+      final words = await repo.words();
+      expect(() => words.add(word('b')), throwsUnsupportedError);
+      final lists = await repo.playlists();
+      expect(() => lists.add(list('q')), throwsUnsupportedError);
+      final byKey = await repo.wordsByKey(['a']);
+      expect(() => byKey['b'] = word('b'), throwsUnsupportedError);
+      final of = await repo.playlistsOf(['a']);
+      expect(() => of['a']!.add('q'), throwsUnsupportedError);
+    });
+  });
+
+  group('InMemoryStudyPreferencesRepository', () {
+    test('starts with the defaults and keeps what is saved', () async {
+      final repo = InMemoryStudyPreferencesRepository();
+      expect(await repo.load(), const StudyPreferences());
+      const per = StudyPreferences(
+        recordMode: RecordMode.perPlaylist,
+        scopeMode: StudyScopeMode.playlistOnly,
+      );
+      await repo.save(per);
+      expect(await repo.load(), per);
     });
   });
 
   group('InMemoryReviewRepository', () {
     ReviewCard card(String id) =>
         ReviewCard(wordId: id, level: 1, dueAt: t0, lastReviewedAt: t0);
+
+    test('stores cards by scope and word id', () async {
+      final repo = InMemoryReviewRepository();
+      final pl = CardScope.playlist('p');
+      await repo.saveCard(card('a'));
+      await repo.saveCard(
+        ReviewCard(
+          wordId: 'a',
+          level: 4,
+          dueAt: t0,
+          lastReviewedAt: t0,
+          scope: pl,
+        ),
+      );
+      expect((await repo.card('a'))?.level, 1);
+      expect((await repo.card('a', scope: pl))?.level, 4);
+      expect((await repo.cards()).values.single.scope, CardScope.shared);
+      expect((await repo.cards(scope: pl)).values.single.level, 4);
+      expect(await repo.card('a', scope: CardScope.playlist('q')), isNull);
+    });
 
     test('stores cards by word id', () async {
       final repo = InMemoryReviewRepository();
@@ -201,6 +170,32 @@ void main() {
       );
       expect((await repo.cards()).values, [card('a')]);
       expect(await repo.logs(), isEmpty);
+    });
+
+    test('logs filter by scope', () async {
+      final repo = InMemoryReviewRepository();
+      for (final scope in [CardScope.shared, CardScope.playlist('p')]) {
+        await repo.addLog(
+          ReviewLog(
+            wordId: 'a',
+            answer: Answer.known,
+            at: t0,
+            levelBefore: 0,
+            levelAfter: 4,
+            retriesInSession: 0,
+            scope: scope,
+          ),
+        );
+      }
+      expect((await repo.logs()).length, 2);
+      expect(
+        (await repo.logs(scope: CardScope.shared)).single.scope,
+        CardScope.shared,
+      );
+      expect(
+        (await repo.logs(scope: CardScope.playlist('p'))).single.scope,
+        CardScope.playlist('p'),
+      );
     });
 
     test('logs filter by time', () async {

@@ -9,30 +9,22 @@ import 'package:shiori/features/capture/entry_editor_sheet.dart';
 import 'package:shiori/features/capture/evidence_tile.dart';
 import 'package:shiori/features/capture/evidence_view.dart';
 import 'package:shiori/features/capture/fragment_tray.dart';
+import 'package:shiori/features/playlists/playlist_actions.dart';
+import 'package:shiori/features/playlists/playlist_picker.dart';
 import 'package:shiori/shared/widgets.dart';
 import 'package:shiori_core/shiori_core.dart';
 
-/// Where the reviewed words go: an existing textbook or a new one.
-sealed class SaveTarget {
-  const SaveTarget();
-}
+/// Which of the draft's headwords the library has, and how many of them
+/// each playlist holds. The argument is the headwords, one per line.
+final addPreviewProvider = FutureProvider.autoDispose
+    .family<AddPreview, String>((ref, headwords) {
+      ref.watch(dataRevisionProvider);
+      return ref
+          .watch(libraryServiceProvider)
+          .previewAdd(headwords.split('\n'));
+    });
 
-final class ExistingTextbook extends SaveTarget {
-  const ExistingTextbook(this.textbook);
-
-  final Textbook textbook;
-}
-
-/// The name a new textbook starts with.
-const String defaultTextbookTitle = '내 단어장';
-
-final class NewTextbook extends SaveTarget {
-  const NewTextbook(this.title);
-
-  final String title;
-}
-
-/// 검토: check flagged cells, fix them, choose the textbook, save.
+/// 검토: check flagged cells, fix them, add the words to a playlist.
 class ReviewScreen extends ConsumerStatefulWidget {
   const ReviewScreen({
     super.key,
@@ -59,7 +51,6 @@ class ReviewScreen extends ConsumerStatefulWidget {
 
 class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   late CaptureDraft _draft = widget.draft;
-  SaveTarget? _target;
   bool _onlyFlagged = false;
   bool _saving = false;
 
@@ -111,10 +102,6 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   /// "높음 전체 승인": confirms the entries whose pairings are all high.
   void _approveHigh() => setState(() => _draft = approveHighConfidence(_draft));
 
-  SaveTarget _defaultTarget(List<ShelfItem> shelf) => shelf.isNotEmpty
-      ? ExistingTextbook(shelf.last.textbook)
-      : const NewTextbook(defaultTextbookTitle);
-
   Future<void> _edit(int index) async {
     final edited = await showEntryEditor(context, _draft.entries[index]);
     if (edited != null && mounted) _replace(index, edited);
@@ -129,45 +116,33 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     if (_draft.needsReviewCount == 0) _onlyFlagged = false;
   });
 
-  Future<void> _chooseTarget(List<ShelfItem> shelf) async {
-    final target = await showModalBottomSheet<SaveTarget>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (_) => _TargetPicker(
-        shelf: shelf,
-        suggestedTitle: defaultTextbookTitle,
-      ),
-    );
-    if (target != null && mounted) setState(() => _target = target);
-  }
+  /// The headwords the add would save, for the library preview.
+  String get _headwordsKey => [
+    for (final e in _draft.entries)
+      if (e.included && e.headword.trim().isNotEmpty) e.headword.trim(),
+  ].join('\n');
 
-  Future<void> _save(SaveTarget target) async {
-    setState(() => _saving = true);
+  Future<void> _add() async {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
+    final library = ref.read(libraryServiceProvider);
+    // The picker shows how many of these words each playlist holds; without
+    // the preview it still works, only without those counts.
+    final preview = ref.read(addPreviewProvider(_headwordsKey)).value;
+    final target = await showPlaylistPicker(context, preview: preview);
+    if (target == null || !mounted) return;
+    setState(() => _saving = true);
     try {
-      final library = ref.read(libraryServiceProvider);
-      final textbookId = switch (target) {
-        ExistingTextbook(:final textbook) => textbook.id,
-        NewTextbook(:final title) => (await library.createTextbook(title)).id,
-      };
-      final result = await library.saveDraft(_draft, textbookId: textbookId);
+      final result = await library.addDraft(_draft, to: target);
       if (!mounted) return;
       ref.read(dataRevisionProvider.notifier).bump();
       navigator.popUntil((route) => route.isFirst);
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            '단어 ${result.saved}개를 저장했어요',
-          ),
-        ),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(addedMessage(result))));
     } on LibraryException catch (e) {
       _saveFailed(messenger, e.message);
     } on Exception catch (e, stack) {
-      // A storage block failed (for example a disk error once drift lands).
-      debugPrint('save failed: $e\n$stack');
+      // A storage block failed (a disk error, say).
+      debugPrint('add failed: $e\n$stack');
       _saveFailed(messenger, '저장하지 못했어요. 다시 시도해 주세요');
     } on Error catch (e, stack) {
       // A bug in a block: report it like any uncaught error, but give the
@@ -188,13 +163,13 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final shelfState = ref.watch(shelfProvider);
-    final shelf = shelfState.value ?? const <ShelfItem>[];
-    // Until the textbook list is known, the default target could wrongly be a
-    // new textbook, so saving waits for it.
-    final shelfReady = shelfState.hasValue && !shelfState.hasError;
-    final target = _target ?? _defaultTarget(shelf);
+    final libraryKeys =
+        ref.watch(addPreviewProvider(_headwordsKey)).value?.libraryKeys ??
+        const <String>{};
     final entries = _draft.entries;
+    bool inLibrary(CapturedEntry e) =>
+        e.headword.trim().isNotEmpty &&
+        libraryKeys.contains(wordKey(e.headword));
     final visible = [
       for (final (i, e) in entries.indexed)
         if (!_onlyFlagged || e.needsReview) i,
@@ -224,8 +199,9 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
               child: _Summary(
                 draft: _draft,
                 sourceLabel: widget.sourceLabel,
-                target: target,
-                onChooseTarget: () => _chooseTarget(shelf),
+                inLibraryCount: entries
+                    .where((e) => e.included && inLibrary(e))
+                    .length,
                 onApproveHigh:
                     _draft.entries.any((e) => e.evidence != null) &&
                         ref.watch(highConfidenceApprovalProvider)
@@ -277,6 +253,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                   onShowEvidence: (field) => _showEvidence(i, field),
                   onPickCandidate: (field, value) =>
                       _pickCandidate(i, field, value),
+                  inLibrary: inLibrary(entries[i]),
                 );
               },
             ),
@@ -313,8 +290,6 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (shelfState.hasError)
-                _ShelfError(onRetry: () => ref.invalidate(shelfProvider)),
               if (blankHeadwords > 0)
                 Padding(
                   padding: const EdgeInsets.only(bottom: Space.sm),
@@ -330,9 +305,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: saveable == 0 || _saving || !shelfReady
-                      ? null
-                      : () => _save(target),
+                  onPressed: saveable == 0 || _saving ? null : _add,
                   icon: _saving
                       ? SizedBox(
                           width: 18,
@@ -342,8 +315,8 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                             color: t.sheet,
                           ),
                         )
-                      : const Icon(Icons.check),
-                  label: Text('단어 $saveable개 저장'),
+                      : const Icon(Icons.playlist_add),
+                  label: Text('단어 $saveable개 추가'),
                 ),
               ),
             ],
@@ -358,15 +331,15 @@ class _Summary extends StatelessWidget {
   const _Summary({
     required this.draft,
     required this.sourceLabel,
-    required this.target,
-    required this.onChooseTarget,
+    required this.inLibraryCount,
     this.onApproveHigh,
   });
 
   final CaptureDraft draft;
   final String? sourceLabel;
-  final SaveTarget target;
-  final VoidCallback onChooseTarget;
+
+  /// Included entries whose word the library has already.
+  final int inLibraryCount;
 
   /// "높음 전체 승인"; null hides the button (switched off, or no evidence).
   final VoidCallback? onApproveHigh;
@@ -375,10 +348,6 @@ class _Summary extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final ms = draft.recognitionTime.inMilliseconds;
-    final title = switch (target) {
-      ExistingTextbook(:final textbook) => textbook.title,
-      NewTextbook(:final title) => '새 교재 · $title',
-    };
     return Container(
       padding: const EdgeInsets.all(Space.lg),
       decoration: BoxDecoration(
@@ -430,7 +399,7 @@ class _Summary extends StatelessWidget {
                 Tooltip(
                   message: draft.skippedKnown.join(', '),
                   child: Pill(
-                    '이미 있는 단어 ${draft.skippedKnown.length}개 건너뜀',
+                    '숨긴 단어 ${draft.skippedKnown.length}개는 뺐어요',
                     background: t.paper2,
                     foreground: t.ink2,
                   ),
@@ -445,137 +414,13 @@ class _Summary extends StatelessWidget {
               label: const Text('높음 전체 승인'),
             ),
           ],
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: Space.md),
-            child: Divider(),
-          ),
-          InkWell(
-            onTap: onChooseTarget,
-            borderRadius: BorderRadius.circular(Radii.tile),
-            child: Row(
-              children: [
-                Icon(Icons.menu_book_outlined, size: 20, color: t.ink2),
-                const SizedBox(width: Space.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('저장할 교재', style: context.text.bodySmall),
-                      Text(
-                        title,
-                        style: context.text.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(Icons.unfold_more, color: t.ink3),
-              ],
+          if (inLibraryCount > 0) ...[
+            const SizedBox(height: Space.md),
+            Text(
+              '이미 있는 단어 $inLibraryCount개는 저장된 뜻을 그대로 써요',
+              style: context.text.bodySmall?.copyWith(color: t.ink2),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TargetPicker extends StatefulWidget {
-  const _TargetPicker({required this.shelf, required this.suggestedTitle});
-
-  final List<ShelfItem> shelf;
-  final String suggestedTitle;
-
-  @override
-  State<_TargetPicker> createState() => _TargetPickerState();
-}
-
-class _TargetPickerState extends State<_TargetPicker> {
-  late final _title = TextEditingController(text: widget.suggestedTitle);
-
-  @override
-  void dispose() {
-    _title.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        Space.gutter,
-        0,
-        Space.gutter,
-        Space.xl + MediaQuery.viewInsetsOf(context).bottom,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text('어느 교재에 넣을까요?', style: context.text.titleLarge),
-          const SizedBox(height: Space.md),
-          for (final (i, item) in widget.shelf.indexed)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: BookSpine(
-                label: item.textbook.title.characters.firstOrNull ?? '?',
-                index: i,
-              ),
-              title: Text(
-                item.textbook.title,
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-              subtitle: Text('단어 ${item.wordCount}개'),
-              onTap: () =>
-                  Navigator.of(context).pop(ExistingTextbook(item.textbook)),
-            ),
-          const SizedBox(height: Space.md),
-          Text('새 교재', style: context.text.labelLarge?.copyWith(color: t.ink3)),
-          const SizedBox(height: Space.sm),
-          TextField(
-            controller: _title,
-            decoration: const InputDecoration(labelText: '교재 이름'),
-          ),
-          const SizedBox(height: Space.md),
-          FilledButton(
-            onPressed: () {
-              final title = _title.text.trim();
-              if (title.isNotEmpty) {
-                Navigator.of(context).pop(NewTextbook(title));
-              }
-            },
-            child: const Text('새 교재로 저장'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ShelfError extends StatelessWidget {
-  const _ShelfError({required this.onRetry});
-
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: Space.sm),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              '교재 목록을 불러오지 못해 저장할 수 없어요',
-              style: TextStyle(
-                color: t.risk,
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
-              ),
-            ),
-          ),
-          TextButton(onPressed: onRetry, child: const Text('다시 불러오기')),
+          ],
         ],
       ),
     );

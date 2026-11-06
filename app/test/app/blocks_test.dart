@@ -43,6 +43,10 @@ void main() {
     expect(c.read(generalExtractorProvider).lexicon, isA<EmptyLexicon>());
     expect(c.read(libraryRepositoryProvider), isA<DriftLibraryRepository>());
     expect(c.read(reviewRepositoryProvider), isA<DriftReviewRepository>());
+    expect(
+      c.read(studyPreferencesRepositoryProvider),
+      isA<DriftStudyPreferencesRepository>(),
+    );
     expect(c.read(reviewSchedulerProvider), isA<LeitnerFourStepScheduler>());
     expect(c.read(speechProvider), isA<SilentSpeech>());
     expect(c.read(crashLogProvider), isA<FileCrashLog>());
@@ -91,19 +95,32 @@ void main() {
     );
     final at = DateTime(2026, 11, 5);
     final library = c.read(libraryRepositoryProvider);
-    await library.saveTextbook(Textbook(id: 'tb', title: '단어장', createdAt: at));
+    await library.savePlaylist(
+      Playlist(id: 'pl', name: '단어장', createdAt: at, position: 0),
+    );
+    await library.insertWords([
+      Word(
+        id: 'w-1',
+        headword: '雨',
+        readings: const [],
+        meaning: '비',
+        createdAt: at,
+      ),
+    ]);
     await c
         .read(reviewRepositoryProvider)
         .saveCard(
-          ReviewCard(
-            wordId: 'tb:0001',
-            level: 1,
-            dueAt: at,
-            lastReviewedAt: at,
-          ),
+          ReviewCard(wordId: 'w-1', level: 1, dueAt: at, lastReviewedAt: at),
         );
-    expect((await library.textbooks()).single.id, 'tb');
-    expect(await c.read(reviewRepositoryProvider).card('tb:0001'), isNotNull);
+    await c
+        .read(studyPreferencesRepositoryProvider)
+        .save(const StudyPreferences(scopeMode: StudyScopeMode.playlistOnly));
+    expect((await library.playlists()).single.id, 'pl');
+    expect(await c.read(reviewRepositoryProvider).card('w-1'), isNotNull);
+    expect(
+      (await DriftStudyPreferencesRepository(db).load()).scopeMode,
+      StudyScopeMode.playlistOnly,
+    );
   });
 
   group('dictionary slot', () {

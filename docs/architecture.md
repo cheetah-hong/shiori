@@ -10,18 +10,18 @@
 ```
 nihongo-app/
 ├── packages/core/          순수 Dart (Flutter 의존 없음)
-│   ├── lib/src/models/     OcrScan, CapturedEntry, CaptureDraft, Textbook·TextbookDay·Word, ReviewCard·ReviewLog
-│   ├── lib/src/ports/      포트 10개 (아래 블록 지도)
+│   ├── lib/src/models/     OcrScan, CapturedEntry, CaptureDraft, Word·Playlist·PlaylistEntry, ReviewCard·ReviewLog·CardScope, StudyPreferences
+│   ├── lib/src/ports/      포트 11개 (아래 블록 지도)
 │   ├── lib/src/extract/    단어 추출기(배치에 기대지 않음, docs/extraction.md)와 검토 초안 만들기(page_draft.dart)
 │   ├── lib/src/capture/    검토 화면의 편집(후보 고르기, 조각 붙이기, 고치기), 녹화 판독 블록, 문자 분류
 │   ├── lib/src/study/      라이트너 4단계 스케줄러, 세션 빌더, 세션, 학습 일 경계, StudyService
-│   ├── lib/src/library/    LibraryService (검토 초안 저장, 교재 › DAY 보기)
+│   ├── lib/src/library/    LibraryService (재생목록 만들기·이름·순서·삭제, 검토 초안을 재생목록에 추가, 빼기·되돌리기)
 │   ├── lib/src/storage/    InMemory 저장소 (테스트용 블록, 트랜잭션 포함)
 │   ├── lib/src/eval/       채점기 (lib/eval.dart로만 공개, 앱은 쓰지 않음)
 │   ├── test/               단위·회귀 테스트, fixtures/synthetic/ (합성 단어장 쪽 판독 기록·정답), fixtures/synthetic_mlkit/ (같은 단어의 ML Kit형 판독),
 │   │                       fixtures/synthetic_general/ (배치가 다른 합성 쪽)
 │   └── tool/eval_extract.dart   점수표 출력 (표제어 기준)
-├── packages/storage_drift/ 순수 Dart, SQLite 저장 블록 (drift): 테이블, 저장소 두 개, 스키마 덤프 drift_schemas/ (v1~v3), 마이그레이션 단계
+├── packages/storage_drift/ 순수 Dart, SQLite 저장 블록 (drift): 테이블, 저장소 세 개(라이브러리·학습 기록·설정), 스키마 덤프 drift_schemas/ (v1~v4), v3 이하 파일 비우기
 ├── packages/dict_jmdict/   순수 Dart, JMdict SQLite 조회(표기 여러 개를 한 번에, core를 모름). 테스트 DB test/fixtures/mini_jmdict.sql
 ├── packages/jmdict_block/  순수 Dart, 사전 블록: dict_jmdict를 core `Lexicon` 포트에 맞춘 어댑터.
 │                           tool/eval_extract_dict.dart (실제 JMdict·한국어 뜻 사전 점수표)
@@ -31,7 +31,7 @@ nihongo-app/
 │   ├── lib/app/theme.dart  디자인 토큰 (기획 페이지 팔레트)
 │   ├── lib/app/data.dart   화면이 같이 쓰는 읽기 모델 (저장·답변 뒤 새로고침)
 │   ├── lib/adapters/       기기 블록: OCR 채널, image_picker, 개발용 샘플, 사전 asset 풀기(bundled_dictionary.dart)
-│   ├── lib/features/       home · capture(등록·검토) · library(교재) · study(학습) · about(정보: 사전 출처·라이선스)
+│   ├── lib/features/       home · capture(등록·검토) · playlists(재생목록 고르기·화면·편집) · study(학습·범위 고르기) · settings(설정) · about(정보: 사전 출처·라이선스)
 │   ├── ios/Runner/OcrChannel.swift                         Apple Vision 채널 (회전 판별)
 │   ├── android/app/src/main/kotlin/.../OcrChannel.kt       ML Kit 채널 (조각 단위, 회전),
 │   │                                                       OcrGeometry.kt (순수 로직)
@@ -67,13 +67,14 @@ nihongo-app/
 | `Lexicon` (`lookup(forms)`: 표기 여러 개 → 읽기·품사·빈도) | `JmdictLexiconAdapter` (`packages/jmdict_block`, JMdict full-lean SQLite, CC BY-SA 4.0), 테스트·합성 세트는 `InMemoryLexicon`. 사전 asset이 없거나 열지 못하면 `EmptyLexicon`. 모든 쪽을 단어 추출기(+한국어 뜻 사전)로 읽음(`docs/extraction.md`; 가로줄 틀 경로는 2026-11-06에 걷어냄, 같은 문서 9절) | `lexiconProvider` (열기: `bundledDictionaryProvider`) → `generalExtractorProvider` | 데이터 정기 갱신 자동화 |
 | `KoreanGlossary` (`lookup(headword, readings:)` → 뜻 묶음 `KoreanSense`, `sources` 출처·판; 거꾸로 찾기 `KoreanReverseGlossary`) | `KrdictGlossary` (`packages/krdict_block`, 한국어기초사전 일본어 대역어 역색인 SQLite, CC BY-SA 2.0 KR, `app/assets/dict/ko-glossary.*`, docs/dictionary.md 11절). 추출기가 짝짓기 근거, 사진에 뜻이 없는 사전 낱말의 1순위 뜻("추정"), 못 읽은 표제어 되살리기에 씀. asset이 없으면 `EmptyKoreanGlossary` | `koreanGlossaryProvider` (열기: `bundledGlossaryProvider`) | 위키낱말사전(같은 DB), 기기 번역 |
 | `ImageSource` | `ImagePickerSource` (카메라·앨범, 판독 뒤 임시 파일 `discard`) | `imageSourceProvider` | 문서 스캐너(cunning_document_scanner), 굽은 페이지 펴기 |
-| `LibraryRepository` | `DriftLibraryRepository` (SQLite, `packages/storage_drift`). 테스트: `InMemoryLibraryRepository`. 홈 교재 목록은 `textbookStats()`(교재별 단어 수·DAY를 한 번에) | `libraryRepositoryProvider` (DB: `appDatabaseProvider`) | 백업·동기화 |
-| `HiddenWordRepository` (「이미 알아요」 숨기기·되살리기, `hiddenWords()`) | 서재 블록이 함께 구현(`DriftLibraryRepository`는 `words.hidden_at`, 스키마 v3). `words()`는 숨긴 단어도 돌려주고 `Word.isHidden`으로 구분, 학습 세션·오늘 학습 수에서 빠짐 (verification.md 16절) | (없음: `StudyService`·`LibraryService`가 서재 블록에서 꺼냄) | 백업·동기화 |
-| `ReviewRepository` | `DriftReviewRepository` (같은 DB 파일). 테스트: `InMemoryReviewRepository` | `reviewRepositoryProvider` | 백업·동기화 |
+| `LibraryRepository` (단어는 라이브러리에 한 번 `Word.key`, 재생목록이 가리킴) | `DriftLibraryRepository` (SQLite, `packages/storage_drift`). 테스트: `InMemoryLibraryRepository`. 홈 재생목록은 `playlistStats()`(목록별 단어 수·숨김 수·마지막 추가를 한 번에) | `libraryRepositoryProvider` (DB: `appDatabaseProvider`) | 백업·동기화 |
+| `HiddenWordRepository` (「이미 알아요」 숨기기·되살리기, `hiddenWords()`) | 서재 블록이 함께 구현(`words.hidden_at`). 숨김은 단어 단위라 모든 재생목록에서 숨겨짐. `words()`는 숨긴 단어도 돌려주고 `Word.isHidden`으로 구분, 학습 세션·오늘 학습 수에서 빠짐 (verification.md 16·21절) | (없음: `StudyService`·`LibraryService`가 서재 블록에서 꺼냄) | 백업·동기화 |
+| `ReviewRepository` (카드·기록은 `CardScope`별: 지금은 공유 `''`만, 재생목록마다 따로 `p:<id>`는 칸만) | `DriftReviewRepository` (같은 DB 파일). 테스트: `InMemoryReviewRepository` | `reviewRepositoryProvider` | 백업·동기화 |
+| `StudyPreferencesRepository` (설정: 학습 기록 모드·학습 범위 모드) | `DriftStudyPreferencesRepository` (`settings` 키-값 표). 테스트: `InMemoryStudyPreferencesRepository` | `studyPreferencesRepositoryProvider` → `studyPreferencesProvider` | 백업·동기화 |
 | `ReviewScheduler` | `LeitnerFourStepScheduler` (30분·3일·7일·21일) | `reviewSchedulerProvider` | FSRS |
 | `Clock` | `SystemClock` (테스트: `FixedClock`) | `clockProvider` | |
 | `Speech` (선택) | `SilentSpeech` (발음 버튼 숨김) | `speechProvider` | flutter_tts, 클라우드 음성 |
-| 설정값 | `StudySettings` (간격, 하루 시작 04시, 세션 10장) | `studySettingsProvider` | 설정 화면 |
+| 설정값 | `StudySettings` (간격, 하루 시작 04시, 세션 10장, 상수) | `studySettingsProvider` | 설정 화면 |
 | `CrashReporter` / `CrashLog` (앱, `lib/app/crash_reporting.dart`) | `FileCrashLog` (앱 지원 폴더의 텍스트 파일, 64KiB, 전송 없음). `main.dart`의 `installCrashHandlers`가 전역 오류 처리기에 연결 | `crashLogProvider` | 충돌 보고 서비스(5.3절) |
 
 조립만 하는 provider(교체 대상 아님): `generalExtractorProvider`, `libraryServiceProvider`, `studyServiceProvider`.
@@ -107,15 +108,22 @@ runApp(ProviderScope(
                                                              ▼
                                          pageDraft → CaptureDraft (사진 속 순서, 칸별 출처·신뢰도·근거 조각, 짝 없는 조각, 건너뛴 단어)
                                                              ▼
-                                         검토 화면(후보 고르기·조각 붙이기·고치기·제외·교재 선택) → LibraryService.saveDraft
-                                                             ▼                    (단어 id = 교재id:w저장시각-쪽안순번, 번호·DAY·쪽 없음)
-                                         StudyService: 복습할 카드 먼저 + 새 단어로 채운 세션
+                                         검토 화면(후보 고르기·조각 붙이기·고치기·제외) → 「단어 N개 추가」 → 재생목록 고르기 → LibraryService.addDraft
+                                                             ▼                    (같은 단어 = 표제어 wordKey 하나: 새 단어만 넣고, 있는 단어는 연결만)
+                                         StudyService(전체 / 재생목록 하나): 복습할 카드 먼저 + 새 단어로 채운 세션
                                                              ▼
                                          알고있음 / 다시 학습 → ReviewScheduler → ReviewRepository
 ```
 
-- 이미 라이브러리에 있는 표제어(모든 교재, 숨긴 단어 포함)는 건너뛰고 그 수를 검토 화면 요약에 보입니다.
-- 앞 버전이 저장한 단어(번호·DAY·쪽이 있는 것)는 그대로 읽히고 서재에서 DAY별로 묶여 보입니다. 새로 저장하는 단어에는 번호·DAY·쪽이 없습니다(2026-11-06, verification.md 20절).
+- 숨긴 단어(이미 알아요)의 표제어만 추출에서 건너뛰고 그 수를 검토 요약에 보입니다. 라이브러리에 이미 있는 다른 단어는 검토에 그대로 나오고 「이미 라이브러리에 있음 · 저장된 뜻 유지」로 표시됩니다. 추가할 때 그 목록에 이미 있으면 「이미 있음」, 다른 목록에만 있으면 저장된 단어를 연결합니다(내용·학습 기록 그대로).
+- 교재·DAY는 없습니다(2026-11-06, verification.md 21절). 묶음은 학습자가 재생목록으로 만듭니다. 학습 기록은 단어 하나에 하나이고 재생목록끼리 공유합니다. 어느 목록에도 없게 된 단어는 라이브러리에 남지만 보이지 않고 학습에도 나오지 않으며, 다시 추가하면 기록이 이어집니다.
+
+### 재생목록과 설정 확장 지점
+
+- 저장 스키마 v4: `words`(`key` 유일), `playlists`, `playlist_words`(PK = 목록+단어, 목록 안 순서·추가한 때), `review_cards`·`review_logs`(`scope` 칸), `settings`(키-값). v3 이하 파일은 옮기지 않고 비운 뒤 v4로 시작합니다(트랜잭션 하나, 실패하면 옛 파일 그대로, 「다시 불러오기」가 새 연결로 다시 시도).
+- 설정 화면은 `학습 기록`(재생목록끼리 공유 / 재생목록마다 따로 — 준비 중)과 `학습 범위`(전체 복습 + 재생목록 골라 학습 / 항상 재생목록 하나씩 — 준비 중)를 보입니다. 값은 둘 다 저장되지만 지금은 기본만 동작합니다.
+- 「재생목록마다 따로」를 만들 때 고칠 곳: `StudyService.cardScopeFor`(목록 범위면 `CardScope.playlist(id)`), `AllWords`의 단어 구성(목록·단어 쌍), 목록 삭제 때 그 scope 카드 지우기, 모드 전환 때 카드 복사·합치기. 「이미 알아요」 숨김은 단어 단위 그대로 둡니다.
+- 「항상 재생목록 하나씩」을 만들 때 고칠 곳: 홈의 학습 시작 버튼(`StudyPreferences.scopeMode`를 보고 전체 버튼 대신 범위 시트).
 
 ### 학습 규칙
 

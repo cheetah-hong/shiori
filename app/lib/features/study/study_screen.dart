@@ -11,9 +11,10 @@ import 'package:shiori_core/shiori_core.dart';
 /// 학습: one card at a time. 다시 학습 sends it to the back, 알고있음 schedules it,
 /// 이미 알아요 hides the word (with 되돌리기 right after).
 class StudyScreen extends ConsumerStatefulWidget {
-  const StudyScreen({super.key, this.textbookId});
+  const StudyScreen({super.key, this.scope = const AllWords()});
 
-  final String? textbookId;
+  /// What to study: every playlist (전체) or one.
+  final StudyScope scope;
 
   @override
   ConsumerState<StudyScreen> createState() => _StudyScreenState();
@@ -27,7 +28,7 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
   String? _failure;
 
   StudyController get _controller =>
-      ref.read(studyControllerProvider(widget.textbookId).notifier);
+      ref.read(studyControllerProvider(widget.scope).notifier);
 
   Future<void> _hide() => _guard(HideLabels.hideFailed, () async {
     final item = await _controller.hide();
@@ -81,8 +82,8 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final textbookId = widget.textbookId;
-    final state = ref.watch(studyControllerProvider(textbookId));
+    final scope = widget.scope;
+    final state = ref.watch(studyControllerProvider(scope));
     final hidden = _hidden;
     final failure = _failure;
     return Scaffold(
@@ -105,14 +106,13 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
                 ),
                 AsyncData(value: final s) => _Session(
                   session: s,
-                  textbookId: textbookId,
+                  scope: scope,
                   onAnswer: _answer,
                   onHide: _hide,
                 ),
                 AsyncError(:final error) => _Failure(
                   message: '$error',
-                  onRetry: () =>
-                      ref.invalidate(studyControllerProvider(textbookId)),
+                  onRetry: () => ref.invalidate(studyControllerProvider(scope)),
                 ),
                 _ => const Center(child: CircularProgressIndicator()),
               },
@@ -185,13 +185,13 @@ class _Notice extends StatelessWidget {
 class _Session extends ConsumerWidget {
   const _Session({
     required this.session,
-    required this.textbookId,
+    required this.scope,
     required this.onAnswer,
     required this.onHide,
   });
 
   final StudySession session;
-  final String? textbookId;
+  final StudyScope scope;
   final ValueChanged<Answer> onAnswer;
   final VoidCallback onHide;
 
@@ -200,7 +200,7 @@ class _Session extends ConsumerWidget {
     final t = context.tokens;
     final item = session.current;
     if (item == null) return const SizedBox.shrink();
-    final controller = ref.read(studyControllerProvider(textbookId).notifier);
+    final controller = ref.read(studyControllerProvider(scope).notifier);
     final speech = ref.watch(speechProvider);
     final preview = intervalLabel(controller.previewKnown(item));
     final duration = Motion.of(context, Motion.card);

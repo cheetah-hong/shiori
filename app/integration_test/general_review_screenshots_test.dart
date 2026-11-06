@@ -43,7 +43,7 @@ void main() {
         child: const ShioriApp(),
       ),
     );
-    await waitFor(tester, find.text('먼저 교재 페이지를 등록해 주세요'));
+    await waitFor(tester, find.text('먼저 페이지를 등록해 주세요'));
     // The dictionaries unpack in the background (a page waits for them).
     await tester.tap(find.byTooltip('정보'));
     await tester.pumpAndSettle();
@@ -77,9 +77,14 @@ void main() {
     await tester.drag(find.byType(Scrollable).first, const Offset(0, -200));
     await shot(tester, '31_review_general_tray');
 
-    await tester.tap(find.textContaining(RegExp(r'^단어 \d+개 저장$')));
+    await tester.tap(find.textContaining(RegExp(r'^단어 \d+개 추가$')));
     await tester.pumpAndSettle();
-    await waitFor(tester, find.textContaining('저장했어요'));
+    // A fresh database has no playlist yet: the new-playlist form is already
+    // open with 내 단어장 filled in.
+    await waitFor(tester, find.text('만들고 추가'));
+    await tester.tap(find.text('만들고 추가'));
+    await tester.pumpAndSettle();
+    await waitFor(tester, find.textContaining('에 단어'));
     await shot(tester, '33_home_after_general_save');
   });
 }

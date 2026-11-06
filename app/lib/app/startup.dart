@@ -2,6 +2,7 @@
 library;
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/misc.dart';
@@ -15,20 +16,31 @@ import 'package:shiori_storage_drift/shiori_storage_drift.dart';
 /// without a database.
 const databaseOpenTimeout = Duration(seconds: 10);
 
-/// The override that plugs the opened database into [appDatabaseProvider].
+/// The override that plugs the database file into [appDatabaseProvider].
+///
+/// The file is found once ([locate], within [timeout]). Each time the
+/// provider is built it [open]s a new connection and closes it when it is
+/// rebuilt: invalidating [appDatabaseProvider] (the screens' 「다시
+/// 불러오기」) tries again on a fresh connection, which is what a failed
+/// migration needs (a connection keeps its open error).
 ///
 /// Never throws: if the folder cannot be found or created, the error is
 /// logged and the provider rethrows it, so the screens show their load error
 /// state instead of the app never starting.
 Future<Override> appDatabaseOverride({
-  Future<ShioriDatabase> Function() open = openAppDatabase,
+  Future<File> Function() locate = appDatabaseFile,
+  ShioriDatabase Function(File file) open = ShioriDatabase.file,
   Duration timeout = databaseOpenTimeout,
 }) async {
   try {
-    final database = await open().timeout(timeout);
-    return appDatabaseProvider.overrideWithValue(database);
+    final file = await locate().timeout(timeout);
+    return appDatabaseProvider.overrideWith((ref) {
+      final database = open(file);
+      ref.onDispose(() => unawaited(database.close()));
+      return database;
+    });
   } on Object catch (error, stack) {
-    debugPrint('[shiori] could not open the database: $error\n$stack');
+    debugPrint('[shiori] could not find the database folder: $error\n$stack');
     return appDatabaseProvider.overrideWith(
       (ref) => Error.throwWithStackTrace(error, stack),
     );

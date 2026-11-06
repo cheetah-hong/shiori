@@ -17,7 +17,7 @@ final class WordNotFoundException implements Exception {
 ///
 /// The hidden state lives with the word (`Word.hiddenAt`), so
 /// `LibraryRepository.words` keeps returning hidden words and tells them
-/// apart by that field. Hiding never touches the word's review card or log:
+/// apart by that field. Hiding is per word, whatever playlists hold it. Hiding never touches the word's review card or log:
 /// a word shown again goes on from the state it had.
 ///
 /// Kept apart from `LibraryRepository` so that a library block can be
@@ -35,6 +35,8 @@ abstract interface class HiddenWordRepository {
   /// nothing) when an id is unknown.
   Future<void> unhideWords(Iterable<String> wordIds);
 
-  /// The hidden words only, in the order of `LibraryRepository.words`.
-  Future<List<Word>> hiddenWords({String? textbookId});
+  /// The hidden words of playlist [playlistId] in its order, or (null)
+  /// every hidden word in the library, also ones in no playlist (hiding is
+  /// per word: the word capture leaves them all out).
+  Future<List<Word>> hiddenWords({String? playlistId});
 }

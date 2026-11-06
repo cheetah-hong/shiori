@@ -53,7 +53,7 @@ void main() {
         child: const ShioriApp(),
       ),
     );
-    await waitFor(tester, find.text('먼저 교재 페이지를 등록해 주세요'));
+    await waitFor(tester, find.text('먼저 페이지를 등록해 주세요'));
     await shot(tester, '01_home_empty');
 
     // Entry-layout page with examples (layout B).
@@ -62,7 +62,11 @@ void main() {
     await tapText(tester, 'DAY 20 여행·교통');
     expect(find.text('검토'), findsOneWidget);
     await shot(tester, '03_review_examples');
-    await tapText(tester, '단어 6개 저장');
+    await tapText(tester, '단어 6개 추가');
+    // A fresh database has no playlist yet: the new-playlist form is already
+    // open with 내 단어장 filled in.
+    await waitFor(tester, find.text('만들고 추가'));
+    await tapText(tester, '만들고 추가');
     await shot(tester, '04_home_after_save');
 
     // Study: covered card, revealed card, retry, then finish.
@@ -93,14 +97,19 @@ void main() {
     await shot(tester, '11_entry_editor');
     await tapText(tester, '고치기', last: true);
     await shot(tester, '12_review_fixed');
-    await tester.tap(find.textContaining('개 저장').last);
+    await tester.tap(find.textContaining('개 추가').last);
     await tester.pumpAndSettle();
+    // 내 단어장 already exists: pick its row (the one on top; the home tile
+    // underneath shares its name).
+    await waitFor(tester, find.text('내 단어장').last);
+    await tapText(tester, '내 단어장', last: true);
     await shot(tester, '13_home_two_pages');
 
-    // Library: textbook › DAY › words with memory levels.
-    await tapText(tester, 'JLPT 단어장');
+    // Library: playlist words with memory levels.
+    await tapText(tester, '내 단어장');
     await shot(tester, '14_textbook_days');
-    await tester.scrollUntilVisible(find.text('DAY 20  여행·교통'), 400);
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -400));
+    await tester.pumpAndSettle();
     await shot(tester, '15_textbook_memory_levels');
   });
 }

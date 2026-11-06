@@ -30,6 +30,7 @@ final class TestBlocks {
 
   final LibraryRepository library;
   final reviews = InMemoryReviewRepository();
+  final preferences = InMemoryStudyPreferencesRepository();
   FixedClock clock = FixedClock(testNow);
 
   /// Block behind "샘플 페이지로 해 보기"; tests may swap it before pumping.
@@ -52,23 +53,21 @@ final class TestBlocks {
     clockProvider.overrideWith((ref) => clock),
     libraryRepositoryProvider.overrideWithValue(library),
     reviewRepositoryProvider.overrideWithValue(reviews),
+    studyPreferencesRepositoryProvider.overrideWithValue(preferences),
     devSamplesEnabledProvider.overrideWithValue(devSamples),
     sampleRecognizerProvider.overrideWithValue(sampleRecognizer),
     bundledDictionaryProvider.overrideWith((ref) async => dictionary),
     bundledGlossaryProvider.overrideWith((ref) async => glossary),
   ];
 
-  /// Saves the words of a sample page as an earlier app version did: the
-  /// printed words of its answer sheet, numbered, on the page's DAY. The
-  /// library and study screens still show such words (docs/verification.md,
-  /// 20); pages captured now are saved without number, DAY or page.
-  Future<Textbook> seedPage(String fixture, {String title = 'JLPT 단어장'}) async {
+  /// Adds the printed words of a sample page's answer sheet to playlist
+  /// [name] (made when missing), in the page's order, as if captured.
+  Future<Playlist> seedPage(String fixture, {String name = 'JLPT 단어장'}) async {
     final service = LibraryService(library: library, clock: clock);
-    final existing = await library.textbooks();
-    final textbook = existing.isNotEmpty
-        ? existing.first
-        : await service.createTextbook(title);
-    final page = _samplePages[fixture]!;
+    final existing = [
+      for (final p in await library.playlists())
+        if (p.name == name) p,
+    ];
     final answers =
         (jsonDecode(File(syntheticAnswers).readAsStringSync()) as Map)['pages']
             as List;
@@ -78,40 +77,29 @@ final class TestBlocks {
                 )['vocab']!
                 as List)
             .cast<Map<String, Object?>>();
-    await library.saveDay(
-      TextbookDay(textbookId: textbook.id, number: page.day, title: page.title),
+    final result = await service.addDraft(
+      CaptureDraft(
+        entries: [
+          for (final v in vocab)
+            CapturedEntry(
+              headword: v['headword']! as String,
+              readings: [for (final r in v['readings']! as List) r as String],
+              pos: null,
+              meaning: v['meaning']! as String,
+            ),
+        ],
+      ),
+      to: existing.isEmpty
+          ? NewPlaylist(name)
+          : ExistingPlaylist(existing.single.id),
     );
-    await library.saveWords([
-      for (final (i, v) in vocab.indexed)
-        Word(
-          id: '${textbook.id}:${(page.firstNo + i).toString().padLeft(4, '0')}',
-          textbookId: textbook.id,
-          day: page.day,
-          no: (page.firstNo + i).toString().padLeft(4, '0'),
-          headword: v['headword']! as String,
-          readings: [for (final r in v['readings']! as List) r as String],
-          meaning: v['meaning']! as String,
-          page: page.page,
-          createdAt: clock.now(),
-        ),
-    ]);
-    return textbook;
+    return result.playlist;
   }
 }
 
 /// The answer sheet of the synthetic word-book pages (core's copy).
 const syntheticAnswers =
     '../packages/core/test/fixtures/synthetic/ground_truth.json';
-
-/// DAY, its title, the page and the first word number of each sample page,
-/// as the pages print them.
-const Map<String, ({int day, String title, int page, int firstNo})>
-_samplePages = {
-  's010': (day: 1, title: '자연, 몸', page: 10, firstNo: 1),
-  's011': (day: 1, title: '자연, 몸', page: 11, firstNo: 13),
-  's140': (day: 20, title: '여행·교통', page: 140, firstNo: 1211),
-  's147': (day: 21, title: '쇼핑', page: 147, firstNo: 1271),
-};
 
 /// Providers do not retry in tests, so a failure shows at once.
 Duration? _noRetry(int retryCount, Object error) => null;

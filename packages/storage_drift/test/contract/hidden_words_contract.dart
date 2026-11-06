@@ -25,17 +25,11 @@ void hiddenWordsContract(
 
     setUp(() async {
       storage = await open();
-      await lib().saveTextbook(_book('tb'));
-      await lib().saveTextbook(
-        _book('tb2', at: _t0.add(const Duration(days: 1))),
-      );
-      await lib().saveWords([
-        _word('a', day: 1, no: '0001'),
-        _word('b', day: 1, no: '0002'),
-        _word('c', day: 2, no: '0003'),
-        _word('d'),
-        _word('e', tb: 'tb2', day: 1, no: '0001'),
-      ]);
+      await lib().savePlaylist(_list('tb', 0));
+      await lib().savePlaylist(_list('tb2', 1));
+      await lib().insertWords([for (final id in 'abcde'.split('')) _word(id)]);
+      await lib().addToPlaylist('tb', ['a', 'b', 'c', 'd'], at: _t0);
+      await lib().addToPlaylist('tb2', ['e'], at: _t0);
     });
     tearDown(() => storage.close());
 
@@ -51,14 +45,11 @@ void hiddenWordsContract(
 final _t0 = DateTime(2026, 11, 5, 9, 30, 15, 123, 456);
 final _hideAt = DateTime(2026, 11, 5, 22, 10, 0, 0, 7);
 
-Textbook _book(String id, {DateTime? at}) =>
-    Textbook(id: id, title: '단어장', createdAt: at ?? _t0);
+Playlist _list(String id, int position) =>
+    Playlist(id: id, name: id, createdAt: _t0, position: position);
 
-Word _word(String id, {String tb = 'tb', int? day, String? no}) => Word(
+Word _word(String id) => Word(
   id: id,
-  textbookId: tb,
-  day: day,
-  no: no,
   headword: '語$id',
   readings: const ['ご'],
   meaning: '말 $id',
@@ -110,7 +101,7 @@ void _hideAndShow(
       final b = await lib().word('b');
       expect(b?.isHidden, isFalse);
       expect(b?.hiddenAt, isNull);
-      expect(b, _word('b', day: 1, no: '0002'));
+      expect(b, _word('b'));
     });
 
     test('hiding twice is the same as hiding once', () async {
@@ -126,7 +117,7 @@ void _hideAndShow(
 
     test('showing a word that is not hidden changes nothing', () async {
       await hid().unhideWords(['a']);
-      expect(await lib().word('a'), _word('a', day: 1, no: '0001'));
+      expect(await lib().word('a'), _word('a'));
     });
 
     test('no ids: nothing happens', () async {
@@ -156,7 +147,7 @@ void _hideAndShow(
 
     test('many words at once', () async {
       final ids = [for (var i = 0; i < 1200; i++) 'm$i'];
-      await lib().saveWords([for (final id in ids) _word(id)]);
+      await lib().insertWords([for (final id in ids) _word(id)]);
       await hid().hideWords(ids, at: _hideAt);
       expect((await hid().hiddenWords()).length, 1200);
       await hid().unhideWords(ids);
@@ -182,47 +173,44 @@ void _reads(
           {for (final w in words) w.id: w.isHidden},
           {'a': false, 'b': true, 'c': false, 'd': false, 'e': true},
         );
-        expect(
-          (await lib().words(textbookId: 'tb', day: 1)).map((w) => w.isHidden),
-          [false, true],
-        );
+        expect((await lib().words(playlistId: 'tb2')).map((w) => w.isHidden), [
+          true,
+        ]);
       },
     );
 
     test('hiddenWords() returns only hidden words, in words() order', () async {
       await hid().hideWords(['e', 'd', 'a'], at: _hideAt);
       expect(await _ids(hid().hiddenWords()), ['a', 'd', 'e']);
-      expect(await _ids(hid().hiddenWords(textbookId: 'tb')), ['a', 'd']);
-      expect(await _ids(hid().hiddenWords(textbookId: 'tb2')), ['e']);
-      expect(await hid().hiddenWords(textbookId: 'none'), isEmpty);
+      expect(await _ids(hid().hiddenWords(playlistId: 'tb')), ['a', 'd']);
+      expect(await _ids(hid().hiddenWords(playlistId: 'tb2')), ['e']);
+      expect(await hid().hiddenWords(playlistId: 'none'), isEmpty);
       final hidden = await hid().hiddenWords();
       expect(hidden.every((w) => w.hiddenAt == _hideAt), isTrue);
       expect(() => hidden.clear(), throwsUnsupportedError);
     });
 
-    test('saving a hidden word again keeps it hidden', () async {
+    test('a hidden word in no playlist is still a hidden word', () async {
       await hid().hideWords(['b'], at: _hideAt);
-      final edited = Word(
-        id: 'b',
-        textbookId: 'tb',
-        day: 1,
-        no: '0002',
-        headword: '語b',
-        readings: const ['ご'],
-        meaning: '말 b (고침)',
-        createdAt: _t0,
-      );
-      await lib().saveWords([edited]);
-      final b = await lib().word('b');
-      expect(b?.meaning, '말 b (고침)');
-      expect(b?.hiddenAt, _hideAt);
+      await lib().removeFromPlaylist('tb', ['b']);
+      expect(await _ids(hid().hiddenWords()), ['b']);
+      expect(await hid().hiddenWords(playlistId: 'tb'), isEmpty);
+      expect(await _ids(lib().words()), ['a', 'c', 'd', 'e']);
     });
 
-    test('saveWords never hides: a new word is stored shown', () async {
-      await lib().saveWords([_word('n').withHiddenAt(_hideAt)]);
+    test(
+      'hiding is per word: hidden in every playlist that holds it',
+      () async {
+        await lib().addToPlaylist('tb2', ['a'], at: _t0);
+        await hid().hideWords(['a'], at: _hideAt);
+        expect(await _ids(hid().hiddenWords(playlistId: 'tb')), ['a']);
+        expect(await _ids(hid().hiddenWords(playlistId: 'tb2')), ['a']);
+      },
+    );
+
+    test('insertWords never hides: a new word is stored shown', () async {
+      await lib().insertWords([_word('n').withHiddenAt(_hideAt)]);
       expect((await lib().word('n'))?.isHidden, isFalse);
-      await lib().saveWords([_word('a').withHiddenAt(_hideAt)]);
-      expect((await lib().word('a'))?.isHidden, isFalse);
     });
 
     test('a hide inside a failed transaction is undone', () async {
@@ -245,30 +233,29 @@ void _stats(
   LibraryRepository Function() lib,
   HiddenWordRepository Function() hid,
 ) {
-  group('textbook stats', () {
+  group('playlist stats', () {
     test('counts every word and says how many are hidden', () async {
       await hid().hideWords(['a', 'c', 'd'], at: _hideAt);
-      final stats = await lib().textbookStats();
-      expect(stats.map((s) => s.textbook.id), ['tb', 'tb2']);
+      final stats = await lib().playlistStats();
+      expect(stats.map((s) => s.playlist.id), ['tb', 'tb2']);
       expect(stats.map((s) => s.wordCount), [4, 1]);
       expect(stats.map((s) => s.hiddenCount), [3, 0]);
       expect(stats.map((s) => s.shownCount), [1, 1]);
-      expect(stats.first.days, [1, 2], reason: 'day 2 holds only hidden words');
     });
 
     test('agrees with words() and hiddenWords()', () async {
       await hid().hideWords(['b', 'e'], at: _hideAt);
-      for (final s in await lib().textbookStats()) {
-        final id = s.textbook.id;
-        expect(s.wordCount, (await lib().words(textbookId: id)).length);
-        expect(s.hiddenCount, (await hid().hiddenWords(textbookId: id)).length);
+      for (final s in await lib().playlistStats()) {
+        final id = s.playlist.id;
+        expect(s.wordCount, (await lib().words(playlistId: id)).length);
+        expect(s.hiddenCount, (await hid().hiddenWords(playlistId: id)).length);
       }
     });
 
     test('showing again brings the count back', () async {
       await hid().hideWords(['a'], at: _hideAt);
       await hid().unhideWords(['a']);
-      expect((await lib().textbookStats()).map((s) => s.hiddenCount), [0, 0]);
+      expect((await lib().playlistStats()).map((s) => s.hiddenCount), [0, 0]);
     });
   });
 }
@@ -349,7 +336,7 @@ void _study(
         (1, 1, 5),
       );
       expect(summary.hiddenCount, 2);
-      final tb = await study().summary(textbookId: 'tb');
+      final tb = await study().summary(scope: const PlaylistOnly('tb'));
       expect((tb.dueCount, tb.newCount, tb.hiddenCount), (1, 1, 1));
     });
 
@@ -373,13 +360,12 @@ void _study(
       expect(await rev().cards(), cards);
     });
 
-    test('saving another page keeps a word hidden', () async {
+    test('adding the word to another playlist keeps it hidden', () async {
       final library = LibraryService(
         library: lib(),
         clock: FixedClock(now),
         hidden: hid(),
       );
-      final tb = await library.createTextbook('단어장');
       CaptureDraft page(List<String> heads) => CaptureDraft(
         entries: [
           for (final head in heads)
@@ -391,16 +377,15 @@ void _study(
             ),
         ],
       );
-      await library.saveDraft(page(['雨', '雪']), textbookId: tb.id);
-      final rain = (await lib().words(
-        textbookId: tb.id,
-      )).firstWhere((w) => w.headword == '雨');
+      await library.addDraft(page(['雨', '雪']), to: const NewPlaylist('단어장'));
+      final rain = (await lib().wordsByKey(['雨']))['雨']!;
       await library.hideWords([rain.id]);
-      final again = await library.saveDraft(page(['風']), textbookId: tb.id);
-      expect(again.saved, 1);
-      final words = {
-        for (final w in await lib().words(textbookId: tb.id)) w.headword: w,
-      };
+      final again = await library.addDraft(
+        page(['雨', '風']),
+        to: const NewPlaylist('다른'),
+      );
+      expect((again.added, again.linked), (1, 1));
+      final words = await lib().wordsByKey(['雨', '雪', '風']);
       expect(words['雨']?.hiddenAt, now);
       expect(words['雪']?.isHidden, isFalse);
       expect(words['風']?.isHidden, isFalse);

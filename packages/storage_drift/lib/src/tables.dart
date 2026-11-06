@@ -7,36 +7,14 @@ import 'package:shiori_storage_drift/src/converters.dart';
 
 // ------------------------------------------------------------- content
 
-@DataClassName('TextbookRow')
-class Textbooks extends Table {
-  TextColumn get id => text()();
-  TextColumn get title => text()();
-  IntColumn get createdAt => integer().map(const UtcMicrosConverter())();
-  TextColumn get templateId => text().nullable()();
-
-  @override
-  Set<Column<Object>> get primaryKey => {id};
-}
-
-@DataClassName('DayRow')
-class TextbookDays extends Table {
-  TextColumn get textbookId => text().references(Textbooks, #id)();
-  IntColumn get number => integer()();
-  TextColumn get title => text()();
-
-  @override
-  Set<Column<Object>> get primaryKey => {textbookId, number};
-}
-
-/// Words, keyed `textbookId:number`. Saving a page again updates rows in
-/// place (`ON CONFLICT DO UPDATE`), never deletes them.
+/// Library words, each once: [key] (`Word.key`, from the headword) is
+/// unique. Playlists point at them through [PlaylistWords].
 @DataClassName('WordRow')
-@TableIndex(name: 'words_by_place', columns: {#textbookId, #day, #no})
 class Words extends Table {
   TextColumn get id => text()();
-  TextColumn get textbookId => text().references(Textbooks, #id)();
-  IntColumn get day => integer().nullable()();
-  TextColumn get no => text().nullable()();
+
+  /// What makes two words the same word (`wordKey`). Unique.
+  TextColumn get key => text().unique()();
   TextColumn get headword => text()();
 
   /// JSON array: always read and written with the word, never queried alone.
@@ -47,11 +25,10 @@ class Words extends Table {
   /// The example sentence and its translation come as a pair or not at all.
   TextColumn get exampleJa => text().nullable()();
   TextColumn get exampleKo => text().nullable()();
-  IntColumn get page => integer().nullable()();
   IntColumn get createdAt => integer().map(const UtcMicrosConverter())();
 
-  /// When the learner hid the word (이미 알아요); null while it is shown (v3).
-  /// Not content: saving the word again keeps it.
+  /// When the learner hid the word (이미 알아요); null while it is shown.
+  /// Per word: hidden in every playlist that holds it.
   IntColumn get hiddenAt =>
       integer().nullable().map(const UtcMicrosConverter())();
 
@@ -64,13 +41,48 @@ class Words extends Table {
   ];
 }
 
+/// The learner's playlists, in [position] order on the home screen.
+@DataClassName('PlaylistRow')
+class Playlists extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  IntColumn get createdAt => integer().map(const UtcMicrosConverter())();
+  IntColumn get position => integer()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+
+  @override
+  List<String> get customConstraints => ['CHECK (length(trim(name)) > 0)'];
+}
+
+/// Which words a playlist holds, in [position] order. The primary key keeps
+/// a word once per playlist. Deleting a playlist removes its rows; the
+/// words stay.
+@DataClassName('PlaylistWordRow')
+@TableIndex(name: 'playlist_words_by_word', columns: {#wordId})
+class PlaylistWords extends Table {
+  TextColumn get playlistId =>
+      text().references(Playlists, #id, onDelete: KeyAction.cascade)();
+  TextColumn get wordId =>
+      text().references(Words, #id, onDelete: KeyAction.cascade)();
+  IntColumn get position => integer()();
+  IntColumn get addedAt => integer().map(const UtcMicrosConverter())();
+
+  @override
+  Set<Column<Object>> get primaryKey => {playlistId, wordId};
+}
+
 // ------------------------------------------------------------- learning state
 
-/// One card per word. No foreign key to [Words]: the learning state belongs
-/// to the word id and must outlive any rewrite of the word's content.
+/// One card per word and scope: `''` is the record every playlist shares
+/// (the only scope used now), `p:<playlist id>` a word's record inside one
+/// playlist (`CardScope`). A card goes with its word.
 @DataClassName('CardRow')
 class ReviewCards extends Table {
-  TextColumn get wordId => text()();
+  TextColumn get scope => text()();
+  TextColumn get wordId =>
+      text().references(Words, #id, onDelete: KeyAction.cascade)();
   IntColumn get level => integer()();
   IntColumn get dueAt => integer().map(const UtcMicrosConverter())();
   IntColumn get lastReviewedAt => integer().map(const UtcMicrosConverter())();
@@ -78,18 +90,33 @@ class ReviewCards extends Table {
   IntColumn get lapseCount => integer()();
 
   @override
-  Set<Column<Object>> get primaryKey => {wordId};
+  Set<Column<Object>> get primaryKey => {scope, wordId};
 }
 
-/// Every button press, in the order it was made (append only).
+/// Every button press, in the order it was made (append only). History: no
+/// foreign key, a press stays when its word goes.
 @DataClassName('LogRow')
 @TableIndex(name: 'review_logs_by_time', columns: {#at})
 class ReviewLogs extends Table {
   IntColumn get id => integer().autoIncrement()();
+  TextColumn get scope => text()();
   TextColumn get wordId => text()();
   TextColumn get answer => textEnum<Answer>()();
   IntColumn get at => integer().map(const UtcMicrosConverter())();
   IntColumn get levelBefore => integer()();
   IntColumn get levelAfter => integer()();
   IntColumn get retriesInSession => integer()();
+}
+
+// ------------------------------------------------------------- settings
+
+/// The learner's options as key → value (`StudyPreferences`), so a new
+/// option needs no new schema.
+@DataClassName('SettingRow')
+class Settings extends Table {
+  TextColumn get key => text()();
+  TextColumn get value => text()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {key};
 }
