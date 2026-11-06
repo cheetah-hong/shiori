@@ -9,7 +9,8 @@
 /// (source: dictionary). With two or more the kana stays and they are
 /// offered as candidates. Without a trace nothing changes: a kana headword
 /// printed as such (`たくさん`) stays kana even when its meaning has one
-/// kanji spelling.
+/// kanji spelling. What OCR read of the checkbox column beside it (boxes,
+/// one maybe ticked: `ロロレ`) is no trace.
 library;
 
 import 'package:shiori_core/src/extract/extracted_word.dart';
@@ -163,10 +164,55 @@ List<Fragment> _traces(Fragment kana, List<Fragment> fragments, Set<int> used) {
           !used.contains(f.id) &&
           sameRow(f) &&
           leftOf(f) &&
-          _isTrace(f))
+          _isTrace(f) &&
+          !_checkboxMarks(f, fragments))
         f,
   ];
 }
+
+/// Glyphs OCR reads for an empty checkbox.
+final Set<int> _boxGlyphs = '□■☐☑☒口ロコ'.runes.toSet();
+
+/// Glyphs OCR reads for the tick in a checked box (`ロロレ`).
+final Set<int> _tickGlyphs = 'レﾚ✓✔√VvノL'.runes.toSet();
+
+/// Rows of boxes that line up with [f] before it is a checkbox column.
+const int minColumnBoxes = 2;
+
+/// [f] is what OCR read of a checkbox column, not of a headword: box glyphs
+/// (also one taken off its front) with a tick at most, whose left edge is
+/// within a glyph of at least [minColumnBoxes] other Japanese fragments of
+/// box glyphs only.
+bool _checkboxMarks(Fragment f, List<Fragment> fragments) {
+  if (f.text.isEmpty) return false;
+  final prefix = f.droppedPrefix ?? '';
+  final glyphs = (prefix + f.text).replaceAll(_space, '').runes.toList();
+  final boxes = glyphs.where(_boxGlyphs.contains).length;
+  if (boxes == 0 ||
+      glyphs.length - boxes > 1 ||
+      glyphs.any((c) => !_boxGlyphs.contains(c) && !_tickGlyphs.contains(c))) {
+    return false;
+  }
+  final glyph = f.width / f.text.length;
+  final left = f.x - glyph * prefix.length;
+  bool boxesOnly(Fragment o) {
+    final t = o.text.replaceAll(_space, '');
+    return t.isNotEmpty && t.runes.every(_boxGlyphs.contains);
+  }
+
+  return fragments
+          .where(
+            (o) =>
+                o.id != f.id &&
+                o.pass == OcrPass.japanese &&
+                (o.x - left).abs() <= glyph &&
+                boxesOnly(o),
+          )
+          .length >=
+      minColumnBoxes;
+}
+
+final RegExp _space = RegExp(r'\s');
 
 /// Something on [kana]'s row to its left says OCR lost a headword there:
 /// a trace of a failed read (as for reading back), or marks (Latin

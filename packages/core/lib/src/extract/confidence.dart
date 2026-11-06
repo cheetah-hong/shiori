@@ -1,7 +1,10 @@
 /// The pairing confidence after the words are merged (docs/extraction.md,
 /// 4.4): a reading or a meaning backed by one content signal and a strong
 /// placement becomes high when nothing nearby could take the same pair, and
-/// any high pairing is lowered when its cell or headword is doubtful.
+/// any high pairing is lowered when its cell or headword is doubtful. A
+/// fragment read at the engine's lowest confidence keeps its pair below high
+/// unless the word's other pair backs it (a dictionary reading beside a
+/// meaning its kanji or Korean gloss names).
 ///
 /// Only the confidence (and the note saying why) changes: which fragment
 /// pairs with which headword, and every value, stay as the extractor made
@@ -89,6 +92,10 @@ Future<List<ExtractedWord>> settleConfidence(
   return [for (final w in words) await settle.word(w)];
 }
 
+/// A pair as the rules left it, and whether the only thing that kept it
+/// below high is a fragment read at the engine's lowest confidence.
+typedef _Judged = (PairLink?, bool);
+
 final class _Settle {
   _Settle(this.fragments, this.items, this.glosses, this.used)
     : byId = {for (final i in items) i.fragment.id: i};
@@ -108,34 +115,78 @@ final class _Settle {
         ? null
         : byId[w.headwordFragmentId];
     final fromPage = w.headwordSource == FieldSource.photo;
-    final reading = _reading(w, item, fromPage);
-    final meaning = await _meaning(w, item, fromPage);
+    final (reading, meaning) = _backed(
+      item,
+      _reading(w, item, fromPage),
+      await _meaning(w, item, fromPage),
+    );
     return identical(reading, w.readingLink) &&
             identical(meaning, w.meaningLink)
         ? w
         : w.copyWith(readingLink: reading, meaningLink: meaning);
   }
 
-  PairLink? _reading(ExtractedWord w, ConfidenceItem? item, bool fromPage) {
+  /// Pairs held back only by a fragment read at the engine's lowest
+  /// confidence are high when the word's other pair backs them
+  /// ([_corroborated]); else they stay as they are, with [faintReadNote].
+  (PairLink?, PairLink?) _backed(
+    ConfidenceItem? item,
+    _Judged reading,
+    _Judged meaning,
+  ) {
+    final (r, rFaint) = reading;
+    final (m, mFaint) = meaning;
+    if (!rFaint && !mFaint) return (r, m);
+    PairLink? raised(PairLink? l, bool faint) =>
+        faint && l != null ? _raised(l) : l;
+    final (highR, highM) = (raised(r, rFaint), raised(m, mFaint));
+    if (_corroborated(item, highR, highM)) return (highR, highM);
+    PairLink? noted(PairLink? l, bool faint) =>
+        faint && l != null ? _note(l, faintReadNote) : l;
+    return (noted(r, rFaint), noted(m, mFaint));
+  }
+
+  /// A dictionary reading beside a meaning the headword's kanji or Korean
+  /// gloss names, both high and the meaning in its strong placement: two
+  /// content signals of their own, which a faint misread rarely meets.
+  bool _corroborated(
+    ConfidenceItem? item,
+    PairLink? reading,
+    PairLink? meaning,
+  ) {
+    if (item == null || reading == null || meaning == null) return false;
+    if (reading.confidence != PairConfidence.high ||
+        meaning.confidence != PairConfidence.high ||
+        !reading.signals.contains(PairSignal.dictionaryPair) ||
+        !meaning.signals.any(
+          (s) => s == PairSignal.hanjaReading || s == PairSignal.koreanGloss,
+        )) {
+      return false;
+    }
+    final id = meaning.fragmentId;
+    if (id == null || id < 0 || id >= fragments.length) return false;
+    return meaningPlacement(item.fragment, fragments[id], slope: item.slope) >=
+        strongMeaningPlacement;
+  }
+
+  _Judged _reading(ExtractedWord w, ConfidenceItem? item, bool fromPage) {
     final link = w.readingLink;
-    if (link == null) return null;
-    if (!fromPage) return _atMost(link, '사전이 준 표제어');
+    if (link == null) return (null, false);
+    if (!fromPage) return (_atMost(link, '사전이 준 표제어'), false);
     if (link.confidence == PairConfidence.high ||
         item == null ||
         w.readingSource != FieldSource.photo ||
         link.signals.contains(PairSignal.inlineNotation) ||
         !link.signals.contains(PairSignal.dictionaryPair)) {
-      return link;
+      return (link, false);
     }
     final id = link.fragmentId;
-    if (id == null || id < 0 || id >= fragments.length) return link;
+    if (id == null || id < 0 || id >= fragments.length) return (link, false);
     final head = item.fragment;
     final kana = fragments[id];
     if (!item.readsAs(kana.text) ||
-        readingPlacement(head, kana) < strongReadingPlacement ||
-        atLowestConfidence(head.confidence) ||
-        atLowestConfidence(kana.confidence)) {
-      return link;
+        readingPlacement(head, kana) < strongReadingPlacement) {
+      return (link, false);
     }
     final rival = items.any(
       (o) =>
@@ -145,7 +196,7 @@ final class _Settle {
           readingPlacement(o.fragment, kana) > 0 &&
           o.readsAs(kana.text),
     );
-    if (rival) return _note(link, '이웃 표제어도 같은 읽기');
+    if (rival) return (_note(link, '이웃 표제어도 같은 읽기'), false);
     final another = fragments.any(
       (f) =>
           f.kind == FragmentKind.kana &&
@@ -154,42 +205,46 @@ final class _Settle {
           readingPlacement(head, f) > 0 &&
           item.readsAs(f.text),
     );
-    if (another) return _note(link, '근처에 다른 읽기');
-    return PairLink(
-      confidence: PairConfidence.high,
-      signals: {...link.signals, PairSignal.position},
-      fragmentId: link.fragmentId,
-    );
+    if (another) return (_note(link, '근처에 다른 읽기'), false);
+    final faint =
+        atLowestConfidence(head.confidence) ||
+        atLowestConfidence(kana.confidence);
+    return (faint ? link : _raised(link), faint);
   }
 
-  Future<PairLink?> _meaning(
+  Future<_Judged> _meaning(
     ExtractedWord w,
     ConfidenceItem? item,
     bool fromPage,
   ) async {
     final link = w.meaningLink;
-    if (link == null) return null;
-    if (!fromPage) return _atMost(link, '사전이 준 표제어');
+    if (link == null) return (null, false);
+    if (!fromPage) return (_atMost(link, '사전이 준 표제어'), false);
     if (_lostHeadword(w)) {
-      return _note(_atMost(link, _lostHeadwordNote), _lostHeadwordNote);
+      return (
+        _note(_atMost(link, _lostHeadwordNote), _lostHeadwordNote),
+        false,
+      );
     }
-    if (w.meaningSource != FieldSource.photo) return link;
+    if (w.meaningSource != FieldSource.photo) return (link, false);
     final id = link.fragmentId;
-    if (id == null || id < 0 || id >= fragments.length) return link;
+    if (id == null || id < 0 || id >= fragments.length) return (link, false);
     final korean = fragments[id];
     if (!plainMeaning(korean.text)) {
-      return _atMost(link, '뜻에 한글이 아닌 글자');
+      return (_atMost(link, '뜻에 한글이 아닌 글자'), false);
     }
     if (w.readings.isEmpty && w.headword.runes.any(isKanji)) {
-      return _atMost(link, '읽기 없음');
+      return (_atMost(link, '읽기 없음'), false);
     }
-    if (link.confidence == PairConfidence.high || item == null) return link;
+    if (link.confidence == PairConfidence.high || item == null) {
+      return (link, false);
+    }
     final content = link.signals
         .where(
           (s) => s == PairSignal.hanjaReading || s == PairSignal.koreanGloss,
         )
         .length;
-    if (content != 1) return link;
+    if (content != 1) return (link, false);
     final head = item.fragment;
     final named =
         link.signals.contains(PairSignal.hanjaReading) ||
@@ -197,10 +252,8 @@ final class _Settle {
     if (!named ||
         meaningPlacement(head, korean, slope: item.slope) <
             strongMeaningPlacement ||
-        korean.height > maxMeaningLines * head.height ||
-        atLowestConfidence(head.confidence) ||
-        atLowestConfidence(korean.confidence)) {
-      return link;
+        korean.height > maxMeaningLines * head.height) {
+      return (link, false);
     }
     final same = fragments.any(
       (f) =>
@@ -210,20 +263,19 @@ final class _Settle {
           _bare(f.text) == _bare(korean.text) &&
           meaningPlacement(head, f, slope: item.slope) > 0,
     );
-    if (same) return _note(link, '이웃에 같은 뜻');
+    if (same) return (_note(link, '이웃에 같은 뜻'), false);
     for (final o in items) {
       if (o.fragment.id == head.id || o.headword == item.headword) continue;
       if (meaningPlacement(o.fragment, korean, slope: o.slope) <= 0) continue;
       if (o.namesMeaning(korean.text) ||
           glossNames(await _glossesOf(o), korean.text, prefix: true)) {
-        return _note(link, '이웃 표제어도 같은 뜻');
+        return (_note(link, '이웃 표제어도 같은 뜻'), false);
       }
     }
-    return PairLink(
-      confidence: PairConfidence.high,
-      signals: {...link.signals, PairSignal.position},
-      fragmentId: link.fragmentId,
-    );
+    final faint =
+        atLowestConfidence(head.confidence) ||
+        atLowestConfidence(korean.confidence);
+    return (faint ? link : _raised(link), faint);
   }
 
   /// A kana word left where OCR lost the headword (its kanji were not read
@@ -254,6 +306,18 @@ final class _Settle {
 }
 
 const String _lostHeadwordNote = '표제어 자리 판독 실패';
+
+/// Why a pair stays below high when the only thing against it is a
+/// fragment read at the engine's lowest confidence and the word's other
+/// pair does not back it.
+const String faintReadNote = '글자가 흐릿하게 읽힘';
+
+/// [link] made high, with a placement signal.
+PairLink _raised(PairLink link) => PairLink(
+  confidence: PairConfidence.high,
+  signals: {...link.signals, PairSignal.position},
+  fragmentId: link.fragmentId,
+);
 
 /// [link] lowered to medium when it was high, with [why].
 PairLink _atMost(PairLink link, String why) =>
