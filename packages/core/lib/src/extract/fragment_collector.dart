@@ -1,7 +1,8 @@
 /// Step 1 of the word extractor: both OCR passes → fragments.
 ///
 /// 1. Every line of both passes is cut into runs of one script
-///    ([scriptRuns]), placed by character widths.
+///    ([scriptRuns]), placed by character widths. The Korean pass's word
+///    boxes of one line are one line first ([joinTouchingKorean]).
 /// 2. Japanese is taken from the Japanese pass and Korean from the Korean
 ///    pass; the other pass's reading of the same place is dropped. Where a
 ///    Japanese and a Korean run claim one place, the more confident wins
@@ -17,6 +18,7 @@ library;
 import 'package:shiori_core/src/capture/text/word_list_marks.dart';
 import 'package:shiori_core/src/extract/fragment.dart';
 import 'package:shiori_core/src/extract/script_runs.dart';
+import 'package:shiori_core/src/extract/touching_boxes.dart';
 import 'package:shiori_core/src/models/ocr.dart';
 
 /// Lines starting this close to the photo's edge are the facing page.
@@ -47,7 +49,7 @@ const double furiganaSize = 0.8;
 List<Fragment> collectFragments(OcrScan scan) {
   final runs = [
     ..._runsOf(scan.japanese.lines, OcrPass.japanese),
-    ..._runsOf(scan.korean.lines, OcrPass.korean),
+    ..._runsOf(joinTouchingKorean(scan.korean.lines), OcrPass.korean),
   ];
   final kept = _resolve(runs);
   final pieces = <_Piece>[];
@@ -98,11 +100,15 @@ List<_Run> _runsOf(List<OcrLine> lines, OcrPass pass) => [
 /// Runs of a line. In the Korean pass, Japanese between Korean on both sides
 /// is part of the Korean text (`(뒤에 する가 붙어) 예약하다`), and a
 /// Japanese run is also cut at spaces outside brackets in the Japanese pass
-/// (`祖父[そふ] 圭仕`: the second part is that pass reading Korean).
+/// (`祖父[そふ] 圭仕`: the second part is that pass reading Korean). In a
+/// related-word note (`*緑茶：녹차`) the Japanese pass's run is also
+/// cut at the colon (what follows is that pass reading the note's Korean)
+/// and loses the star.
 List<ScriptRun> _lineRuns(String text, OcrPass pass) {
   final runs = scriptRuns(text);
   if (pass == OcrPass.japanese) {
-    return [for (final r in runs) ..._splitAtSpaces(r)];
+    final note = _relatedNote.hasMatch(text);
+    return [for (final r in runs) ..._splitAtSpaces(r, atColon: note)];
   }
   // Korean pass: whatever lies between two Korean runs (its reading of
   // Japanese, Latin garbage) is part of the Korean text.
@@ -173,12 +179,26 @@ String _between(String text, ScriptRun a, ScriptRun b) {
 
 final RegExp _spaceOutsideBrackets = RegExp(r'\s+(?![^(（\[［【「]*[)）\]］】」])');
 
-List<ScriptRun> _splitAtSpaces(ScriptRun r) {
-  if (r.script != Script.japanese || !r.text.contains(RegExp(r'\s'))) {
+/// A related-word note: a star, then the word and its meaning after a colon.
+final RegExp _relatedNote = RegExp(r'^\s*[*＊].*：');
+
+final RegExp _spaceOrColon = RegExp(r'\s+(?![^(（\[［【「]*[)）\]］】」])|：');
+
+final RegExp _leadingStar = RegExp(r'^\s*\*\s*');
+
+List<ScriptRun> _splitAtSpaces(ScriptRun r, {bool atColon = false}) {
+  final colon = atColon && r.text.contains('：');
+  if (r.script != Script.japanese ||
+      (!colon && !r.text.contains(RegExp(r'\s')))) {
     return [r];
   }
-  final parts = r.text.split(_spaceOutsideBrackets);
-  if (parts.length == 1) return [r];
+  final parts = colon
+      ? [
+          for (final p in r.text.split(_spaceOrColon))
+            if (p.isNotEmpty) p,
+        ]
+      : r.text.split(_spaceOutsideBrackets);
+  if (parts.length == 1 && !colon) return [r];
   final total = r.text.runes.fold(0.0, (s, c) => s + charWidth(c));
   final span = r.end - r.start;
   final out = <ScriptRun>[];
@@ -193,7 +213,7 @@ List<ScriptRun> _splitAtSpaces(ScriptRun r) {
     out.add(
       ScriptRun(
         Script.japanese,
-        part,
+        colon && out.isEmpty ? part.replaceFirst(_leadingStar, '') : part,
         r.start + span * before / total,
         r.start + span * (before + width) / total,
       ),

@@ -266,7 +266,8 @@ final class _SenseCache {
   ];
 
   /// The senses for [w]'s meaning cell: its class from the page's badge,
-  /// else from the dictionary; a sentence word's translation names one.
+  /// else from the dictionary; a sentence word's translation names one, a
+  /// negative after it puts a sense used with a negative first.
   Future<List<KoreanSense>> _meaningSenses(
     ExtractedWord w,
     String form,
@@ -279,6 +280,7 @@ final class _SenseCache {
       pos: w.printedPos ?? w.usagePos ?? partOfSpeechOf(w.partsOfSpeech),
     ),
     translation: w.origin == WordOrigin.sentence ? w.example?.ko : null,
+    negated: w.origin == WordOrigin.sentence && w.negated,
   );
 
   /// A dictionary word with no meaning on the page takes the first sense
@@ -304,7 +306,7 @@ final class _SenseCache {
         meaningLink: const PairLink(
           confidence: PairConfidence.medium,
           signals: {PairSignal.koreanGloss},
-          note: 'dictionary meaning',
+          note: '사전 뜻',
         ),
         meaningCandidates: [
           for (final s in found.skip(1).take(maxMeaningCandidates)) s.text,
@@ -580,7 +582,7 @@ final class _Item {
             ? PairConfidence.medium
             : PairConfidence.low,
         signals: const {PairSignal.dictionaryPair},
-        note: close.length == 1 ? null : 'several dictionary readings',
+        note: close.length == 1 ? null : '사전 읽기가 여럿',
       ),
     );
   }
@@ -955,7 +957,7 @@ final class _Page {
           PairSignal.position,
         },
         fragmentId: r.id,
-        note: agrees ? null : 'dictionary has another reading',
+        note: agrees ? null : '사전에는 다른 읽기',
       );
       used.add(r.id);
     }
@@ -1349,6 +1351,7 @@ final class _Page {
             headword: t.base,
             origin: WordOrigin.sentence,
             usagePos: usagePos(t, after(t)),
+            negated: negatedLater(t, path, s.text),
             readings: kana || t.readings.isEmpty
                 ? const []
                 : [t.readings.first],
@@ -1378,10 +1381,14 @@ final class _Page {
 }
 
 /// A word of a sentence the learner would study: not one kana (a stray
-/// glyph or an ending), not a reading printed in brackets (`［がっこう］`).
+/// glyph or an ending; also when it reads as a longer word, like the な of
+/// a word cut at a line's end read as ある's negative), not a reading
+/// printed in brackets (`［がっこう］`).
 bool _isSentenceWord(LatticeToken t, String sentence) {
   final kana = t.surface.runes.every(isKana);
-  if (kana && t.base.runes.length == 1) return false;
+  if (kana && (t.base.runes.length == 1 || t.surface.runes.length == 1)) {
+    return false;
+  }
   if (!kana) return true;
   final runes = sentence.runes.toList();
   final before = t.start > 0 ? runes[t.start - 1] : null;

@@ -320,6 +320,7 @@ ExtractedWord _restored(
     meaningCandidates: w.meaningCandidates,
     printedPos: w.printedPos,
     usagePos: w.usagePos,
+    negated: w.negated,
     meaningRepair: w.meaningRepair,
   );
 }

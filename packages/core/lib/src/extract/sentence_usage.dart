@@ -1,11 +1,12 @@
-/// How a sentence uses its words: the class a word is used as, a counter
-/// after a number, a stem left over next to its dictionary form
-/// (docs/extraction.md 3.3).
+/// How a sentence uses its words: the class a word is used as, a negative
+/// after it, a counter after a number, a stem left over next to its
+/// dictionary form (docs/extraction.md 3.3).
 library;
 
 import 'package:shiori_core/src/extract/deconjugator.dart';
 import 'package:shiori_core/src/extract/extracted_word.dart';
 import 'package:shiori_core/src/extract/lattice.dart';
+import 'package:shiori_core/src/extract/script_runs.dart';
 import 'package:shiori_core/src/models/part_of_speech.dart';
 import 'package:shiori_core/src/ports/lexicon.dart';
 
@@ -46,10 +47,41 @@ PartOfSpeech? usagePos(LatticeToken t, LatticeToken? next) {
   return null;
 }
 
-/// A counter right after a number (`第3課`'s 課): part of the number, not
-/// a word.
+/// Marks that end a clause: a negative after one belongs to another
+/// predicate.
+const String _clauseEnds = '、。，,！？!?';
+
+/// Auxiliaries that negate the predicate before them (行かない, 行かず).
+const Set<String> _negatives = {'ない', 'ず', 'ぬ'};
+
+/// A negative after [t] in its clause of [sentence] ([path], the
+/// sentence's tokens): a token conjugated to a negative (行かなくても), or a
+/// negating auxiliary.
+bool negatedLater(LatticeToken t, List<LatticeToken> path, String sentence) {
+  final runes = sentence.runes.toList();
+  var at = t.end;
+  for (final u in path.where((u) => u.start >= t.end)) {
+    final between = runes.sublist(at, u.start);
+    if (between.any((c) => _clauseEnds.runes.contains(c))) return false;
+    at = u.end;
+    if (u.steps.any((s) => s.contains('negative'))) return true;
+    if (u.known &&
+        _negatives.contains(u.base) &&
+        u.partsOfSpeech.any((c) => c.startsWith('aux') || c == 'adj-i')) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/// A counter right after a number (`第3課`'s 課, `9時`'s 時): part of the
+/// number, not a word. A kanji alone after a number is taken as one, as is
+/// OCR debris glued to a number.
 bool isCounterAfterNumber(LatticeToken t, String sentence) {
-  if (!t.partsOfSpeech.contains('ctr') || t.start == 0) return false;
+  if (t.start == 0) return false;
+  final oneKanji =
+      t.surface.runes.length == 1 && isKanji(t.surface.runes.first);
+  if (!t.partsOfSpeech.contains('ctr') && !oneKanji) return false;
   final c = sentence.runes.elementAt(t.start - 1);
   return (c >= 0x30 && c <= 0x39) || (c >= 0xFF10 && c <= 0xFF19);
 }

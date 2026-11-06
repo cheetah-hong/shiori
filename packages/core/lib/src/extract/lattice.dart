@@ -310,7 +310,9 @@ final class SentenceSegmenter {
   }
 
   /// [path] with every stem read as a noun before a conjugation's ending
-  /// read as the verb or adjective it conjugates ([readStem]).
+  /// read as the verb or adjective it conjugates ([readStem]), and every
+  /// expression entry that is a verb's form read as the verb
+  /// ([readExpression]).
   static List<LatticeToken> _stemsRead(
     List<LatticeToken> path,
     int offset,
@@ -318,9 +320,11 @@ final class SentenceSegmenter {
     List<LexiconEntry> Function(String form) found,
   ) => [
     for (final (i, t) in path.indexed)
-      i + 1 < path.length
-          ? readStem(t, path[i + 1], offset, candidates, found) ?? t
-          : t,
+      (i + 1 < path.length
+              ? readStem(t, path[i + 1], offset, candidates, found)
+              : null) ??
+          readExpression(t, offset, candidates, found) ??
+          t,
   ];
 
   /// Neighbouring unknown characters as one token.
@@ -412,3 +416,57 @@ LatticeToken? readStem(
 /// Verb and い-adjective tags: the words a stem belongs to.
 bool _conjugates(String? tag) =>
     tag != null && (tag.startsWith('v') || tag == 'adj-i');
+
+/// Polite endings of set phrases (頂きます, 構いません, 下さい): left as
+/// the expression they are registered as.
+final RegExp _politeEnding = RegExp(
+  r'(ます|ません|ました|まして|ましょう|です|でした|ください|下さい|なさい)$',
+);
+
+/// [t] as the verb it is a form of, when the dictionary has [t] as an
+/// expression (困った, exp・adj-f) rather than the verb's form: the verb's
+/// reading and classes, [t]'s surface and place. Null for a polite set
+/// phrase ([_politeEnding]), a negative one (構わない), a prenominal
+/// registered only as adj-f (変わった), and a form whose kanji the verb does
+/// not keep (出来れば → する). [candidates] and [found] are the piece's
+/// (offsets from [offset]).
+LatticeToken? readExpression(
+  LatticeToken t,
+  int offset,
+  Map<(int, int), List<Deinflection>> candidates,
+  List<LexiconEntry> Function(String form) found,
+) {
+  final codes = t.partsOfSpeech;
+  if (!t.known || t.steps.isNotEmpty || !codes.contains('exp')) return null;
+  if (!codes.every((c) => c == 'exp' || c == 'adj-f')) return null;
+  final runes = t.surface.runes.toList();
+  final kanji = [
+    for (final c in runes)
+      if (!_isKana(c)) c,
+  ];
+  if (kanji.isEmpty || !_isKana(runes.last)) return null;
+  if (_politeEnding.hasMatch(t.surface)) return null;
+  final ds =
+      candidates[(t.start - offset, t.end - offset)] ?? const <Deinflection>[];
+  for (final l in rankLemmas(ds, {for (final d in ds) d.base: found(d.base)})) {
+    if (!l.conjugated || !(l.deinflection.tag?.startsWith('v') ?? false)) {
+      continue;
+    }
+    if (l.entry.id == t.entry?.id) continue;
+    if (l.steps.any((s) => s.contains('negative'))) continue;
+    final kept = l.base.runes.toSet();
+    if (!kanji.every(kept.contains)) continue;
+    return LatticeToken(
+      surface: t.surface,
+      base: l.base,
+      start: t.start,
+      end: t.end,
+      readings: l.entry.readings,
+      partsOfSpeech: l.entry.partsOfSpeech,
+      steps: l.steps,
+      cost: t.cost,
+      entry: l.entry,
+    );
+  }
+  return null;
+}

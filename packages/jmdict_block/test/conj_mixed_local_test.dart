@@ -100,7 +100,7 @@ List<_Set> get _sets => [
     15,
     15,
     12,
-    3,
+    1,
   ]),
   _Set('curled page, photo', '$_pairs/fx_raw', _curledTruth, 6, [
     15,
@@ -131,13 +131,13 @@ List<_Set> get _sets => [
     15,
     15,
     12,
-    5,
+    2,
   ]),
   _Set('other textbook, scanner app', '$_pairs/fx_vflat_ob', _otherTruth, 6, [
     15,
     15,
     10,
-    4,
+    1,
   ]),
   const _Set(
     'synthetic word-list pages',

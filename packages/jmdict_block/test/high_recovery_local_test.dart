@@ -179,7 +179,7 @@ List<_Set> get _sets => [
     15,
     15,
     12,
-    3,
+    1,
   ]),
   _Set('curled page, photo', '$_pairs/fx_raw', _curledTruth, 6, [
     15,
@@ -210,7 +210,7 @@ List<_Set> get _sets => [
     15,
     15,
     12,
-    5,
+    2,
   ]),
   // The checkbox column no longer passes for a lost headword here: a kana
   // headword stays as printed (found 14 -> 15, extras 6 -> 5).
@@ -219,7 +219,7 @@ List<_Set> get _sets => [
     '$_pairs/fx_vflat_ob',
     _otherTruth,
     6,
-    [15, 15, 10, 4],
+    [15, 15, 10, 1],
     recorded: false,
   ),
   const _Set(

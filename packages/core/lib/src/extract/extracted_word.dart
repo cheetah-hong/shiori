@@ -112,6 +112,7 @@ final class ExtractedWord {
     this.headwordCandidates = const [],
     this.printedPos,
     this.usagePos,
+    this.negated = false,
     this.meaningRepair,
   });
 
@@ -164,6 +165,10 @@ final class ExtractedWord {
   /// when the dictionary gives it several; null otherwise. Next to
   /// [printedPos] when the glossary is asked for the word's senses.
   final PartOfSpeech? usagePos;
+
+  /// A sentence word with a negative after it in its clause (別に行かない):
+  /// its meaning takes the sense used with a negative (meaning_senses.dart).
+  final bool negated;
 
   /// What became of Latin debris in the photo's meaning (latin_debris.dart);
   /// null when the meaning had none.
@@ -228,6 +233,7 @@ final class ExtractedWord {
     ),
     printedPos: printedPos,
     usagePos: usagePos,
+    negated: negated,
     meaningRepair: identical(meaningRepair, _unset)
         ? this.meaningRepair
         : meaningRepair as MeaningRepairKind?,
