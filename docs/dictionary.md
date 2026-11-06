@@ -453,6 +453,8 @@ python3 tools/dict/build_jmdict_db.py --matrix \
 python3 tools/dict/build_app_asset.py --expect-sha256 7f6dc7a4a50411e5a99c35969f28740e174714f04708ea84d50d6bdc09a001ed
 # 배포 전 검사: asset과 판 정보 JSON이 맞는지 (두 사전 모두, 12.2절)
 python3 tools/dict/asset_check.py
+# release 빌드가 돌리는 검사: 위 검사 + JMdict 35일 기한, 실패하면 고치는 명령을 알려 줌 (12.2·12.4절)
+python3 tools/dict/asset_check.py --release
 # 최신판으로 갱신 (조건부 요청 → 빌드 → 정확도 관문 → 채택, 12.1절)
 python3 tools/dict/refresh.py --dry-run
 # 테스트 DB
@@ -470,7 +472,7 @@ python3 tools/dict/build_jmdict_db.py --only tools/dict/test_forms.txt --glosses
 |---|---|
 | `tools/dict/build_jmdict_db.py` | JMdict XML → SQLite(판본 선택, 크기표, 테스트용 SQL 덤프) |
 | `tools/dict/build_app_asset.py` | 앱 asset(full-lean gzip + 판 표시 파일), `--check`. 테스트 `tools/dict/test_build_app_asset.py` |
-| `tools/dict/asset_check.py` | 배포 전 검사(크기·sha256·판 정보 필드·DB 안 meta). 테스트 `tools/dict/test_asset_check.py` |
+| `tools/dict/asset_check.py` | 배포 전 검사(크기·sha256·판 정보 필드·DB 안 meta), release 빌드 검사 `--release`. 테스트 `tools/dict/test_asset_check.py` |
 | `tools/dict/refresh.py` | 정기 갱신(12절). 테스트 `tools/dict/test_refresh.py` |
 | `tools/dict/test_forms.txt` | 테스트 DB에 넣을 JMdict 표기 목록 |
 | `packages/dict_jmdict/lib/` | 패키지(`jmdict_dictionary.dart`, `form_lookup.dart`, `priority.dart`, `models.dart`) |
@@ -606,7 +608,7 @@ python3 -m unittest discover -s tools/dict -p 'test_*.py'
 ## 12. 정기 갱신과 무결성 검사 (2026-11-06)
 
 EDRDG 라이선스 4절은 데이터를 정기적으로 갱신하는 절차를 요구합니다(8절 5). 그 절차를 도구로 만들고,
-빌드 때와 앱 실행 때 asset이 판 정보와 맞는지 확인하는 장치를 더했습니다. 검증 숫자는 `docs/verification.md` 23절입니다.
+빌드 때와 앱 실행 때 asset이 판 정보와 맞는지 확인하는 장치를 더했습니다. 검증 숫자는 `docs/verification.md` 23절, release 빌드 검사는 25절입니다.
 
 ### 12.1 갱신 도구 `tools/dict/refresh.py`
 
@@ -634,7 +636,7 @@ python3 tools/dict/refresh.py [--assets app/assets/dict] [--work tools/dict/.cac
 ### 12.2 배포 전 검사
 
 ```bash
-python3 tools/dict/asset_check.py [--dir app/assets/dict] [--max-age-days N]
+python3 tools/dict/asset_check.py [--dir app/assets/dict] [--max-age-days N | --release]
 python3 tools/dict/build_app_asset.py --check      # JMdict만
 python3 tools/dict/build_ko_glossary.py --check    # 한국어 뜻 사전만
 ```
@@ -642,7 +644,20 @@ python3 tools/dict/build_ko_glossary.py --check    # 한국어 뜻 사전만
 - 판 정보의 필드(공통 `variant`·`built_on`·`gzip_bytes`·`sqlite_bytes`·`sqlite_sha256`, JMdict `source_sha256`·`jmdict_created`·`license`,
   한국어 `sources[]`·`attribution`), gzip 크기, 끝까지 풀리는지, 푼 크기·sha256, DB 안 `meta`가 판 정보와 같은지(원본 sha256·JMdict 날짜, 기초사전 판·판본).
 - 어긋난 것마다 한 줄, 하나라도 있으면 종료 1. `--max-age-days N`(기본 꺼짐)은 `built_on`이 N일보다 오래된 asset을 실패로 봅니다.
-- release 빌드 단계(Gradle·Xcode)에는 아직 묶지 않았습니다. 배포 전에 위 명령을 직접 돌립니다.
+- **release 빌드에 묶여 있습니다.** Android `checkReleaseDictionary`(`preProdReleaseBuild`가 의존)와 iOS Runner 셸 단계
+  「Release checks (flavor, dictionary)」(`Release*` 구성)가 `python3 tools/dict/asset_check.py --release`를 돌리고, 실패하면 빌드를 멈춥니다.
+  debug·profile 빌드는 돌리지 않습니다(개발 흐름과 폰 설치 `--profile`을 막지 않게). 자세한 규칙은 `docs/architecture.md` 5.2절입니다.
+- `--release`는 두 사전이 판 정보와 맞는지 보고, **JMdict만** `built_on`이 `RELEASE_MAX_AGE_DAYS`(35일, `asset_check.py` 한 곳)보다 오래되면 실패로 봅니다.
+  한국어 뜻 사전은 나이를 보지 않습니다(12.4절). `--max-age-days`와 함께 쓸 수 없습니다.
+- 실패하면 어긋난 것마다 한 줄 뒤에 고치는 명령을 찍습니다. 판 정보와 어긋남 → 그 사전의 빌드 명령(`build_app_asset.py` / `build_ko_glossary.py --source <krdict JSON zip>`),
+  JMdict가 오래됨 → `python3 tools/dict/refresh.py`. 어긋남에 `refresh.py`를 안내하지 않는 것은 `refresh.py`가 지금 asset이 검사에 실패하면 바로 멈추기 때문입니다.
+  ```
+  jmdict-full-lean: built_on 2026-09-27 is 40 days old (limit 35)
+  ko-glossary: ok
+  error: The dictionary assets cannot ship in a release (python3 tools/dict/asset_check.py --release).
+    Too old (JMdict, limit 35 days): refresh with: python3 tools/dict/refresh.py
+  ```
+- python3은 PATH에서 찾습니다. 없으면 「python3 is not on PATH; the release dictionary check (tools/dict/asset_check.py) needs it.」로 빌드를 멈춥니다(건너뛰지 않음).
 
 ### 12.3 앱 실행 때 검증
 
@@ -658,7 +673,20 @@ python3 tools/dict/build_ko_glossary.py --check    # 한국어 뜻 사전만
   검토 화면의 단어는 읽을 때 만들어지므로, 사전 없이 읽은 쪽은 다시 시도가 성공해도 그대로입니다. 그때 검토 화면은 「사전을 열었어요. 이 쪽은 사전 없이 읽었으니, 사전으로 읽으려면 페이지를 다시 등록해 주세요」로 바뀝니다.
 - sha256은 `package:crypto`(dart-lang, BSD-3-Clause)로 계산합니다.
 
-### 12.4 「정기」를 돌리는 방식 (결정 남음)
+### 12.4 「정기」를 돌리는 방식 (2026-11-06 결정)
+
+**결정: 안 A.** 매달 로컬에서 `python3 tools/dict/refresh.py`를 직접 돌리고, 달력 알림으로 잊지 않게 합니다. 로컬 예약(B)·원격 CI(C)는 만들지 않습니다.
+빠뜨렸을 때의 안전장치로, release 빌드가 오래된 JMdict를 막습니다(12.2절).
+
+| 사전 | release에서 보는 것 | 이유 |
+|---|---|---|
+| JMdict | 판 정보와 맞는지 + `built_on`이 **35일** 이내 | EDRDG 라이선스가 정기 갱신을 요구합니다(8절 5). 판이 매일 바뀌므로 매달 돌리면 `built_on`이 늘 새로 찍힙니다. 35일 = 한 달 + 며칠의 여유 |
+| 한국어 뜻 사전 | 판 정보와 맞는지만 | 기초사전은 판이 드물게 바뀝니다. 원본이 그대로면 `refresh.py`는 「변화 없음」으로 끝나 `built_on`이 바뀌지 않으므로, 나이로 막으면 매달 같은 원본을 다시 빌드해야 하는 수고만 생깁니다 |
+
+- debug·profile 빌드는 나이도 어긋남도 보지 않습니다(어긋난 asset은 앱이 풀 때 거부합니다, 12.3절).
+- 기한은 `tools/dict/asset_check.py`의 `RELEASE_MAX_AGE_DAYS` 한 곳에서 바꿉니다. Xcode·Gradle은 `--release`만 부릅니다.
+
+검토했던 안:
 
 | 안 | 방식 | 장점 | 단점 |
 |---|---|---|---|
@@ -666,5 +694,4 @@ python3 tools/dict/build_ko_glossary.py --check    # 한국어 뜻 사전만
 | B | 로컬 예약(launchd, 월 1회, `--dry-run`)과 알림 | 잊지 않음 | 그 컴퓨터가 켜져 있어야 함, 채택은 사람이 |
 | C | 원격 CI 예약 | 사람·기계와 무관 | 로컬 기록 세트로 관문 불가, asset 배포 경로를 새로 정해야 함 |
 
-배포 전 검사(12.2)를 release 빌드 단계에 묶을지, `--max-age-days`(예: 35일)로 오래된 사전의 배포를 막을지도 함께 정합니다.
 

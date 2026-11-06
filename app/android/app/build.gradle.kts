@@ -1,4 +1,6 @@
+import java.io.ByteArrayOutputStream
 import java.util.Properties
+import javax.inject.Inject
 
 plugins {
     id("com.android.application")
@@ -117,24 +119,71 @@ tasks.named { it == "preDevReleaseBuild" }.configureEach {
 
 // The dictionary assets are built, not committed: JMdict
 // (tools/dict/build_app_asset.py) and the Korean glossary
-// (tools/dict/build_ko_glossary.py). Debug builds run without them; a release
-// must carry them. A release is signed with the upload key from
-// android/key.properties.
-val dictionaryAssets = listOf(
-    "jmdict-full-lean.sqlite.gz" to "tools/dict/build_app_asset.py",
-    "jmdict-full-lean.edition.json" to "tools/dict/build_app_asset.py",
-    "ko-glossary.sqlite.gz" to "tools/dict/build_ko_glossary.py --source <krdict JSON zip>",
-    "ko-glossary.edition.json" to "tools/dict/build_ko_glossary.py --source <krdict JSON zip>",
-).map { (name, script) -> rootProject.file("../assets/dict/$name") to script }
-tasks.named { it == "preProdReleaseBuild" }.configureEach {
-    doFirst {
-        val missing = dictionaryAssets.filter { (file, _) -> !file.isFile || file.length() == 0L }
+// (tools/dict/build_ko_glossary.py). Debug and profile builds run without them; a
+// release must carry them, matching their editions, with a recent JMdict
+// (tools/dict/asset_check.py --release, which runs python3 from PATH).
+abstract class CheckReleaseDictionary @Inject constructor(
+    private val execOperations: ExecOperations,
+) : DefaultTask() {
+    @get:Internal abstract val assetDir: DirectoryProperty
+    @get:Internal abstract val checkScript: RegularFileProperty
+
+    /** Asset file name -> the command that builds it. */
+    @get:Internal abstract val buildCommands: MapProperty<String, String>
+
+    @TaskAction
+    fun check() {
+        val dir = assetDir.get().asFile
+        val missing = buildCommands.get().filterKeys { name ->
+            val file = dir.resolve(name)
+            !file.isFile || file.length() == 0L
+        }
         if (missing.isNotEmpty()) {
             throw GradleException(
-                "Dictionary asset missing: ${missing.joinToString { "assets/dict/${it.first.name}" }}. " +
-                    "Build it with: ${missing.map { "python3 ${it.second}" }.distinct().joinToString(" and ")}",
+                "Dictionary asset missing: ${missing.keys.joinToString { "assets/dict/$it" }}. " +
+                    "Build it with: ${missing.values.distinct().joinToString(" and ") { "python3 $it" }}",
             )
         }
+        val python = System.getenv("PATH").orEmpty().split(File.pathSeparator)
+            .filter { it.isNotEmpty() }
+            .map { File(it, "python3") }
+            .firstOrNull { it.isFile && it.canExecute() }
+            ?: throw GradleException(
+                "python3 is not on PATH; the release dictionary check " +
+                    "(tools/dict/asset_check.py) needs it. Install Python 3.",
+            )
+        val output = ByteArrayOutputStream()
+        val result = execOperations.exec {
+            commandLine(python.path, checkScript.get().asFile.path, "--release", "--dir", dir.path)
+            standardOutput = output
+            errorOutput = output
+            isIgnoreExitValue = true
+        }
+        val text = output.toString(Charsets.UTF_8).trim()
+        if (result.exitValue != 0) {
+            throw GradleException(text.ifEmpty { "tools/dict/asset_check.py --release failed (exit ${result.exitValue})." })
+        }
+        logger.lifecycle(text)
+    }
+}
+
+val checkReleaseDictionary = tasks.register<CheckReleaseDictionary>("checkReleaseDictionary") {
+    assetDir.set(rootProject.file("../assets/dict"))
+    checkScript.set(rootProject.file("../../tools/dict/asset_check.py"))
+    buildCommands.set(
+        mapOf(
+            "jmdict-full-lean.sqlite.gz" to "tools/dict/build_app_asset.py",
+            "jmdict-full-lean.edition.json" to "tools/dict/build_app_asset.py",
+            "ko-glossary.sqlite.gz" to "tools/dict/build_ko_glossary.py --source <krdict JSON zip>",
+            "ko-glossary.edition.json" to "tools/dict/build_ko_glossary.py --source <krdict JSON zip>",
+        ),
+    )
+}
+
+// A release is signed with the upload key from android/key.properties.
+tasks.named { it == "preProdReleaseBuild" }.configureEach {
+    dependsOn(checkReleaseDictionary)
+    doFirst {
         releaseSigningProblem?.let { problem ->
             throw GradleException(
                 "Release signing: $problem A release is never signed with the debug key. " +

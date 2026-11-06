@@ -178,10 +178,15 @@ runApp(ProviderScope(
 | 검사 | Android (`build.gradle.kts`) | iOS (Runner 셸 단계) |
 |---|---|---|
 | dev flavor의 release | `preDevReleaseBuild`에서 실패 | "Release checks (flavor, dictionary)": `Release-dev`면 실패 |
-| 사전 asset 없음 (`app/assets/dict/`) | `preProdReleaseBuild`에서 실패 | 같은 단계: `Release*`에서 실패 |
+| 사전 asset 없음 (`app/assets/dict/`) | `checkReleaseDictionary`에서 실패 (`preProdReleaseBuild`가 의존) | 같은 단계: `Release*`에서 실패 |
+| 사전 asset이 판 정보와 어긋남, JMdict가 35일보다 오래됨 | 같은 `checkReleaseDictionary`: `python3 tools/dict/asset_check.py --release` | 같은 단계: 같은 명령 |
+| 위 검사를 돌릴 python3이 PATH에 없음 | `checkReleaseDictionary`에서 실패 | 같은 단계: `Release*`에서 실패 |
 | 서명 키 없음·빈 값·keystore 없음 | `preProdReleaseBuild`에서 실패 (5.4절) | (Xcode 서명 단계가 막음) |
 | 결과물에 `dev_samples` | `copyFlutterAssets*Release` 뒤 출력 폴더를 보고 실패 | 마지막 단계 "Release bundle check (no dev samples)": 앱의 `App.framework/flutter_assets`를 보고 실패 |
 
+- 사전 검사(`asset_check.py --release`)는 release에만 겁니다. debug·profile(폰 설치 `flutter run --profile` 포함)은 오래되거나 어긋난 asset이어도 빌드됩니다.
+  실패 메시지는 어긋난 것과 고치는 명령(`python3 tools/dict/refresh.py` 또는 그 사전의 빌드 명령)을 알려 줍니다. 기한과 그 이유는 `docs/dictionary.md` 12.2·12.4절입니다.
+  iOS에서는 flutter가 실패한 단계의 `error:` 줄만 보여 주므로 셸 단계가 검사 출력의 줄마다 `error:`를 붙입니다.
 - 결과물 검사는 flavor 이름과 상관없이 모든 release에 걸립니다. pubspec의 `flavors: [dev]`가 빠지거나 flavor가 늘어도 dev 자료가 배포판에 들어가지 않습니다.
 - Flutter는 이전 빌드의 asset 폴더를 빌드 폴더에서 지우지 않습니다(Android `build/app/intermediates/flutter/<변형>/`, iOS `build/ios/<구성>/`).
   pubspec이 맞는데 결과물 검사가 실패하면 그렇게 남은 파일이니 `flutter clean` 뒤 다시 빌드합니다. 검사는 이런 남은 파일도 막습니다.

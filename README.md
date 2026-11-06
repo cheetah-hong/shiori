@@ -61,7 +61,8 @@ flutter build ipa --flavor prod --release          # App Store용 (서명 팀 �
 flutter build ios --flavor prod --release --no-codesign   # 서명 없이 빌드만 확인
 ```
 
-release 빌드는 dev 샘플이 결과물에 들어 있거나, 사전 asset이 없거나, Android `key.properties`가 없거나 비어 있으면 실패합니다(debug 키로 서명하지 않음).
+release 빌드는 dev 샘플이 결과물에 들어 있거나, 사전 asset이 없거나 판 정보와 어긋나거나, JMdict가 35일보다 오래됐거나(`python3 tools/dict/refresh.py`로 갱신),
+Android `key.properties`가 없거나 비어 있으면 실패합니다(debug 키로 서명하지 않음). 사전 검사에는 python3이 필요합니다.
 앱의 오류는 기기 안에만 기록되고(정보 → 오류 기록), 밖으로 보내지 않습니다.
 
 ## 테스트 데이터

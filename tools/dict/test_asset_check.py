@@ -172,6 +172,99 @@ class AssetCheckTest(unittest.TestCase):
         self.assertEqual(asset_check.check_dir(self.out, max_age_days=45, today=late), [])
 
 
+class ReleaseCheckTest(unittest.TestCase):
+    """--release: what a release build runs. JMdict also has an age limit, the glossary does not."""
+
+    BUILT_ON = dt.date(2026, 11, 5)
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.out = self.tmp / "assets"
+        build_both(self.out, self.tmp, built_on=self.BUILT_ON.isoformat())
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def days_after(self, days: int) -> dt.date:
+        return self.BUILT_ON + dt.timedelta(days=days)
+
+    def edit_edition(self, name: str, change) -> None:
+        path = self.out / name
+        edition = json.loads(path.read_text(encoding="utf-8"))
+        change(edition)
+        path.write_text(json.dumps(edition, ensure_ascii=False), encoding="utf-8")
+
+    def run_main(self, argv: list[str]) -> tuple[int, str]:
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
+            code = asset_check.main(argv)
+        return code, buf.getvalue()
+
+    def test_the_release_limit_is_35_days(self) -> None:
+        self.assertEqual(asset_check.RELEASE_MAX_AGE_DAYS, 35)
+
+    def test_jmdict_35_days_old_passes_and_36_days_old_fails(self) -> None:
+        self.assertEqual(asset_check.release_problems(self.out, today=self.days_after(35)), [])
+        problems = asset_check.release_problems(self.out, today=self.days_after(36))
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn("jmdict-full-lean", problems[0])
+        self.assertIn("built_on", problems[0])
+        self.assertNotIn("\n", problems[0])
+
+    def test_the_same_boundary_holds_for_max_age_days_35(self) -> None:
+        self.assertEqual(asset_check.check_dir(self.out, max_age_days=35, today=self.days_after(35)), [])
+        self.assertTrue(asset_check.check_dir(self.out, max_age_days=35, today=self.days_after(36)))
+
+    def test_an_old_glossary_passes_a_release(self) -> None:
+        late = self.days_after(36)
+        self.edit_edition(JM_EDITION, lambda e: e.update(built_on=late.isoformat()))
+        self.assertEqual(asset_check.release_problems(self.out, today=late), [])
+        # --max-age-days still covers every asset.
+        self.assertTrue(any("ko-glossary" in p for p in
+                            asset_check.check_dir(self.out, max_age_days=35, today=late)))
+
+    def test_a_glossary_not_matching_its_edition_fails_a_release(self) -> None:
+        self.edit_edition(KO_EDITION, lambda e: e.update(sqlite_sha256="0" * 64))
+        problems = asset_check.release_problems(self.out, today=self.BUILT_ON)
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn("ko-glossary", problems[0])
+        self.assertIn("sqlite_sha256", problems[0])
+
+    def test_main_release_uses_today_and_the_35_day_limit(self) -> None:
+        today = dt.date.today()
+        for days, want in ((35, 0), (36, 1)):
+            with self.subTest(days=days):
+                built_on = (today - dt.timedelta(days=days)).isoformat()
+                self.edit_edition(JM_EDITION, lambda e: e.update(built_on=built_on))
+                code, out = self.run_main(["--release", "--dir", str(self.out)])
+                self.assertEqual(code, want, out)
+
+    def test_a_too_old_jmdict_tells_how_to_refresh(self) -> None:
+        old = (dt.date.today() - dt.timedelta(days=40)).isoformat()
+        self.edit_edition(JM_EDITION, lambda e: e.update(built_on=old))
+        code, out = self.run_main(["--release", "--dir", str(self.out)])
+        self.assertEqual(code, 1)
+        self.assertIn("error:", out)
+        self.assertIn("python3 tools/dict/refresh.py", out)
+        self.assertNotIn("build_ko_glossary.py", out)
+
+    def test_a_mismatch_tells_how_to_rebuild_that_asset(self) -> None:
+        today = dt.date.today().isoformat()
+        self.edit_edition(JM_EDITION, lambda e: e.update(built_on=today))
+        self.edit_edition(KO_EDITION, lambda e: e.update(gzip_bytes=e["gzip_bytes"] + 1))
+        code, out = self.run_main(["--release", "--dir", str(self.out)])
+        self.assertEqual(code, 1)
+        self.assertIn("error:", out)
+        self.assertIn("python3 tools/dict/build_ko_glossary.py", out)
+        self.assertNotIn("build_app_asset.py", out)
+        self.assertNotIn("refresh.py", out)
+
+    def test_release_and_max_age_days_do_not_go_together(self) -> None:
+        with self.assertRaises(SystemExit):
+            self.run_main(["--release", "--max-age-days", "10", "--dir", str(self.out)])
+
+
 class BuilderCheckFlagTest(unittest.TestCase):
     """build_app_asset.py --check and build_ko_glossary.py --check check their own asset."""
 

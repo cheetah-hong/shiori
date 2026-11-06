@@ -25,7 +25,7 @@
 | core 커버리지 | `dart run coverage:test_with_coverage -o coverage` | 줄 커버리지 **93.2%** (3665/3932줄, 21절 뒤) |
 | 사전 패키지 | `cd packages/dict_jmdict && dart analyze && dart test` | 문제 없음, **11개 통과** (20절: 짝 확인·후보 질의를 걷어내 `lookupForms`·열기만) |
 | 사전 블록 (어댑터) | `cd packages/jmdict_block && dart analyze && dart test` | 문제 없음, **6개 통과**, 로컬 세트 9개 건너뜀 (지정 시 15개 통과, 20절) |
-| 사전 asset 스크립트 | `python3 -m unittest discover -s tools/dict -p 'test_*.py'` | **33개 통과** (네트워크 없음) |
+| 사전 asset 스크립트 | `python3 -m unittest discover -s tools/dict -p 'test_*.py'` | **82개 통과** (네트워크 없음, 25절 뒤) |
 | 한국어 뜻 사전 블록 | `cd packages/krdict_block && dart analyze && dart test` | 문제 없음, **80개 통과** (지어낸 견본 30항목, 14절. 역조회 6개, 18절) |
 | 저장 패키지 | `cd packages/storage_drift && dart analyze && dart test` | 문제 없음, **154개 통과** (21절: 스키마 v4, 재생목록·설정 계약, v1~v3 비우기) |
 | app 정적 분석 | `cd app && flutter analyze` | 문제 없음 |
@@ -44,7 +44,7 @@
 | 범용 추출 점수표 (JMdict) | `cd packages/jmdict_block && dart run tool/eval_extract_dict.dart --db <JMdict SQLite> [--glossary <한국어 뜻 사전 SQLite>]` | 13절·20절 비교표 |
 | 로컬 세트 (실제 사전) | `cd packages/jmdict_block && SHIORI_PRIVATE_DIR=<로컬 폴더> dart test` (사전: `SHIORI_JMDICT_DB`·`SHIORI_KO_GLOSSARY_DB`, 없으면 앱 asset을 풀어 씀) | 15개 통과 (20절. 경로 선택 로컬 테스트는 걷어냄) |
 | 높음 수·높음인데 틀림 (17·20절) | `cd packages/core && dart test test/extract/high_confidence_counts_test.dart`, 로컬: `cd packages/jmdict_block && SHIORI_PRIVATE_DIR=<로컬 폴더> dart test test/high_confidence_local_test.dart` | 합성 범용 33·단어장 25·ML Kit형 13, 교재 Vision 20·ML Kit 37·휜 쪽 6·다른 교재 8, 높음인데 틀림 전 세트 0 (하한은 20절) |
-| 배포 빌드 (prod) | `flutter build apk --flavor prod --release`, `flutter build appbundle --flavor prod --release`, `flutter build ios --flavor prod --release --no-codesign` | 사전 asset과 서명 키(Android)가 있으면 **성공**, 결과물에 `dev_samples` 없음. 사전 asset이나 `key.properties`가 없으면 **분명한 메시지로 실패** (11절) |
+| 배포 빌드 (prod) | `flutter build apk --flavor prod --release`, `flutter build appbundle --flavor prod --release`, `flutter build ios --flavor prod --release --no-codesign` | 사전 asset과 서명 키(Android)가 있으면 **성공**, 결과물에 `dev_samples` 없음. 사전 asset이나 `key.properties`가 없으면 **분명한 메시지로 실패** (11절). 사전이 판 정보와 어긋나거나 JMdict가 35일보다 오래돼도 실패 (25절) |
 | 배포 빌드 차단 (dev) | `flutter build apk --flavor dev --release`, `flutter build ios --flavor dev --release --no-codesign` (`--flavor` 없는 release도 dev) | **의도대로 실패**: dev flavor는 개발 샘플을 묶으므로 release로 빌드하지 않음 (11절) |
 | 연구 도구 테스트 | `python3 -m unittest test_tools` (`research/scan/tools`, `research/ocr-android/tools`) | 27개, 16개 통과 |
 | ML Kit 판독 앱 | `cd research/ocr-android/mlkit_probe && ./gradlew :app:testDebugUnitTest` | 5개 통과 |
@@ -1691,3 +1691,39 @@ python3 tools/dict/build_ko_glossary.py --source <krdict_json.zip> \
     --expect-sha256 c8f9ffbf7e9be1f1ec86fa29e4160a75eee8044fc081c27788dadf3ceb66d34e --built-on 2026-11-06
 python3 tools/dict/asset_check.py
 ```
+
+
+## 25. release 빌드의 사전 검사 (2026-11-06)
+
+release 빌드가 `python3 tools/dict/asset_check.py --release`를 돌려, 판 정보와 어긋난 사전과 35일보다 오래된 JMdict의 배포를 막습니다.
+debug·profile은 막지 않습니다. 규칙과 이유는 `docs/dictionary.md` 12.2·12.4절, 빌드 단계는 `docs/architecture.md` 5.2절입니다.
+
+| 무엇 | 어디 | 내용 |
+|---|---|---|
+| 검사 | `tools/dict/asset_check.py --release` | 두 사전의 판 정보 대조 + JMdict `built_on` 기한 `RELEASE_MAX_AGE_DAYS`(35, 한 곳). 실패하면 고치는 명령 |
+| Android | `app/android/app/build.gradle.kts` `checkReleaseDictionary` | 파일 있음 → PATH의 python3 → 검사. `preProdReleaseBuild`가 의존 |
+| iOS | Runner 셸 단계 「Release checks (flavor, dictionary)」 | `Release*`에서 같은 순서. 실패 출력의 줄마다 `error:` |
+
+### 25.1 확인 (Apple Silicon 데스크톱, 서명 없음)
+
+「오래됨」은 asset 복사본의 판 정보 두 개 모두 `built_on`을 40일 전(2026-09-27)으로 바꾼 것입니다. 확인 뒤 되돌렸습니다.
+
+| 빌드 | asset | 결과 |
+|---|---|---|
+| `flutter build ios --flavor prod --release --no-codesign` | 지금 판(JMdict·한국어 뜻 2026-11-06 빌드) | 성공 |
+| 같은 명령 | 오래됨 | 실패: `jmdict-full-lean: built_on 2026-09-27 is 40 days old (limit 35)` · `Too old (JMdict, limit 35 days): refresh with: python3 tools/dict/refresh.py` (한국어 뜻 사전은 40일이어도 ok) |
+| `flutter build ios --flavor prod --profile --no-codesign` | 오래됨 | 성공 |
+| `flutter build apk --flavor prod --release` | 지금 판 | `checkReleaseDictionary` 통과(두 사전 ok) 뒤 `preProdReleaseBuild`의 서명 검사에서 멈춤(이 컴퓨터에 `key.properties` 없음) |
+| 같은 명령 | 오래됨 | `checkReleaseDictionary`에서 실패, 위와 같은 메시지 |
+| `./gradlew :app:checkReleaseDictionary` (PATH에 python3 없음) | 지금 판 | 실패: `python3 is not on PATH; the release dictionary check (tools/dict/asset_check.py) needs it.` |
+| iOS 셸 단계 (PATH에 python3 없음, 단계만 실행) | 지금 판 | 같은 뜻의 `error:`로 실패 |
+| `./gradlew :app:<작업> --dry-run` | | `assembleProdRelease`·`bundleProdRelease`에 `checkReleaseDictionary` 있음. `assembleProdDebug`·`assembleProdProfile`·`assembleDevDebug`·`assembleDevProfile`에는 없음 |
+
+### 25.2 테스트
+
+| 파일 | 내용 |
+|---|---|
+| `tools/dict/test_asset_check.py` (+9) | 기한 35일, JMdict 35일 통과·36일 실패(날짜 주입, `--max-age-days 35`도 같은 경계), 한국어 뜻 사전은 36일이어도 통과·어긋나면 실패, `--release`가 오늘 기준 35·36일, 오래됨 → `refresh.py` 안내, 어긋남 → 그 사전의 빌드 명령만 안내, `--release`와 `--max-age-days`는 함께 못 씀 |
+
+결과: tools/dict **82**(macOS 기본 python3 3.9로도 `test_asset_check` 통과) · app **203** 통과, `flutter analyze` 문제 없음, 생성기 `--check` 3개 통과.
+

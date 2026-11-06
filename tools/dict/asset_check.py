@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """Check the app's dictionary assets against their edition files, before an app build.
 
-  python3 tools/dict/asset_check.py [--dir app/assets/dict] [--max-age-days N]
+  python3 tools/dict/asset_check.py [--dir app/assets/dict] [--max-age-days N | --release]
 
 For each asset (JMdict full-lean and the Korean glossary): the edition file has every
 field the app reads, the gzip has the size the edition gives, it unpacks completely,
 the SQLite file inside has the size and sha256 the edition gives, and the database's
 own meta agrees with the edition. Prints one line per problem and exits 1, or one
 `ok` line per asset and exits 0. --max-age-days N also fails an asset built more than
-N days ago (off by default). Only the Python 3 standard library is used.
+N days ago (off by default). --release is the check a release build runs (Xcode and
+Gradle): every asset must match its edition, and JMdict must be at most
+RELEASE_MAX_AGE_DAYS old; on failure it also prints the command that fixes it. Only
+the Python 3 standard library is used.
 """
 from __future__ import annotations
 
@@ -46,6 +49,17 @@ SIZE_FIELDS = ("gzip_bytes", "sqlite_bytes")
 SHA256 = re.compile(r"[0-9a-f]{64}")
 DAY = re.compile(r"\d{4}-\d{2}-\d{2}")
 MAX_SQLITE_BYTES = 512 * 1024 * 1024  # far above either asset; refuse to unpack more
+
+# A release refuses a JMdict built longer ago than this: its licence asks for regular
+# updates, and the update is run monthly (docs/dictionary.md, 12.4). The Korean glossary
+# changes edition rarely, so a release only checks that it matches its edition.
+RELEASE_MAX_AGE_DAYS = 35
+RELEASE_AGE_LIMITED = ("jmdict-full-lean",)
+REFRESH_COMMAND = "python3 tools/dict/refresh.py"
+REBUILD_COMMANDS = {
+    "jmdict-full-lean": "python3 tools/dict/build_app_asset.py",
+    "ko-glossary": "python3 tools/dict/build_ko_glossary.py --source <krdict JSON zip>",
+}
 
 
 def _missing_fields(name: str, edition: dict) -> list[str]:
@@ -175,6 +189,51 @@ def report(directory: Path, *, max_age_days: int | None = None, names: tuple[str
     return 1 if problems else 0
 
 
+def _release_split(directory: Path, today: dt.date | None) -> tuple[list[str], list[str], list[str]]:
+    """(problems, assets not matching their edition, assets too old) for a release."""
+    problems: list[str] = []
+    mismatched: list[str] = []
+    too_old: list[str] = []
+    for name, (gz_name, edition_name) in ASSETS.items():
+        found = check_asset(name, directory / gz_name, directory / edition_name)
+        if found:
+            problems += found
+            mismatched.append(name)
+            continue
+        if name in RELEASE_AGE_LIMITED:
+            edition = json.loads((directory / edition_name).read_text(encoding="utf-8"))
+            old = _age_problem(name, edition, RELEASE_MAX_AGE_DAYS, today or dt.date.today())
+            if old:
+                problems += old
+                too_old.append(name)
+    return problems, mismatched, too_old
+
+
+def release_problems(directory: Path, *, today: dt.date | None = None) -> list[str]:
+    """Why the assets in [directory] cannot ship in a release, one line each (empty: they can)."""
+    return _release_split(directory, today)[0]
+
+
+def release_report(directory: Path) -> int:
+    """Print the release check of [directory] and how to fix it; 0 when it passes, else 1."""
+    problems, mismatched, too_old = _release_split(directory, None)
+    for p in problems:
+        print(p)
+    for name in ASSETS:
+        if name not in mismatched and name not in too_old:
+            print(f"{name}: ok")
+    if not problems:
+        return 0
+    print("error: The dictionary assets cannot ship in a release "
+          "(python3 tools/dict/asset_check.py --release).")
+    if mismatched:
+        rebuild = " / ".join(REBUILD_COMMANDS[name] for name in mismatched)
+        print(f"  Not matching their edition: rebuild with: {rebuild}")
+    if too_old:
+        print(f"  Too old (JMdict, limit {RELEASE_MAX_AGE_DAYS} days): refresh with: {REFRESH_COMMAND}")
+    return 1
+
+
 def add_arguments(ap: argparse.ArgumentParser) -> None:
     ap.add_argument("--max-age-days", type=int,
                     help="also fail an asset built more than this many days ago (off by default)")
@@ -184,7 +243,14 @@ def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dir", type=Path, default=DEFAULT_DIR, help="default: app/assets/dict")
     add_arguments(ap)
+    ap.add_argument("--release", action="store_true",
+                    help=f"the release build check: every asset matches its edition and JMdict is at "
+                         f"most {RELEASE_MAX_AGE_DAYS} days old")
     a = ap.parse_args(argv)
+    if a.release and a.max_age_days is not None:
+        ap.error("--release has its own age limit; do not give --max-age-days with it")
+    if a.release:
+        return release_report(a.dir)
     return report(a.dir, max_age_days=a.max_age_days)
 
 
