@@ -4,13 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/data.dart';
 import 'package:shiori/app/theme.dart';
-import 'package:shiori/features/capture/ocr_export.dart';
 import 'package:shiori/features/capture/entry_editor_sheet.dart';
 import 'package:shiori/features/capture/evidence_tile.dart';
 import 'package:shiori/features/capture/evidence_view.dart';
 import 'package:shiori/features/capture/fragment_tray.dart';
+import 'package:shiori/features/capture/ocr_export.dart';
 import 'package:shiori/features/playlists/playlist_actions.dart';
 import 'package:shiori/features/playlists/playlist_picker.dart';
+import 'package:shiori/shared/dictionary_notice.dart';
 import 'package:shiori/shared/widgets.dart';
 import 'package:shiori_core/shiori_core.dart';
 
@@ -53,6 +54,17 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   late CaptureDraft _draft = widget.draft;
   bool _onlyFlagged = false;
   bool _saving = false;
+
+  /// Whether this page was read while a dictionary was not open. The words
+  /// on screen stay as they were read, so the notice stays too (it says so
+  /// once 「다시 시도」 opens the dictionaries).
+  late final bool _readWithoutDictionary;
+
+  @override
+  void initState() {
+    super.initState();
+    _readWithoutDictionary = ref.read(dictionaryProblemProvider) != null;
+  }
 
   EvidencePage get _page =>
       EvidencePage(photo: widget.photo, scan: widget.scan);
@@ -188,6 +200,16 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       ),
       body: CustomScrollView(
         slivers: [
+          if (_readWithoutDictionary)
+            const SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                Space.gutter,
+                0,
+                Space.gutter,
+                Space.md,
+              ),
+              sliver: SliverToBoxAdapter(child: ReadWithoutDictionaryNotice()),
+            ),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(
               Space.gutter,

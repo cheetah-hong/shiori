@@ -6,6 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shiori/app/app.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori/adapters/bundled_dictionary.dart';
+import 'package:shiori/adapters/bundled_glossary.dart';
+import 'package:shiori/adapters/dictionary_problem.dart';
 import 'package:shiori/app/startup.dart';
 import 'package:jmdict_block/jmdict_block.dart';
 import 'package:shiori_core/shiori_core.dart';
@@ -145,5 +147,39 @@ void main() {
     unpacking.complete(opened);
     await c.read(bundledDictionaryProvider.future);
     expect(c.read(lexiconProvider), isA<JmdictLexiconAdapter>());
+  });
+
+  test('invalidating the dictionaries (「다시 시도」) opens them again; the '
+      'first open is the one started before the first frame', () async {
+    var dictionaryOpens = 0;
+    var glossaryOpens = 0;
+    final c = ProviderContainer.test(
+      overrides: [
+        bundledDictionaryOverride(
+          open: () async {
+            dictionaryOpens++;
+            return const BundledDictionary.unavailable(
+              'damaged',
+              problemKind: DictionaryProblem.damaged,
+            );
+          },
+        ),
+        bundledGlossaryOverride(
+          open: () async {
+            glossaryOpens++;
+            return const BundledGlossary.unavailable('none');
+          },
+        ),
+      ],
+    );
+    await c.read(bundledDictionaryProvider.future);
+    await c.read(bundledGlossaryProvider.future);
+    expect((dictionaryOpens, glossaryOpens), (1, 1));
+
+    c.invalidate(bundledDictionaryProvider);
+    c.invalidate(bundledGlossaryProvider);
+    await c.read(bundledDictionaryProvider.future);
+    await c.read(bundledGlossaryProvider.future);
+    expect((dictionaryOpens, glossaryOpens), (2, 2));
   });
 }

@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:krdict_block/krdict_block.dart';
 import 'package:shiori/adapters/bundled_glossary.dart';
+import 'package:shiori/adapters/dictionary_problem.dart';
 import 'package:shiori_core/shiori_core.dart';
 
 import '../support/dictionary.dart' show MemoryAssetBundle;
@@ -42,15 +43,20 @@ void main() {
     expect(await g.glossary.lookup('食堂', readings: ['しょくどう']), isEmpty);
     expect(g.edition, isNull);
     expect(g.problem, isNotNull);
+    expect(g.problemKind, DictionaryProblem.missing);
     expect(logs, isNotEmpty);
     expect(unpacked().existsSync(), isFalse);
   });
 
   test('the first run unpacks the asset and opens it', () async {
-    final gz = gzip.encode(miniKrdictFileBytes(support));
-    final g = await open(bundleWith(gz, glossaryEditionJson(sha: 'v1')));
+    final db = miniKrdictFileBytes(support);
+    final gz = gzip.encode(db);
+    final g = await open(
+      bundleWith(gz, glossaryEditionJson(sha: 'v1', sqlite: db)),
+    );
     addTearDown(g.close);
     expect(g.isAvailable, isTrue);
+    expect(g.problemKind, isNull);
     expect(g.glossary, isA<KrdictGlossary>());
     final senses = await g.glossary.lookup('食堂', readings: ['しょくどう']);
     expect(senses.first.words, ['식당']);
@@ -63,16 +69,19 @@ void main() {
   });
 
   test('the same edition is not unpacked again; a new one is', () async {
-    final gz = gzip.encode(miniKrdictFileBytes(support));
-    (await open(bundleWith(gz, glossaryEditionJson(sha: 'v1')))).close();
+    final db = miniKrdictFileBytes(support);
+    final gz = gzip.encode(db);
+    (await open(
+      bundleWith(gz, glossaryEditionJson(sha: 'v1', sqlite: db)),
+    )).close();
 
-    final again = bundleWith(gz, glossaryEditionJson(sha: 'v1'));
+    final again = bundleWith(gz, glossaryEditionJson(sha: 'v1', sqlite: db));
     final g = await open(again);
     expect(g.isAvailable, isTrue);
     g.close();
     expect(again.loads, isNot(contains(glossaryAsset)));
 
-    final newer = bundleWith(gz, glossaryEditionJson(sha: 'v2'));
+    final newer = bundleWith(gz, glossaryEditionJson(sha: 'v2', sqlite: db));
     final h = await open(newer);
     addTearDown(h.close);
     expect(h.isAvailable, isTrue);
@@ -80,15 +89,34 @@ void main() {
   });
 
   test('an asset that is not a glossary database is refused', () async {
-    final notDb = gzip.encode(utf8.encode('not a database'));
-    final g = await open(bundleWith(notDb, glossaryEditionJson()));
+    final text = utf8.encode('not a database');
+    final g = await open(
+      bundleWith(gzip.encode(text), glossaryEditionJson(sqlite: text)),
+    );
     expect(g.isAvailable, isFalse);
     expect(g.glossary, isA<EmptyKoreanGlossary>());
     expect(unpacked().existsSync(), isFalse);
     expect(logs, isNotEmpty);
   });
 
-  test('an unreadable edition file is a missing glossary', () async {
+  test(
+    'an asset that differs from its edition: damaged, nothing kept',
+    () async {
+      final db = miniKrdictFileBytes(support);
+      final gz = gzip.encode(db);
+      final half = gz.sublist(0, gz.length ~/ 2);
+      final g = await open(
+        bundleWith(half, glossaryEditionJson(sqlite: db, gz: half)),
+      );
+      expect(g.isAvailable, isFalse);
+      expect(g.problemKind, DictionaryProblem.damaged);
+      expect(g.glossary, isA<EmptyKoreanGlossary>());
+      expect(unpacked().existsSync(), isFalse);
+      expect(File('${support.path}/$glossaryMarkerName').existsSync(), isFalse);
+    },
+  );
+
+  test('an unreadable edition file is a damaged glossary', () async {
     final gz = gzip.encode(miniKrdictFileBytes(support));
     for (final edition in [
       'not json',
@@ -98,6 +126,7 @@ void main() {
     ]) {
       final g = await open(bundleWith(gz, edition));
       expect(g.isAvailable, isFalse, reason: edition);
+      expect(g.problemKind, DictionaryProblem.damaged, reason: edition);
     }
     expect(logs, hasLength(3));
   });

@@ -418,7 +418,7 @@ Future<jm.JmdictDictionary> openBundledJmdict() async {
 
 ## 9. 남은 문제
 
-1. **데이터 갱신 방식 결정(라이선스 의무)** — 남음
+1. **데이터 갱신 방식 결정(라이선스 의무)** — 도구는 생김(12절), 정기 운영 방식은 결정 남음
    - 지금: 다시 빌드하는 명령 한 줄 `python3 tools/dict/build_app_asset.py`, 판은 정보 화면과 `app/assets/dict/jmdict-full-lean.edition.json`에 보임
    - **결정(2026-11-05): 나중에 자동화로 처리한다.** 예: CI가 최신 JMdict로 DB를 다시 빌드한다. 구체적인 방식은 사전을 앱에 붙이는 단계에서 정한다.
    - 서버가 없으면: 앱을 출시할 때마다 최신 JMdict로 다시 빌드하는 절차(CI 작업)
@@ -451,6 +451,10 @@ python3 tools/dict/build_jmdict_db.py --matrix \
     --expect-sha256 7f6dc7a4a50411e5a99c35969f28740e174714f04708ea84d50d6bdc09a001ed
 # 앱 asset (app/assets/dict/, git 제외)
 python3 tools/dict/build_app_asset.py --expect-sha256 7f6dc7a4a50411e5a99c35969f28740e174714f04708ea84d50d6bdc09a001ed
+# 배포 전 검사: asset과 판 정보 JSON이 맞는지 (두 사전 모두, 12.2절)
+python3 tools/dict/asset_check.py
+# 최신판으로 갱신 (조건부 요청 → 빌드 → 정확도 관문 → 채택, 12.1절)
+python3 tools/dict/refresh.py --dry-run
 # 테스트 DB
 python3 tools/dict/build_jmdict_db.py --only tools/dict/test_forms.txt --glosses first \
     --sql packages/dict_jmdict/test/fixtures/mini_jmdict.sql
@@ -465,7 +469,9 @@ python3 tools/dict/build_jmdict_db.py --only tools/dict/test_forms.txt --glosses
 | 경로 | 내용 |
 |---|---|
 | `tools/dict/build_jmdict_db.py` | JMdict XML → SQLite(판본 선택, 크기표, 테스트용 SQL 덤프) |
-| `tools/dict/build_app_asset.py` | 앱 asset(full-lean gzip + 판 표시 파일). 테스트 `tools/dict/test_build_app_asset.py` |
+| `tools/dict/build_app_asset.py` | 앱 asset(full-lean gzip + 판 표시 파일), `--check`. 테스트 `tools/dict/test_build_app_asset.py` |
+| `tools/dict/asset_check.py` | 배포 전 검사(크기·sha256·판 정보 필드·DB 안 meta). 테스트 `tools/dict/test_asset_check.py` |
+| `tools/dict/refresh.py` | 정기 갱신(12절). 테스트 `tools/dict/test_refresh.py` |
 | `tools/dict/test_forms.txt` | 테스트 DB에 넣을 JMdict 표기 목록 |
 | `packages/dict_jmdict/lib/` | 패키지(`jmdict_dictionary.dart`, `form_lookup.dart`, `priority.dart`, `models.dart`) |
 | `packages/dict_jmdict/test/` | 단위 테스트와 테스트 DB |
@@ -565,7 +571,7 @@ dart run tool/measure_glossary.dart precision --db /tmp/ko.sqlite --gt "$SHIORI_
 - 캡처는 두 사전이 다 열린 뒤 보정기 체인을 만듭니다(그 전에는 첫 페이지가 사전 없이 해석될 수 있었음. JMdict에도 같이 적용).
 - release 빌드: 두 asset이 없으면 Android `preProdReleaseBuild`와 iOS 빌드 단계가 실패합니다.
 - 정보 화면에 「한국어 뜻 사전」 카드(출처 문구, 라이선스·사전 링크, 판 날짜·만든 날·판본)와, 라이선스 페이지에 `한국어기초사전` 항목을 더했습니다.
-- 판 정보 JSON의 `sqlite_sha256`을 앱이 푼 파일과 대조하는 장치는 JMdict에도 없어서 이번에는 넣지 않았습니다(다음 단계).
+- 판 정보 JSON의 크기·`sqlite_sha256`을 앱이 풀 때 대조합니다(2026-11-06, 12.3절). 처음에는 없던 장치입니다.
 
 ### 11.7 다시 만드는 방법
 
@@ -586,4 +592,70 @@ python3 -m unittest discover -s tools/dict -p 'test_*.py'
    뜻 묶음 후보 칩(표제어 후보 칩과 같은 방식)은 다음 단계입니다.
 2. **등급 순위의 한계**: 쉬운 낱말이 앞서 다른 품사의 뜻이 1순위가 되는 경우가 있습니다. 교재 품사 배지를 힌트로 주려면 포트에 `pos`를 더해야 합니다(다음 단계).
 3. **빠지는 말**: 한국어에서 구로 옮기는 말(사전에 단어 항목이 없음), 숫자·조수사, 오쿠리가나가 다른 표기. 위키낱말사전(③)이 일부를 메웁니다.
-4. **갱신**: 기초사전은 판이 바뀌면 같은 명령으로 다시 빌드합니다. 갱신 의무 조항은 없지만 JMdict 갱신 자동화(9절 1)와 같이 묶는 것을 권합니다.
+4. **갱신**: 기초사전은 판이 바뀌면 같은 명령으로 다시 빌드합니다. 갱신 의무 조항은 없지만 JMdict 갱신과 같이 `tools/dict/refresh.py`로 묶었습니다(12절).
+
+## 12. 정기 갱신과 무결성 검사 (2026-11-06)
+
+EDRDG 라이선스 4절은 데이터를 정기적으로 갱신하는 절차를 요구합니다(8절 5). 그 절차를 도구로 만들고,
+빌드 때와 앱 실행 때 asset이 판 정보와 맞는지 확인하는 장치를 더했습니다. 검증 숫자는 `docs/verification.md` 23절입니다.
+
+### 12.1 갱신 도구 `tools/dict/refresh.py`
+
+```bash
+python3 tools/dict/refresh.py [--assets app/assets/dict] [--work tools/dict/.cache/refresh] \
+    [--krdict-source <한국어기초사전 JSON zip>] [--dry-run]
+```
+
+| 단계 | 하는 일 |
+|---|---|
+| 1. JMdict 확인 | `If-Modified-Since: <판 정보의 source_last_modified>`로 조건부 요청. 304이거나 같은 파일(sha256)이 오면 바뀌지 않음 |
+| 2. 한국어기초사전 확인 | 사이트가 스크립트 요청을 막으므로 **사람이 브라우저로 받은 zip**을 `--krdict-source`로 줌. sha256이 판 정보와 같으면 바뀌지 않음. 주지 않으면 「수동: 내려받기 창의 '올린 날짜' 확인」 안내만 |
+| 3. 변화 없음 | 「변화 없음」, 어떤 파일도 바꾸지 않음(종료 0) |
+| 4. 내려받기 확인 | 받은 크기 = Content-Length, gzip 끝까지 풀림(CRC), `JMdict created` 날짜 있음. 아니면 종료 2, 아무것도 바꾸지 않음 |
+| 5. 후보 만들기 | `--work/candidate/`에 바뀐 사전만 다시 빌드(안 바뀐 쪽은 지금 파일 그대로), `asset_check`로 확인 |
+| 6. 정확도 관문 | 같은 코드로 지금 asset과 후보를 각각 단어 추출기 점수표(`packages/jmdict_block/tool/eval_extract_dict.dart`)에 돌려 비교: 합성 3세트(항상) + 로컬 기록 세트(비공개 폴더가 있을 때). 찾음·읽기·뜻·문장·높음이 줄거나 여분·중복·높음인데 틀림·여분인데 높음이 늘면 미달. 그다음 새 asset으로 `jmdict_block`의 로컬 하한 테스트(`SHIORI_JMDICT_DB`·`SHIORI_KO_GLOSSARY_DB`) |
+| 7. 채택 | 통과하면 `--assets`의 바뀐 사전만 교체(옛 판 정보 먼저 지우고 gzip → 판 정보 마지막). `--dry-run`이면 후보만 남김. 미달이면 채택하지 않고 종료 1 |
+| 보고 | `--work/report.md`(사람용), `report.json`. 교재 세트는 숫자만 |
+
+- 종료 코드: 0 = 변화 없음·채택·후보, 1 = 관문 미달, 2 = 내려받기·빌드 실패.
+- 판이 매일 바뀌어 작은 차이로 관문에 걸릴 수 있습니다. 그때는 보고서의 세트별 차이를 보고 사람이 정합니다(넣기로 하면 `build_app_asset.py`를 직접 씁니다).
+- 걸리는 시간(Apple Silicon 데스크톱, 2026-11-06판 시험): 내려받기·빌드·관문 합쳐 약 43초.
+- 앱은 네트워크를 쓰지 않습니다. 내려받기는 이 개발 도구만 합니다.
+
+### 12.2 배포 전 검사
+
+```bash
+python3 tools/dict/asset_check.py [--dir app/assets/dict] [--max-age-days N]
+python3 tools/dict/build_app_asset.py --check      # JMdict만
+python3 tools/dict/build_ko_glossary.py --check    # 한국어 뜻 사전만
+```
+
+- 판 정보의 필드(공통 `variant`·`built_on`·`gzip_bytes`·`sqlite_bytes`·`sqlite_sha256`, JMdict `source_sha256`·`jmdict_created`·`license`,
+  한국어 `sources[]`·`attribution`), gzip 크기, 끝까지 풀리는지, 푼 크기·sha256, DB 안 `meta`가 판 정보와 같은지(원본 sha256·JMdict 날짜, 기초사전 판·판본).
+- 어긋난 것마다 한 줄, 하나라도 있으면 종료 1. `--max-age-days N`(기본 꺼짐)은 `built_on`이 N일보다 오래된 asset을 실패로 봅니다.
+- release 빌드 단계(Gradle·Xcode)에는 아직 묶지 않았습니다. 배포 전에 위 명령을 직접 돌립니다.
+
+### 12.3 앱 실행 때 검증
+
+| 때 | 확인 | 어긋나면 |
+|---|---|---|
+| 처음 실행·새 판(풀 때) | gzip 크기 → 백그라운드 isolate에서 푼 크기 → sha256. 맞을 때만 파일을 씀 | 파일·표시를 남기지 않고 `UnpackedAssetMismatch`(어긋난 항목·기대값·실제값). 다음 실행에서 다시 풂 |
+| 평소 실행 | 표시가 같고 파일 크기 = `sqlite_bytes` | 다시 풂(푼 파일은 읽기 전용으로 열어 크기가 바뀌지 않음) |
+
+- Dart의 gzip 풀기는 잘린 스트림에 오류를 내지 않습니다(앞 절반만 있는 파일이 절반 크기로 풀림). 그래서 크기·sha256이 그 경우를 잡습니다.
+- 매번 sha256을 하지 않는 이유: 30 MB를 매번 읽고 수백 ms를 쓰는데, 읽기 전용 파일이 크기는 그대로 내용만 바뀌는 일은 드물고 그때는 SQLite 열기·조회 오류로 다시 풉니다.
+- 사전이 열리지 않은 원인: `missing`(빌드에 asset 없음, 개발 빌드) / `damaged`(판 정보와 다름·판 정보를 읽지 못함) / `failed`(그 밖: 파일 쓰기 실패 등).
+  `damaged`·`failed`면 캡처·검토·정보 화면에 「사전을 열지 못했어요」와 「다시 시도」가 보입니다(문구는 `app/lib/shared/dictionary_notice.dart` 한 곳). 다시 시도는 열리지 않은 사전만 다시 엽니다.
+  검토 화면의 단어는 읽을 때 만들어지므로, 사전 없이 읽은 쪽은 다시 시도가 성공해도 그대로입니다. 그때 검토 화면은 「사전을 열었어요. 이 쪽은 사전 없이 읽었으니, 사전으로 읽으려면 페이지를 다시 등록해 주세요」로 바뀝니다.
+- sha256은 `package:crypto`(dart-lang, BSD-3-Clause)로 계산합니다.
+
+### 12.4 「정기」를 돌리는 방식 (결정 남음)
+
+| 안 | 방식 | 장점 | 단점 |
+|---|---|---|---|
+| A | 로컬에서 매달 `refresh.py`를 손으로 돌림 + 달력 | 기반 시설 없음, 로컬 기록 세트로 관문까지 돎 | 잊을 수 있음 |
+| B | 로컬 예약(launchd, 월 1회, `--dry-run`)과 알림 | 잊지 않음 | 그 컴퓨터가 켜져 있어야 함, 채택은 사람이 |
+| C | 원격 CI 예약 | 사람·기계와 무관 | 로컬 기록 세트로 관문 불가, asset 배포 경로를 새로 정해야 함 |
+
+배포 전 검사(12.2)를 release 빌드 단계에 묶을지, `--max-age-days`(예: 35일)로 오래된 사전의 배포를 막을지도 함께 정합니다.
+

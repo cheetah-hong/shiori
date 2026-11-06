@@ -6,12 +6,14 @@ looked up backwards from its Japanese equivalents.
       [--variant lean|full] [--out-dir app/assets/dict]
   python3 tools/dict/build_ko_glossary.py --source krdict_json.zip --sizes
   python3 tools/dict/build_ko_glossary.py --sample-sql      # test fixture of packages/krdict_block
+  python3 tools/dict/build_ko_glossary.py --check [--out-dir app/assets/dict] [--max-age-days N]
 
 Source: the JSON download of the dictionary (a zip of JSON files), a single JSON file
 or a folder of them. It is not in the repository. To refresh it, open
 https://krdict.korean.go.kr/download/downloadPopup, read the current `seq` of the
 JSON download and fetch https://krdict.korean.go.kr/dicBatchDownload?seq=<seq>
-(no login). The script never downloads anything itself.
+in a browser (no login; the site refuses requests from scripts). The script never
+downloads anything itself; tools/dict/refresh.py --krdict-source takes the zip.
 
 Writes into --out-dir (default app/assets/dict, git-ignored):
   ko-glossary.sqlite.gz      the index (docs/dictionary.md, 11)
@@ -49,6 +51,9 @@ from typing import Iterable, Iterator, NamedTuple
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent
+sys.path.insert(0, str(HERE))
+
+import asset_check  # noqa: E402
 DEFAULT_OUT = REPO / "app" / "assets" / "dict"
 SAMPLE = HERE / "testdata" / "krdict_sample.json"
 SAMPLE_SQL = REPO / "packages" / "krdict_block" / "test" / "fixtures" / "mini_krdict.sql"
@@ -508,7 +513,12 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--sizes", action="store_true", help="print the size of both variants and stop")
     ap.add_argument("--sample-sql", action="store_true",
                     help=f"rewrite {SAMPLE_SQL.relative_to(REPO)} from the made-up sample and stop")
+    ap.add_argument("--check", action="store_true",
+                    help="build nothing: check the asset in --out-dir against its edition file (asset_check.py)")
+    asset_check.add_arguments(ap)
     a = ap.parse_args(argv)
+    if a.check:
+        return asset_check.report(a.out_dir, max_age_days=a.max_age_days, names=("ko-glossary",))
     if a.sample_sql:
         SAMPLE_SQL.parent.mkdir(parents=True, exist_ok=True)
         SAMPLE_SQL.write_text(sql_dump(read_source(SAMPLE), variant="lean", built_on=SAMPLE_BUILT_ON),

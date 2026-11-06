@@ -1477,3 +1477,71 @@ Android 채널 11 · iOS RunnerTests 5 통과, 생성기 `--check` 2개 같음. 
 - 추출 회귀(`eval_extract.dart`, 로컬 세트 15개): 이 변경 전과 같음(추출 규칙 그대로, `headwordKey`는 `models/word_key.dart`로 옮기기만).
 
 결과: core **361** · storage_drift **154** · app **170** · jmdict_block **6**(로컬 지정 **15**) · krdict_block **80** · dict_jmdict **11** 통과, analyze 문제 없음, Android 채널 11 · iOS RunnerTests 5 통과, `flutter build apk --debug --flavor dev` 성공.
+
+## 23. 사전 asset 무결성 검사와 정기 갱신 도구 (2026-11-06)
+
+자세한 절차는 docs/dictionary.md 12절입니다. 앱은 여전히 네트워크를 쓰지 않습니다.
+
+### 23.1 바꾼 것
+
+| 무엇 | 어디 | 내용 |
+|---|---|---|
+| 앱 풀기 검증 | `app/lib/adapters/unpacked_asset.dart` | 풀 때 gzip 크기 → 푼 크기 → sha256(백그라운드 isolate, 맞을 때만 파일을 씀), 평소에는 파일 크기만. 어긋나면 `UnpackedAssetMismatch`, 파일·표시 남기지 않음 |
+| 원인 갈래 | `app/lib/adapters/dictionary_problem.dart`, `bundled_dictionary.dart`, `bundled_glossary.dart` | `missing`·`damaged`·`failed` (`problemKind`) |
+| 다시 시도 | `app/lib/app/startup.dart` | 시작 때 연 것은 첫 build만 쓰고, 다시 build되면 새로 엶 |
+| 안내 | `app/lib/shared/dictionary_notice.dart`, 캡처·검토·정보 화면 | 「사전을 열지 못했어요」+ 원인별 문구 + 「다시 시도」, 검토 화면은 한 줄(사전 없이 읽은 쪽은 다시 시도가 성공해도 「다시 등록하면 사전으로 읽어요」로 남음). 문구는 `DictionaryNoticeText` 한 곳 |
+| 정보 화면 | `app/lib/features/about/about_screen.dart` | JMdict 카드에 「변환(가공)한 사본, CC BY-SA 4.0」과 CC BY-SA 4.0 링크, 손상·실패면 원인별 안내 |
+| 배포 전 검사 | `tools/dict/asset_check.py`, `build_app_asset.py --check`, `build_ko_glossary.py --check` | 필드·크기·sha256·DB 안 meta, `--max-age-days`(기본 꺼짐) |
+| 갱신 도구 | `tools/dict/refresh.py` | 조건부 요청 → 내려받기 확인 → 후보 빌드 → 정확도 관문 → 채택(`--dry-run`) |
+| 의존성 | `app/pubspec.yaml` | `crypto`(이미 간접 의존성, BSD-3-Clause) |
+
+### 23.2 측정
+
+| 측정 | 결과 |
+|---|---|
+| 지금 asset 4개 대조 (JMdict 2026-11-04판, 한국어기초사전 2026-10-19판) | gzip 크기·푼 크기·sha256 모두 판 정보와 같음 |
+| Dart `gzip.decode`에 잘린 gzip | 앞 절반: 오류 없이 절반 크기로 풀림. 끝 8바이트·1바이트 없음: 오류 없음. CRC·본문 비트 변경: `FormatException` |
+| sha256 (`package:crypto`, 데스크톱 Apple Silicon, AOT) | JMdict 30.5 MB 123–145 ms, 한국어 뜻 9.4 MB 37 ms (gzip 풀기는 각각 47–69 ms, 14 ms) |
+| 시뮬레이터 iPhone 17 Pro (debug), 실제 asset, 처음 실행(풀기+검증) | JMdict **477 ms**, 한국어 뜻 **110 ms** (배경 isolate, 첫 화면을 기다리게 하지 않음) |
+| 같은 시뮬레이터, 다음 실행(크기만) | JMdict **3 ms**, 한국어 뜻 **1 ms** |
+
+### 23.3 새 판 시험 (`refresh.py --dry-run`, asset은 바꾸지 않음)
+
+JMdict 2026-11-04판 → **2026-11-06판**(gzip 12,200,998 → 12,202,352, SQLite 30,539,776 → 30,543,872). 한국어기초사전은 같은 판이라 변화 없음. 내려받기·빌드·관문 약 43초.
+
+| 세트 | 찾음 | 읽기 | 뜻 | 여분 | 높음 | 높음인데 틀림 | 여분인데 높음 |
+|---|---|---|---|---|---|---|---|
+| 합성 범용 | 70 → 70 | 70 → 70 | 68 → 68 | 0 → 0 | 42 → 42 | 0 → 0 | 0 → 0 |
+| 합성 단어장 | 33 → 33 | 33 → 33 | 32 → 32 | 2 → 2 | 24 → 24 | 0 → 0 | 0 → 0 |
+| 합성 ML Kit형 | 17 → 17 | 17 → 17 | 16 → 16 | 1 → 1 | 13 → 13 | 0 → 0 | 0 → 0 |
+| 로컬 기록 6세트(단어장 Vision·ML Kit, 휜 쪽, 다른 교재, 예문 쪽 원본·스캔 앱) | 모두 같음 | 모두 같음 | 모두 같음 | 모두 같음 | 모두 같음 | 0 | 0 |
+| 로컬 하한 테스트(새 asset) | 12개 통과 | | | | | | |
+
+관문 통과. 새 판으로 바꿔도 점수 변화가 없었습니다.
+
+### 23.4 스크린샷 (iPhone 17 Pro, 합성 샘플만)
+
+`flutter drive -d <iPhone 17 Pro> --flavor dev --driver=test_driver/integration_test.dart --target=integration_test/dictionary_check_screenshots_test.dart` (메모리 DB, 실제 asset; 시간 측정은 임시 폴더에 풂):
+
+| 파일 (`docs/screenshots/`) | 화면 |
+|---|---|
+| `70_about_dictionary_converted.png` | 정보: JMdict 변환(가공) 표시·CC BY-SA 4.0 링크·판, 한국어기초사전 출처 |
+| `71_capture_dictionary_damaged.png` | 캡처: 사전 손상 안내와 「다시 시도」 |
+| `72_review_without_dictionary.png` | 검토: 「사전 없이 읽은 결과예요」 한 줄과 「다시 시도」 |
+| `73_about_dictionary_damaged.png` | 정보: 손상 안내(「들어 있지 않아요」가 아님) |
+
+### 23.5 테스트
+
+| 파일 | 내용 |
+|---|---|
+| `tools/dict/test_asset_check.py` (새, 17) | 맞으면 통과, sqlite sha256·gzip 크기·sqlite 크기 불일치, 잘린 gzip, 필드 빠짐(6가지), 파일 없음, JSON 아님, DB meta와 판 정보 불일치, 나이 검사(기본 꺼짐), 빌드 스크립트 `--check` |
+| `tools/dict/test_refresh.py` (새, 20) | 304·같은 파일·같은 zip이면 변화 없음(파일 그대로), 새 JMdict·새 기초사전 → 빌드·관문·채택, `--dry-run`, 보고서, 관문 미달(종료 1), 내려받기 실패·잘림·gzip 아님·머리말 날짜 없음(종료 2, 그대로), 점수표 읽기·나빠짐 판정 |
+| `app/test/adapters/unpacked_asset_test.dart` (새) | 맞는 asset, sha256·크기·gzip 크기 불일치, 잘린 asset, 새 판 거부 뒤 다음 실행, 평소 실행(크기만), 판 정보 필드 |
+| `app/test/adapters/bundled_dictionary_test.dart`·`bundled_glossary_test.dart` | 원인 갈래(`missing`·`damaged`·`failed`), 불일치면 남기지 않음 |
+| `app/test/features/dictionary_notice_test.dart` (새) | 캡처·검토·정보 화면 안내, 손상이 실패보다 먼저, asset 없는 빌드는 안내 없음, 다시 시도 성공·실패, 학습 화면은 그대로 |
+| `app/test/features/about_editions_test.dart` (새) | 정보 화면의 두 사전 출처·판·라이선스·가공 표시 |
+| `app/test/app/no_network_test.dart` (새) | 앱·패키지 직접 의존성에 네트워크 클라이언트 없음, `lib/`에 연결 코드 없음, Android 배포 매니페스트에 INTERNET 없음 |
+| `app/test/app/startup_test.dart` | 다시 시도 = 다시 열기 |
+
+결과: tools/dict **70** · app **201** · dict_jmdict **11** · jmdict_block **15**(로컬 지정 포함) · krdict_block **80** 통과, analyze 문제 없음, 생성기 `--check` 3개 통과.
+

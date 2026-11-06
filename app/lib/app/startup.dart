@@ -51,11 +51,14 @@ Future<Override> appDatabaseOverride({
 ///
 /// Opening starts right away but is not awaited: the first frame never waits
 /// for unpacking, and until it is done the dictionary slot stays empty.
+/// The first build of the provider takes that opening; a later build
+/// (invalidating it: 「다시 시도」) opens again.
 Override bundledDictionaryOverride({
   Future<BundledDictionary> Function() open = openAppDictionary,
 }) {
-  final opening = open();
+  final next = _firstThenAgain(open());
   return bundledDictionaryProvider.overrideWith((ref) {
+    final opening = next(open);
     ref.onDispose(
       () => unawaited(opening.then((d) => d.close(), onError: (_) {})),
     );
@@ -64,15 +67,29 @@ Override bundledDictionaryOverride({
 }
 
 /// The override that plugs the bundled Korean glossary in once it is open
-/// (as [bundledDictionaryOverride]: started now, never awaited).
+/// (as [bundledDictionaryOverride]: started now, never awaited, opened again
+/// when the provider is built again).
 Override bundledGlossaryOverride({
   Future<BundledGlossary> Function() open = openAppGlossary,
 }) {
-  final opening = open();
+  final next = _firstThenAgain(open());
   return bundledGlossaryProvider.overrideWith((ref) {
+    final opening = next(open);
     ref.onDispose(
       () => unawaited(opening.then((g) => g.close(), onError: (_) {})),
     );
     return opening;
   });
+}
+
+/// Hands out [first] once, then whatever the given opener returns.
+Future<T> Function(Future<T> Function() open) _firstThenAgain<T>(
+  Future<T> first,
+) {
+  Future<T>? pending = first;
+  return (open) {
+    final taken = pending;
+    pending = null;
+    return taken ?? open();
+  };
 }

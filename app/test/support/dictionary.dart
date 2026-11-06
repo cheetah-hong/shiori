@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:jmdict_block/jmdict_block.dart';
@@ -35,9 +36,25 @@ Uint8List miniJmdictFileBytes(Directory scratch) {
   return bytes;
 }
 
-String editionJson({String sha = 'aa', String builtOn = '2026-11-05'}) =>
+/// The edition file next to the asset (tools/dict/build_app_asset.py). Its
+/// sizes and sha256 describe [sqlite] packed as [gz] (default: [sqlite]
+/// gzipped), as the build script writes them.
+String editionJson({
+  String sha = 'aa',
+  String builtOn = '2026-11-05',
+  List<int> sqlite = const [],
+  List<int>? gz,
+}) =>
     '{"variant": "full-lean", "source_sha256": "$sha", '
-    '"jmdict_created": "2026-11-04", "built_on": "$builtOn"}';
+    '"jmdict_created": "2026-11-04", "built_on": "$builtOn", '
+    '${digestFields(sqlite, gz: gz)}}';
+
+/// `gzip_bytes`, `sqlite_bytes` and `sqlite_sha256` of [sqlite] packed as
+/// [gz] (default: [sqlite] gzipped), as JSON members.
+String digestFields(List<int> sqlite, {List<int>? gz}) =>
+    '"gzip_bytes": ${(gz ?? gzip.encode(sqlite)).length}, '
+    '"sqlite_bytes": ${sqlite.length}, '
+    '"sqlite_sha256": "${sha256.convert(sqlite)}"';
 
 /// Assets held in memory; records every key that was loaded.
 final class MemoryAssetBundle extends CachingAssetBundle {

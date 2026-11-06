@@ -2,6 +2,7 @@
 """Build the dictionary asset the app ships: JMdict full-lean, gzipped, plus its edition file.
 
   python3 tools/dict/build_app_asset.py [--expect-sha256 <source sha256>] [--out-dir app/assets/dict]
+  python3 tools/dict/build_app_asset.py --check [--out-dir app/assets/dict] [--max-age-days N]
 
 Writes into --out-dir (default app/assets/dict, git-ignored):
   jmdict-full-lean.sqlite.gz      every JMdict entry, no glosses (docs/dictionary.md 2.3)
@@ -28,6 +29,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
+import asset_check  # noqa: E402
 import build_jmdict_db as jmdict  # noqa: E402
 
 VARIANT = "full-lean"
@@ -91,7 +93,12 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--out-dir", type=Path, default=DEFAULT_OUT, help="default: app/assets/dict")
     ap.add_argument("--built-on", default=dt.datetime.now(dt.timezone.utc).date().isoformat(),
                     help="build day written to the edition file (default: today, UTC)")
+    ap.add_argument("--check", action="store_true",
+                    help="build nothing: check the asset in --out-dir against its edition file (asset_check.py)")
+    asset_check.add_arguments(ap)
     a = ap.parse_args(argv)
+    if a.check:
+        return asset_check.report(a.out_dir, max_age_days=a.max_age_days, names=("jmdict-full-lean",))
     edition = build_asset(a.source, a.out_dir, built_on=a.built_on, expect_sha256=a.expect_sha256, url=a.url)
     print(f"wrote {a.out_dir / ASSET_NAME} ({edition['gzip_bytes']:,} bytes, "
           f"SQLite {edition['sqlite_bytes']:,}) and {EDITION_NAME}", file=sys.stderr)

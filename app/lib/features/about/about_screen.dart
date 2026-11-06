@@ -8,6 +8,7 @@ import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/theme.dart';
 import 'package:shiori/features/about/crash_log_screen.dart';
 import 'package:shiori/features/about/extract_licenses.dart';
+import 'package:shiori/shared/dictionary_notice.dart';
 import 'package:shiori/shared/widgets.dart';
 
 const _projectUrl =
@@ -21,6 +22,9 @@ const _notice =
     "and are used in conformance with the Group's licence.";
 
 const _krdictUrl = 'https://krdict.korean.go.kr';
+
+/// The licence the converted JMdict data is distributed under.
+const _ccBySa40Url = 'https://creativecommons.org/licenses/by-sa/4.0/';
 
 const _jlUrl = 'https://github.com/rampaa/JL';
 const _jlCommit = 'd8011e289eb4cd265fd4e3beb3fd155e8a764004';
@@ -52,6 +56,8 @@ class AboutScreen extends ConsumerWidget {
               AsyncData(:final value) when value.isAvailable => _DictionaryCard(
                 dictionary: value,
               ),
+              AsyncData(:final value) when isNoticeable(value.problemKind) =>
+                DictionaryNotice(problem: value.problemKind),
               AsyncData() || AsyncError() => const _NoDictionary(),
               _ => const _Preparing(),
             },
@@ -61,6 +67,8 @@ class AboutScreen extends ConsumerWidget {
               AsyncData(:final value) when value.isAvailable => _GlossaryCard(
                 edition: value.edition!,
               ),
+              AsyncData(:final value) when isNoticeable(value.problemKind) =>
+                DictionaryNotice(problem: value.problemKind),
               AsyncData() || AsyncError() => const _NoGlossary(),
               _ => const _Preparing(),
             },
@@ -178,9 +186,16 @@ class _DictionaryCard extends StatelessWidget {
               style: context.text.bodyMedium?.copyWith(height: 1.5),
             ),
           ),
+          const SizedBox(height: Space.md),
+          Text(
+            'EDRDG의 JMdict 파일을 이 앱의 사전 형식으로 변환(가공)한 사본입니다. '
+            '변환한 데이터는 CC BY-SA 4.0으로 배포합니다.',
+            style: context.text.bodySmall?.copyWith(height: 1.5),
+          ),
           const SizedBox(height: Space.lg),
           _Link(label: 'JMdict 프로젝트', url: info.projectUrl),
           _Link(label: '라이선스 (${info.license})', url: info.licenseUrl),
+          const _Link(label: '변환한 데이터의 라이선스 (CC BY-SA 4.0)', url: _ccBySa40Url),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: Space.md),
             child: Divider(),

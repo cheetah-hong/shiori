@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:krdict_block/krdict_block.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shiori/adapters/dictionary_problem.dart';
 import 'package:shiori/adapters/unpacked_asset.dart';
 import 'package:shiori_core/shiori_core.dart';
 
@@ -75,17 +76,23 @@ GlossarySource _sourceNamed(String name) => GlossarySource.values.firstWhere(
 /// The Korean glossary the app runs with, or nothing and why.
 final class BundledGlossary {
   const BundledGlossary.opened(KrdictGlossary this.krdict, this.edition)
-    : problem = null;
+    : problem = null,
+      problemKind = null;
 
-  const BundledGlossary.unavailable(String this.problem)
-    : krdict = null,
-      edition = null;
+  const BundledGlossary.unavailable(
+    String this.problem, {
+    this.problemKind = DictionaryProblem.missing,
+  }) : krdict = null,
+       edition = null;
 
   final KrdictGlossary? krdict;
   final GlossaryEdition? edition;
 
   /// Why there is no glossary (for the log and the 정보 screen).
   final String? problem;
+
+  /// What kind of problem [problem] is; null when the data is open.
+  final DictionaryProblem? problemKind;
 
   bool get isAvailable => krdict != null;
 
@@ -97,18 +104,22 @@ final class BundledGlossary {
 
 /// Unpacks the bundled Korean glossary into [supportDirectory] when its
 /// edition changed, then opens it (as `openBundledDictionary` does for
-/// JMdict). Never throws: any failure is logged and answered with
-/// [BundledGlossary.unavailable] (meaning cells are then never filled).
+/// JMdict, checked against the edition's sizes and sha256). Never throws: any
+/// failure is logged and answered with [BundledGlossary.unavailable] (meaning
+/// cells are then never filled), sorted as in `openBundledDictionary`.
 Future<BundledGlossary> openBundledGlossary({
   required AssetBundle bundle,
   required Future<Directory> Function() supportDirectory,
   void Function(String message) log = _log,
 }) async {
+  final String editionText;
   try {
-    final editionText = await bundle.loadString(
-      glossaryEditionAsset,
-      cache: false,
-    );
+    editionText = await bundle.loadString(glossaryEditionAsset, cache: false);
+  } on Object catch (error) {
+    log('not in this build: $error');
+    return BundledGlossary.unavailable('$error');
+  }
+  try {
     final edition = switch (jsonDecode(editionText)) {
       final Map<String, Object?> json => GlossaryEdition.fromJson(json),
       _ => throw const FormatException('glossary edition: not a JSON object'),
@@ -120,6 +131,7 @@ Future<BundledGlossary> openBundledGlossary({
       dir: await supportDirectory(),
       fileName: glossaryFileName,
       markerName: glossaryMarkerName,
+      expected: AssetDigest.fromEditionText(editionText),
       open: (file) => KrdictGlossary.open(file.path),
       log: log,
     );
@@ -132,7 +144,10 @@ Future<BundledGlossary> openBundledGlossary({
     return BundledGlossary.opened(opened.value, edition);
   } on Object catch (error, stack) {
     log('not available: $error\n$stack');
-    return BundledGlossary.unavailable('$error');
+    return BundledGlossary.unavailable(
+      '$error',
+      problemKind: dictionaryProblemOf(error),
+    );
   }
 }
 

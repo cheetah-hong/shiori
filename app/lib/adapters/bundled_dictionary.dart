@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:jmdict_block/jmdict_block.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shiori/adapters/dictionary_problem.dart';
 import 'package:shiori/adapters/unpacked_asset.dart';
 import 'package:shiori_core/shiori_core.dart';
 
@@ -59,17 +60,23 @@ final class DictionaryEdition {
 /// The dictionary the app runs with: JMdict, or nothing and why.
 final class BundledDictionary {
   const BundledDictionary.opened(JmdictDictionary this.jmdict, this.edition)
-    : problem = null;
+    : problem = null,
+      problemKind = null;
 
-  const BundledDictionary.unavailable(String this.problem)
-    : jmdict = null,
-      edition = null;
+  const BundledDictionary.unavailable(
+    String this.problem, {
+    this.problemKind = DictionaryProblem.missing,
+  }) : jmdict = null,
+       edition = null;
 
   final JmdictDictionary? jmdict;
   final DictionaryEdition? edition;
 
   /// Why there is no dictionary (for the log and the 정보 screen).
   final String? problem;
+
+  /// What kind of problem [problem] is; null when the data is open.
+  final DictionaryProblem? problemKind;
 
   bool get isAvailable => jmdict != null;
 
@@ -87,23 +94,30 @@ final class BundledDictionary {
 
 /// Unpacks the bundled JMdict into [supportDirectory] when its edition
 /// changed, then opens it. Never throws: any failure is logged and answered
-/// with [BundledDictionary.unavailable] (the app runs with no dictionary).
+/// with [BundledDictionary.unavailable] (the app runs with no dictionary),
+/// [DictionaryProblem.missing] when the build has no edition file, else as
+/// [dictionaryProblemOf] sorts the error.
 ///
 /// - First run, or a new edition: the gzip asset is decoded on a background
 ///   isolate into `<support>/jmdict-full-lean.sqlite` (through a `.part`
 ///   file), then the edition file is copied next to it as a marker.
 /// - Same edition as the marker: the unpacked file is opened as it is. If it
-///   no longer opens, it is unpacked again.
+///   no longer opens or its size changed, it is unpacked again.
+/// - The asset is checked against the edition's sizes and sha256 while it is
+///   unpacked ([openUnpackedAsset]).
 Future<BundledDictionary> openBundledDictionary({
   required AssetBundle bundle,
   required Future<Directory> Function() supportDirectory,
   void Function(String message) log = _log,
 }) async {
+  final String editionText;
   try {
-    final editionText = await bundle.loadString(
-      dictionaryEditionAsset,
-      cache: false,
-    );
+    editionText = await bundle.loadString(dictionaryEditionAsset, cache: false);
+  } on Object catch (error) {
+    log('not in this build: $error');
+    return BundledDictionary.unavailable('$error');
+  }
+  try {
     final edition = _parseEdition(editionText);
     final opened = await openUnpackedAsset(
       bundle: bundle,
@@ -112,6 +126,7 @@ Future<BundledDictionary> openBundledDictionary({
       dir: await supportDirectory(),
       fileName: dictionaryFileName,
       markerName: dictionaryMarkerName,
+      expected: AssetDigest.fromEditionText(editionText),
       open: _open,
       log: log,
     );
@@ -121,7 +136,10 @@ Future<BundledDictionary> openBundledDictionary({
     return BundledDictionary.opened(opened.value, edition);
   } on Object catch (error, stack) {
     log('not available: $error\n$stack');
-    return BundledDictionary.unavailable('$error');
+    return BundledDictionary.unavailable(
+      '$error',
+      problemKind: dictionaryProblemOf(error),
+    );
   }
 }
 

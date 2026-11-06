@@ -6,6 +6,8 @@ import 'package:shiori/adapters/bundled_glossary.dart';
 import 'package:shiori_core/shiori_core.dart';
 import 'package:sqlite3/sqlite3.dart';
 
+import 'dictionary.dart' show digestFields;
+
 /// Korean glossary test fixture of the krdict_block package (made-up entries
 /// shaped like the Basic Korean Dictionary).
 const miniKrdictSql = '../packages/krdict_block/test/fixtures/mini_krdict.sql';
@@ -41,9 +43,13 @@ Uint8List miniKrdictFileBytes(Directory scratch) {
 }
 
 /// The edition file next to the asset (tools/dict/build_ko_glossary.py).
+/// Its sizes and sha256 describe [sqlite] packed as [gz] (default: [sqlite]
+/// gzipped).
 String glossaryEditionJson({
   String sha = 'aa',
   String edition = '2026-10-19',
+  List<int> sqlite = const [],
+  List<int>? gz,
 }) =>
     '{"variant": "lean", "built_on": "2026-11-05", '
     '"attribution": "한국어기초사전, 국립국어원, CC BY-SA 2.0 KR, $edition판을 가공함", '
@@ -51,4 +57,4 @@ String glossaryEditionJson({
     '"publisher": "국립국어원", "edition": "$edition", '
     '"license": "CC BY-SA 2.0 KR", '
     '"license_url": "https://creativecommons.org/licenses/by-sa/2.0/kr/", '
-    '"source_sha256": "$sha"}]}';
+    '"source_sha256": "$sha"}], ${digestFields(sqlite, gz: gz)}}';

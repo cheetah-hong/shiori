@@ -7,6 +7,7 @@ import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/theme.dart';
 import 'package:shiori/features/capture/capture_controller.dart';
 import 'package:shiori/features/capture/review_screen.dart';
+import 'package:shiori/shared/dictionary_notice.dart';
 import 'package:shiori/shared/widgets.dart';
 import 'package:shiori_core/shiori_core.dart';
 
@@ -89,6 +90,7 @@ class CaptureScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
+                const _DictionaryNoticeSlot(),
                 if (state is CaptureFailed) ...[
                   const SizedBox(height: Space.lg),
                   _FailureNote(message: state.message),
@@ -123,6 +125,23 @@ class CaptureScreen extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// The dictionary notice below the photo buttons, with the gap above it
+/// only when it shows.
+class _DictionaryNoticeSlot extends ConsumerWidget {
+  const _DictionaryNoticeSlot();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (ref.watch(dictionaryProblemProvider) == null) {
+      return const SizedBox.shrink();
+    }
+    return const Padding(
+      padding: EdgeInsets.only(top: Space.lg),
+      child: DictionaryNotice(),
     );
   }
 }

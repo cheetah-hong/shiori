@@ -50,6 +50,8 @@ dependencies:
     path: ../packages/krdict_block
   flutter_localizations:
     sdk: flutter
+  # Checks the unpacked dictionary files against their edition files (sha256).
+  crypto: ^3.0.6
   # "판독 기록 내보내기" (builds that are not release builds): the share sheet.
   share_plus: 13.3.1
 
