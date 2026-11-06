@@ -25,6 +25,7 @@ import build_ko_glossary as ko  # noqa: E402
 
 SAMPLE = HERE / "testdata" / "krdict_sample.json"
 KEY_TABLE = HERE / "testdata" / "ko_glossary_keys.json"
+POS_TABLE = HERE / "testdata" / "ko_pos_codes.json"
 FIXTURE_SQL = HERE.parent.parent / "packages" / "krdict_block" / "test" / "fixtures" / "mini_krdict.sql"
 
 
@@ -110,7 +111,7 @@ class BuildTest(unittest.TestCase):
     def test_reads_every_file_of_the_zip_and_the_edition_date(self) -> None:
         source = ko.read_source(self.zip)
         self.assertEqual(source.edition, "2026-10-19")
-        self.assertEqual(len(source.entries), 30)
+        self.assertEqual(len(source.entries), 43)
 
     def test_schema_version_and_meta(self) -> None:
         with self._db() as db:
@@ -152,6 +153,24 @@ class BuildTest(unittest.TestCase):
         self.assertEqual(rows["그저"][1], 2, "the sense that has ただ is the second")
         self.assertIsNone(rows["체코어"][0], "level 없음")
         self.assertIsNone(rows["사전"][0], "no level at all")
+
+    def test_each_sense_keeps_its_korean_part_of_speech(self) -> None:
+        """Schema 2: sense.pos is the entry's partOfSpeech as a code (0 without one)."""
+        with self._db() as db:
+            self.assertEqual(db.execute("PRAGMA user_version").fetchone()[0], 2)
+            rows = dict(db.execute(
+                "SELECT word, pos FROM sense WHERE word IN ('공짜', '다만', '유명하다', '걸다', '사전')"))
+        codes = ko.POS_CODES
+        self.assertEqual(rows["공짜"], codes["명사"])
+        self.assertEqual(rows["다만"], codes["부사"])
+        self.assertEqual(rows["유명하다"], codes["형용사"])
+        self.assertEqual(rows["걸다"], codes["동사"])
+        self.assertEqual(rows["사전"], 0, "no partOfSpeech in the entry")
+
+    def test_part_of_speech_without_a_code_is_zero(self) -> None:
+        self.assertEqual(ko.pos_code("품사 없음"), 0)
+        self.assertEqual(ko.pos_code(""), 0)
+        self.assertEqual(ko.pos_code("새 품사"), 0)
 
     def test_only_the_full_variant_keeps_the_korean_definitions(self) -> None:
         # Sizes on the real data are in docs/dictionary.md; this sample is too
@@ -225,6 +244,16 @@ class AssetTest(unittest.TestCase):
     def test_a_bad_build_day_stops_the_build(self) -> None:
         with self.assertRaises(SystemExit):
             ko.build_asset(self.zip, self.out, built_on="5 Nov")
+
+
+class PosTableTest(unittest.TestCase):
+    """The codes packages/krdict_block reads (both read the table)."""
+
+    def test_the_codes_are_the_shared_table(self) -> None:
+        table = json.loads(POS_TABLE.read_text(encoding="utf-8"))
+        self.assertEqual(ko.POS_CODES, table["codes"])
+        self.assertEqual(len(set(ko.POS_CODES.values())), len(ko.POS_CODES), "one name per code")
+        self.assertNotIn(0, ko.POS_CODES.values(), "0 is no part of speech")
 
 
 class FixtureTest(unittest.TestCase):

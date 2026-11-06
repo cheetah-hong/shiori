@@ -1,4 +1,5 @@
 import 'package:shiori_core/src/models/list_equality.dart';
+import 'package:shiori_core/src/models/part_of_speech.dart';
 
 /// Block slot: Korean meanings of a Japanese word, for cells the page did not
 /// give (or OCR could not read).
@@ -12,10 +13,16 @@ abstract interface class KoreanGlossary {
   /// [readings] are the word's readings in kana (empty for a kana word). A
   /// headword with kanji only matches the dictionary's spelling with one of
   /// these readings (しょくどう with 食堂 never gives 식도 of 食道).
+  ///
+  /// [pos] is the class the word is printed as (its badge on the page, else
+  /// the dictionary's): senses of a Korean word of that class come first,
+  /// after how the word matched. Nothing is left out for it; without such a
+  /// sense the order is as without [pos].
   Future<List<KoreanSense>> lookup(
     String headword, {
     List<String> readings = const [],
     int limit = 3,
+    PartOfSpeech? pos,
   });
 
   /// Where the meanings come from, for the 정보 screen. Empty without data.
@@ -156,6 +163,7 @@ final class EmptyKoreanGlossary implements KoreanGlossary {
     String headword, {
     List<String> readings = const [],
     int limit = 3,
+    PartOfSpeech? pos,
   }) async => const [];
 
   @override

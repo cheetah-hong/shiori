@@ -1,0 +1,19 @@
+{
+ "_note": "Korean parts of speech of the Basic Korean Dictionary as stored in sense.pos (schema 2). 0 is none (품사 없음, or no partOfSpeech). Read by tools/dict/test_build_ko_glossary.py and packages/krdict_block/test.",
+ "codes": {
+  "명사": 1,
+  "의존 명사": 2,
+  "대명사": 3,
+  "수사": 4,
+  "동사": 5,
+  "보조 동사": 6,
+  "형용사": 7,
+  "보조 형용사": 8,
+  "부사": 9,
+  "관형사": 10,
+  "감탄사": 11,
+  "조사": 12,
+  "접사": 13,
+  "어미": 14
+ }
+}

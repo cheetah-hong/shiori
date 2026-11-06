@@ -20,6 +20,9 @@ final class MemoryKoreanGlossary
   /// Headwords asked for, in order (to check what the extractor looks up).
   final List<String> asked = [];
 
+  /// Every forward lookup with its limit and class hint, in order.
+  final List<({String headword, int limit, PartOfSpeech? pos})> calls = [];
+
   /// The readings of each backward lookup, in order.
   final List<List<String>> askedBackwards = [];
 
@@ -41,8 +44,10 @@ final class MemoryKoreanGlossary
     String headword, {
     List<String> readings = const [],
     int limit = 3,
+    PartOfSpeech? pos,
   }) async {
     asked.add(headword);
+    calls.add((headword: headword, limit: limit, pos: pos));
     final found = senses[headword] ?? const [];
     return [
       for (final (i, words) in found.take(limit).indexed)

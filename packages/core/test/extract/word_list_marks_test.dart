@@ -97,6 +97,7 @@ final class _ForwardOnly implements KoreanGlossary {
     String headword, {
     List<String> readings = const [],
     int limit = 3,
+    PartOfSpeech? pos,
   }) async => const [];
 
   @override
@@ -112,6 +113,7 @@ final class _BrokenBackwards implements KoreanGlossary, KoreanReverseGlossary {
     String headword, {
     List<String> readings = const [],
     int limit = 3,
+    PartOfSpeech? pos,
   }) async => const [];
 
   @override

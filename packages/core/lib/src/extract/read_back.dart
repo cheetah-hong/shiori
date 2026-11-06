@@ -318,6 +318,7 @@ ExtractedWord _restored(
     headwordFragmentId: w.headwordFragmentId,
     headwordNote: '${kana.text} → $written (사전 역조회)',
     meaningCandidates: w.meaningCandidates,
+    printedPos: w.printedPos,
   );
 }
 

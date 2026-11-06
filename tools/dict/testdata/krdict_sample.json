@@ -2332,6 +2332,916 @@
       "val": "단어"
      },
      "val": "130"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "고요히"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "…"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "しずもり【静森】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "지어낸 뜻."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "부사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "초급"
+      }
+     ],
+     "val": "131"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "고요숲"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "…"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "しずもり【静森】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "지어낸 뜻."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "명사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "고급"
+      }
+     ],
+     "val": "132"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "별물결"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "…"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "ほしなみ【星波】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "지어낸 뜻."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "명사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "초급"
+      }
+     ],
+     "val": "133"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "-물결"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "…"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "ほしなみ【星波】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "지어낸 뜻."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "접사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "중급"
+      }
+     ],
+     "val": "134"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "반짝이"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "…"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "ほしなみ【星波】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "지어낸 뜻."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "부사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "고급"
+      }
+     ],
+     "val": "135"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "바람길"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "…"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "かざみち【風道】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "지어낸 뜻."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "명사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "초급"
+      }
+     ],
+     "val": "136"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "바람골"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "…"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "かざみち【風道】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "지어낸 뜻."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "명사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "초급"
+      }
+     ],
+     "val": "137"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "샛바람길"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "…"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "かざみち【風道】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "지어낸 뜻."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "명사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "초급"
+      }
+     ],
+     "val": "138"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "갈바람길"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "…"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "かざみち【風道】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "지어낸 뜻."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "명사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "초급"
+      }
+     ],
+     "val": "139"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "하늬길"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "…"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "かざみち【風道】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "지어낸 뜻."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "명사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "초급"
+      }
+     ],
+     "val": "140"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "마파람길"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "…"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "かざみち【風道】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "지어낸 뜻."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "명사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "초급"
+      }
+     ],
+     "val": "141"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "푸름"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "…"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "あおむ【青む】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "지어낸 뜻."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "명사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "초급"
+      }
+     ],
+     "val": "142"
+    },
+    {
+     "Lemma": {
+      "feat": {
+       "att": "writtenForm",
+       "val": "푸르다"
+      }
+     },
+     "Sense": {
+      "Equivalent": [
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "영어"
+         },
+         {
+          "att": "lemma",
+          "val": "…"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       },
+       {
+        "feat": [
+         {
+          "att": "language",
+          "val": "일본어"
+         },
+         {
+          "att": "lemma",
+          "val": "あおむ【青む】"
+         },
+         {
+          "att": "definition",
+          "val": "…"
+         }
+        ]
+       }
+      ],
+      "att": "id",
+      "feat": {
+       "att": "definition",
+       "val": "지어낸 뜻."
+      },
+      "val": "1"
+     },
+     "att": "id",
+     "feat": [
+      {
+       "att": "homonym_number",
+       "val": "0"
+      },
+      {
+       "att": "lexicalUnit",
+       "val": "단어"
+      },
+      {
+       "att": "partOfSpeech",
+       "val": "형용사"
+      },
+      {
+       "att": "vocabularyLevel",
+       "val": "고급"
+      }
+     ],
+     "val": "143"
     }
    ],
    "feat": {

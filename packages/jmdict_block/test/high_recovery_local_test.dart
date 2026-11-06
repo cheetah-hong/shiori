@@ -260,17 +260,46 @@ List<_Set> get _sets => [
 ];
 
 /// The values of a draft's entries, in order, without confidence or
-/// evidence.
+/// evidence. A meaning the dictionary filled is [_filled]: its sense may
+/// change with the glossary's order (meaning_quality_local_test checks it).
 List<List<String>> _values(CaptureDraft draft) => [
   for (final e in draft.entries)
     [
       e.headword,
       e.readings.join('/'),
-      e.meaning,
+      if (e.evidence?.of(EntryField.meaning)?.source == FieldSource.dictionary)
+        _filled
+      else
+        e.meaning,
       e.example?.ja ?? '',
       e.example?.ko ?? '',
     ],
 ];
+
+const String _filled = '<dictionary>';
+
+/// [was] (recorded) with the meaning of every entry [now] marks [_filled]
+/// marked so too.
+Map<String, Object?> _maskFilled(
+  Map<String, List<List<String>>> now,
+  Object? was,
+) {
+  final pages = (was as Map).cast<String, Object?>();
+  return {
+    for (final MapEntry(key: fixture, value: rows) in now.entries)
+      fixture: [
+        for (final (i, row) in rows.indexed)
+          switch ((pages[fixture] as List)[i]) {
+            final List<Object?> old when row[2] == _filled => [
+              ...old.take(2),
+              _filled,
+              ...old.skip(3),
+            ],
+            final old => old,
+          },
+      ],
+  };
+}
 
 void main() {
   final temp = Directory.systemTemp.createTempSync('high_recovery_');
@@ -362,7 +391,7 @@ void main() {
       expect(before, isNotNull, reason: 'no values recorded before the rule');
       expect(
         jsonEncode(values),
-        jsonEncode(before![set.name]),
+        jsonEncode(_maskFilled(values, before![set.name])),
         reason: '${set.name}: values changed',
       );
     }

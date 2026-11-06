@@ -109,6 +109,7 @@ final class ExtractedWord {
     this.headwordNote,
     this.meaningCandidates = const [],
     this.headwordCandidates = const [],
+    this.printedPos,
   });
 
   /// Dictionary form: kanji (with okurigana) or, for kana words, the kana.
@@ -150,6 +151,11 @@ final class ExtractedWord {
   /// Headwords to offer when OCR did not read the printed one and the
   /// glossary read backwards gives more than one spelling for its kana.
   final List<String> headwordCandidates;
+
+  /// The POS badge printed before the meaning (`동 걷다` → verb); null
+  /// without one. It outranks [partsOfSpeech] when the glossary is asked
+  /// for the word's senses.
+  final PartOfSpeech? printedPos;
 
   /// The weakest pairing of the word; [PairConfidence.low] when nothing is
   /// paired with the headword at all.
@@ -207,6 +213,7 @@ final class ExtractedWord {
     headwordCandidates: List.unmodifiable(
       headwordCandidates ?? this.headwordCandidates,
     ),
+    printedPos: printedPos,
   );
 
   /// The review-draft entry the capture screens use. Fields the photo did

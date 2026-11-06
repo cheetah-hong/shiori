@@ -133,6 +133,7 @@ final class _ThrowingGlossary implements KoreanGlossary {
     String headword, {
     List<String> readings = const [],
     int limit = 3,
+    PartOfSpeech? pos,
   }) => Future.error(const FormatException('damaged glossary file'));
 
   @override

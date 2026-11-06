@@ -15,11 +15,11 @@ void main() {
     final db = sqlite3.openInMemory()
       ..execute(File(miniKrdictSql).readAsStringSync())
       ..execute('''
-INSERT INTO sense VALUES (901, '유명', 1, 1, 0, '');
+INSERT INTO sense VALUES (901, '유명', 1, 1, 0, '', 0);
 INSERT INTO ja VALUES ('有名', 'ゆうめい', 0, 0, '', 901);
-INSERT INTO sense VALUES (902, '화장실', 1, 1, 0, '');
+INSERT INTO sense VALUES (902, '화장실', 1, 1, 0, '', 0);
 INSERT INTO ja VALUES ('お手洗い', 'おてあらい', 0, 0, '', 902);
-INSERT INTO sense VALUES (903, '손 씻기', 1, 1, 0, '');
+INSERT INTO sense VALUES (903, '손 씻기', 1, 1, 0, '', 0);
 INSERT INTO ja VALUES ('手洗い', 'てあらい', 0, 0, '', 903);
 ''');
     g = KrdictGlossary.fromDatabase(db);

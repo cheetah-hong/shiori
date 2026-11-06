@@ -27,6 +27,8 @@ Index rules (packages/krdict_block reads the same keys, tools/dict/testdata/ko_g
   する after kanji or two kana), other parenthesised parts, and fold katakana to hiragana.
   The dropped ending is kept (ja.ending): 有名だ prefers 유명하다 (ゆうめいだ【有名だ】)
   to 유명 (ゆうめい【有名】).
+- Each sense keeps its entry's Korean part of speech (sense.pos, POS_CODES; schema 2):
+  the app moves the senses of the class a word is printed as to the front.
 - Senses whose only equivalent is `(対訳語無し)` and entries that are not single words
   (idioms, proverbs, grammar patterns) are left out.
 Same source and build day give byte-identical files. Only the Python 3 standard library is used.
@@ -59,7 +61,7 @@ SAMPLE = HERE / "testdata" / "krdict_sample.json"
 SAMPLE_SQL = REPO / "packages" / "krdict_block" / "test" / "fixtures" / "mini_krdict.sql"
 SAMPLE_BUILT_ON = "2026-11-05"
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 ASSET_NAME = "ko-glossary.sqlite.gz"
 EDITION_NAME = "ko-glossary.edition.json"
 VARIANTS = ("lean", "full")
@@ -78,6 +80,21 @@ KRDICT = {
 PAIR, WRITTEN, KANA = 0, 1, 2
 
 LEVELS = {"초급": 1, "중급": 2, "고급": 3}
+
+# Korean parts of speech as stored in sense.pos (schema 2); 0 is none. Same table as
+# testdata/ko_pos_codes.json, which packages/krdict_block reads too.
+POS_CODES = {
+    "명사": 1, "의존 명사": 2, "대명사": 3, "수사": 4,
+    "동사": 5, "보조 동사": 6, "형용사": 7, "보조 형용사": 8,
+    "부사": 9, "관형사": 10, "감탄사": 11, "조사": 12, "접사": 13, "어미": 14,
+}
+
+
+def pos_code(part_of_speech: str | None) -> int:
+    """The code of an entry's partOfSpeech; 0 for 품사 없음, none or one not in the table."""
+    return POS_CODES.get((part_of_speech or "").strip(), 0)
+
+
 WORD_UNIT = "단어"
 JAPANESE = "일본어"
 NO_EQUIVALENT = "対訳語無し"
@@ -238,6 +255,7 @@ class Entry:
     unit: str
     level: int | None
     senses: tuple[Sense, ...]
+    pos: int = 0
 
 
 @dataclass(frozen=True)
@@ -263,7 +281,8 @@ def _entry(e: dict) -> Entry | None:
         number = int(s["val"]) if str(s.get("val", "")).isdigit() else i
         senses.append(Sense(number, _feats(s).get("definition", ""), "。".join(japanese), synonyms))
     return Entry(str(e.get("val", "")), word, ef.get("lexicalUnit", ""),
-                 LEVELS.get(ef.get("vocabularyLevel", "")), tuple(senses))
+                 LEVELS.get(ef.get("vocabularyLevel", "")), tuple(senses),
+                 pos_code(ef.get("partOfSpeech")))
 
 
 def _documents(path: Path) -> Iterator[tuple[str, bytes]]:
@@ -334,7 +353,8 @@ CREATE TABLE sense (
   level INTEGER,
   sense_no INTEGER NOT NULL,
   source INTEGER NOT NULL,
-  synonyms TEXT NOT NULL{definition}
+  synonyms TEXT NOT NULL,
+  pos INTEGER NOT NULL{definition}
 );
 CREATE TABLE ja (
   key TEXT NOT NULL,
@@ -368,7 +388,7 @@ def _rows(entries: Iterable[Entry], variant: str) -> Iterator[tuple[tuple, list[
             if not keys:
                 continue
             sense_id += 1
-            row = (sense_id, e.word, e.level, s.number, 0, "|".join(s.synonyms))
+            row = (sense_id, e.word, e.level, s.number, 0, "|".join(s.synonyms), e.pos)
             if variant == "full":
                 row += (s.definition,)
             yield row, [(k, r, kind, pos, ending, sense_id) for (k, r, kind, ending), pos in keys.items()]
@@ -397,7 +417,7 @@ def _fill(db: sqlite3.Connection, source: Source, variant: str, built_on: str) -
         sys.exit(f"--built-on must be YYYY-MM-DD, got {built_on!r}")
     db.executescript(_schema(variant))
     senses = keys = 0
-    marks = ",".join("?" * (7 if variant == "full" else 6))
+    marks = ",".join("?" * (8 if variant == "full" else 7))
     for row, ja in _rows(source.entries, variant):
         db.execute(f"INSERT INTO sense VALUES ({marks})", row)
         db.executemany("INSERT INTO ja VALUES (?,?,?,?,?,?)", ja)

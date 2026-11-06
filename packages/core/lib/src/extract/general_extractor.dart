@@ -22,10 +22,12 @@ import 'package:shiori_core/src/extract/headword_repair.dart';
 import 'package:shiori_core/src/extract/hungarian.dart';
 import 'package:shiori_core/src/extract/lattice.dart';
 import 'package:shiori_core/src/extract/meaning_marks.dart';
+import 'package:shiori_core/src/extract/meaning_senses.dart';
 import 'package:shiori_core/src/extract/pairing.dart';
 import 'package:shiori_core/src/extract/read_back.dart';
 import 'package:shiori_core/src/extract/script_runs.dart';
 import 'package:shiori_core/src/models/ocr.dart';
+import 'package:shiori_core/src/models/part_of_speech.dart';
 import 'package:shiori_core/src/models/word_key.dart';
 import 'package:shiori_core/src/ports/korean_glossary.dart';
 import 'package:shiori_core/src/ports/lexicon.dart';
@@ -215,48 +217,76 @@ final class GeneralExtractor {
 }
 
 /// Korean senses per word, asked once; a glossary that fails gives none.
+///
+/// Two lookups: the pairing one ([words], three senses, no class hint, as
+/// the page's own meanings have always been paired) and the meaning one
+/// ([fill], [meaningSenses] senses with the class the word is printed as,
+/// ordered by [orderMeaningSenses]).
 final class _SenseCache {
   _SenseCache(this.glossary);
 
   final KoreanGlossary? glossary;
-  final Map<String, List<KoreanSense>> _found = {};
+  final Map<String, Future<List<KoreanSense>>> _found = {};
 
-  Future<List<KoreanSense>> of(String headword, List<String> readings) async {
+  Future<List<KoreanSense>> _ask(
+    String headword,
+    List<String> readings, {
+    required int limit,
+    PartOfSpeech? pos,
+  }) {
     final g = glossary;
-    if (g == null) return const [];
-    final key = '$headword|${readings.join('/')}';
-    final known = _found[key];
-    if (known != null) return known;
-    List<KoreanSense> found;
-    try {
-      found = await g.lookup(
-        headword,
-        readings: readings,
-        limit: glossarySenses,
-      );
-    } on Exception {
-      // A damaged glossary file: the page still pairs on content and place.
-      found = const [];
-    }
-    return _found[key] = found;
+    if (g == null) return Future.value(const []);
+    final key = '$headword|${readings.join('/')}|$limit|${pos?.name}';
+    return _found[key] ??= () async {
+      try {
+        return await g.lookup(
+          headword,
+          readings: readings,
+          limit: limit,
+          pos: pos,
+        );
+      } on Exception {
+        // A damaged glossary file: the page still pairs on content and place.
+        return const <KoreanSense>[];
+      }
+    }();
   }
 
   /// As a [KoreanGlossLookup]: the words of every sense.
   Future<List<String>> words(String headword, List<String> readings) async => [
-    for (final s in await of(headword, readings)) ...s.words,
+    for (final s in await _ask(headword, readings, limit: glossarySenses))
+      ...s.words,
   ];
 
+  /// The senses for [w]'s meaning cell: its class from the page's badge,
+  /// else from the dictionary; a sentence word's translation names one.
+  Future<List<KoreanSense>> _meaningSenses(
+    ExtractedWord w,
+    String form,
+  ) async => orderMeaningSenses(
+    form,
+    await _ask(
+      form,
+      w.readings,
+      limit: meaningSenses,
+      pos: w.printedPos ?? partOfSpeechOf(w.partsOfSpeech),
+    ),
+    translation: w.origin == WordOrigin.sentence ? w.example?.ko : null,
+  );
+
   /// A dictionary word with no meaning on the page takes the first sense
-  /// (source: dictionary, never high); the other senses become candidates.
+  /// (source: dictionary, never high); the next senses, at most
+  /// [maxMeaningCandidates], become candidates. A meaning from the page
+  /// stays; the senses other than it are its candidates.
   Future<ExtractedWord> fill(ExtractedWord w) async {
     // Only words the lexicon knows: a meaning for a misread one would look
     // checked.
     if (w.partsOfSpeech.isEmpty) return w;
-    var found = await of(w.headword, w.readings);
+    var found = await _meaningSenses(w, w.headword);
     // `(お)みやげ`: the word without its optional prefix's brackets.
     for (final form in optionalPrefixForms(w.headword)) {
       if (found.isNotEmpty) break;
-      found = await of(form, w.readings);
+      found = await _meaningSenses(w, form);
     }
     if (found.isEmpty) return w;
     final meaning = w.meaning;
@@ -269,13 +299,15 @@ final class _SenseCache {
           signals: {PairSignal.koreanGloss},
           note: 'dictionary meaning',
         ),
-        meaningCandidates: [for (final s in found.skip(1)) s.text],
+        meaningCandidates: [
+          for (final s in found.skip(1).take(maxMeaningCandidates)) s.text,
+        ],
       );
     }
     final others = [
       for (final s in found)
         if (_bare(s.text) != _bare(meaning)) s.text,
-    ];
+    ].take(maxMeaningCandidates).toList();
     return others.isEmpty ? w : w.copyWith(meaningCandidates: others);
   }
 }
@@ -468,6 +500,7 @@ final class _Item {
         partsOfSpeech: kanjiPos[named] ?? const [],
         meaning: meaningFragment!.text,
         meaningNotes: meaningFragment.notes,
+        printedPos: PartOfSpeech.fromBadge(meaningFragment.posBadge),
         headwordSource: FieldSource.dictionary,
         readingSource: FieldSource.photo,
         meaningSource: FieldSource.photo,
@@ -501,6 +534,7 @@ final class _Item {
       ],
       meaning: meaningFragment?.text,
       meaningNotes: meaningFragment?.notes ?? const [],
+      printedPos: PartOfSpeech.fromBadge(meaningFragment?.posBadge),
       // No dictionary entry: the badge before the meaning, if printed.
       partsOfSpeech:
           entry?.partsOfSpeech ?? meaningFragment?.badgeCodes ?? const [],

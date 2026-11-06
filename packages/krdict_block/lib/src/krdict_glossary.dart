@@ -1,10 +1,16 @@
 import 'package:krdict_block/src/keys.dart';
+import 'package:krdict_block/src/korean_pos.dart';
 import 'package:shiori_core/shiori_core.dart';
 import 'package:sqlite3/common.dart';
 import 'package:sqlite3/sqlite3.dart' show OpenMode, sqlite3;
 
 /// Schema version written by tools/dict/build_ko_glossary.py (`PRAGMA user_version`).
-const int krdictSchemaVersion = 1;
+/// Version 2 added each sense's Korean part of speech (`sense.pos`).
+const int krdictSchemaVersion = 2;
+
+/// The first schema, without `sense.pos`: still read, a class hint then
+/// changes nothing.
+const int krdictSchemaWithoutPos = 1;
 
 /// The file is not a Korean glossary database this package can read.
 final class KrdictFormatException implements Exception {
@@ -24,6 +30,8 @@ final class KrdictFormatException implements Exception {
 /// 1. how it matched: a kanji word with its reading (or a kana word written
 ///    in kana) before a kanji word found by spelling only (or a kana word
 ///    found as the reading of a kanji spelling),
+/// 1a. with a class hint, a Korean word of that class (or of no class of its
+///    own: 접사, 어미) before the others (schema 2 files),
 /// 2. its place in the sense's list of equivalents (first is closest),
 /// 3. the same ending as the headword (有名だ: ゆうめいだ【有名だ】 → 유명하다
 ///    before ゆうめい【有名】 → 유명),
@@ -35,12 +43,13 @@ final class KrdictFormatException implements Exception {
 ///
 /// Calls are synchronous and take well under a millisecond.
 final class KrdictGlossary implements KoreanGlossary, KoreanReverseGlossary {
-  KrdictGlossary._(this._db, this.sources);
+  KrdictGlossary._(this._db, this.sources, {required this.hasPos});
 
   /// Opens the database at [path] read-only.
   ///
   /// Throws [KrdictFormatException] when the file was not built by
-  /// build_ko_glossary.py with schema [krdictSchemaVersion].
+  /// build_ko_glossary.py with schema [krdictSchemaVersion] or
+  /// [krdictSchemaWithoutPos] (an older asset: read, with no class hint).
   factory KrdictGlossary.open(String path) {
     final db = sqlite3.open(path, mode: OpenMode.readOnly);
     var opened = false;
@@ -63,9 +72,15 @@ final class KrdictGlossary implements KoreanGlossary, KoreanReverseGlossary {
         for (final row in db.select('SELECT key, value FROM meta'))
           row.columnAt(0) as String: row.columnAt(1) as String,
       };
+      if (version != krdictSchemaVersion && version != krdictSchemaWithoutPos) {
+        throw KrdictFormatException(
+          'schema $version, expected $krdictSchemaVersion; rebuild the file',
+        );
+      }
       db
         ..select(
-          'SELECT id, word, level, sense_no, source, synonyms '
+          'SELECT id, word, level, sense_no, source, synonyms'
+          '${version == krdictSchemaVersion ? ', pos' : ''} '
           'FROM sense LIMIT 0',
         )
         ..select(
@@ -74,15 +89,17 @@ final class KrdictGlossary implements KoreanGlossary, KoreanReverseGlossary {
     } on SqliteException catch (e) {
       throw KrdictFormatException('not a Korean glossary: ${e.message}');
     }
-    if (version != krdictSchemaVersion) {
-      throw KrdictFormatException(
-        'schema $version, expected $krdictSchemaVersion; rebuild the file',
-      );
-    }
-    return KrdictGlossary._(db, List.unmodifiable(_sourcesOf(meta)));
+    return KrdictGlossary._(
+      db,
+      List.unmodifiable(_sourcesOf(meta)),
+      hasPos: version == krdictSchemaVersion,
+    );
   }
 
   final CommonDatabase _db;
+
+  /// The file has each sense's Korean part of speech (schema 2).
+  final bool hasPos;
   final Map<String, CommonPreparedStatement> _statements = {};
   bool _closed = false;
 
@@ -94,7 +111,8 @@ final class KrdictGlossary implements KoreanGlossary, KoreanReverseGlossary {
     String headword, {
     List<String> readings = const [],
     int limit = 3,
-  }) async => lookupSync(headword, readings: readings, limit: limit);
+    PartOfSpeech? pos,
+  }) async => lookupSync(headword, readings: readings, limit: limit, pos: pos);
 
   @override
   Future<List<GlossedSpelling>> reverseLookup(
@@ -137,18 +155,25 @@ final class KrdictGlossary implements KoreanGlossary, KoreanReverseGlossary {
     String headword, {
     List<String> readings = const [],
     int limit = 3,
+    PartOfSpeech? pos,
   }) {
     _ensureOpen();
     if (limit <= 0) return const [];
-    final found = _lookup(headword, readings, limit);
+    final prefer = hasPos ? preferredPosCodes(pos) : const <int>{};
+    final found = _lookup(headword, readings, limit, prefer);
     if (found.isNotEmpty) return found;
     return switch (_withoutHonorific(headword, readings)) {
-      (final h, final r) => _lookup(h, r, limit),
+      (final h, final r) => _lookup(h, r, limit, prefer),
       null => const [],
     };
   }
 
-  List<KoreanSense> _lookup(String headword, List<String> readings, int limit) {
+  List<KoreanSense> _lookup(
+    String headword,
+    List<String> readings,
+    int limit,
+    Set<int> prefer,
+  ) {
     final (key, _, ending) = keysAndEnding(headword, '');
     if (key.isEmpty) return const [];
     final hits = hasKanji(key)
@@ -158,7 +183,9 @@ final class KrdictGlossary implements KoreanGlossary, KoreanReverseGlossary {
             {for (final r in readings) pairKey(headword, r).$2}..remove(''),
           )
         : _kanaHits(key, ending);
-    return List.unmodifiable(_meanings(hits, limit));
+    return List.unmodifiable(
+      _meanings([for (final h in hits) h.preferring(prefer)], limit),
+    );
   }
 
   /// お皿 / おさら → 皿 / さら; null when [headword] has no such prefix.
@@ -274,12 +301,14 @@ final class KrdictGlossary implements KoreanGlossary, KoreanReverseGlossary {
   /// Enough for the most ambiguous kana word (ただ has 14 senses).
   static const _rowLimit = 500;
 
-  static const _columns =
+  /// Columns of a hit; the last is the sense's Korean part of speech (0 in
+  /// a schema 1 file).
+  String get _columns =>
       'j.kind, j.pos, j.reading, s.id, s.word, s.level, s.sense_no, '
-      's.source, s.synonyms, j.ending '
+      's.source, s.synonyms, j.ending, ${hasPos ? 's.pos' : '0'} '
       'FROM ja j JOIN sense s ON s.id = j.sense_id';
 
-  static const _byKeySql = 'SELECT $_columns WHERE j.key = ? LIMIT $_rowLimit';
+  String get _byKeySql => 'SELECT $_columns WHERE j.key = ? LIMIT $_rowLimit';
 
   /// Kanji words read as `?1`, then kana words written `?2`.
   static const _spellingsSql =
@@ -292,7 +321,7 @@ final class KrdictGlossary implements KoreanGlossary, KoreanReverseGlossary {
       'WHERE j.key = ?2 AND j.kind = $_kana '
       'LIMIT $_rowLimit';
 
-  static const _byReadingSql =
+  String get _byReadingSql =>
       'SELECT $_columns WHERE j.reading = ? AND j.kind = $_pair '
       'LIMIT $_rowLimit';
 }
@@ -308,6 +337,8 @@ final class _Hit implements Comparable<_Hit> {
     required this.senseNo,
     required this.source,
     required this.synonyms,
+    required this.koreanPos,
+    this.preferred = true,
   });
 
   /// Columns as in [KrdictGlossary._columns].
@@ -324,6 +355,7 @@ final class _Hit implements Comparable<_Hit> {
       '' => const [],
       final s => s.split('|'),
     },
+    koreanPos: row.columnAt(10) as int,
   );
 
   final int tier;
@@ -338,10 +370,36 @@ final class _Hit implements Comparable<_Hit> {
   final GlossarySource source;
   final List<String> synonyms;
 
+  /// `sense.pos` of the Korean word (0 for none).
+  final int koreanPos;
+
+  /// Of the class the word is printed as (or no hint, or a code of no class
+  /// of its own).
+  final bool preferred;
+
+  /// This hit with [preferred] for a hint of [codes] (empty: no hint).
+  _Hit preferring(Set<int> codes) => _Hit(
+    tier: tier,
+    position: position,
+    sameEnding: sameEnding,
+    senseId: senseId,
+    word: word,
+    level: level,
+    senseNo: senseNo,
+    source: source,
+    synonyms: synonyms,
+    koreanPos: koreanPos,
+    preferred:
+        codes.isEmpty ||
+        codes.contains(koreanPos) ||
+        neutralPosCodes.contains(koreanPos),
+  );
+
   @override
   int compareTo(_Hit other) {
     for (final (a, b) in [
       (tier, other.tier),
+      (preferred ? 0 : 1, other.preferred ? 0 : 1),
       (position, other.position),
       (sameEnding ? 0 : 1, other.sameEnding ? 0 : 1),
       (_levelRank(level), _levelRank(other.level)),

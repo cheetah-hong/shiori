@@ -1,6 +1,6 @@
 -- Built by tools/dict/build_ko_glossary.py --sample-sql from
 -- tools/dict/testdata/krdict_sample.json (made-up entries). Do not edit.
-PRAGMA user_version = 1;
+PRAGMA user_version = 2;
 CREATE TABLE ja (
   key TEXT NOT NULL,
   reading TEXT NOT NULL,
@@ -51,16 +51,29 @@ INSERT INTO "ja" VALUES('どきどき','',2,0,'',30);
 INSERT INTO "ja" VALUES('どきどき','',2,1,'する',30);
 INSERT INTO "ja" VALUES('掠る','かする',0,0,'',31);
 INSERT INTO "ja" VALUES('辞書','じしょ',0,0,'',32);
+INSERT INTO "ja" VALUES('静森','しずもり',0,0,'',33);
+INSERT INTO "ja" VALUES('静森','しずもり',0,0,'',34);
+INSERT INTO "ja" VALUES('星波','ほしなみ',0,0,'',35);
+INSERT INTO "ja" VALUES('星波','ほしなみ',0,0,'',36);
+INSERT INTO "ja" VALUES('星波','ほしなみ',0,0,'',37);
+INSERT INTO "ja" VALUES('風道','かざみち',0,0,'',38);
+INSERT INTO "ja" VALUES('風道','かざみち',0,0,'',39);
+INSERT INTO "ja" VALUES('風道','かざみち',0,0,'',40);
+INSERT INTO "ja" VALUES('風道','かざみち',0,0,'',41);
+INSERT INTO "ja" VALUES('風道','かざみち',0,0,'',42);
+INSERT INTO "ja" VALUES('風道','かざみち',0,0,'',43);
+INSERT INTO "ja" VALUES('青む','あおむ',0,0,'',44);
+INSERT INTO "ja" VALUES('青む','あおむ',0,0,'',45);
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 INSERT INTO "meta" VALUES('built_on','2026-11-05');
-INSERT INTO "meta" VALUES('keys','42');
+INSERT INTO "meta" VALUES('keys','55');
 INSERT INTO "meta" VALUES('krdict.edition','2026-10-19');
 INSERT INTO "meta" VALUES('krdict.license','CC BY-SA 2.0 KR');
 INSERT INTO "meta" VALUES('krdict.license_url','https://creativecommons.org/licenses/by-sa/2.0/kr/');
 INSERT INTO "meta" VALUES('krdict.name','한국어기초사전');
 INSERT INTO "meta" VALUES('krdict.publisher','국립국어원');
-INSERT INTO "meta" VALUES('schema','1');
-INSERT INTO "meta" VALUES('senses','32');
+INSERT INTO "meta" VALUES('schema','2');
+INSERT INTO "meta" VALUES('senses','45');
 INSERT INTO "meta" VALUES('sources','krdict');
 INSERT INTO "meta" VALUES('variant','lean');
 CREATE TABLE sense (
@@ -69,39 +82,53 @@ CREATE TABLE sense (
   level INTEGER,
   sense_no INTEGER NOT NULL,
   source INTEGER NOT NULL,
-  synonyms TEXT NOT NULL
+  synonyms TEXT NOT NULL,
+  pos INTEGER NOT NULL
 );
-INSERT INTO "sense" VALUES(1,'식당',1,1,0,'');
-INSERT INTO "sense" VALUES(2,'식도',3,1,0,'');
-INSERT INTO "sense" VALUES(3,'유명하다',1,1,0,'');
-INSERT INTO "sense" VALUES(4,'공부',1,1,0,'');
-INSERT INTO "sense" VALUES(5,'다만',2,1,0,'단지');
-INSERT INTO "sense" VALUES(6,'단지',2,1,0,'다만');
-INSERT INTO "sense" VALUES(7,'그저',2,1,0,'');
-INSERT INTO "sense" VALUES(8,'그저',2,2,0,'');
-INSERT INTO "sense" VALUES(9,'공짜',1,1,0,'');
-INSERT INTO "sense" VALUES(10,'한갓',3,1,0,'');
-INSERT INTO "sense" VALUES(11,'찻집',3,1,0,'');
-INSERT INTO "sense" VALUES(12,'카페',1,1,0,'');
-INSERT INTO "sense" VALUES(13,'접시',3,1,0,'');
-INSERT INTO "sense" VALUES(14,'그릇',1,1,0,'');
-INSERT INTO "sense" VALUES(15,'맛',1,1,0,'');
-INSERT INTO "sense" VALUES(16,'맛',1,2,0,'');
-INSERT INTO "sense" VALUES(17,'미각',1,1,0,'');
-INSERT INTO "sense" VALUES(18,'걸다',1,1,0,'');
-INSERT INTO "sense" VALUES(19,'앉다',1,1,0,'');
-INSERT INTO "sense" VALUES(20,'앉다',1,2,0,'');
-INSERT INTO "sense" VALUES(21,'곱하다',2,1,0,'');
-INSERT INTO "sense" VALUES(22,'가깝다',1,1,0,'');
-INSERT INTO "sense" VALUES(23,'가깝다',1,2,0,'');
-INSERT INTO "sense" VALUES(24,'코',1,1,0,'');
-INSERT INTO "sense" VALUES(25,'꽃',1,1,0,'');
-INSERT INTO "sense" VALUES(26,'체코어',NULL,1,0,'');
-INSERT INTO "sense" VALUES(27,'담배',2,1,0,'');
-INSERT INTO "sense" VALUES(28,'마을',1,1,0,'');
-INSERT INTO "sense" VALUES(29,'제일',1,1,0,'');
-INSERT INTO "sense" VALUES(30,'두근두근',3,1,0,'');
-INSERT INTO "sense" VALUES(31,'스치다',2,1,0,'');
-INSERT INTO "sense" VALUES(32,'사전',NULL,1,0,'');
+INSERT INTO "sense" VALUES(1,'식당',1,1,0,'',1);
+INSERT INTO "sense" VALUES(2,'식도',3,1,0,'',1);
+INSERT INTO "sense" VALUES(3,'유명하다',1,1,0,'',7);
+INSERT INTO "sense" VALUES(4,'공부',1,1,0,'',1);
+INSERT INTO "sense" VALUES(5,'다만',2,1,0,'단지',9);
+INSERT INTO "sense" VALUES(6,'단지',2,1,0,'다만',9);
+INSERT INTO "sense" VALUES(7,'그저',2,1,0,'',9);
+INSERT INTO "sense" VALUES(8,'그저',2,2,0,'',9);
+INSERT INTO "sense" VALUES(9,'공짜',1,1,0,'',1);
+INSERT INTO "sense" VALUES(10,'한갓',3,1,0,'',9);
+INSERT INTO "sense" VALUES(11,'찻집',3,1,0,'',1);
+INSERT INTO "sense" VALUES(12,'카페',1,1,0,'',1);
+INSERT INTO "sense" VALUES(13,'접시',3,1,0,'',1);
+INSERT INTO "sense" VALUES(14,'그릇',1,1,0,'',1);
+INSERT INTO "sense" VALUES(15,'맛',1,1,0,'',1);
+INSERT INTO "sense" VALUES(16,'맛',1,2,0,'',1);
+INSERT INTO "sense" VALUES(17,'미각',1,1,0,'',1);
+INSERT INTO "sense" VALUES(18,'걸다',1,1,0,'',5);
+INSERT INTO "sense" VALUES(19,'앉다',1,1,0,'',5);
+INSERT INTO "sense" VALUES(20,'앉다',1,2,0,'',5);
+INSERT INTO "sense" VALUES(21,'곱하다',2,1,0,'',5);
+INSERT INTO "sense" VALUES(22,'가깝다',1,1,0,'',7);
+INSERT INTO "sense" VALUES(23,'가깝다',1,2,0,'',7);
+INSERT INTO "sense" VALUES(24,'코',1,1,0,'',1);
+INSERT INTO "sense" VALUES(25,'꽃',1,1,0,'',1);
+INSERT INTO "sense" VALUES(26,'체코어',NULL,1,0,'',1);
+INSERT INTO "sense" VALUES(27,'담배',2,1,0,'',1);
+INSERT INTO "sense" VALUES(28,'마을',1,1,0,'',1);
+INSERT INTO "sense" VALUES(29,'제일',1,1,0,'',9);
+INSERT INTO "sense" VALUES(30,'두근두근',3,1,0,'',9);
+INSERT INTO "sense" VALUES(31,'스치다',2,1,0,'',5);
+INSERT INTO "sense" VALUES(32,'사전',NULL,1,0,'',0);
+INSERT INTO "sense" VALUES(33,'고요히',1,1,0,'',9);
+INSERT INTO "sense" VALUES(34,'고요숲',3,1,0,'',1);
+INSERT INTO "sense" VALUES(35,'별물결',1,1,0,'',1);
+INSERT INTO "sense" VALUES(36,'-물결',2,1,0,'',13);
+INSERT INTO "sense" VALUES(37,'반짝이',3,1,0,'',9);
+INSERT INTO "sense" VALUES(38,'바람길',1,1,0,'',1);
+INSERT INTO "sense" VALUES(39,'바람골',1,1,0,'',1);
+INSERT INTO "sense" VALUES(40,'샛바람길',1,1,0,'',1);
+INSERT INTO "sense" VALUES(41,'갈바람길',1,1,0,'',1);
+INSERT INTO "sense" VALUES(42,'하늬길',1,1,0,'',1);
+INSERT INTO "sense" VALUES(43,'마파람길',1,1,0,'',1);
+INSERT INTO "sense" VALUES(44,'푸름',1,1,0,'',1);
+INSERT INTO "sense" VALUES(45,'푸르다',3,1,0,'',7);
 CREATE INDEX ja_key ON ja(key);
 CREATE INDEX ja_reading ON ja(reading) WHERE kind = 0;
