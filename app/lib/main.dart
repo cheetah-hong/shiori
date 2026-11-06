@@ -21,6 +21,7 @@ Future<void> main() async {
   registerDictionaryLicense();
   registerGlossaryLicense();
   registerExtractorLicenses();
+  registerVoiceLicenses();
   // Unpacking the dictionaries starts now and runs while the app starts.
   final dictionary = bundledDictionaryOverride();
   final glossary = bundledGlossaryOverride();

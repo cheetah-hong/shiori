@@ -1,0 +1,2 @@
+# The speech engine frameworks are downloaded by the voice build tool, not committed.
+*.xcframework

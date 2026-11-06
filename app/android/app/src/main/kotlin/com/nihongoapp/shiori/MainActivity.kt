@@ -6,6 +6,7 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private var ocr: OcrChannel? = null
+    private var audio: AudioChannel? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -15,11 +16,18 @@ class MainActivity : FlutterActivity() {
         val channel = OcrChannel()
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, OcrChannel.NAME).setMethodCallHandler(channel)
         ocr = channel
+        // Pronunciation clips (MediaPlayer) for the Dart speech block.
+        audio?.dispose()
+        val player = AudioChannel(applicationContext.cacheDir)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, AudioChannel.NAME).setMethodCallHandler(player)
+        audio = player
     }
 
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
         ocr?.dispose()
         ocr = null
+        audio?.dispose()
+        audio = null
         super.cleanUpFlutterEngine(flutterEngine)
     }
 }

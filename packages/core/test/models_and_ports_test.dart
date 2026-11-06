@@ -217,7 +217,27 @@ void main() {
     test('SilentSpeech is unavailable and silent', () async {
       const speech = SilentSpeech();
       expect(speech.isAvailable, isFalse);
-      await speech.speak('川');
+      await speech.speak(const WordSpeech(headword: '川', reading: 'かわ'));
+      await speech.stop();
+    });
+
+    test('a word without accent data is estimated', () {
+      const plain = WordSpeech(headword: '波', reading: 'なみ');
+      const known = WordSpeech(headword: '波', reading: 'なみ', accents: [2]);
+      expect(plain.isEstimated, isTrue);
+      expect(known.isEstimated, isFalse);
+      expect(
+        known,
+        const WordSpeech(headword: '波', reading: 'なみ', accents: [2]),
+      );
+      expect(
+        const SentenceSpeech(text: '波が高い。', word: known),
+        const SentenceSpeech(text: '波が高い。', word: known),
+      );
+      expect(
+        const SpeechFailure('소리를 만들지 못했어요').toString(),
+        contains('소리를 만들지 못했어요'),
+      );
     });
 
     test('TextRecognitionException explains itself', () {

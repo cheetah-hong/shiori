@@ -6,12 +6,14 @@ PODS:
     - Flutter
   - share_plus (0.0.1):
     - Flutter
+  - VoicevoxCore (0.17.1)
 
 DEPENDENCIES:
   - Flutter (from `Flutter`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
   - integration_test (from `.symlinks/plugins/integration_test/ios`)
   - share_plus (from `.symlinks/plugins/share_plus/ios`)
+  - VoicevoxCore (from `voicevox`)
 
 EXTERNAL SOURCES:
   Flutter:
@@ -22,13 +24,16 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/integration_test/ios"
   share_plus:
     :path: ".symlinks/plugins/share_plus/ios"
+  VoicevoxCore:
+    :path: voicevox
 
 SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   image_picker_ios: e0ece4aa2a75771a7de3fa735d26d90817041326
   integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
   share_plus: eccd7beb7cea61271aeed1800e8ccb2b952c0c7f
+  VoicevoxCore: f6a7a63d835b50693765d193f669b8fb0047ab68
 
-PODFILE CHECKSUM: fa72fa6431e7422b3bc310d67f3aee1b6e75b526
+PODFILE CHECKSUM: c9cc7f102315b5deea2b3c9f28cf153723ef809f
 
 COCOAPODS: 1.16.2

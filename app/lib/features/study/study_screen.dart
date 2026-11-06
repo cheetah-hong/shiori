@@ -1,12 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shiori/adapters/voicevox_speech.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/theme.dart';
 import 'package:shiori/features/study/study_controller.dart';
 import 'package:shiori/features/study/word_card.dart';
+import 'package:shiori/features/study/word_speech.dart';
 import 'package:shiori/shared/format.dart';
 import 'package:shiori/shared/hide_labels.dart';
 import 'package:shiori_core/shiori_core.dart';
+import 'package:voicevox_block/voicevox_block.dart';
 
 /// 학습: one card at a time. 다시 학습 sends it to the back, 알고있음 schedules it,
 /// 이미 알아요 hides the word (with 되돌리기 right after).
@@ -31,6 +36,7 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
       ref.read(studyControllerProvider(widget.scope).notifier);
 
   Future<void> _hide() => _guard(HideLabels.hideFailed, () async {
+    _stopSound();
     final item = await _controller.hide();
     if (mounted && item != null) {
       setState(() {
@@ -73,7 +79,18 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
     if (mounted) setState(() => _failure = message);
   }
 
+  /// Stops the card's sound when the card is answered or hidden: a sound
+  /// still being made for it is then not played over the next card. (Not when
+  /// the old card leaves the screen: that comes after the switch animation
+  /// and would cut a sound already asked for on the next card.)
+  void _stopSound() {
+    final speech = ref.read(speechProvider);
+    if (!speech.isAvailable) return;
+    unawaited(speech.stop().catchError((Object _) {}));
+  }
+
   void _answer(Answer answer) {
+    _stopSound();
     if (_hidden != null || _failure != null) {
       setState(_clearNotice);
     }
@@ -202,6 +219,25 @@ class _Session extends ConsumerWidget {
     if (item == null) return const SizedBox.shrink();
     final controller = ref.read(studyControllerProvider(scope).notifier);
     final speech = ref.watch(speechProvider);
+    // Until the accent table has loaded the card shows it without data; a
+    // button pressed meanwhile waits for the table, so the sound keeps the
+    // accent the data has.
+    final accentsNow =
+        ref.watch(accentTableProvider).asData?.value ?? AccentTable.empty;
+    final wordSpeech = wordSpeechFor(item.word, accentsNow);
+    final exampleSpeech = exampleSpeechFor(item.word, accentsNow);
+    Future<AccentTable> accents() async {
+      try {
+        return await ref.read(accentTableProvider.future);
+      } on Object {
+        return AccentTable.empty;
+      }
+    }
+
+    final estimator = switch (speech) {
+      final AccentEstimator e => e,
+      _ => null,
+    };
     final preview = intervalLabel(controller.previewKnown(item));
     final duration = Motion.of(context, Motion.card);
 
@@ -272,8 +308,21 @@ class _Session extends ConsumerWidget {
                 ),
                 item: item,
                 maxLevel: ref.watch(reviewSchedulerProvider).maxLevel,
-                onSpeak: speech.isAvailable
-                    ? () => speech.speak(item.word.headword)
+                onSpeakWord: speech.isAvailable
+                    ? () async => speech.speak(
+                        wordSpeechFor(item.word, await accents()),
+                      )
+                    : null,
+                onSpeakExample: speech.isAvailable && exampleSpeech != null
+                    ? () async => speech.speak(
+                        exampleSpeechFor(item.word, await accents()) ??
+                            exampleSpeech,
+                      )
+                    : null,
+
+                pitch: pitchInfoFor(wordSpeech),
+                estimatePitch: speech.isAvailable && estimator != null
+                    ? () => estimator.estimateAccent(wordSpeech)
                     : null,
               ),
             ),

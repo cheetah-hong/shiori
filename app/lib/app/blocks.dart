@@ -15,15 +15,18 @@ library;
 
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shiori/adapters/accent_data.dart';
 import 'package:shiori/adapters/bundled_dictionary.dart';
 import 'package:shiori/adapters/bundled_glossary.dart';
 import 'package:shiori/adapters/dev_samples.dart';
 import 'package:shiori/adapters/file_crash_log.dart';
 import 'package:shiori/adapters/image_picker_source.dart';
 import 'package:shiori/adapters/platform_text_recognizer.dart';
+import 'package:shiori/adapters/voicevox_speech.dart';
 import 'package:shiori/app/crash_reporting.dart';
 import 'package:shiori_core/shiori_core.dart';
 import 'package:shiori_storage_drift/shiori_storage_drift.dart';
+import 'package:voicevox_block/voicevox_block.dart';
 
 // ---------------------------------------------------------------- block slots
 
@@ -133,8 +136,20 @@ final reviewSchedulerProvider = Provider<ReviewScheduler>(
   ),
 );
 
-/// Pronunciation (optional). Next: flutter_tts.
-final speechProvider = Provider<Speech>((ref) => const SilentSpeech());
+/// Pronunciation: VOICEVOX on the device (iOS and Android); elsewhere the
+/// card shows no speaker buttons.
+final speechProvider = Provider<Speech>((ref) => appVoicevoxSpeech());
+
+/// Pitch accents (Kanjium) for the pitch line and the word's sound; an empty
+/// table when the build has no accent data.
+final accentTableProvider = FutureProvider<AccentTable>(
+  (ref) async => (await ref.watch(accentDataProvider.future)).table,
+);
+
+/// The accent data with its edition (for the 정보 screen).
+final accentDataProvider = FutureProvider<AccentData>(
+  (ref) => openAppAccentData(),
+);
 
 /// Uncaught errors, kept on the device for the 정보 screen. `main.dart` plugs
 /// in the same log its global error handlers write to. Next: a crash service

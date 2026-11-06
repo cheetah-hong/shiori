@@ -1,5 +1,6 @@
-# Uncomment this line to define a global platform for your project
-platform :ios, '16.0'
+# iOS 16.2: the official VOICEVOX core and ONNX Runtime xcframeworks are built with
+# MinimumOSVersion 16.2. Keep IPHONEOS_DEPLOYMENT_TARGET in Runner.xcodeproj the same.
+platform :ios, '16.2'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -29,12 +30,29 @@ end
 
 require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
 
+# The speech engine (VOICEVOX core + ONNX Runtime) is not in git; the voice build tool puts
+# both xcframeworks in ios/voicevox/. Without them the app still builds, and pronunciation
+# reports that the engine is missing.
+def voicevox_frameworks
+  %w[voicevox_core voicevox_onnxruntime].map { |name| "#{name}.xcframework" }
+end
+
+def voicevox_ready?
+  dir = File.join(File.dirname(File.realpath(__FILE__)), 'voicevox')
+  voicevox_frameworks.all? { |framework| File.directory?(File.join(dir, framework)) }
+end
+
 flutter_ios_podfile_setup
 
 target 'Runner' do
   use_frameworks!
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+  if voicevox_ready?
+    pod 'VoicevoxCore', :path => 'voicevox'
+  else
+    Pod::UI.warn "Speech engine not linked: #{voicevox_frameworks.join(' and ')} not found in ios/voicevox/."
+  end
   target 'RunnerTests' do
     inherit! :search_paths
   end

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Check the app's dictionary assets against their edition files, before an app build.
+"""Check the app's dictionary and speech assets against their edition files, before an app build.
 
-  python3 tools/dict/asset_check.py [--dir app/assets/dict] [--max-age-days N | --release]
+  python3 tools/dict/asset_check.py [--dir app/assets/dict] [--voice-dir app/assets/voice]
+                                    [--accent-dir app/assets/accent] [--max-age-days N | --release]
 
 For each asset (JMdict full-lean and the Korean glossary): the edition file has every
 field the app reads, the gzip has the size the edition gives, it unpacks completely,
@@ -12,6 +13,11 @@ N days ago (off by default). --release is the check a release build runs (Xcode 
 Gradle): every asset must match its edition, and JMdict must be at most
 RELEASE_MAX_AGE_DAYS old; on failure it also prints the command that fixes it. Only
 the Python 3 standard library is used.
+
+The speech assets (the voice asset and the accent table, speech_check.py) are checked
+too, in their own folders, both in a plain run and with --release; a failing one
+prints the command that rebuilds it. They are pinned editions, so --max-age-days and
+the release age limit do not apply to them.
 """
 from __future__ import annotations
 
@@ -29,7 +35,23 @@ import zlib
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+
+import speech_check  # noqa: E402
+from speech_check import (  # noqa: E402,F401  (the speech checks, under this module's name too)
+    ACCENT_FILES,
+    VOICE_DICTIONARY_FILES,
+    VOICE_EDITION,
+    check_accent,
+    check_voice,
+)
+
 DEFAULT_DIR = HERE.parent.parent / "app" / "assets" / "dict"
+REPO_VOICE_DIR = HERE.parent.parent / "app" / "assets" / "voice"
+REPO_ACCENT_DIR = HERE.parent.parent / "app" / "assets" / "accent"
+# What main() checks when --voice-dir / --accent-dir are not given (read when main runs).
+DEFAULT_VOICE_DIR = REPO_VOICE_DIR
+DEFAULT_ACCENT_DIR = REPO_ACCENT_DIR
 
 # Asset name -> (gzip file, edition file).
 ASSETS = {
@@ -178,15 +200,28 @@ def check_dir(directory: Path, *, max_age_days: int | None = None, today: dt.dat
     return problems
 
 
-def report(directory: Path, *, max_age_days: int | None = None, names: tuple[str, ...] = tuple(ASSETS)) -> int:
-    """Print the check of [names] in [directory]; 0 when all are good, else 1."""
+def _speech_dirs(voice_dir: Path | None, accent_dir: Path | None) -> dict[str, Path | None]:
+    return {"voice": voice_dir, "accent": accent_dir}
+
+
+def report(directory: Path, *, max_age_days: int | None = None, names: tuple[str, ...] = tuple(ASSETS),
+           voice_dir: Path | None = None, accent_dir: Path | None = None) -> int:
+    """Print the check of [names] in [directory] and of the speech assets whose folder is
+    given; 0 when all are good, else 1."""
     problems = check_dir(directory, max_age_days=max_age_days, names=names)
-    for p in problems:
+    dirs = _speech_dirs(voice_dir, accent_dir)
+    speech_problems, speech_failed = speech_check.check_speech(dirs)
+    for p in problems + speech_problems:
         print(p)
     for name in names:
         if not any(p.startswith(f"{name}:") for p in problems):
             print(f"{name}: ok")
-    return 1 if problems else 0
+    for name, directory_given in dirs.items():
+        if directory_given is not None and name not in speech_failed:
+            print(f"{name}: ok")
+    for name in speech_failed:
+        print(f"  {name}: rebuild with: {speech_check.REBUILD_COMMANDS[name]}")
+    return 1 if problems or speech_problems else 0
 
 
 def _release_split(directory: Path, today: dt.date | None) -> tuple[list[str], list[str], list[str]]:
@@ -214,24 +249,41 @@ def release_problems(directory: Path, *, today: dt.date | None = None) -> list[s
     return _release_split(directory, today)[0]
 
 
-def release_report(directory: Path) -> int:
-    """Print the release check of [directory] and how to fix it; 0 when it passes, else 1."""
+def release_report(directory: Path, *, voice_dir: Path | None = None, accent_dir: Path | None = None,
+                   engine: str | None = None) -> int:
+    """Print the release check of [directory] and of the speech assets whose folder is
+    given (and, with [engine], of that platform's speech engine files), and how to fix it;
+    0 when it passes, else 1."""
     problems, mismatched, too_old = _release_split(directory, None)
-    for p in problems:
+    dirs = _speech_dirs(voice_dir, accent_dir)
+    speech_problems, speech_failed = speech_check.check_speech(dirs)
+    engine_problems = speech_check.check_engine(engine, HERE.parent.parent) if engine else []
+    if engine and not engine_problems:
+        print(f"engine ({engine}): ok")
+    for p in problems + speech_problems + engine_problems:
         print(p)
     for name in ASSETS:
         if name not in mismatched and name not in too_old:
             print(f"{name}: ok")
-    if not problems:
-        return 0
-    print("error: The dictionary assets cannot ship in a release "
-          "(python3 tools/dict/asset_check.py --release).")
-    if mismatched:
-        rebuild = " / ".join(REBUILD_COMMANDS[name] for name in mismatched)
+    for name, directory_given in dirs.items():
+        if directory_given is not None and name not in speech_failed:
+            print(f"{name}: ok")
+    if problems:
+        print("error: The dictionary assets cannot ship in a release "
+              "(python3 tools/dict/asset_check.py --release).")
+        if mismatched:
+            rebuild = " / ".join(REBUILD_COMMANDS[name] for name in mismatched)
+            print(f"  Not matching their edition: rebuild with: {rebuild}")
+        if too_old:
+            print(f"  Too old (JMdict, limit {RELEASE_MAX_AGE_DAYS} days): refresh with: {REFRESH_COMMAND}")
+    if speech_failed:
+        print("error: The speech assets cannot ship in a release "
+              "(python3 tools/dict/asset_check.py --release).")
+        rebuild = " / ".join(speech_check.REBUILD_COMMANDS[name] for name in speech_failed)
         print(f"  Not matching their edition: rebuild with: {rebuild}")
-    if too_old:
-        print(f"  Too old (JMdict, limit {RELEASE_MAX_AGE_DAYS} days): refresh with: {REFRESH_COMMAND}")
-    return 1
+    if engine_problems:
+        print(f"error: The speech engine is not in this build: {speech_check.ENGINE_COMMAND}")
+    return 1 if problems or speech_problems or engine_problems else 0
 
 
 def add_arguments(ap: argparse.ArgumentParser) -> None:
@@ -242,16 +294,24 @@ def add_arguments(ap: argparse.ArgumentParser) -> None:
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dir", type=Path, default=DEFAULT_DIR, help="default: app/assets/dict")
+    ap.add_argument("--voice-dir", type=Path, help="default: app/assets/voice")
+    ap.add_argument("--accent-dir", type=Path, help="default: app/assets/accent")
     add_arguments(ap)
     ap.add_argument("--release", action="store_true",
                     help=f"the release build check: every asset matches its edition and JMdict is at "
                          f"most {RELEASE_MAX_AGE_DAYS} days old")
+    ap.add_argument("--engine", choices=sorted(speech_check.ENGINE_FILES),
+                    help="with --release: also require that platform's speech engine files")
     a = ap.parse_args(argv)
+    if a.engine and not a.release:
+        ap.error("--engine goes with --release")
     if a.release and a.max_age_days is not None:
         ap.error("--release has its own age limit; do not give --max-age-days with it")
+    voice_dir = a.voice_dir or DEFAULT_VOICE_DIR
+    accent_dir = a.accent_dir or DEFAULT_ACCENT_DIR
     if a.release:
-        return release_report(a.dir)
-    return report(a.dir, max_age_days=a.max_age_days)
+        return release_report(a.dir, voice_dir=voice_dir, accent_dir=accent_dir, engine=a.engine)
+    return report(a.dir, max_age_days=a.max_age_days, voice_dir=voice_dir, accent_dir=accent_dir)
 
 
 if __name__ == "__main__":

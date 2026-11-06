@@ -340,4 +340,5 @@ PYTHONPATH=tools .cache/venv/bin/python tools/make_report.py --results .cache/re
 | `tools/words.py` | `words.tsv`, Kanjium 행, UniDic `aType` 읽기 |
 | `tools/test_accent.py` | 위 네 파일의 단위 테스트 41개 |
 | `tools/engine_vv.py` | VOICEVOX 바인딩 도우미(가나 표기, 모라 시각, F0 측정) |
+| `tools/measure_wavs.py` | 다른 엔진(기기 내장 TTS)이 만든 WAV를 2.4절 Kyoko와 같은 대략 규칙으로 채점: 엄격·마지막 박 제외·최소쌍 대비·같은 소리 쌍 (docs/verification.md 28.1절) |
 | `tools/lookup_data.py` · `run_voicevox.py` · `run_kyoko.py` · `run_openjtalk.py` · `bench_voicevox.py` · `make_report.py` | 2~6절의 실험 스크립트 |

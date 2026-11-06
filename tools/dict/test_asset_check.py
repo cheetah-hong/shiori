@@ -1,5 +1,9 @@
 """D1: asset_check.py and the builders' --check on small made-up assets (no network).
 
+The voice and accent assets have their own folders (--voice-dir, --accent-dir). For the
+whole module those default to made-up assets built here, so the checks of the
+dictionaries do not depend on what app/assets/ holds.
+
   python3 -m unittest discover -s tools/dict -p 'test_*.py'
 """
 from __future__ import annotations
@@ -18,14 +22,39 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE.parent / "voice"))
 
 import asset_check  # noqa: E402
 import build_app_asset  # noqa: E402
 import build_ko_glossary  # noqa: E402
+from test_build_accent_asset import build_fake_accent  # noqa: E402
 from test_build_app_asset import TINY_JMDICT  # noqa: E402
+from test_build_voice_asset import build_fake_voice  # noqa: E402
 
 JM_GZ, JM_EDITION = asset_check.ASSETS["jmdict-full-lean"]
 KO_GZ, KO_EDITION = asset_check.ASSETS["ko-glossary"]
+VOICE_EDITION = asset_check.VOICE_EDITION
+ACCENT_GZ, ACCENT_EDITION = asset_check.ACCENT_FILES
+
+_speech_tmp: tempfile.TemporaryDirectory | None = None
+_saved_defaults: tuple[Path, Path] | None = None
+
+
+def setUpModule() -> None:
+    """Good made-up voice and accent assets in the default folders main() checks."""
+    global _speech_tmp, _saved_defaults
+    _speech_tmp = tempfile.TemporaryDirectory()
+    root = Path(_speech_tmp.name)
+    build_fake_voice(root / "voice", root / "voice-work")
+    build_fake_accent(root / "accent", root / "accent-work")
+    _saved_defaults = (asset_check.DEFAULT_VOICE_DIR, asset_check.DEFAULT_ACCENT_DIR)
+    asset_check.DEFAULT_VOICE_DIR = root / "voice"
+    asset_check.DEFAULT_ACCENT_DIR = root / "accent"
+
+
+def tearDownModule() -> None:
+    asset_check.DEFAULT_VOICE_DIR, asset_check.DEFAULT_ACCENT_DIR = _saved_defaults
+    _speech_tmp.cleanup()
 
 
 def build_both(out: Path, work: Path, *, built_on: str = "2026-11-05") -> None:
@@ -306,6 +335,221 @@ class BuilderCheckFlagTest(unittest.TestCase):
         old.write_text(json.dumps(edition), encoding="utf-8")
         self.assertNotEqual(self.quiet(build_app_asset.main,
                                        ["--check", "--out-dir", str(self.out), "--max-age-days", "35"]), 0)
+
+
+class SpeechAssetCase(unittest.TestCase):
+    """Made-up voice and accent assets in their own folders, next to good dictionaries."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.dict_dir = self.tmp / "dict"
+        build_both(self.dict_dir, self.tmp, built_on=dt.date.today().isoformat())
+        self.voice = self.tmp / "voice"
+        self.accent = self.tmp / "accent"
+        build_fake_voice(self.voice, self.tmp / "voice-work")
+        build_fake_accent(self.accent, self.tmp / "accent-work")
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def edit(self, path: Path, change) -> None:
+        edition = json.loads(path.read_text(encoding="utf-8"))
+        change(edition)
+        path.write_text(json.dumps(edition, ensure_ascii=False), encoding="utf-8")
+
+    def edit_file_entry(self, index: int, **fields) -> None:
+        self.edit(self.voice / VOICE_EDITION, lambda e: e["files"][index].update(fields))
+
+    def run_main(self, argv: list[str]) -> tuple[int, str]:
+        buf = io.StringIO()
+        dirs = ["--dir", str(self.dict_dir), "--voice-dir", str(self.voice),
+                "--accent-dir", str(self.accent)]
+        with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
+            code = asset_check.main(argv + dirs)
+        return code, buf.getvalue()
+
+    def assert_fails(self, problems: list[str], name: str, *words: str) -> None:
+        self.assertTrue(problems)
+        for p in problems:
+            self.assertNotIn("\n", p)
+            self.assertTrue(p.startswith(f"{name}: "), p)
+        for word in words:
+            self.assertTrue(any(word in p for p in problems), (word, problems))
+
+
+class VoiceCheckTest(SpeechAssetCase):
+    def test_a_matching_voice_asset_passes(self) -> None:
+        self.assertEqual(asset_check.check_voice(self.voice), [])
+        code, out = self.run_main([])
+        self.assertEqual(code, 0, out)
+        self.assertIn("voice: ok", out)
+        self.assertIn("jmdict-full-lean: ok", out)
+
+    def test_a_different_gzip_size_fails(self) -> None:
+        self.edit_file_entry(0, gzip_bytes=1)
+        self.assert_fails(asset_check.check_voice(self.voice), "voice", "gzip_bytes", "0.vvm")
+        code, out = self.run_main([])
+        self.assertEqual(code, 1)
+        self.assertIn("python3 tools/voice/build_voice_asset.py", out)
+
+    def test_a_different_size_or_sha256_fails(self) -> None:
+        self.edit_file_entry(3, sha256="0" * 64)
+        self.assert_fails(asset_check.check_voice(self.voice), "voice", "sha256")
+        build_fake_voice(self.voice, self.tmp / "again")
+        self.edit_file_entry(2, bytes=7)
+        self.assert_fails(asset_check.check_voice(self.voice), "voice", "bytes")
+
+    def test_a_missing_file_fails(self) -> None:
+        (self.voice / "open_jtalk_dic.sys.dic.gz").unlink()
+        self.assert_fails(asset_check.check_voice(self.voice), "voice", "open_jtalk_dic.sys.dic.gz")
+        (self.voice / VOICE_EDITION).unlink()
+        self.assert_fails(asset_check.check_voice(self.voice), "voice", VOICE_EDITION)
+        code, _ = self.run_main([])
+        self.assertEqual(code, 1)
+
+    def test_a_gzip_cut_short_fails(self) -> None:
+        gz = self.voice / "0.vvm.gz"
+        data = gz.read_bytes()
+        gz.write_bytes(data[: len(data) // 2])
+        self.edit_file_entry(0, gzip_bytes=len(data) // 2)
+        self.assert_fails(asset_check.check_voice(self.voice), "voice", "0.vvm.gz")
+
+    def test_an_unsafe_path_fails(self) -> None:
+        for bad in ("../0.vvm", "open_jtalk_dic_utf_8-1.11/../../x", "/tmp/0.vvm", "a\\..\\b", "",
+                    "C:/x", "./0.vvm"):
+            with self.subTest(path=bad):
+                build_fake_voice(self.voice, self.tmp / "again")
+                self.edit_file_entry(1, path=bad)
+                self.assert_fails(asset_check.check_voice(self.voice), "voice", "path")
+
+    def test_an_unsafe_gzip_name_fails(self) -> None:
+        for bad in ("../0.vvm.gz", "sub/0.vvm.gz", "..", ""):
+            with self.subTest(gzip=bad):
+                build_fake_voice(self.voice, self.tmp / "again")
+                self.edit_file_entry(0, gzip=bad)
+                self.assert_fails(asset_check.check_voice(self.voice), "voice", "gzip")
+
+    def test_an_unsafe_dictionary_dir_or_model_file_fails(self) -> None:
+        self.edit(self.voice / VOICE_EDITION, lambda e: e.update(dictionary_dir="../dic"))
+        self.assert_fails(asset_check.check_voice(self.voice), "voice", "dictionary_dir")
+        build_fake_voice(self.voice, self.tmp / "again")
+        self.edit(self.voice / VOICE_EDITION, lambda e: e.update(model_file="/0.vvm"))
+        self.assert_fails(asset_check.check_voice(self.voice), "voice", "model_file")
+
+    def test_a_missing_field_fails_and_names_it(self) -> None:
+        cases = [
+            ("style_id", lambda e: e.pop("style_id")),
+            ("credit", lambda e: e.pop("credit")),
+            ("files", lambda e: e.update(files=[])),
+            ("license", lambda e: e["sources"][0].pop("license")),
+            ("sha256", lambda e: e["files"][0].pop("sha256")),
+        ]
+        for field, change in cases:
+            with self.subTest(field=field):
+                build_fake_voice(self.voice, self.tmp / "again")
+                self.edit(self.voice / VOICE_EDITION, change)
+                self.assert_fails(asset_check.check_voice(self.voice), "voice", field)
+
+    def test_a_style_id_that_is_not_a_number_fails(self) -> None:
+        self.edit(self.voice / VOICE_EDITION, lambda e: e.update(style_id="2"))
+        self.assert_fails(asset_check.check_voice(self.voice), "voice", "style_id")
+
+    def test_an_edition_missing_a_dictionary_file_fails(self) -> None:
+        self.edit(self.voice / VOICE_EDITION, lambda e: e.update(
+            files=[f for f in e["files"] if not f["path"].endswith("/matrix.bin")]))
+        self.assert_fails(asset_check.check_voice(self.voice), "voice", "matrix.bin")
+
+    def test_an_edition_without_the_model_fails(self) -> None:
+        self.edit(self.voice / VOICE_EDITION, lambda e: e.update(model_file="1.vvm"))
+        self.assert_fails(asset_check.check_voice(self.voice), "voice", "1.vvm")
+
+    def test_an_edition_that_is_not_json_fails(self) -> None:
+        (self.voice / VOICE_EDITION).write_text("not json", encoding="utf-8")
+        self.assert_fails(asset_check.check_voice(self.voice), "voice", "JSON")
+
+
+class AccentCheckTest(SpeechAssetCase):
+    def test_a_matching_accent_asset_passes(self) -> None:
+        self.assertEqual(asset_check.check_accent(self.accent), [])
+        code, out = self.run_main([])
+        self.assertEqual(code, 0, out)
+        self.assertIn("accent: ok", out)
+
+    def test_a_different_gzip_size_fails(self) -> None:
+        self.edit(self.accent / ACCENT_EDITION, lambda e: e.update(gzip_bytes=e["gzip_bytes"] + 1))
+        self.assert_fails(asset_check.check_accent(self.accent), "accent", "gzip_bytes")
+        code, out = self.run_main([])
+        self.assertEqual(code, 1)
+        self.assertIn("python3 tools/voice/build_accent_asset.py", out)
+
+    def test_a_different_sha256_or_size_fails(self) -> None:
+        self.edit(self.accent / ACCENT_EDITION, lambda e: e.update(tsv_sha256="f" * 64))
+        self.assert_fails(asset_check.check_accent(self.accent), "accent", "tsv_sha256")
+        build_fake_accent(self.accent, self.tmp / "again")
+        self.edit(self.accent / ACCENT_EDITION, lambda e: e.update(tsv_bytes=3))
+        self.assert_fails(asset_check.check_accent(self.accent), "accent", "tsv_bytes")
+
+    def test_a_different_entry_count_fails(self) -> None:
+        self.edit(self.accent / ACCENT_EDITION, lambda e: e.update(entries=e["entries"] + 1))
+        self.assert_fails(asset_check.check_accent(self.accent), "accent", "entries")
+
+    def test_a_missing_file_fails(self) -> None:
+        (self.accent / ACCENT_GZ).unlink()
+        self.assert_fails(asset_check.check_accent(self.accent), "accent", ACCENT_GZ)
+
+    def test_a_missing_field_fails_and_names_it(self) -> None:
+        for field in ("attribution", "license", "source_sha256", "entries"):
+            with self.subTest(field=field):
+                build_fake_accent(self.accent, self.tmp / "again")
+                self.edit(self.accent / ACCENT_EDITION, lambda e: e.pop(field))
+                self.assert_fails(asset_check.check_accent(self.accent), "accent", field)
+
+
+class SpeechReleaseTest(SpeechAssetCase):
+    def test_a_release_passes_with_every_asset_matching(self) -> None:
+        code, out = self.run_main(["--release"])
+        self.assertEqual(code, 0, out)
+        for name in ("jmdict-full-lean", "ko-glossary", "voice", "accent"):
+            self.assertIn(f"{name}: ok", out)
+
+    def test_a_release_checks_the_voice_asset(self) -> None:
+        self.edit_file_entry(0, sha256="0" * 64)
+        code, out = self.run_main(["--release"])
+        self.assertEqual(code, 1)
+        self.assertIn("voice: ", out)
+        self.assertIn("error:", out)
+        self.assertIn("python3 tools/voice/build_voice_asset.py", out)
+        self.assertNotIn("build_accent_asset.py", out)
+        self.assertNotIn("The dictionary assets cannot ship", out)
+        self.assertIn("jmdict-full-lean: ok", out)
+
+    def test_a_release_checks_the_accent_asset(self) -> None:
+        (self.accent / ACCENT_EDITION).unlink()
+        code, out = self.run_main(["--release"])
+        self.assertEqual(code, 1)
+        self.assertIn("accent: ", out)
+        self.assertIn("python3 tools/voice/build_accent_asset.py", out)
+        self.assertNotIn("build_voice_asset.py", out)
+
+    def test_a_release_with_an_unsafe_voice_path_fails(self) -> None:
+        self.edit_file_entry(1, path="../../outside")
+        code, out = self.run_main(["--release"])
+        self.assertEqual(code, 1)
+        self.assertIn("path", out)
+
+    def test_old_speech_assets_still_pass_a_release(self) -> None:
+        # Only JMdict has an age limit; the voice and accent assets are pinned editions.
+        old = (dt.date.today() - dt.timedelta(days=400)).isoformat()
+        self.edit(self.voice / VOICE_EDITION, lambda e: e.update(built_on=old))
+        self.edit(self.accent / ACCENT_EDITION, lambda e: e.update(built_on=old))
+        code, out = self.run_main(["--release"])
+        self.assertEqual(code, 0, out)
+
+    def test_the_default_folders_are_next_to_the_dictionary_folder(self) -> None:
+        self.assertEqual(asset_check.REPO_VOICE_DIR.parent, asset_check.DEFAULT_DIR.parent)
+        self.assertEqual(asset_check.REPO_VOICE_DIR.name, "voice")
+        self.assertEqual(asset_check.REPO_ACCENT_DIR.name, "accent")
 
 
 class SelfConsistencyTest(unittest.TestCase):

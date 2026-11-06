@@ -1,0 +1,20 @@
+name: voicevox_block
+description: >-
+  The pronunciation block for Shiori: pitch accent data (Kanjium), turning a
+  word or an example sentence into VOICEVOX input with the accent kept, and a
+  cache of the made sounds. Pure Dart; the engine itself is reached through
+  the VoicevoxOps interface (the app binds the VOICEVOX core C API).
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  crypto: ^3.0.6
+  shiori_core:
+    path: ../core
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.30.0

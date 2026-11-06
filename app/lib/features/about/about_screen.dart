@@ -8,6 +8,7 @@ import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/theme.dart';
 import 'package:shiori/features/about/crash_log_screen.dart';
 import 'package:shiori/features/about/extract_licenses.dart';
+import 'package:shiori/features/about/voice_licenses.dart';
 import 'package:shiori/shared/dictionary_notice.dart';
 import 'package:shiori/shared/widgets.dart';
 
@@ -75,6 +76,9 @@ class AboutScreen extends ConsumerWidget {
             const SizedBox(height: Space.section),
             const SectionLabel('단어 추출 데이터'),
             const _ExtractorCard(),
+            const SizedBox(height: Space.section),
+            const SectionLabel('발음'),
+            const _VoiceCard(),
             const SizedBox(height: Space.section),
             const SectionLabel('오류 기록'),
             _Card(
@@ -146,6 +150,66 @@ class _ExtractorCard extends StatelessWidget {
             'Unihan (Unicode Han Database) 18.0.0',
             '한자의 한국 한자음(뜻과 표제어를 짝짓는 데 씀). Unicode, Inc., '
                 'Unicode License v3. $_unihanUrl',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Kanjium's own wording for its credit (its README asks for this text on
+/// an app's About page).
+const kanjiumAttribution =
+    'The pitch accent notation, verb particle data, phonetics, homonyms and '
+    'other additions or modifications to EDICT, KANJIDIC or KRADFILE were '
+    'provided by Uros O. through his free database.';
+
+/// The voice, the engine and the accent data, credited as their terms ask.
+class _VoiceCard extends StatelessWidget {
+  const _VoiceCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    Widget source(String title, String body) => Padding(
+      padding: const EdgeInsets.only(top: Space.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: context.text.titleSmall),
+          const SizedBox(height: Space.xs),
+          Text(body, style: context.text.bodySmall?.copyWith(height: 1.5)),
+        ],
+      ),
+    );
+    return _Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '단어와 예문 소리는 기기 안에서 만들어요. 인터넷을 쓰지 않아요.',
+            style: context.text.bodySmall?.copyWith(color: t.ink2),
+          ),
+          source(
+            '음성 · VOICEVOX:四国めたん',
+            'VOICEVOX 음성 모델 이용규약과 四国めたん 음성 라이브러리 이용규약을 '
+                '따릅니다.',
+          ),
+          source(
+            'VOICEVOX core 0.17.1',
+            '음성 합성 엔진, MIT License. 엔진에 든 Open JTalk는 수정 BSD '
+                '라이선스입니다.',
+          ),
+          source(
+            'VOICEVOX ONNX Runtime',
+            'VOICEVOX ONNX Runtime 이용규약. Microsoft ONNX Runtime(MIT '
+                'License)을 바탕으로 합니다.',
+          ),
+          source('Open JTalk 사전 1.11', '예문을 읽고 악센트를 정하는 사전, 수정 BSD 라이선스.'),
+          source(
+            'Kanjium 악센트 데이터',
+            '음 높이 선과 단어 소리의 악센트, CC BY-SA 4.0. '
+                '$kanjiumAttribution',
           ),
         ],
       ),
@@ -504,6 +568,46 @@ kHangul and the variant fields, for the Joyo and Jinmeiyo kanji.
 $_unihanUrl
 
 $unicodeLicenseV3''',
+      ),
+    ]),
+  );
+}
+
+bool _voiceLicensesRegistered = false;
+
+/// Adds the pronunciation engine, voice and accent data to the licences
+/// page. Call once at start.
+void registerVoiceLicenses() {
+  if (_voiceLicensesRegistered) return;
+  _voiceLicensesRegistered = true;
+  LicenseRegistry.addLicense(
+    () => Stream.fromIterable([
+      const LicenseEntryWithLineBreaks(['VOICEVOX core'], voicevoxCoreLicense),
+      const LicenseEntryWithLineBreaks(
+        ['VOICEVOX ONNX Runtime', 'VOICEVOX voice model'],
+        '''VOICEVOX ONNX Runtime and the VOICEVOX voice model (0.vvm) are used under
+their terms of use (VOICEVOX ONNX Runtime 利用規約, VOICEVOX 音声モデル 利用規約):
+use in commercial and non-commercial apps and redistribution inside an app
+are allowed; decompiling and reverse engineering are not; a credit showing
+that VOICEVOX is used is required.
+
+Voice: VOICEVOX:四国めたん (terms: https://zunko.jp/con_ongen_kiyaku.html).
+
+VOICEVOX ONNX Runtime is built from Microsoft ONNX Runtime (MIT License).''',
+      ),
+      const LicenseEntryWithLineBreaks([
+        'Open JTalk dictionary',
+      ], openJtalkDictionaryLicense),
+      const LicenseEntryWithLineBreaks(
+        ['Kanjium'],
+        '''Pitch accent data (accents.txt) from Kanjium,
+https://github.com/mifunetoshiro/kanjium, converted to the app's accent table.
+
+$kanjiumAttribution
+
+Licence: Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA
+4.0), https://creativecommons.org/licenses/by-sa/4.0/. The converted table
+is distributed under the same licence.''',
       ),
     ]),
   );

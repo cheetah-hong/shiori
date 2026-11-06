@@ -73,7 +73,8 @@ nihongo-app/
 | `StudyPreferencesRepository` (설정: 학습 기록 모드·학습 범위 모드) | `DriftStudyPreferencesRepository` (`settings` 키-값 표). 테스트: `InMemoryStudyPreferencesRepository` | `studyPreferencesRepositoryProvider` → `studyPreferencesProvider` | 백업·동기화 |
 | `ReviewScheduler` | `LeitnerFourStepScheduler` (30분·3일·7일·21일) | `reviewSchedulerProvider` | FSRS |
 | `Clock` | `SystemClock` (테스트: `FixedClock`) | `clockProvider` | |
-| `Speech` (선택) | `SilentSpeech` (발음 버튼 숨김) | `speechProvider` | flutter_tts, 클라우드 음성 |
+| `Speech` (선택, 요청 `WordSpeech`·`SentenceSpeech`) | `VoicevoxSpeech` (iOS·Android: 기기 안 VOICEVOX, `packages/voicevox_block` + `app/lib/adapters/voicevox_*.dart`, docs/pronunciation.md). 그 밖의 플랫폼·테스트는 버튼 없음(`isAvailable` 거짓), `SilentSpeech`는 발음을 끈 블록 | `speechProvider` | 다른 음성, 기기 내장 TTS |
+| 악센트 데이터 (앱) | Kanjium 표(`AccentTable`, `app/assets/accent/`), 없으면 빈 표 | `accentTableProvider` (열기: `accentDataProvider`) | |
 | 설정값 | `StudySettings` (간격, 하루 시작 04시, 세션 10장, 상수) | `studySettingsProvider` | 설정 화면 |
 | `CrashReporter` / `CrashLog` (앱, `lib/app/crash_reporting.dart`) | `FileCrashLog` (앱 지원 폴더의 텍스트 파일, 64KiB, 전송 없음). `main.dart`의 `installCrashHandlers`가 전역 오류 처리기에 연결 | `crashLogProvider` | 충돌 보고 서비스(5.3절) |
 
@@ -180,6 +181,7 @@ runApp(ProviderScope(
 | dev flavor의 release | `preDevReleaseBuild`에서 실패 | "Release checks (flavor, dictionary)": `Release-dev`면 실패 |
 | 사전 asset 없음 (`app/assets/dict/`) | `checkReleaseDictionary`에서 실패 (`preProdReleaseBuild`가 의존) | 같은 단계: `Release*`에서 실패 |
 | 사전 asset이 판 정보와 어긋남, JMdict가 35일보다 오래됨 | 같은 `checkReleaseDictionary`: `python3 tools/dict/asset_check.py --release` | 같은 단계: 같은 명령 |
+| 발음 asset(`app/assets/voice/`·`app/assets/accent/`)이 없거나 판 정보와 어긋남, 엔진 파일 없음 (docs/pronunciation.md 2절) | 같은 명령 `--engine android` | 같은 단계: `--engine ios` |
 | 위 검사를 돌릴 python3이 PATH에 없음 | `checkReleaseDictionary`에서 실패 | 같은 단계: `Release*`에서 실패 |
 | 서명 키 없음·빈 값·keystore 없음 | `preProdReleaseBuild`에서 실패 (5.4절) | (Xcode 서명 단계가 막음) |
 | 결과물에 `dev_samples` | `copyFlutterAssets*Release` 뒤 출력 폴더를 보고 실패 | 마지막 단계 "Release bundle check (no dev samples)": 앱의 `App.framework/flutter_assets`를 보고 실패 |
@@ -230,7 +232,7 @@ runApp(ProviderScope(
 | 2 | 기기 판독 고정 데이터 | 로컬 전용 회귀 세트 | 실제 iPhone·Android에서 같은 쪽을 판독해 `$SHIORI_PRIVATE_DIR/textbook/`의 회귀 세트에 추가 (verification.md 4절) |
 | 3 | 문서 스캐너 | `ImageSource` | 옆으로 누운 사진은 OCR 채널이 세웁니다(verification.md 6절). 추출기는 배치에 기대지 않으므로 스캐너가 자른 페이지도 읽음. 남은 일: 펼친 책에서 페이지 찾기(모서리 고치기 화면) |
 | 4 | ~~JMdict~~ (완료) | `Lexicon` | 표기·읽기·품사·빈도, 정보 화면의 출처 표기. 남은 일: 데이터 정기 갱신 자동화(라이선스 의무, `docs/dictionary.md` 8·9절) |
-| 5 | flutter_tts | `Speech` | 블록만 바꾸면 카드에 발음 버튼이 나타남 |
+| 5 | ~~발음~~ (완료) | `Speech` | 기기 안 VOICEVOX + Kanjium 음 높이 선(docs/pronunciation.md, verification.md 28절). 남은 일: 귀로 확인, iOS에서 asset을 풀지 않고 열기 |
 | 6 | FSRS | `ReviewScheduler` | 복습 기록이 쌓인 뒤 |
 | 7 | Claude (선택) | `TextRecognizer` | 비용 문제로 나중. 서버 함수 필요 |
 | - | 홈 화면 위젯, 백업 | 새 포트 | 3단계 |

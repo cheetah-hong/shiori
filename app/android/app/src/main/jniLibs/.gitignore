@@ -1,0 +1,2 @@
+# The speech engine libraries are put here by tools/voice/build_voice_asset.py --native; not committed.
+*.so

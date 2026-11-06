@@ -7,6 +7,7 @@ import 'package:shiori/adapters/file_crash_log.dart';
 import 'package:shiori/adapters/image_picker_source.dart';
 import 'package:shiori/adapters/platform_text_recognizer.dart';
 import 'package:shiori/app/blocks.dart';
+import 'package:shiori/adapters/voicevox_speech.dart';
 import 'package:shiori_core/shiori_core.dart';
 import 'package:shiori_storage_drift/shiori_storage_drift.dart';
 
@@ -48,7 +49,7 @@ void main() {
       isA<DriftStudyPreferencesRepository>(),
     );
     expect(c.read(reviewSchedulerProvider), isA<LeitnerFourStepScheduler>());
-    expect(c.read(speechProvider), isA<SilentSpeech>());
+    expect(c.read(speechProvider), isA<VoicevoxSpeech>());
     expect(c.read(crashLogProvider), isA<FileCrashLog>());
   });
 

@@ -1888,3 +1888,63 @@ debug·profile은 막지 않습니다. 규칙과 이유는 `docs/dictionary.md` 
 | `74_evidence_dictionary_meaning.png` | s147 문장 낱말 `返品`의 사전 뜻 근거 조각: 「출처: 사전 · 짝 신뢰도 중간 · 사전 뜻」, 영문 설명 없음 |
 
 읽기 칸의 두 설명(`사전 읽기가 여럿`·`사전에는 다른 읽기`)은 합성 샘플에 해당 항목이 없어 단위 테스트(`korean_notes_test.dart`)로 확인했습니다.
+
+## 28. 발음: 기기 안 VOICEVOX, 음 높이 선, 예문 재생 (2026-11-06)
+
+학습 카드에 단어·예문 재생 버튼과 음 높이 선을 넣었습니다. 설계와 흐름은 `docs/pronunciation.md`, 엔진·데이터 정확도 측정은 `research/tts/README.md`입니다.
+학습 순서(SRS) 규칙·저장 스키마·추출기·사전 색인은 바꾸지 않았습니다. 자동 재생은 없고 버튼으로만 재생합니다.
+
+### 28.1 방식 비교 측정 (이 기능을 넣기 전)
+
+기기 내장 TTS도 같은 28단어(「단어+が」, `research/tts/words.tsv`)로 녹음해 `research/tts/tools/measure_wavs.py`로 쟀습니다(macOS Kyoko 기준선의 README 숫자를 그대로 재현해 도구를 확인).
+
+| 방식 | 엄격 일치 | 마지막 박 제외 | 최소쌍 대비 | 같은 읽기를 같은 소리로 |
+|---|---|---|---|---|
+| iOS 시뮬레이터 AVSpeechSynthesizer Kyoko(기본 품질, 시뮬레이터에 있는 유일한 일본어 음성) | 12/28 | 18/28 | 7/8 | 箸=端 |
+| Android 에뮬레이터 Google TTS 기기 음성 `ja-jp-x-htm-local` | 13/28 | 18/28 | 7/8 | 없음 |
+| VOICEVOX + 악센트 지정(README 3절) | 엔진 악센트 값 28/28 | | 24/24 (3음성) | 없음 |
+
+- 기기 내장 TTS는 악센트를 지정할 수단이 없었습니다: iOS `AVSpeechSynthesisIPANotationAttribute`는 「첫머리를 높일지」만 바뀌고 일부 음이 빠졌고, Android SSML `phoneme`은 음성마다 해석이 달랐습니다.
+- iOS enhanced·premium 음성은 시뮬레이터에서 받지 못해(음성 목록이 빔) 재지 못했습니다. Android의 다른 기기 음성 3개는 에뮬레이터에서 엔진이 멈춰(SIGILL) 재지 못했습니다.
+- 그래서 VOICEVOX를 앱에 넣고, Kanjium에 없는 단어까지 엔진이 읽도록 Open JTalk 사전 전체를 함께 넣었습니다.
+
+### 28.2 동작 확인 (iPhone 17 Pro 시뮬레이터, iOS 26.5)
+
+`integration_test/speech_screenshots_test.dart`(메모리 DB, 지어낸 카드 2장: Kanjium에 있는 「箸」·예문 「箸で食べます。」, 없는 「食べました」).
+
+| 확인 | 결과 |
+|---|---|
+| 첫 재생에서 발음 asset 풀기·대조 | 약 1.4초(`unpacked voicevox-0.17.1-0vvm-style2`) |
+| 단어 재생 → 캐시 WAV | 1개, 실패 안내 없음 |
+| 예문 재생(표제어 악센트 고정) | 캐시 2개, 실패 안내 없음 |
+| Kanjium에 없는 단어: 읽기를 열면 엔진 추정 선 + 「추정」, 재생 | 食べました가 LHHLLL(3)로 그려짐, 캐시 3개 |
+| 정보 화면 「발음」 카드 | 크레딧·라이선스·Kanjium 문구 |
+
+| 스크린샷 | 내용 |
+|---|---|
+| `80_study_word_speech.png` | 단어 재생 뒤 카드(읽기·뜻 가림, 예문 옆 재생 버튼) |
+| `81_study_pitch_line.png` | 읽기를 연 「箸」: はし 위 음 높이 선(높음→낮음, 조사 자리 옅게) |
+| `82_study_example_speech.png` | 예문 재생 뒤, 뜻·번역을 연 카드 |
+| `83_study_estimated_accent.png` | Kanjium에 없는 「食べました」: 엔진 추정 선과 「추정」 |
+| `84_about_voice_credits.png` | 정보 → 발음: VOICEVOX:四国めたん, VOICEVOX core·ONNX Runtime·Open JTalk 사전·Kanjium(CC BY-SA 4.0) |
+
+Android 에뮬레이터(Medium Phone, Android 16, arm64, Google Play 이미지)에서도 같은 시나리오가 통과했습니다: 발음 asset 풀기 약 2.5~3.0초, 단어·예문·추정 단어 재생 후 캐시 WAV 3개, 실패 안내 없음, 정보 화면 크레딧.
+엔진은 `jniLibs/arm64-v8a`의 `.so` 세 개(16KB 정렬), 재생은 `MediaPlayer`입니다. 스크린샷은 iOS 것만 저장소에 둡니다.
+
+### 28.3 테스트
+
+| 묶음 | 파일 | 내용 |
+|---|---|---|
+| 요청 → 엔진 입력 | `packages/voicevox_block/test/{pronunciation,speech_plan,speech_renderer}_test.dart` | 발음 가나(おう·えい·ー, 동사 끝 う), 악센트 표시 가나, 값 없음 → 표기·읽기 순서로 엔진 읽기, 예문의 표제어 고정(긴 말 안이면 고정 안 함, 평판은 구 박 수), 엔진 추정 악센트(「+が」, 한 구일 때만) |
+| 악센트 표 | `accent_table_test.dart`, `morae_test.dart`, app `accent_data_test.dart` | (표기, 읽기) 조회·여러 값·가나 단어·없음, 박 나누기와 높낮이 패턴, asset 크기·sha256 대조 |
+| 캐시 | `speech_cache_test.dart`, `speech_renderer_test.dart` | 두 번째는 합성 안 함, 크기 상한(오래 안 쓴 것부터), 망가진 WAV 다시 합성, 키 형식 |
+| 재생 버튼 | app `word_card_speech_test.dart`, `study_speech_test.dart` | 한 번 누르면 요청 한 번, 다시 누르면 다시 재생, 합성 중 「불러오는 중」·누름 무시, 실패해도 카드 유지·안내, 예문 버튼, 음 높이 선(읽기 열 때만, 추정 표시, 추정은 한 번만 물음) |
+| asset 무결성 | app `voice_assets_test.dart`, `voicevox_speech_test.dart`; `tools/dict/test_asset_check.py`, `tools/voice/test_*.py` | 크기·sha256이 다르거나 파일이 없으면 엔진을 열지 않고 안내, 경로 탈출 거부, 다시 풀기; 같은 내용의 빌드 도구·release 검사 |
+| 표기 | app `about_voice_credits_test.dart` | 정보 화면의 크레딧과 Kanjium 문구 |
+| 엔진 파일·압축 풀기 | `tools/dict/test_speech_engine_check.py`, `tools/voice/test_voice_native_links.py` | release 검사의 `--engine android|ios`(엔진 파일이 없거나 비면 실패), 앱과 같은 gzip 이름 규칙, 링크 연쇄·같은 이름 두 번 거부 |
+| 재생 경로 | Android `AudioPathTest.kt` | 캐시 폴더 안 실제 파일만, 옆 폴더·`..`·폴더 자체·없는 파일·밖을 가리키는 링크 거부(API 24에서도 도는 문자열 비교) |
+| 네트워크 | app `no_network_test.dart` (검사 목록에 `packages/voicevox_block` 추가) | 통과 |
+
+결과: core **555** · voicevox_block **63**(새) · app **248** · tools/dict **112**(+30) · tools/voice **47**(새) · iOS RunnerTests · Android 단위 **15**개(+4, `AudioPathTest`) 통과, `flutter analyze`·`dart analyze` 문제 없음, 생성기 `--check` 3개 통과, `asset_check.py`·`--release` 모두 ok.
+
+- `no_network_test.dart`가 새 패키지 `packages/voicevox_block`도 검사합니다(의존성 `crypto`·`shiori_core`, 연결 코드 없음).

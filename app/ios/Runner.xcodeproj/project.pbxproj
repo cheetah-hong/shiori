@@ -18,6 +18,7 @@
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		CA9D51A1421435F585380B61 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CC87ACC8C917E0E928C883FC /* Pods_Runner.framework */; };
 		CBA2952C3BB2B22A99197F6B /* OcrChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57EB8064C969711692D82F5F /* OcrChannel.swift */; };
+		A1D10C5E7B3F4A2E9C6D8B01 /* AudioChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1D10C5E7B3F4A2E9C6D8B02 /* AudioChannel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -57,6 +58,7 @@
 		3E70C2DACD76E34CBA1CDADF /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		4B0FED550E47216FFF3A3991 /* Pods-Runner.debug-dev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug-dev.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug-dev.xcconfig"; sourceTree = "<group>"; };
 		57EB8064C969711692D82F5F /* OcrChannel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OcrChannel.swift; sourceTree = "<group>"; };
+		A1D10C5E7B3F4A2E9C6D8B02 /* AudioChannel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AudioChannel.swift; sourceTree = "<group>"; };
 		6387E4D0BE2B620D0AB50EF0 /* Pods-Runner.release-dev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release-dev.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release-dev.xcconfig"; sourceTree = "<group>"; };
 		66BA1793CBB2D4FDA45DCD08 /* Pods-Runner.release-prod.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release-prod.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release-prod.xcconfig"; sourceTree = "<group>"; };
 		70674FE77A0DC1F7E6F5C68B /* Pods-Runner.profile-prod.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile-prod.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile-prod.xcconfig"; sourceTree = "<group>"; };
@@ -178,6 +180,7 @@
 				7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 				57EB8064C969711692D82F5F /* OcrChannel.swift */,
+				A1D10C5E7B3F4A2E9C6D8B02 /* AudioChannel.swift */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -315,7 +318,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Release builds (docs/architecture.md, 5): the dev flavor never ships, and a release carries the dictionary.\ncase \"${CONFIGURATION}\" in\n  Release-dev)\n    echo \"error: The dev flavor bundles development samples (assets/dev_samples/) and never builds for release. Build with --flavor prod.\"\n    exit 1\n    ;;\n  Release*)\n    for f in jmdict-full-lean.sqlite.gz jmdict-full-lean.edition.json; do\n      if [ ! -s \"${SRCROOT}/../assets/dict/$f\" ]; then\n        echo \"error: assets/dict/$f is missing. Build it with: python3 tools/dict/build_app_asset.py\"\n        exit 1\n      fi\n    done\n    for f in ko-glossary.sqlite.gz ko-glossary.edition.json; do\n      if [ ! -s \"${SRCROOT}/../assets/dict/$f\" ]; then\n        echo \"error: assets/dict/$f is missing. Build it with: python3 tools/dict/build_ko_glossary.py --source <krdict JSON zip>\"\n        exit 1\n      fi\n    done\n    # The assets must match their editions and JMdict must be recent: tools/dict/asset_check.py --release.\n    if ! command -v python3 >/dev/null 2>&1; then\n      echo \"error: python3 is not on PATH; the release dictionary check (tools/dict/asset_check.py) needs it. Install the Xcode command line tools.\"\n      exit 1\n    fi\n    # flutter build shows only the error: lines of a failed step, so every problem and fix line gets one.\n    if ! out=$(python3 \"${SRCROOT}/../../tools/dict/asset_check.py\" --release --dir \"${SRCROOT}/../assets/dict\" 2>&1); then\n      printf '%s\\n' \"$out\" | sed -e '/: ok$/d' -e 's/^ *\\(error: \\)*/error: /'\n      exit 1\n    fi\n    printf '%s\\n' \"$out\"\n    ;;\nesac\n";
+			shellScript = "# Release builds (docs/architecture.md, 5): the dev flavor never ships, and a release carries the dictionary.\ncase \"${CONFIGURATION}\" in\n  Release-dev)\n    echo \"error: The dev flavor bundles development samples (assets/dev_samples/) and never builds for release. Build with --flavor prod.\"\n    exit 1\n    ;;\n  Release*)\n    for f in jmdict-full-lean.sqlite.gz jmdict-full-lean.edition.json; do\n      if [ ! -s \"${SRCROOT}/../assets/dict/$f\" ]; then\n        echo \"error: assets/dict/$f is missing. Build it with: python3 tools/dict/build_app_asset.py\"\n        exit 1\n      fi\n    done\n    for f in ko-glossary.sqlite.gz ko-glossary.edition.json; do\n      if [ ! -s \"${SRCROOT}/../assets/dict/$f\" ]; then\n        echo \"error: assets/dict/$f is missing. Build it with: python3 tools/dict/build_ko_glossary.py --source <krdict JSON zip>\"\n        exit 1\n      fi\n    done\n    # The assets must match their editions and JMdict must be recent: tools/dict/asset_check.py --release.\n    if ! command -v python3 >/dev/null 2>&1; then\n      echo \"error: python3 is not on PATH; the release dictionary check (tools/dict/asset_check.py) needs it. Install the Xcode command line tools.\"\n      exit 1\n    fi\n    # flutter build shows only the error: lines of a failed step, so every problem and fix line gets one.\n    if ! out=$(python3 \"${SRCROOT}/../../tools/dict/asset_check.py\" --release --engine ios --dir \"${SRCROOT}/../assets/dict\" 2>&1); then\n      printf '%s\\n' \"$out\" | sed -e '/: ok$/d' -e 's/^ *\\(error: \\)*/error: /'\n      exit 1\n    fi\n    printf '%s\\n' \"$out\"\n    ;;\nesac\n";
 		};
 		08AEAB7FF787F378568DBDC0 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -447,6 +450,7 @@
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 				7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */,
 				CBA2952C3BB2B22A99197F6B /* OcrChannel.swift in Sources */,
+				A1D10C5E7B3F4A2E9C6D8B01 /* AudioChannel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -539,7 +543,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = iphoneos;
@@ -619,7 +623,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
@@ -670,7 +674,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = iphoneos;
@@ -754,7 +758,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = iphoneos;
@@ -814,7 +818,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
@@ -950,7 +954,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = iphoneos;

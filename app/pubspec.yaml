@@ -54,6 +54,11 @@ dependencies:
   crypto: ^3.0.6
   # "판독 기록 내보내기" (builds that are not release builds): the share sheet.
   share_plus: 13.3.1
+  # Pronunciation: accent data, VOICEVOX input and the sound cache (pure Dart).
+  voicevox_block:
+    path: ../packages/voicevox_block
+  # Pronunciation: the VOICEVOX core C API through dart:ffi.
+  ffi: ^2.1.4
 
 dev_dependencies:
   flutter_test:
@@ -102,6 +107,12 @@ flutter:
     # not in git. Without them the app runs with no dictionary, and release
     # builds stop (android/app/build.gradle.kts, the iOS build phase).
     - assets/dict/
+    # Pronunciation: the VOICEVOX voice model and the Open JTalk dictionary
+    # (gzip each, with their edition file) and the Kanjium accent table,
+    # built by tools/voice/; not in git. Without them the card's speaker
+    # buttons say the data is missing, and release builds stop.
+    - assets/voice/
+    - assets/accent/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

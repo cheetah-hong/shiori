@@ -13,6 +13,7 @@ const _packages = [
   '../packages/jmdict_block',
   '../packages/krdict_block',
   '../packages/storage_drift',
+  '../packages/voicevox_block',
 ];
 
 /// Packages whose only job is to talk to the network.

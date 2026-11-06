@@ -19,5 +19,11 @@ import UIKit
       // Without this the Dart side only sees "OCR unavailable"; say why.
       NSLog("[Shiori] OCR channel was not registered: no plugin registrar")
     }
+    // Pronunciation clips (AVAudioPlayer) for the Dart speech block.
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "ShioriAudio") {
+      AudioChannel.register(with: registrar)
+    } else {
+      NSLog("[Shiori] audio channel was not registered: no plugin registrar")
+    }
   }
 }
