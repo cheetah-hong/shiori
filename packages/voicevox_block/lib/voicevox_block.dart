@@ -9,4 +9,5 @@ export 'src/pronunciation.dart';
 export 'src/speech_cache.dart';
 export 'src/speech_plan.dart';
 export 'src/speech_renderer.dart';
+export 'src/speech_speed.dart';
 export 'src/voicevox_ops.dart';

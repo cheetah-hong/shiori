@@ -33,7 +33,8 @@ final class IsolateVoicevoxEngine implements VoicevoxOps {
     final e = assets.edition;
     return IsolateVoicevoxEngine._(
       link,
-      'voicevox-${e.coreVersion}/${e.variant}/style-${e.styleId}',
+      'voicevox-${e.coreVersion}/${e.variant}/style-${e.styleId}'
+      '/speed-$speechSpeedScale',
     );
   }
 
@@ -166,7 +167,11 @@ void _main((SendPort, String, String, int) args) {
         'text' => lib.accentPhrasesFromText(synthesizer, input, styleId),
         'pitch' => lib.replaceMoraPitch(synthesizer, input, styleId),
         'synth' => TransferableTypedData.fromList([
-          lib.synthesis(synthesizer, lib.audioQueryOf(input), styleId),
+          lib.synthesis(
+            synthesizer,
+            withSpeedScale(lib.audioQueryOf(input), speechSpeedScale),
+            styleId,
+          ),
         ]),
         _ => throw ArgumentError.value(op, 'op'),
       };
