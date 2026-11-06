@@ -82,12 +82,57 @@ bool _isWordTag(String tag) =>
 
 /// The rule engine over the bundled JL rule file.
 final class Deconjugator {
-  Deconjugator(String rulesJson) : _rules = _parseRules(rulesJson);
+  /// [indexed]: try on a form only the rules whose ending it ends in (the
+  /// same candidates in the same order as trying every rule, much faster on
+  /// a sentence page's thousand substrings); false tries every rule.
+  Deconjugator(String rulesJson, {this.indexed = true})
+    : _rules = _parseRules(rulesJson) {
+    if (!indexed) return;
+    for (final (i, r) in _rules.indexed) {
+      if (r.conEnd.isEmpty) {
+        _anyEnding.add(i);
+      } else {
+        (_byLastChar[r.conEnd.runes.last] ??= []).add(i);
+      }
+    }
+  }
 
   /// The bundled rules (packages/core/third_party/jl).
   static final Deconjugator standard = Deconjugator(deconjugationRulesJson);
 
   final List<_Rule> _rules;
+
+  /// Rules are looked up by the last character of their ending.
+  final bool indexed;
+
+  /// Rule positions by the last character of the ending they take off.
+  final Map<int, List<int>> _byLastChar = {};
+
+  /// Rule positions whose ending is empty (they fit any form).
+  final List<int> _anyEnding = [];
+
+  /// The rules that may apply to [text], in file order.
+  Iterable<_Rule> _rulesFor(String text) {
+    if (!indexed) return _rules;
+    if (text.isEmpty) return const [];
+    final byEnd = _byLastChar[text.runes.last] ?? const <int>[];
+    if (_anyEnding.isEmpty) return [for (final i in byEnd) _rules[i]];
+    return [for (final i in _merged(byEnd, _anyEnding)) _rules[i]];
+  }
+
+  /// Two ascending lists of positions as one.
+  static List<int> _merged(List<int> a, List<int> b) {
+    final out = <int>[];
+    var i = 0, j = 0;
+    while (i < a.length || j < b.length) {
+      if (j >= b.length || (i < a.length && a[i] < b[j])) {
+        out.add(a[i++]);
+      } else {
+        out.add(b[j++]);
+      }
+    }
+    return out;
+  }
 
   /// How far a chain may grow past the printed text, as in the reference
   /// engine: bases at most 10 characters longer, at most 6 tags more.
@@ -107,7 +152,7 @@ final class Deconjugator {
     final maxTags = surface.length + _maxExtraTags;
     while (queue.isNotEmpty) {
       final form = queue.removeFirst();
-      for (final rule in _rules) {
+      for (final rule in _rulesFor(form.text)) {
         final next = _apply(form, rule);
         if (next == null ||
             next.text.length > maxLength ||

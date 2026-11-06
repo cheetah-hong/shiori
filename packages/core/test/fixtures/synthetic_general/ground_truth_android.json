@@ -1,0 +1,276 @@
+{
+ "_note": "Synthetic pages made by tools/synthetic/make_general_pages.py. Every word, meaning, sentence and translation is invented; no textbook content. Pages for the Android channel's slips (badges glued to the meaning, a full stop after it, header bands, a vertical side tab, the next page cut at the edge), a list of kanji words only, and a clean word list whose checkboxes OCR glued to the headwords; answers as in ground_truth.json.",
+ "format": "general-1",
+ "pages": [
+  {
+   "page": "g30",
+   "fixture": "g30",
+   "kind": "mlkit-list",
+   "vocab": [
+    {
+     "headword": "写真",
+     "readings": [
+      "しゃしん"
+     ],
+     "meaning": "사진"
+    },
+    {
+     "headword": "出発",
+     "readings": [
+      "しゅっぱつ"
+     ],
+     "meaning": "출발하다"
+    },
+    {
+     "headword": "新しい",
+     "readings": [
+      "あたらしい"
+     ],
+     "meaning": "새롭다"
+    },
+    {
+     "headword": "三",
+     "readings": [
+      "さん",
+      "み"
+     ],
+     "meaning": "3, 삼"
+    },
+    {
+     "headword": "名刺",
+     "readings": [
+      "めいし"
+     ],
+     "meaning": "명함"
+    },
+    {
+     "headword": "小銭",
+     "readings": [
+      "こぜに"
+     ],
+     "meaning": "동전"
+    },
+    {
+     "headword": "待つ",
+     "readings": [
+      "まつ"
+     ],
+     "meaning": "기다리다"
+    },
+    {
+     "headword": "起きる",
+     "readings": [
+      "おきる"
+     ],
+     "meaning": "일어나다, 잠이 깨다"
+    },
+    {
+     "headword": "休む",
+     "readings": [
+      "やすむ"
+     ],
+     "meaning": "쉬다"
+    }
+   ],
+   "sentence_words": [],
+   "ignore": [
+    "ロロロ",
+    "体む"
+   ]
+  },
+  {
+   "page": "g31",
+   "fixture": "g31",
+   "kind": "bands",
+   "vocab": [
+    {
+     "headword": "弁当",
+     "readings": [
+      "べんとう"
+     ],
+     "meaning": null
+    },
+    {
+     "headword": "五",
+     "readings": [
+      "ご",
+      "いつ",
+      "い"
+     ],
+     "meaning": "5, 오"
+    },
+    {
+     "headword": "散歩",
+     "readings": [
+      "さんぽ"
+     ],
+     "meaning": "산책"
+    },
+    {
+     "headword": "地図",
+     "readings": [
+      "ちず"
+     ],
+     "meaning": null
+    },
+    {
+     "headword": "公園",
+     "readings": [
+      "こうえん"
+     ],
+     "meaning": "공원"
+    },
+    {
+     "headword": "鍵",
+     "readings": [
+      "かぎ"
+     ],
+     "meaning": "열쇠"
+    },
+    {
+     "headword": "ねじ",
+     "readings": [],
+     "meaning": "나사"
+    }
+   ],
+   "sentence_words": [],
+   "ignore": [
+    "ロロロ",
+    "LON",
+    "己"
+   ]
+  },
+  {
+   "page": "g32",
+   "fixture": "g32",
+   "kind": "kanji-only",
+   "vocab": [
+    {
+     "headword": "公園",
+     "readings": [
+      "こうえん"
+     ],
+     "meaning": null
+    },
+    {
+     "headword": "散歩",
+     "readings": [
+      "さんぽ"
+     ],
+     "meaning": null
+    },
+    {
+     "headword": "弁当",
+     "readings": [
+      "べんとう"
+     ],
+     "meaning": null
+    },
+    {
+     "headword": "地図",
+     "readings": [
+      "ちず"
+     ],
+     "meaning": null
+    },
+    {
+     "headword": "料理",
+     "readings": [
+      "りょうり"
+     ],
+     "meaning": null
+    },
+    {
+     "headword": "旅行",
+     "readings": [
+      "りょこう"
+     ],
+     "meaning": null
+    }
+   ],
+   "sentence_words": [],
+   "ignore": []
+  },
+  {
+   "page": "c01",
+   "fixture": "c01",
+   "kind": "marked-list",
+   "vocab": [
+    {
+     "headword": "机",
+     "readings": [
+      "つくえ"
+     ],
+     "meaning": "책상"
+    },
+    {
+     "headword": "窓",
+     "readings": [
+      "まど"
+     ],
+     "meaning": "창문"
+    },
+    {
+     "headword": "箱",
+     "readings": [
+      "はこ"
+     ],
+     "meaning": "상자"
+    },
+    {
+     "headword": "鏡",
+     "readings": [
+      "かがみ"
+     ],
+     "meaning": "거울"
+    },
+    {
+     "headword": "傘",
+     "readings": [
+      "かさ"
+     ],
+     "meaning": "우산"
+    },
+    {
+     "headword": "庭",
+     "readings": [
+      "にわ"
+     ],
+     "meaning": "마당, 뜰"
+    },
+    {
+     "headword": "袋",
+     "readings": [
+      "ふくろ"
+     ],
+     "meaning": "봉지, 자루"
+    },
+    {
+     "headword": "財布",
+     "readings": [
+      "さいふ"
+     ],
+     "meaning": "지갑"
+    },
+    {
+     "headword": "帽子",
+     "readings": [
+      "ぼうし"
+     ],
+     "meaning": "모자"
+    },
+    {
+     "headword": "品物",
+     "readings": [
+      "しなもの"
+     ],
+     "meaning": "물건"
+    }
+   ],
+   "sentence_words": [],
+   "ignore": [
+    "ロロロ"
+   ]
+  }
+ ]
+}

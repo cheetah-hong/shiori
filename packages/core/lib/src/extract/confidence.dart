@@ -14,6 +14,7 @@ import 'package:shiori_core/src/extract/fragment.dart';
 import 'package:shiori_core/src/extract/general_extractor.dart';
 import 'package:shiori_core/src/extract/hanja.dart';
 import 'package:shiori_core/src/extract/pairing.dart';
+import 'package:shiori_core/src/extract/read_back.dart';
 import 'package:shiori_core/src/extract/script_runs.dart';
 
 /// A reading needs at least this placement to be high: on the headword's
@@ -61,19 +62,39 @@ final class ConfidenceItem {
 
 /// [words] with their pairing confidence settled against the [items] and
 /// [fragments] of the page. [glosses] is the gloss lookup the pairing used.
+/// [taken]: the fragments the page's word-list words took (headwords,
+/// readings, meanings, read-back traces), also of words merged away or left
+/// out as known; without it they are gathered from [words].
 Future<List<ExtractedWord>> settleConfidence(
   List<ExtractedWord> words, {
   required List<Fragment> fragments,
   required List<ConfidenceItem> items,
   KoreanGlossLookup? glosses,
+  Set<int>? taken,
 }) async {
-  final settle = _Settle(fragments, items, glosses);
+  // What the word-list words took. A kanji run the lattice split into
+  // sentence words (`陸りる` → 陸) is still a failed headword read.
+  final used = <int>{
+    ...?taken,
+    if (taken == null)
+      for (final w in words)
+        if (w.origin == WordOrigin.wordList) ...[
+          ?w.headwordFragmentId,
+          ?w.readingLink?.fragmentId,
+          ?w.meaningLink?.fragmentId,
+        ],
+    for (final f in fragments) ?f.inlineReadingOf,
+  };
+  final settle = _Settle(fragments, items, glosses, used);
   return [for (final w in words) await settle.word(w)];
 }
 
 final class _Settle {
-  _Settle(this.fragments, this.items, this.glosses)
+  _Settle(this.fragments, this.items, this.glosses, this.used)
     : byId = {for (final i in items) i.fragment.id: i};
+
+  /// Fragments the page's words took.
+  final Set<int> used;
 
   final List<Fragment> fragments;
   final List<ConfidenceItem> items;
@@ -149,6 +170,9 @@ final class _Settle {
     final link = w.meaningLink;
     if (link == null) return null;
     if (!fromPage) return _atMost(link, '사전이 준 표제어');
+    if (_lostHeadword(w)) {
+      return _note(_atMost(link, _lostHeadwordNote), _lostHeadwordNote);
+    }
     if (w.meaningSource != FieldSource.photo) return link;
     final id = link.fragmentId;
     if (id == null || id < 0 || id >= fragments.length) return link;
@@ -202,6 +226,22 @@ final class _Settle {
     );
   }
 
+  /// A kana word left where OCR lost the headword (its kanji were not read
+  /// back): the kana may not be what the page prints.
+  bool _lostHeadword(ExtractedWord w) {
+    final id = w.headwordFragmentId;
+    if (w.readings.isNotEmpty ||
+        id == null ||
+        id < 0 ||
+        id >= fragments.length) {
+      return false;
+    }
+    final kana = fragments[id];
+    return kana.kind == FragmentKind.kana &&
+        kana.text == w.headword &&
+        hasHeadwordTrace(kana, fragments, used);
+  }
+
   Future<List<String>> _glossesOf(ConfidenceItem item) async {
     final g = glosses;
     if (g == null) return const [];
@@ -212,6 +252,8 @@ final class _Settle {
     ];
   }
 }
+
+const String _lostHeadwordNote = '표제어 자리 판독 실패';
 
 /// [link] lowered to medium when it was high, with [why].
 PairLink _atMost(PairLink link, String why) =>

@@ -3,6 +3,7 @@
 //
 //   dart run tool/eval_extract.dart [--fixtures DIR] [--gt FILE]
 //       [--lexicon FILE] [--glosses FILE] [--template] [--routed] [--verbose]
+//       [--no-warmup]
 //
 // DIR defaults to the synthetic pages for the extractor
 // (test/fixtures/synthetic_general); --gt to DIR/ground_truth.json, in either
@@ -13,6 +14,8 @@
 // Korean gloss dictionary. --template also scores CapturePipeline.standard().
 // --verbose lists every mistake; on recorded textbook pages those quote the
 // page, so keep them out of anything committed.
+// Times per page come after one untimed read of the first page (the VM's
+// warm-up and the dictionary's first reads); --no-warmup times it cold.
 import 'dart:convert';
 import 'dart:io';
 
@@ -40,10 +43,14 @@ Future<void> main(List<String> args) async {
   Future<OcrScan> load(String fixture) =>
       recognizer.recognize(PageImage(fixture));
   final verbose = args.contains('--verbose');
+  // Per-page times after one warm-up read of the first page (VM warm-up,
+  // the dictionary files' first reads); --no-warmup gives the cold first page.
+  final warmUp = !args.contains('--no-warmup');
 
   final general = await scoreExtractor(
     truth: truth,
     loadScan: load,
+    warmUp: warmUp,
     run: generalRun(
       GeneralExtractor(
         lexicon: lexicon ?? const EmptyLexicon(),
@@ -61,6 +68,7 @@ Future<void> main(List<String> args) async {
     final routed = await scoreExtractor(
       truth: truth,
       loadScan: load,
+      warmUp: warmUp,
       run: routedRun(
         CaptureRouter(
           template: CapturePipeline.standard(),
@@ -80,6 +88,7 @@ Future<void> main(List<String> args) async {
   final template = await scoreExtractor(
     truth: truth,
     loadScan: load,
+    warmUp: warmUp,
     run: templateRun(CapturePipeline.standard()),
   );
   stdout

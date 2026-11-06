@@ -21,6 +21,7 @@ import 'package:shiori_core/src/extract/hanja.dart';
 import 'package:shiori_core/src/extract/headword_repair.dart';
 import 'package:shiori_core/src/extract/hungarian.dart';
 import 'package:shiori_core/src/extract/lattice.dart';
+import 'package:shiori_core/src/extract/meaning_marks.dart';
 import 'package:shiori_core/src/extract/pairing.dart';
 import 'package:shiori_core/src/extract/read_back.dart';
 import 'package:shiori_core/src/extract/script_runs.dart';
@@ -111,6 +112,7 @@ final class GeneralExtractor {
     page
       ..restoreBoxPrefixes()
       ..mendHeadwords();
+    await page.mendFromReadings();
     final heads = page.headwords();
     final readings = page.pairReadings(heads, weights);
     final items = [...heads.values, ...page.kanaWords(readings.used)];
@@ -153,6 +155,7 @@ final class GeneralExtractor {
         lexicon: page.lexicon,
       );
     }
+    found = page.withoutLonelyWords(found);
     final merged = _merge(found);
     final skipped = <String>[];
     final kept = <ExtractedWord>[];
@@ -172,6 +175,15 @@ final class GeneralExtractor {
       fragments: page.fragments,
       items: page.confidenceItems(items, readings.slopes),
       glosses: glosses,
+      // Before merging and leaving known words out: their fragments are
+      // taken too, not traces of a lost headword.
+      taken: {
+        ...readings.used,
+        ...meanings.used,
+        ...traces,
+        for (final w in found)
+          if (w.origin == WordOrigin.wordList) ?w.headwordFragmentId,
+      },
     );
     final words = [for (final w in settled) _unsettledHeadword(w)];
     final all = page.fragments;
@@ -388,8 +400,16 @@ final class _Item {
     final alone = meaning == null && reading == null && inlineReading == null;
     // The Japanese pass read a line of a Korean explanation as words.
     if (inKoreanParagraph && alone) return false;
-    // One kana with nothing paired is a stray glyph, not a word.
-    if (isKana && fragment.text.runes.length == 1 && alone) return false;
+    // One kana with nothing paired, or paired by place alone, is a stray
+    // glyph, not a word.
+    if (isKana &&
+        fragment.text.runes.length == 1 &&
+        reading == null &&
+        inlineReading == null &&
+        (meaning == null ||
+            meaning.signals.every((s) => s == PairSignal.position))) {
+      return false;
+    }
     // Kana in furigana size with nothing paired: a stray reading, not a
     // headword (headwords are printed in the page's type).
     if (isKana &&
@@ -688,6 +708,53 @@ final class _Page {
     }
   }
 
+  /// A kanji headword the kana on its row does not read, mended to the one
+  /// spelling of that kana a kanji apart (`体む` beside やすむ → `休む`).
+  Future<void> mendFromReadings() async {
+    if (!hasLexicon) return;
+    final mends = mendByReading(
+      fragments,
+      spellingsOf: (kana) => [
+        for (final e in lexicon.cached(kana))
+          if (e.isKanaForm) ...e.kanjiForms,
+      ],
+      reads: _reads,
+    );
+    if (mends.isEmpty) return;
+    await lexicon.lookup({for (final m in mends.values) m.fragment.text});
+    fragments = List.unmodifiable([
+      for (final f in fragments) mends[f.id]?.fragment ?? f,
+    ]);
+    for (final MapEntry(:key, :value) in mends.entries) {
+      _mendNotes[key] = value.note;
+    }
+  }
+
+  /// [words] without the word-list words the page paired with nothing (no
+  /// reading, no meaning from the photo: the next page cut at the edge, a
+  /// kanji read out of a meaning line), when most word-list words of the
+  /// page did pair. On a list of kanji words only (no readings or meanings
+  /// printed) every word stays. The fragments go to the tray.
+  List<ExtractedWord> withoutLonelyWords(List<ExtractedWord> words) {
+    bool listed(ExtractedWord w) =>
+        w.origin == WordOrigin.wordList &&
+        w.headwordSource == FieldSource.photo;
+    bool lonely(ExtractedWord w) {
+      final reading = w.readingLink?.fragmentId;
+      return listed(w) &&
+          (reading == null || reading == w.headwordFragmentId) &&
+          w.meaningLink?.fragmentId == null;
+    }
+
+    final list = words.where(listed).length;
+    final alone = words.where(lonely).length;
+    if (alone == 0 || (list - alone) < pairedShare * list) return words;
+    return [
+      for (final w in words)
+        if (!lonely(w)) w,
+    ];
+  }
+
   /// [_lemmas], or for a word printed with an optional prefix in brackets
   /// (`(ご)飯`) those of its forms without the brackets.
   List<Lemma> _lemmasWithPrefix(String text) {
@@ -971,9 +1038,6 @@ final class _Page {
     PairWeights w, {
     Set<int> withReading = const {},
   }) async {
-    final korean = fragments
-        .where((f) => f.kind == FragmentKind.hangul)
-        .toList();
     final glossOf = <int, List<String>>{};
     if (glosses != null) {
       for (final item in items) {
@@ -994,6 +1058,26 @@ final class _Page {
       }
     }
     final slopeOf = _slopeLookup(items, slopes);
+    fragments = List.unmodifiable(
+      settleGluedBadges(
+        fragments,
+        named: (k, text) => items.any(
+          (item) =>
+              meaningPlacement(
+                    item.fragment,
+                    k,
+                    slope: slopeOf(item),
+                    rowTolerance: w.rowTolerance,
+                  ) >
+                  0 &&
+              _names(item, text, glossOf[item.fragment.id]),
+        ),
+      ),
+    );
+    _promoteShortPredicates();
+    final korean = fragments
+        .where((f) => f.kind == FragmentKind.hangul)
+        .toList();
     final signals = <(int, int), Set<PairSignal>>{};
     final cost = [
       for (final item in items)
@@ -1070,6 +1154,46 @@ final class _Page {
       atLowestConfidence(item.fragment.confidence) &&
       !withReading.contains(item.fragment.id);
 
+  /// A content signal of [item] names [korean]: the Korean reading of its
+  /// kanji or its Korean gloss, as the pairing counts them.
+  bool _names(_Item item, String korean, List<String>? glosses) {
+    final hanja = item.kanjiCandidates.isNotEmpty
+        ? item.kanjiNaming(korean) != null
+        : !item.isKana &&
+              (hanjaMatchLength(item.headword, korean) >= minHanjaSyllables ||
+                  hanjaNamesWord(item.headword, korean));
+    return hanja || (glosses != null && _glossMatches(glosses, korean));
+  }
+
+  /// Japanese sentences that give words and take translations.
+  List<Fragment> get _readSentences => [
+    for (final s in _sentences)
+      if (!atLowestConfidence(s.confidence) &&
+          !inKoreanParagraph(s) &&
+          !isPattern(s.text))
+        s,
+  ];
+
+  /// A Korean "sentence" that is short dictionary-form predicates and no
+  /// Japanese sentence could take as its translation is a meaning read with
+  /// a full stop after it (`기다리다.`).
+  void _promoteShortPredicates() {
+    final sentences = _readSentences;
+    fragments = List.unmodifiable([
+      for (final f in fragments)
+        if (f.kind == FragmentKind.koreanSentence &&
+            isShortPredicate(f.text) &&
+            !sentences.any((s) => translationPlacement(s, f) > 0))
+          f.copyWith(
+            kind: FragmentKind.hangul,
+            text: predicateMeaning(f.text),
+            corrected: true,
+          )
+        else
+          f,
+    ]);
+  }
+
   double _meaningCost(
     _Item item,
     Fragment k,
@@ -1125,13 +1249,7 @@ final class _Page {
     // The engine's lowest confidence: a sentence read out of a Korean
     // paragraph's garbage, not a printed sentence. Left out before the
     // translations are assigned, so it takes none.
-    final sentences = [
-      for (final s in _sentences)
-        if (!atLowestConfidence(s.confidence) &&
-            !inKoreanParagraph(s) &&
-            !isPattern(s.text))
-          s,
-    ];
+    final sentences = _readSentences;
     final korean = fragments
         .where(
           (f) =>
@@ -1258,6 +1376,10 @@ List<String> lookalikeVariants(String text) {
   out.sort((a, b) => changes(a).compareTo(changes(b)));
   return [for (final v in out) String.fromCharCodes(v)];
 }
+
+/// Below this share of the page's word-list words paired with a reading or
+/// meaning, the page is a bare list and unpaired words stay words.
+const double pairedShare = 0.5;
 
 /// More look-alike glyphs than this in one headword: not a misread word.
 const int maxLookalikes = 3;

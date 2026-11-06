@@ -28,6 +28,15 @@ const double routeMaxMissingHeadwordShare = 1 / 3;
 /// At least this share of neighbouring numbers must count up by 1 to 3.
 const double routeMinNumberOrder = 0.8;
 
+/// At least this many rows with checkbox marks in the headword cell, and
+/// at least [routeMaxMarkedHeadwordShare] of the rows: the template reads a
+/// clean scan's checkboxes into the headwords (measured: 0 rows on every
+/// page that fits, 4 of 15 on such a scan). One such row is a misread.
+const int routeMinMarkedHeadwords = 2;
+
+/// See [routeMinMarkedHeadwords].
+const double routeMaxMarkedHeadwordShare = 0.1;
+
 /// Numbers whose x differ by less than this sit in one column (as the
 /// template's own number columns).
 const double _columnTolerance = 0.12;
@@ -56,6 +65,9 @@ RouteDecision chooseRoute(TemplateFit fit) {
       RouteReason.missingHeadwords,
     if (fit.numberOrder < routeMinNumberOrder) RouteReason.numberOrder,
     if (!fit.columnsMeasured) RouteReason.columnsNotMeasured,
+    if (fit.markedHeadwords >= routeMinMarkedHeadwords &&
+        share(fit.markedHeadwords) >= routeMaxMarkedHeadwordShare)
+      RouteReason.markedHeadwords,
   ];
   return RouteDecision(
     route: reasons.isEmpty ? CaptureRoute.template : CaptureRoute.general,
@@ -90,8 +102,31 @@ TemplateFit measureTemplateFit(OcrScan prepared, TemplateResult result) {
     missingHeadwords: rows.where((e) => e.headword.trim().isEmpty).length,
     numberOrder: _numberOrder(numbered),
     columnsMeasured: !(result.columnScale?.isDefault ?? true),
+    markedHeadwords: rows.where((e) => isMarkedHeadword(e.headword)).length,
   );
 }
+
+/// A headword cell that starts with checkbox marks OCR glued to the word, or
+/// holds marks only: two or more Latin letters before Japanese (`OD机`; a
+/// word never starts so, `Tシャツ` has one), Latin letters and no Japanese
+/// (`ON`), a printed box (`□机`), two or more of 口/ロ (`ロ口机`; one is a
+/// misread kanji or a word, `ロッカー`, `口座`), or a long vowel mark before
+/// Japanese (`ー傘`; no word starts with one). A single glyph (`ロ`, `ー`,
+/// `カ`) is a misread headword, not marks.
+bool isMarkedHeadword(String headword) {
+  final t = headword.trim();
+  if (t.runes.length < 2) return false;
+  if (_printedBox.hasMatch(t)) return true;
+  if (_latinOnly.hasMatch(t)) return true;
+  return _marksBeforeWord.hasMatch(t);
+}
+
+final RegExp _printedBox = RegExp('^(?:[□■☐☑☒]|[口ロ]{2})');
+final RegExp _latinOnly = RegExp(r'^[A-Za-z]+$');
+final RegExp _marksBeforeWord = RegExp(
+  r'^(?:[A-Za-z]{2,}|ー)[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}（(]',
+  unicode: true,
+);
 
 double _numberOrder(List<({double x, double cy, int no})> numbers) {
   final byX = [...numbers]..sort((a, b) => a.x.compareTo(b.x));

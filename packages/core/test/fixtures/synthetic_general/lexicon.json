@@ -2375,6 +2375,162 @@
    "pri": 5,
    "nf": 2,
    "uk": false
+  },
+  {
+   "id": 1321900,
+   "kanji": [
+    "写真"
+   ],
+   "readings": [
+    "しゃしん"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 1,
+   "uk": false
+  },
+  {
+   "id": 1340000,
+   "kanji": [
+    "出発"
+   ],
+   "readings": [
+    "しゅっぱつ"
+   ],
+   "pos": [
+    "n",
+    "vs",
+    "vi"
+   ],
+   "pri": 5,
+   "nf": 5,
+   "uk": false
+  },
+  {
+   "id": 1579350,
+   "kanji": [
+    "三"
+   ],
+   "readings": [
+    "さん",
+    "み"
+   ],
+   "pos": [
+    "num"
+   ],
+   "pri": 5,
+   "nf": 1,
+   "uk": false
+  },
+  {
+   "id": 1268060,
+   "kanji": [
+    "五"
+   ],
+   "readings": [
+    "ご",
+    "いつ",
+    "い"
+   ],
+   "pos": [
+    "num"
+   ],
+   "pri": 5,
+   "nf": 1,
+   "uk": false
+  },
+  {
+   "id": 1531550,
+   "kanji": [
+    "名刺"
+   ],
+   "readings": [
+    "めいし"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 10,
+   "uk": false
+  },
+  {
+   "id": 1348470,
+   "kanji": [
+    "小銭"
+   ],
+   "readings": [
+    "こぜに"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 34,
+   "nf": 29,
+   "uk": false
+  },
+  {
+   "id": 1386500,
+   "kanji": [
+    "雪"
+   ],
+   "readings": [
+    "ゆき"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 3,
+   "uk": false
+  },
+  {
+   "id": 1376310,
+   "kanji": [
+    "星"
+   ],
+   "readings": [
+    "ほし"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 5,
+   "uk": false
+  },
+  {
+   "id": 1260490,
+   "kanji": [
+    "鍵"
+   ],
+   "readings": [
+    "かぎ"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 5,
+   "nf": 18,
+   "uk": false
+  },
+  {
+   "id": 1585010,
+   "kanji": [
+    "螺子"
+   ],
+   "readings": [
+    "ねじ",
+    "ネジ"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 0,
+   "nf": null,
+   "uk": true
   }
  ]
 }

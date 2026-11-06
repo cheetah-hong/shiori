@@ -33,6 +33,10 @@ const int koreanSentenceLength = 26;
 /// the other words).
 const double blankMarkHeight = 0.5;
 
+/// A Korean box at least this many times as tall as it is wide is set
+/// vertically.
+const double verticalTextRatio = 2;
+
 /// Kana at most this share of a sentence's line height, right above it, are
 /// its furigana.
 const double furiganaSize = 0.8;
@@ -54,7 +58,7 @@ List<Fragment> collectFragments(OcrScan scan) {
       _clean(r, checkboxColumns: checkboxColumns, lineHeight: lineHeight),
     );
   }
-  final merged = _joinJapanese(_joinKorean(_markFurigana(pieces)));
+  final merged = _joinJapanese(_joinKorean(_markBands(_markFurigana(pieces))));
   merged.sort(_readingOrder);
   return _number(merged);
 }
@@ -103,7 +107,7 @@ List<ScriptRun> _lineRuns(String text, OcrPass pass) {
   // Korean pass: whatever lies between two Korean runs (its reading of
   // Japanese, Latin garbage) is part of the Korean text.
   final out = <ScriptRun>[];
-  for (final r in runs) {
+  for (final r in _badgeKana(runs)) {
     if (r.script == Script.korean && out.isNotEmpty) {
       final lastKorean = out.lastIndexWhere((x) => x.script == Script.korean);
       if (lastKorean >= 0 && lastKorean < out.length - 1) {
@@ -132,6 +136,27 @@ List<ScriptRun> _lineRuns(String text, OcrPass pass) {
         );
         continue;
       }
+    }
+    out.add(r);
+  }
+  return out;
+}
+
+/// The Korean pass's `い형`/`な형` badge read as a kana run and a Korean run
+/// (`い형새롭다`): one Korean run.
+List<ScriptRun> _badgeKana(List<ScriptRun> runs) {
+  final out = <ScriptRun>[];
+  for (var i = 0; i < runs.length; i++) {
+    final r = runs[i];
+    final next = i + 1 < runs.length ? runs[i + 1] : null;
+    if (next != null &&
+        r.script == Script.japanese &&
+        (r.text == 'い' || r.text == 'な') &&
+        next.script == Script.korean &&
+        next.text.startsWith('형')) {
+      out.add(ScriptRun(Script.korean, r.text + next.text, r.start, next.end));
+      i++;
+      continue;
     }
     out.add(r);
   }
@@ -321,6 +346,7 @@ final class _Piece {
     this.corrected = false,
     this.droppedPrefix,
     this.posBadge,
+    this.gluedBadge,
   });
 
   final String text;
@@ -338,6 +364,7 @@ final class _Piece {
   final bool corrected;
   final String? droppedPrefix;
   final String? posBadge;
+  final String? gluedBadge;
 
   double get cy => y + height / 2;
   double get right => x + width;
@@ -355,6 +382,7 @@ final class _Piece {
     bool? corrected,
     String? droppedPrefix,
     String? posBadge,
+    String? gluedBadge,
   }) => _Piece(
     text: text ?? this.text,
     kind: kind ?? this.kind,
@@ -369,6 +397,7 @@ final class _Piece {
     corrected: corrected ?? this.corrected,
     droppedPrefix: droppedPrefix ?? this.droppedPrefix,
     posBadge: posBadge ?? this.posBadge,
+    gluedBadge: gluedBadge ?? this.gluedBadge,
   );
 }
 
@@ -379,7 +408,7 @@ final Set<int> _boxRowGlyphs = '□■☐☑☒口ロコー'.runes.toSet();
 
 /// Kanji OCR reads for a lone checkbox.
 const Set<String> _boxKanji = {'問', '目'};
-final RegExp _leadingCheckbox = RegExp('^[□■☐☑☒|｜]+\\s*');
+final RegExp _leadingCheckbox = RegExp('^(?:[□■☐☑☒|｜]+\\s*|ー+(?=[^ー\\s]))');
 final RegExp _leadingLookalikeBox = RegExp('^[口ロ](?:\\s+|(?=[^\\s]))');
 
 /// Where the checkbox columns are: three or more Japanese runs whose left
@@ -461,6 +490,12 @@ final RegExp _badgeLine = RegExp(
 
 final RegExp _badgeAlone = RegExp('^\\[?(?:$_badges)\\]?\$');
 
+/// A badge read glued to the meaning, no space between (`명사진`, `い형새롭다`,
+/// `명3, 삼`): the badges of the table only, not spelled-out names.
+final RegExp _gluedBadge = RegExp(
+  '^(${badgeAlternation(posBadges.keys)})(?=[가-힣0-9])',
+);
+
 bool _posBadgeOnly(String text) => _badgeAlone.hasMatch(text.trim());
 
 /// Korean lines that label rather than mean: a legend (`* 표시 = …`), a
@@ -495,11 +530,18 @@ List<_Piece> _clean(
       checkboxColumns: checkboxColumns,
       lineHeight: lineHeight,
     ),
+    Script.korean when _vertical(base) => [base],
     Script.korean => [_cleanKorean(base)],
     Script.digits => [base.copy(kind: FragmentKind.number)],
     Script.other => [base],
   };
 }
+
+/// Korean set vertically (a side tab's book title): three letters or more
+/// in a box at least twice as tall as it is wide. A line of three letters
+/// across is at least three letters wide whatever the photo's shape.
+bool _vertical(_Piece p) =>
+    _hangulCount(p.text) >= 3 && p.height >= verticalTextRatio * p.width;
 
 List<_Piece> _cleanJapanese(
   _Piece p, {
@@ -615,7 +657,25 @@ _Piece _cleanKorean(_Piece p) {
     text = text.substring(badge.end);
     corrected = true;
   }
-  final posBadge = badge == null ? p.posBadge : _badgeOf(badge.group(1)!);
+  var posBadge = badge == null ? p.posBadge : _badgeOf(badge.group(1)!);
+  // Glued, no space between: a two-letter badge (`い형새롭다`; no Korean
+  // word starts so) or one before a number (`명3, 삼`) goes here. One
+  // syllable before Korean may start a word (`동사무소`, `명함`): the text
+  // stays, and the extractor takes the badge off when the content names
+  // only the rest (`명사진`).
+  String? glued;
+  final gluedMatch = badge == null ? _gluedBadge.firstMatch(text) : null;
+  if (gluedMatch != null) {
+    final read = gluedMatch.group(1)!;
+    final rest = text.substring(gluedMatch.end);
+    if (read.runes.length > 1 || rest.startsWith(RegExp('[0-9]'))) {
+      text = rest;
+      posBadge = _badgeOf(read);
+      corrected = true;
+    } else {
+      glued = read;
+    }
+  }
   final stray = text.replaceAll(_strayMarks, '').trim();
   if (stray != text.trim()) corrected = true;
   text = stray;
@@ -647,6 +707,7 @@ _Piece _cleanKorean(_Piece p) {
     notes: notes,
     corrected: corrected,
     posBadge: posBadge,
+    gluedBadge: glued,
   );
 }
 
@@ -685,6 +746,33 @@ List<_Piece> _markFurigana(List<_Piece> pieces) {
           sentences.any((s) => over(p, s)) &&
           !readsHeadword(p))
         p.copy(kind: FragmentKind.noise, corrected: true)
+      else
+        p,
+  ];
+}
+
+/// Korean lines wholly above every Japanese word and sentence of the page:
+/// its header band (book title, level, section), not a meaning. Below the
+/// list a meaning may sit under its headword, so the foot is left to the
+/// marker-line rule.
+List<_Piece> _markBands(List<_Piece> pieces) {
+  final tops = [
+    for (final p in pieces)
+      // At any confidence: Vision reads a page's first row at 0.3 too.
+      if (p.pass == OcrPass.japanese &&
+          (p.kind == FragmentKind.kanjiWord ||
+              p.kind == FragmentKind.kana ||
+              p.kind == FragmentKind.japaneseSentence))
+        p.y,
+  ];
+  if (tops.isEmpty) return pieces;
+  final top = tops.reduce((a, b) => a < b ? a : b);
+  return [
+    for (final p in pieces)
+      if ((p.kind == FragmentKind.hangul ||
+              p.kind == FragmentKind.koreanSentence) &&
+          p.bottom < top)
+        p.copy(kind: FragmentKind.noise)
       else
         p,
   ];
@@ -862,6 +950,7 @@ List<Fragment> _number(List<_Piece> pieces) {
         corrected: p.corrected,
         droppedPrefix: p.droppedPrefix,
         posBadge: p.posBadge,
+        gluedBadge: p.gluedBadge,
       ),
   ];
 }

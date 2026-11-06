@@ -159,3 +159,84 @@ Map<int, Mend> mendKanaLookalikes(
   }
   return out;
 }
+
+/// How far right of a headword, in its line heights, its reading may be for
+/// [mendByReading].
+const double readingReach = 15;
+
+/// A kanji headword the kana on its row does not read (`体む` beside
+/// `やすむ`), mended to the one dictionary spelling of that kana that differs
+/// from it in a single kanji, kana and length the same (`休む`). With two
+/// such spellings (`方` beside `まん`: 万, 満) nothing changes. The kana is the
+/// nearest on the row to the right with no kanji word between, and no other
+/// headword on the row reads it. A headword read at the engine's lowest
+/// confidence is a trace of a failed read instead: it is read back from the
+/// kana and the meaning (`read_back.dart`). [spellingsOf] gives the
+/// dictionary's kanji spellings of a kana reading.
+Map<int, Mend> mendByReading(
+  List<Fragment> fragments, {
+  required Iterable<String> Function(String kana) spellingsOf,
+  required ReadsAs reads,
+}) {
+  final bracketed = {for (final f in fragments) ?f.inlineReadingOf};
+  final heads = [
+    for (final f in fragments)
+      if (f.kind == FragmentKind.kanjiWord &&
+          f.pass == OcrPass.japanese &&
+          !bracketed.contains(f.id))
+        f,
+  ];
+  final out = <int, Mend>{};
+  bool mendable(Fragment f) => !atLowestConfidence(f.confidence);
+  for (final f in heads.where(mendable)) {
+    final kana = _nearestKanaRightOf(f, fragments);
+    if (kana == null || reads(f.text, kana.text)) continue;
+    if (heads.any(
+      (g) => g.id != f.id && _sameRow(f, g, 1.0) && reads(g.text, kana.text),
+    )) {
+      continue;
+    }
+    final fits = {
+      for (final s in spellingsOf(kana.text))
+        if (_oneKanjiApart(f.text, s)) s,
+    };
+    if (fits.length != 1) continue;
+    out[f.id] = (
+      fragment: f.copyWith(text: fits.single, corrected: true),
+      note: '${f.text} → ${fits.single} (글자 보정+사전 읽기)',
+    );
+  }
+  return out;
+}
+
+Fragment? _nearestKanaRightOf(Fragment f, List<Fragment> fragments) {
+  Fragment? best;
+  for (final k in _kanaRightOf(f, fragments)) {
+    if (k.x - f.right > readingReach * f.height) continue;
+    if (best == null || k.x < best.x) best = k;
+  }
+  if (best == null) return null;
+  final between = fragments.any(
+    (g) =>
+        g.kind == FragmentKind.kanjiWord &&
+        g.id != f.id &&
+        g.x >= f.right - 0.5 * f.height &&
+        g.right <= best!.x + 0.5 * best.height &&
+        _sameRow(f, g, 1.0),
+  );
+  return between ? null : best;
+}
+
+/// [a] and [b] have the same length and kana, and differ in exactly one
+/// place where both have a kanji.
+bool _oneKanjiApart(String a, String b) {
+  final x = a.runes.toList(), y = b.runes.toList();
+  if (x.length != y.length) return false;
+  var kanjiDiffs = 0;
+  for (var i = 0; i < x.length; i++) {
+    if (x[i] == y[i]) continue;
+    if (!isKanji(x[i]) || !isKanji(y[i])) return false;
+    kanjiDiffs++;
+  }
+  return kanjiDiffs == 1;
+}

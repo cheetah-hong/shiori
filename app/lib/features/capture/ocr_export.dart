@@ -88,6 +88,7 @@ Map<String, Object?> _routeJson(RouteDecision? route) => route == null
           'missingHeadwords': route.fit.missingHeadwords,
           'numberOrder': route.fit.numberOrder,
           'columnsMeasured': route.fit.columnsMeasured,
+          'markedHeadwords': route.fit.markedHeadwords,
         },
       };
 

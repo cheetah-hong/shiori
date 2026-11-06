@@ -53,6 +53,7 @@ final class Fragment {
     this.corrected = false,
     this.droppedPrefix,
     this.posBadge,
+    this.gluedBadge,
   });
 
   /// Position in the extractor's fragment list.
@@ -89,6 +90,11 @@ final class Fragment {
   /// The POS badge printed before a Korean meaning (`명`, `동`, `い형`,
   /// `な형`, `부`…), as the row templates name it; null without one.
   final String? posBadge;
+
+  /// [text] starts with one badge syllable glued to the rest (`명` of
+  /// `명사진`, but also of `명함`): the extractor takes it off when the
+  /// content names only the rest. Null otherwise.
+  final String? gluedBadge;
 
   /// JMdict POS codes the badge stands for (empty when it names none, as
   /// `형` alone).
@@ -135,6 +141,8 @@ final class Fragment {
     List<String>? notes,
     bool? corrected,
     Object? droppedPrefix = _unset,
+    Object? posBadge = _unset,
+    Object? gluedBadge = _unset,
   }) => Fragment(
     id: id ?? this.id,
     text: text ?? this.text,
@@ -153,7 +161,10 @@ final class Fragment {
     droppedPrefix: identical(droppedPrefix, _unset)
         ? this.droppedPrefix
         : droppedPrefix as String?,
-    posBadge: posBadge,
+    posBadge: identical(posBadge, _unset) ? this.posBadge : posBadge as String?,
+    gluedBadge: identical(gluedBadge, _unset)
+        ? this.gluedBadge
+        : gluedBadge as String?,
   );
 
   @override

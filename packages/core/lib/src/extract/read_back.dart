@@ -168,6 +168,44 @@ List<Fragment> _traces(Fragment kana, List<Fragment> fragments, Set<int> used) {
   ];
 }
 
+/// Something on [kana]'s row to its left says OCR lost a headword there:
+/// a trace of a failed read (as for reading back), or marks (Latin
+/// letters, box glyphs) with an empty headword cell, at least
+/// [emptyCellLines] of the kana's line heights, between them and the kana.
+/// A kana headword printed beside its checkbox has its marks right next to
+/// it; one with something read between (a number column) is not lost
+/// either. [used] are the fragments the page's words took.
+bool hasHeadwordTrace(Fragment kana, List<Fragment> fragments, Set<int> used) {
+  if (_traces(kana, fragments, used).isNotEmpty) return true;
+  bool onRow(Fragment f) =>
+      (f.cy - kana.cy).abs() <
+      (f.height > kana.height ? f.height : kana.height);
+  bool emptyBetween(Fragment marks) => !fragments.any(
+    (g) =>
+        g.id != marks.id &&
+        g.id != kana.id &&
+        g.kind != FragmentKind.noise &&
+        onRow(g) &&
+        g.x >= marks.right &&
+        g.right <= kana.x + 0.5 * kana.height,
+  );
+  return fragments.any(
+    (f) =>
+        f.kind == FragmentKind.noise &&
+        f.pass == OcrPass.japanese &&
+        _marks.hasMatch(f.text.trim()) &&
+        onRow(f) &&
+        kana.x - f.right >= emptyCellLines * kana.height &&
+        kana.x - f.right <= traceReach * kana.height &&
+        emptyBetween(f),
+  );
+}
+
+/// A headword cell this many of the kana's line heights wide is empty.
+const double emptyCellLines = 3;
+
+final RegExp _marks = RegExp('^[A-Za-z□■☐☑☒口ロコ]+\$');
+
 bool _isTrace(Fragment f) => switch (f.kind) {
   FragmentKind.kanjiWord || FragmentKind.kana => f.pass == OcrPass.japanese,
   FragmentKind.hangul =>

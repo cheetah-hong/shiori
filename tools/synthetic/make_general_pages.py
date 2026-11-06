@@ -594,9 +594,158 @@ def page_g11() -> GPage:
     return p
 
 
+# ---------------------------------------------------------------- g30-g32, c01: ML Kit reads, bands, routing
+# Pages for the slips of the Android channel (ML Kit, lines in pieces) and a clean word list whose
+# checkboxes the OCR glues to the headwords. Answers in ground_truth_android.json (kept out of
+# ground_truth.json so the score tables above stay as they are).
+
+G30_ROWS = [
+    # head, reading, the Korean pass's meaning (pieces: (text, dx)), truth (headword, readings, meaning)
+    # a badge read glued to the meaning, no space between
+    dict(head="写真", read="しゃしん", meaning=[("명사진", 0.0)], truth=("写真", ["しゃしん"], "사진")),
+    dict(head="出発", read="しゅっぱつ", meaning=[("동출발하다", 0.0)], truth=("出発", ["しゅっぱつ"], "출발하다")),
+    dict(head="新しい", read="あたらしい", meaning=[("い형새롭다", 0.0)], truth=("新しい", ["あたらしい"], "새롭다")),
+    dict(head="三", read="さん", meaning=[("명3, 삼", 0.0)], truth=("三", ["さん", "み"], "3, 삼")),
+    # meanings that start with a badge's syllable: 명함 (the glossary names it), 동전 (nothing does)
+    dict(head="名刺", read="めいし", meaning=[("명함", 0.0)], truth=("名刺", ["めいし"], "명함")),
+    dict(head="小銭", read="こぜに", meaning=[("동전", 0.0)], truth=("小銭", ["こぜに"], "동전")),
+    # the badge read as 8 on its own, a full stop read after the meaning
+    dict(head="待つ", read="まつ", meaning=[("8", 0.0), ("기다리다.", 0.015)], truth=("待つ", ["まつ"], "기다리다")),
+    dict(head="起きる", read="おきる", meaning=[("8", 0.0), ("일어나다. 잠이 깨다.", 0.015)],
+         truth=("起きる", ["おきる"], "일어나다, 잠이 깨다")),
+    # a look-alike kanji read for the headword (体 for 休): the reading beside it has one such spelling
+    dict(head="体む", read="やすむ", meaning=[("쉬다", 0.0)], truth=("休む", ["やすむ"], "쉬다")),
+]
+# g30 and g31 use g10's columns.
+G30_HEAD_X, G30_READ_X, G30_MEAN_X = G10_HEAD_X, G10_READ_X, G10_MEAN_X
+
+
+def page_g30() -> GPage:
+    """A word list as ML Kit reads it: badges glued to the meaning, a full stop after it, a look-alike kanji."""
+    p = GPage("g30", "mlkit-list", seed=130)
+    for i, r in enumerate(G30_ROWS):
+        y = 0.100 + 0.050 * i + p.jitter(0.001)
+        p.both("ロロロ", None, G10_BOX_X, y + 0.010, 0.036, 0.009, 0.3)
+        p.both(r["head"], p.junk_latin(), G30_HEAD_X, y, mp.text_width(r["head"], mp.W_HEAD), G10_ROW_H,
+               0.7, 0.2)
+        p.both(r["read"], None, G30_READ_X, y, mp.text_width(r["read"], mp.W_READ), 0.0160, 0.8)
+        for t, dx in r["meaning"]:
+            p.both(None, t, G30_MEAN_X + dx, y + 0.002, mp.text_width(t, mp.W_KO), 0.0135, c_ko=0.6)
+        headword, readings, meaning = r["truth"]
+        p.word(headword, readings, meaning)
+    y = 0.100 + 0.050 * len(G30_ROWS)
+    # one kana with garbage the Korean pass made up beside it
+    p.both("ね", None, G30_HEAD_X, y, 0.018, 0.016, 0.6)
+    p.both(None, "이니건류해어", G30_MEAN_X, y + 0.002, 0.070, 0.0135, c_ko=0.07)
+    # a short Korean sentence in the past tense, no Japanese near it: not a meaning
+    p.both(None, "비가 왔다.", G30_MEAN_X, y + 0.080, 0.060, 0.0135, c_ko=0.8)
+    p.ignore = ["ロロロ", "体む"]
+    return p
+
+
+def page_g31() -> GPage:
+    """Bands and edges: a header band above the list, a vertical side tab, the next page cut at the
+    right edge, a meaning line the Japanese pass reads as a kanji, two rows whose headword OCR lost."""
+    p = GPage("g31", "bands", seed=131)
+    p.both(None, "생활 단어 모음 2단계 기초", 0.560, 0.072, 0.240, 0.014, c_ko=0.8)
+    rows = [
+        # the meaning of the first row was not read: the header band right above it is no meaning
+        ("弁当", "べんとう", None, ("弁当", ["べんとう"], None)),
+        ("五", "ご", "5, 오", ("五", ["ご", "いつ", "い"], "5, 오")),
+        ("散歩", "さんぽ", "산책", ("散歩", ["さんぽ"], "산책")),
+        ("地図", "ちず", None, ("地図", ["ちず"], None)),
+        ("公園", "こうえん", "공원", ("公園", ["こうえん"], "공원")),
+    ]
+    for i, (head, read, meaning, truth) in enumerate(rows):
+        y = 0.100 + 0.050 * i + p.jitter(0.001)
+        p.both("ロロロ", None, G10_BOX_X, y + 0.010, 0.036, 0.009, 0.3)
+        p.both(head, p.junk_latin(), G30_HEAD_X, y, mp.text_width(head, mp.W_HEAD), G10_ROW_H, 0.7, 0.2)
+        p.both(read, None, G30_READ_X, y, mp.text_width(read, mp.W_READ), 0.0160, 0.8)
+        if meaning is not None:
+            # the Japanese pass reads the meaning line of 五 as `g5,` and a kanji
+            p.both("g5,合" if head == "五" else None, meaning, G30_MEAN_X, y + 0.002,
+                   mp.text_width(meaning, mp.W_KO), 0.0135, 0.36, 0.6)
+        if head == "地図":
+            # a side tab printed vertically at the page's right edge, beside the row with no meaning
+            p.both(None, "생활 단어 모음", 0.940, y - 0.060, 0.018, 0.150, c_ko=0.7)
+        p.word(*truth)
+    # the next page's column, cut at the right edge: numbers and the first kanji of its words
+    for k, kanji in enumerate("雪星"):
+        y = 0.120 + 0.100 * k
+        p.both(f"{31 + k:04d}", None, 0.905, y, 0.020, 0.007, 0.7)
+        p.both(kanji, None, 0.972, y - 0.002, 0.021, 0.018, 0.6)
+    # rows whose headword OCR lost: Latin marks in the checkbox column and nothing where the headword
+    # is (鍵), and a 0.3 kanji the dictionary does not have (螺子, usually written ねじ)
+    y = 0.100 + 0.050 * len(rows)
+    p.both("LON", None, G10_BOX_X - 0.005, y + 0.010, 0.040, 0.009, 0.5)
+    p.both("かぎ", None, G30_READ_X, y, mp.text_width("かぎ", mp.W_READ), 0.0160, 0.9)
+    p.both(None, "열쇠", G30_MEAN_X, y + 0.002, mp.text_width("열쇠", mp.W_KO), 0.0135, c_ko=0.6)
+    p.word("鍵", ["かぎ"], "열쇠")
+    y += 0.050
+    p.both("ロロロ", None, G10_BOX_X, y + 0.010, 0.036, 0.009, 0.3)
+    p.both("己", None, G30_HEAD_X, y, 0.022, G10_ROW_H, 0.3)
+    p.both("ねじ", None, G30_READ_X, y, mp.text_width("ねじ", mp.W_READ), 0.0160, 0.9)
+    p.both(None, "나사", G30_MEAN_X, y + 0.002, mp.text_width("나사", mp.W_KO), 0.0135, c_ko=0.6)
+    p.word("ねじ", [], "나사")
+    p.ko_line("단어 | 3과 생활 용품", 0.62, 0.940, h=0.012, c=1.0)
+    p.ignore = ["ロロロ", "LON", "己"]
+    return p
+
+
+def page_g32() -> GPage:
+    """A list of kanji words only (no readings, no meanings printed): every word is still a word."""
+    p = GPage("g32", "kanji-only", seed=132)
+    readings = {"公園": "こうえん", "散歩": "さんぽ", "弁当": "べんとう", "地図": "ちず", "料理": "りょうり",
+                "旅行": "りょこう"}
+    for i, (head, reading) in enumerate(readings.items()):
+        p.ja_line(head, 0.200, 0.100 + 0.060 * i, per=mp.W_HEAD, h=G10_ROW_H, c=1.0)
+        p.word(head, [reading], None)
+    return p
+
+
+C01_ROWS = [
+    # the checkbox glued in front of the headword (`OD机`), or all OCR made of the cell (`ON`)
+    dict(no="0101", headword="机", readings=["つくえ"], pos="명", meaning="책상", box=None,
+         head_ocr=[("OD机", 0.035)]),
+    dict(no="0102", headword="窓", readings=["まど"], pos="명", meaning="창문"),
+    dict(no="0103", headword="箱", readings=["はこ"], pos="명", meaning="상자"),
+    dict(no="0104", headword="鏡", readings=["かがみ"], pos="명", meaning="거울", box=None,
+         head_ocr=[("OL鏡", 0.035)]),
+    dict(no="0105", headword="傘", readings=["かさ"], pos="명", meaning="우산", box=None,
+         head_ocr=[("ー傘", 0.040)]),
+    dict(no="0106", headword="庭", readings=["にわ"], pos="명", meaning="마당, 뜰", box=None,
+         head_ocr=[("ON", 0.035)]),
+    dict(no="0107", headword="袋", readings=["ふくろ"], pos="명", meaning="봉지, 자루"),
+    dict(no="0108", headword="財布", readings=["さいふ"], pos="명", meaning="지갑"),
+    dict(no="0109", headword="帽子", readings=["ぼうし"], pos="명", meaning="모자"),
+    dict(no="0110", headword="品物", readings=["しなもの"], pos="명", meaning="물건"),
+]
+
+
+def page_c01() -> GPage:
+    """A clean, flat word-list page (as a scanner app gives it) whose checkboxes OCR glued to the
+    headwords: the rows and numbers fit the row template, the headword cells do not."""
+    p = GPage("c01", "marked-list", seed=201)
+    p.both("★三人=試験上大ON卓", "★ 표시 = 시험에 자주 나온 단어", 0.5465, 0.1265, 0.2461, 0.0132, 0.3, 0.5)
+    p.both("DAY", "DAY", 0.8430, 0.2064, 0.0174, 0.0233)
+    for i, r in enumerate(C01_ROWS):
+        mp.list_row(p, i, r, ax0=0.2112, ay0=0.1830, gap=0.0458, drift=0.0, slope=0.0, reading_x=0.4302)
+        p.word(r["headword"], r["readings"], r["meaning"])
+    p.both("PART 1N5，N4 E101 ｜ DAY 01全｜人 11", "PART 1 기초 단어 | DAY 이 생활 11",
+           0.6124, 0.9070, 0.2171, 0.0117, 0.5, 0.5)
+    p.ignore = ["ロロロ"]
+    return p
+
+
+ANDROID_NOTE = (NOTE + " Pages for the Android channel's slips (badges glued to the meaning, a full stop after "
+                "it, header bands, a vertical side tab, the next page cut at the edge), a list of kanji words "
+                "only, and a clean word list whose checkboxes OCR glued to the headwords; answers as in "
+                "ground_truth.json.")
+
 PageBuilder = Callable[[], GPage]
 PAGES: tuple[PageBuilder, ...] = (page_g01, page_g02, page_g03, page_g04, page_g05, page_g06,
                                    page_g10, page_g11)
+ANDROID_PAGES: tuple[PageBuilder, ...] = (page_g30, page_g31, page_g32, page_c01)
 
 
 # ---------------------------------------------------------------- g21-g23: traps for the pairing confidence
@@ -817,6 +966,17 @@ LEXICON: tuple[tuple[int, list[str], list[str], str, int, int | None, bool], ...
     (1511790, ["片付ける"], ["かたづける"], "v1 vt", 6, 37, False),
     (1598550, ["出かける"], ["でかける"], "v1 vi", 16, None, False),
     (1341670, ["準備"], ["じゅんび"], "n vs vt", 5, 2, False),
+    # g30-g32, c01 (words the other pages do not have)
+    (1321900, ["写真"], ["しゃしん"], "n", 5, 1, False),
+    (1340000, ["出発"], ["しゅっぱつ"], "n vs vi", 5, 5, False),
+    (1579350, ["三"], ["さん", "み"], "num", 5, 1, False),
+    (1268060, ["五"], ["ご", "いつ", "い"], "num", 5, 1, False),
+    (1531550, ["名刺"], ["めいし"], "n", 5, 10, False),
+    (1348470, ["小銭"], ["こぜに"], "n", 34, 29, False),
+    (1386500, ["雪"], ["ゆき"], "n", 5, 3, False),
+    (1376310, ["星"], ["ほし"], "n", 5, 5, False),
+    (1260490, ["鍵"], ["かぎ"], "n", 5, 18, False),
+    (1585010, ["螺子"], ["ねじ", "ネジ"], "n", 0, None, True),
 )
 
 # Words whose Korean meaning does not follow the Sino-Korean reading (about half of them).
@@ -845,6 +1005,10 @@ KOREAN_GLOSSES: dict[str, list[str]] = {
     # g11
     "届ける": ["보내다", "배달하다"],
     "片付ける": ["정리하다", "치우다"],
+    # g30, g31 (かぎ, ねじ: looked up as the kana OCR left of the row)
+    "名刺": ["명함"],
+    "かぎ": ["열쇠"],
+    "ねじ": ["나사"],
 }
 
 
@@ -885,6 +1049,13 @@ def render() -> dict[str, str]:
                                               "tools/synthetic/make_pages.py.", "pages": legacy}, 1)
     files["lexicon.json"] = dump(lexicon(), 1)
     files["korean_glosses.json"] = dump({"_note": GLOSS_NOTE, "glosses": KOREAN_GLOSSES}, 1)
+    android = [make() for make in ANDROID_PAGES]
+    check_lexicon(android)
+    for p in android:
+        for name, data in p.files().items():
+            files[name] = dump(data, 0)
+    files["ground_truth_android.json"] = dump({"_note": ANDROID_NOTE, "format": "general-1",
+                                               "pages": [p.general_answer() for p in android]}, 1)
     traps = [make() for make in TRAP_PAGES]
     for p in traps:
         for name, data in p.files().items():

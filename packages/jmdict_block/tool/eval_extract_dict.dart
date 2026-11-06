@@ -3,6 +3,7 @@
 //
 //   dart run tool/eval_extract_dict.dart --db FILE [--fixtures DIR] [--gt FILE]
 //       [--glosses FILE] [--glossary FILE] [--template] [--routed] [--verbose]
+//       [--no-warmup]
 //
 // --glossary: the Korean glossary SQLite file (tools/dict/build_ko_glossary.py;
 // the app's asset app/assets/dict/ko-glossary.sqlite.gz, unzipped), plugged
@@ -16,6 +17,8 @@
 // packages/core/tool/eval_extract.dart (default fixtures: the synthetic pages
 // for the extractor). Recorded textbook pages are local only, under
 // "$SHIORI_PRIVATE_DIR/textbook"; --verbose quotes them.
+// Times per page come after one untimed read of the first page (the VM's
+// warm-up and the dictionary's first reads); --no-warmup times it cold.
 import 'dart:convert';
 import 'dart:io';
 
@@ -48,6 +51,9 @@ Future<void> main(List<String> args) async {
   Future<OcrScan> load(String fixture) =>
       recognizer.recognize(PageImage(fixture));
   final verbose = args.contains('--verbose');
+  // Per-page times after one warm-up read of the first page (VM warm-up,
+  // the dictionary files' first reads); --no-warmup gives the cold first page.
+  final warmUp = !args.contains('--no-warmup');
   final jmdict = JmdictDictionary.open(dbPath);
   final glossaryPath = _option(args, '--glossary');
   final glossary = glossaryPath == null
@@ -91,6 +97,7 @@ Future<void> main(List<String> args) async {
         truth: truth,
         loadScan: load,
         run: run,
+        warmUp: warmUp,
       );
       stdout
         ..writeln()

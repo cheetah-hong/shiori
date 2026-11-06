@@ -38,6 +38,11 @@ enum RouteReason {
 
   /// The column positions could not be measured on the page.
   columnsNotMeasured,
+
+  /// Headword cells start with checkbox marks the OCR glued to them
+  /// (`OD机`, `ー傘`) or hold nothing but marks (`ON`): a clean scan whose
+  /// checkboxes the template reads into the headword.
+  markedHeadwords,
 }
 
 /// What the row template made of a page, measured before any corrector ran.
@@ -51,6 +56,7 @@ final class TemplateFit {
     required this.missingHeadwords,
     required this.numberOrder,
     required this.columnsMeasured,
+    this.markedHeadwords = 0,
   });
 
   /// Rows the template returned.
@@ -79,6 +85,10 @@ final class TemplateFit {
   /// The template measured the page's column positions.
   final bool columnsMeasured;
 
+  /// Rows whose headword cell starts with checkbox marks or holds only
+  /// marks (see `isMarkedHeadword`).
+  final int markedHeadwords;
+
   @override
   bool operator ==(Object other) =>
       other is TemplateFit &&
@@ -89,7 +99,8 @@ final class TemplateFit {
       other.missingReadings == missingReadings &&
       other.missingHeadwords == missingHeadwords &&
       other.numberOrder == numberOrder &&
-      other.columnsMeasured == columnsMeasured;
+      other.columnsMeasured == columnsMeasured &&
+      other.markedHeadwords == markedHeadwords;
 
   @override
   int get hashCode => Object.hash(
@@ -101,6 +112,7 @@ final class TemplateFit {
     missingHeadwords,
     numberOrder,
     columnsMeasured,
+    markedHeadwords,
   );
 
   @override
@@ -108,7 +120,8 @@ final class TemplateFit {
       'TemplateFit(rows $entries, numbers $numberedRows, dup $duplicateNumbers, '
       'no meaning $missingMeanings, no reading $missingReadings, '
       'no headword $missingHeadwords, order ${numberOrder.toStringAsFixed(2)}, '
-      'columns ${columnsMeasured ? 'measured' : 'default'})';
+      'columns ${columnsMeasured ? 'measured' : 'default'}, '
+      'marked $markedHeadwords)';
 }
 
 /// The route of one page, with the numbers it was decided on.
@@ -142,6 +155,8 @@ final class RouteDecision {
       '빈 표제어 ${fit.missingHeadwords}/${fit.entries}',
     RouteReason.numberOrder => '번호 순서 어긋남',
     RouteReason.columnsNotMeasured => '칸 위치를 재지 못함',
+    RouteReason.markedHeadwords =>
+      '표제어 앞 자국 ${fit.markedHeadwords}/${fit.entries}',
   };
 
   @override

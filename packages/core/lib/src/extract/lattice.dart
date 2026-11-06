@@ -144,6 +144,9 @@ final class SentenceSegmenter {
 
   final Map<String, List<Deinflection>> _deconjugated = {};
 
+  /// [_candidates] by piece: [formsFor] and the split ask for the same.
+  final Map<String, Map<(int, int), List<Deinflection>>> _candidatesOf = {};
+
   /// Every form [segment] of [sentence] would look up, for one batched
   /// lexicon call per page.
   Set<String> formsFor(String sentence) => {
@@ -213,7 +216,10 @@ final class SentenceSegmenter {
   static bool _isAscii(int c) => c < 0x80;
 
   /// Deinflection candidates of every substring, keyed by `start:end`.
-  Map<(int, int), List<Deinflection>> _candidates(String piece) {
+  Map<(int, int), List<Deinflection>> _candidates(String piece) =>
+      _candidatesOf.putIfAbsent(piece, () => _candidatesOfPiece(piece));
+
+  Map<(int, int), List<Deinflection>> _candidatesOfPiece(String piece) {
     final runes = piece.runes.toList();
     final out = <(int, int), List<Deinflection>>{};
     for (var i = 0; i < runes.length; i++) {

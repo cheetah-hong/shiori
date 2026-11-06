@@ -61,6 +61,7 @@ final class PageExtractScore {
     required this.highWrong,
     required this.high,
     required this.returned,
+    this.extraHigh = 0,
     required this.mistakes,
     this.elapsed = Duration.zero,
   });
@@ -95,6 +96,11 @@ final class PageExtractScore {
 
   /// Words with high pairing confidence that the answers score.
   final int high;
+
+  /// Extras at high pairing confidence: a headword no answer has (a kana
+  /// left where OCR lost the kanji, a stray word) that would be approved
+  /// unseen.
+  final int extraHigh;
   final int returned;
   final List<String> mistakes;
   final Duration elapsed;
@@ -115,6 +121,7 @@ final class ExtractScore {
   int get duplicates => pages.fold(0, (s, p) => s + p.duplicates);
   int get highWrong => pages.fold(0, (s, p) => s + p.highWrong);
   int get high => pages.fold(0, (s, p) => s + p.high);
+  int get extraHigh => pages.fold(0, (s, p) => s + p.extraHigh);
 
   Ratio _sum(Ratio Function(PageExtractScore) f) => pages.fold((
     ok: 0,
@@ -134,7 +141,7 @@ final class ExtractScore {
       }
     }
     b.writeln(
-      'page        n found read mean   sentR   sentP extra dup high hiWrong    ms',
+      'page        n found read mean   sentR   sentP extra dup high hiWrong    ms exHigh',
     );
     for (final p in pages) {
       b.writeln(
@@ -142,7 +149,8 @@ final class ExtractScore {
         '${_r(p.readingsOk, 4)} ${_r(p.meanings.ok, 4)} '
         '${_r(_ratio(p.sentenceWords), 7)} ${_r(_ratio(p.sentencePredicted), 7)} '
         '${_r(p.extras, 5)} ${_r(p.duplicates, 3)} ${_r(p.high, 4)} '
-        '${_r(p.highWrong, 7)} ${_r(p.elapsed.inMicroseconds / 1000, 5, 1)}',
+        '${_r(p.highWrong, 7)} ${_r(p.elapsed.inMicroseconds / 1000, 5, 1)} '
+        '${_r(p.extraHigh, 6)}',
       );
     }
     b.writeln();
@@ -153,6 +161,7 @@ final class ExtractScore {
       'sentence_recall=${sentenceWords.ok}/${sentenceWords.of} '
       'sentence_precision=${sentencePredicted.ok}/${sentencePredicted.of} '
       'extras=$extras duplicates=$duplicates high=$high high_wrong=$highWrong '
+      'extra_high=$extraHigh '
       'ms_per_page=${pages.isEmpty ? 0 : (total.inMicroseconds / 1000 / pages.length).toStringAsFixed(1)}',
     );
     return b.toString();
@@ -279,8 +288,13 @@ PageExtractScore scoreExtractPage(
           !ignore.contains(k))
         k,
   ];
+  var extraHigh = 0;
   for (final k in extras) {
     mistakes.add('EXTRA ${first[k]!.headword}');
+    if (first[k]!.confidence == PairConfidence.high) {
+      extraHigh++;
+      mistakes.add('EXTRA-HIGH ${first[k]!.headword}');
+    }
   }
   var duplicates = 0;
   for (final MapEntry(key: k, value: n) in counts.entries) {
@@ -304,6 +318,7 @@ PageExtractScore scoreExtractPage(
     duplicates: duplicates,
     highWrong: highWrong,
     high: high,
+    extraHigh: extraHigh,
     returned: words.length,
     mistakes: List.unmodifiable(mistakes),
     elapsed: elapsed,
@@ -326,7 +341,13 @@ Future<ExtractScore> scoreExtractor({
   required ExtractTruth truth,
   required Future<OcrScan> Function(String fixture) loadScan,
   required Future<List<ScoredWord>> Function(OcrScan scan) run,
+  bool warmUp = false,
 }) async {
+  // The first page read pays for the VM's warm-up and the dictionary
+  // files' first reads; with [warmUp] it is read once before the timing.
+  if (warmUp && truth.pages.isNotEmpty) {
+    await run(await loadScan(truth.pages.first.fixture));
+  }
   final pages = <PageExtractScore>[];
   for (final page in truth.pages) {
     final scan = await loadScan(page.fixture);
