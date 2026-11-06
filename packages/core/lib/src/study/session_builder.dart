@@ -42,4 +42,35 @@ final class SessionBuilder {
       startedAt: now,
     );
   }
+
+  /// 더 학습하기: up to [goal] cards whose review time has not come yet,
+  /// lowest level first, then the earliest review, then the words' order.
+  /// Due reviews, new words and hidden words are left out.
+  StudySession buildMore({
+    required List<Word> words,
+    required Map<String, ReviewCard> cards,
+    required DateTime now,
+    required int goal,
+  }) {
+    final waiting = stableSorted(
+      [
+        for (final w in words)
+          if (cards[w.id] case final card? when !w.isHidden && !card.isDue(now))
+            (word: w, card: card),
+      ],
+      (a, b) {
+        final byLevel = a.card.level.compareTo(b.card.level);
+        return byLevel != 0 ? byLevel : a.card.dueAt.compareTo(b.card.dueAt);
+      },
+    );
+    final picked = [
+      for (final p in waiting.take(goal < 0 ? 0 : goal))
+        SessionItem(word: p.word, before: p.card, ahead: true),
+    ];
+    return StudySession(
+      queue: List.unmodifiable(picked),
+      total: picked.length,
+      startedAt: now,
+    );
+  }
 }

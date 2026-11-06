@@ -122,6 +122,18 @@ abstract interface class ReviewRepository {
 
   Future<void> addLog(ReviewLog log);
 
+  /// Removes the cards of [wordIds] in [scope] and returns them (to put back
+  /// with [saveCard]). Ids without a card are skipped, an id listed twice is
+  /// removed once. The press log is kept.
+  Future<List<ReviewCard>> deleteCards(
+    Iterable<String> wordIds, {
+    CardScope scope = CardScope.shared,
+  });
+
+  /// Removes every card of [scope] (null: of every scope) and returns how
+  /// many. The press log is kept.
+  Future<int> deleteAllCards({CardScope? scope});
+
   /// Oldest first (presses at the same instant in the order they were
   /// added), optionally only presses at or after [since] and only of
   /// [scope] (null: every scope).

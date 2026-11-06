@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/data.dart';
 import 'package:shiori/features/playlists/playlist_names.dart';
+import 'package:shiori/features/study/restudy_labels.dart';
 import 'package:shiori/shared/hide_labels.dart';
 import 'package:shiori_core/shiori_core.dart';
 
@@ -117,6 +118,43 @@ Future<void> removeFromPlaylist({
           messenger,
           '되돌리지 못했어요. 다시 시도해 주세요',
           () => library.restoreWords(removed),
+        )) {
+          revision.bump();
+        }
+      },
+    ),
+  );
+}
+
+/// 처음부터 다시 학습: makes [word] a new word again, with 되돌리기 (its card
+/// back as it was, unless it was studied meanwhile).
+Future<void> resetWord({
+  required ScaffoldMessengerState messenger,
+  required StudyService study,
+  required DataRevision revision,
+  required String playlistId,
+  required Word word,
+}) async {
+  var removed = const <ReviewCard>[];
+  final done = await _guarded(
+    messenger,
+    RestudyLabels.resetFailed,
+    () async => removed = await study.resetWords([
+      word.id,
+    ], scope: PlaylistOnly(playlistId)),
+  );
+  if (!done) return;
+  revision.bump();
+  _say(
+    messenger,
+    RestudyLabels.wordReset(word.headword),
+    action: SnackBarAction(
+      label: HideLabels.undo,
+      onPressed: () async {
+        if (await _guarded(
+          messenger,
+          RestudyLabels.undoFailed,
+          () => study.restoreCards(removed),
         )) {
           revision.bump();
         }

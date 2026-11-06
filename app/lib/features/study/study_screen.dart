@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/adapters/voicevox_speech.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/features/study/restudy_labels.dart';
 import 'package:shiori/features/study/study_controller.dart';
 import 'package:shiori/features/study/word_card.dart';
 import 'package:shiori/features/study/word_speech.dart';
@@ -16,10 +17,17 @@ import 'package:voicevox_block/voicevox_block.dart';
 /// 학습: one card at a time. 다시 학습 sends it to the back, 알고있음 schedules it,
 /// 이미 알아요 hides the word (with 되돌리기 right after).
 class StudyScreen extends ConsumerStatefulWidget {
-  const StudyScreen({super.key, this.scope = const AllWords()});
+  const StudyScreen({
+    super.key,
+    this.scope = const AllWords(),
+    this.more = false,
+  });
 
   /// What to study: every playlist (전체) or one.
   final StudyScope scope;
+
+  /// 더 학습하기: cards whose review time has not come, instead of today's.
+  final bool more;
 
   @override
   ConsumerState<StudyScreen> createState() => _StudyScreenState();
@@ -32,8 +40,27 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
   /// A hide or undo that failed, shown in the same place.
   String? _failure;
 
+  StudyRequest get _request => (scope: widget.scope, more: widget.more);
+
   StudyController get _controller =>
-      ref.read(studyControllerProvider(widget.scope).notifier);
+      ref.read(studyControllerProvider(_request).notifier);
+
+  /// 더 학습하기: this screen gives way to a session of cards brought forward.
+  /// Already one: a new session of them starts here (a new screen would get
+  /// the same, finished session, as the old one still holds it).
+  void _studyMore() {
+    _stopSound();
+    if (widget.more) {
+      setState(_clearNotice);
+      ref.invalidate(studyControllerProvider(_request));
+      return;
+    }
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => StudyScreen(scope: widget.scope, more: true),
+      ),
+    );
+  }
 
   Future<void> _hide() => _guard(HideLabels.hideFailed, () async {
     _stopSound();
@@ -100,7 +127,11 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
   @override
   Widget build(BuildContext context) {
     final scope = widget.scope;
-    final state = ref.watch(studyControllerProvider(scope));
+    final request = _request;
+    final state = ref.watch(studyControllerProvider(request));
+    final canStudyMore =
+        (watchStudySummary(ref, scope).value?.aheadCount ?? 0) > 0;
+    final onMore = canStudyMore ? _studyMore : null;
     final hidden = _hidden;
     final failure = _failure;
     return Scaffold(
@@ -116,20 +147,23 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
               ),
             Expanded(
               child: switch (state) {
-                AsyncData(value: final s) when s.total == 0 =>
-                  const _NothingToStudy(),
+                AsyncData(value: final s) when s.total == 0 => _NothingToStudy(
+                  onMore: onMore,
+                ),
                 AsyncData(value: final s) when s.isFinished => _SessionDone(
                   session: s,
+                  onMore: onMore,
                 ),
                 AsyncData(value: final s) => _Session(
                   session: s,
-                  scope: scope,
+                  request: request,
                   onAnswer: _answer,
                   onHide: _hide,
                 ),
                 AsyncError(:final error) => _Failure(
                   message: '$error',
-                  onRetry: () => ref.invalidate(studyControllerProvider(scope)),
+                  onRetry: () =>
+                      ref.invalidate(studyControllerProvider(request)),
                 ),
                 _ => const Center(child: CircularProgressIndicator()),
               },
@@ -202,13 +236,13 @@ class _Notice extends StatelessWidget {
 class _Session extends ConsumerWidget {
   const _Session({
     required this.session,
-    required this.scope,
+    required this.request,
     required this.onAnswer,
     required this.onHide,
   });
 
   final StudySession session;
-  final StudyScope scope;
+  final StudyRequest request;
   final ValueChanged<Answer> onAnswer;
   final VoidCallback onHide;
 
@@ -217,7 +251,7 @@ class _Session extends ConsumerWidget {
     final t = context.tokens;
     final item = session.current;
     if (item == null) return const SizedBox.shrink();
-    final controller = ref.read(studyControllerProvider(scope).notifier);
+    final controller = ref.read(studyControllerProvider(request).notifier);
     final speech = ref.watch(speechProvider);
     // Until the accent table has loaded the card shows it without data; a
     // button pressed meanwhile waits for the table, so the sound keeps the
@@ -257,7 +291,12 @@ class _Session extends ConsumerWidget {
                 icon: const Icon(Icons.close),
                 onPressed: () => Navigator.of(context).maybePop(),
               ),
-              Expanded(child: Text('오늘 학습', style: context.text.titleMedium)),
+              Expanded(
+                child: Text(
+                  request.more ? RestudyLabels.more : '오늘 학습',
+                  style: context.text.titleMedium,
+                ),
+              ),
               Semantics(
                 label: '${session.total}장 중 ${session.knownCount}장 완료',
                 child: ExcludeSemantics(
@@ -453,9 +492,12 @@ class _ProgressBar extends StatelessWidget {
 }
 
 class _SessionDone extends ConsumerWidget {
-  const _SessionDone({required this.session});
+  const _SessionDone({required this.session, this.onMore});
 
   final StudySession session;
+
+  /// 더 학습하기; null when no card can be brought forward.
+  final VoidCallback? onMore;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -499,6 +541,17 @@ class _SessionDone extends ConsumerWidget {
             ],
           ),
           const Spacer(flex: 2),
+          if (onMore case final more?) ...[
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: more,
+                icon: const Icon(Icons.replay_rounded),
+                label: const Text(RestudyLabels.more),
+              ),
+            ),
+            const SizedBox(height: Space.sm),
+          ],
           SizedBox(
             width: double.infinity,
             child: FilledButton(
@@ -550,7 +603,10 @@ class _DoneStat extends StatelessWidget {
 }
 
 class _NothingToStudy extends StatelessWidget {
-  const _NothingToStudy();
+  const _NothingToStudy({this.onMore});
+
+  /// 더 학습하기; null when no card can be brought forward.
+  final VoidCallback? onMore;
 
   @override
   Widget build(BuildContext context) {
@@ -563,10 +619,22 @@ class _NothingToStudy extends StatelessWidget {
           const SizedBox(height: Space.sm),
           Text('복습할 때가 되면 홈에 숫자가 올라와요', style: context.text.bodyMedium),
           const SizedBox(height: Space.xl),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('돌아가기'),
-          ),
+          if (onMore case final more?) ...[
+            FilledButton.icon(
+              onPressed: more,
+              icon: const Icon(Icons.replay_rounded),
+              label: const Text(RestudyLabels.more),
+            ),
+            const SizedBox(height: Space.sm),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('돌아가기'),
+            ),
+          ] else
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('돌아가기'),
+            ),
         ],
       ),
     );

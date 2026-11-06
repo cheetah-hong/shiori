@@ -86,6 +86,34 @@ final class DriftReviewRepository implements ReviewRepository {
         ),
       );
 
+  /// Reads, then deletes, each run of ids in one transaction, so the cards
+  /// returned are the ones removed.
+  @override
+  Future<List<ReviewCard>> deleteCards(
+    Iterable<String> wordIds, {
+    CardScope scope = CardScope.shared,
+  }) {
+    final ids = wordIds.toSet().toList();
+    return _db.transaction(() async {
+      final removed = <ReviewCard>[];
+      for (final chunk in chunked(ids)) {
+        Expression<bool> named($ReviewCardsTable c) =>
+            c.scope.equals(scope.key) & c.wordId.isIn(chunk);
+        final rows = await (_db.select(_db.reviewCards)..where(named)).get();
+        await (_db.delete(_db.reviewCards)..where(named)).go();
+        removed.addAll(rows.map(_card));
+      }
+      return List.unmodifiable(removed);
+    });
+  }
+
+  @override
+  Future<int> deleteAllCards({CardScope? scope}) {
+    final query = _db.delete(_db.reviewCards);
+    if (scope != null) query.where((c) => c.scope.equals(scope.key));
+    return query.go();
+  }
+
   /// Oldest first; presses at the same instant in the order they were added.
   /// Sorting by `at` lets the `since` filter use the `review_logs_by_time`
   /// index (the row id rides along in it). A stored scope that is not one

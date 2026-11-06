@@ -7,6 +7,7 @@ final class SessionItem {
     required this.word,
     required this.before,
     this.retries = 0,
+    this.ahead = false,
   });
 
   final Word word;
@@ -17,10 +18,18 @@ final class SessionItem {
   /// 다시 학습 presses for this card in this session.
   final int retries;
 
+  /// A card studied before its review time (더 학습하기): 알고있음 leaves it
+  /// as it was, unless it was retried in this session.
+  final bool ahead;
+
   bool get isNew => before == null;
 
-  SessionItem retried() =>
-      SessionItem(word: word, before: before, retries: retries + 1);
+  SessionItem retried() => SessionItem(
+    word: word,
+    before: before,
+    retries: retries + 1,
+    ahead: ahead,
+  );
 }
 
 /// One study session. Immutable: every answer returns a new session.

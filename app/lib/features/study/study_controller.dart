@@ -3,18 +3,26 @@ import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/data.dart';
 import 'package:shiori_core/shiori_core.dart';
 
-/// Holds one study session over [scope] (전체 or one playlist).
-final class StudyController extends AsyncNotifier<StudySession> {
-  StudyController(this.scope);
+/// What a study screen studies: [scope] (전체 or one playlist), today's
+/// cards or, with [more], cards brought forward (더 학습하기).
+typedef StudyRequest = ({StudyScope scope, bool more});
 
-  final StudyScope scope;
+/// Holds one study session for a [StudyRequest].
+final class StudyController extends AsyncNotifier<StudySession> {
+  StudyController(this.request);
+
+  final StudyRequest request;
 
   /// A write is on its way; presses meanwhile are ignored.
   bool _busy = false;
 
   @override
-  Future<StudySession> build() =>
-      ref.read(studyServiceProvider).startSession(scope: scope);
+  Future<StudySession> build() {
+    final service = ref.read(studyServiceProvider);
+    return request.more
+        ? service.startMoreSession(scope: request.scope)
+        : service.startSession(scope: request.scope);
+  }
 
   Future<void> answer(Answer answer) async {
     final session = state.value;
@@ -74,4 +82,13 @@ final class StudyController extends AsyncNotifier<StudySession> {
 }
 
 final studyControllerProvider = AsyncNotifierProvider.autoDispose
-    .family<StudyController, StudySession, StudyScope>(StudyController.new);
+    .family<StudyController, StudySession, StudyRequest>(StudyController.new);
+
+/// Today's counts for [scope] (what is due, new and can be brought forward).
+AsyncValue<StudySummary> watchStudySummary(WidgetRef ref, StudyScope scope) =>
+    switch (scope) {
+      AllWords() => ref.watch(homeSummaryProvider),
+      PlaylistOnly(:final playlistId) => ref.watch(
+        playlistSummaryProvider(playlistId),
+      ),
+    };

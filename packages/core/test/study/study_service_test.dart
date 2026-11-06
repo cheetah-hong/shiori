@@ -165,6 +165,16 @@ final class _FailingLog implements ReviewRepository {
   Future<void> addLog(ReviewLog log) => Future.error(StateError('disk full'));
 
   @override
+  Future<List<ReviewCard>> deleteCards(
+    Iterable<String> wordIds, {
+    CardScope scope = CardScope.shared,
+  }) => _inner.deleteCards(wordIds, scope: scope);
+
+  @override
+  Future<int> deleteAllCards({CardScope? scope}) =>
+      _inner.deleteAllCards(scope: scope);
+
+  @override
   Future<List<ReviewLog>> logs({DateTime? since, CardScope? scope}) =>
       _inner.logs(since: since, scope: scope);
 

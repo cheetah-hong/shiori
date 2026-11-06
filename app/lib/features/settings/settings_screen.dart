@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/app/blocks.dart';
+import 'package:shiori/app/data.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/features/study/restudy_labels.dart';
 import 'package:shiori/shared/widgets.dart';
 import 'package:shiori_core/shiori_core.dart';
 
 /// 설정: the study options. Only the defaults are built (one shared record
 /// per word; 전체 + one playlist at a time); the other choices are listed as
 /// 준비 중 so the learner sees where the app is going, and cannot be picked.
+/// 학습 기록 also holds 모든 단어 처음부터 다시 학습 (asked first).
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -52,6 +55,8 @@ class SettingsScreen extends ConsumerWidget {
               title: '재생목록마다 따로',
               selected: value.recordMode == RecordMode.perPlaylist,
             ),
+            const Divider(),
+            const _ResetAll(),
             const SectionLabel('학습 범위'),
             _Choice(
               title: '전체 복습 + 재생목록 골라 학습',
@@ -116,6 +121,66 @@ class _Choice extends StatelessWidget {
           onTap: onTap,
         ),
       ),
+    );
+  }
+}
+
+/// 모든 단어 처음부터 다시 학습: after a confirmation, every card goes (every
+/// word is new again); the press log, hidden words and playlists stay. Off
+/// while no word has been studied.
+class _ResetAll extends ConsumerWidget {
+  const _ResetAll();
+
+  Future<void> _reset(BuildContext context, WidgetRef ref, int count) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final study = ref.read(studyServiceProvider);
+    final revision = ref.read(dataRevisionProvider.notifier);
+    final sure = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text(RestudyLabels.resetAllQuestion),
+        content: Text(RestudyLabels.resetAllDetail(count)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: context.tokens.risk),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text(RestudyLabels.resetAllConfirm),
+          ),
+        ],
+      ),
+    );
+    if (sure != true) return;
+    try {
+      final removed = await study.resetAll();
+      revision.bump();
+      messenger.showSnackBar(
+        SnackBar(content: Text(RestudyLabels.allReset(removed))),
+      );
+    } on Exception catch (e, stack) {
+      debugPrint('reset all failed: $e\n$stack');
+      messenger.showSnackBar(
+        const SnackBar(content: Text(RestudyLabels.resetAllFailed)),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = ref.watch(cardsProvider).value?.length ?? 0;
+    final enabled = count > 0;
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      enabled: enabled,
+      leading: const Icon(Icons.restart_alt),
+      title: const Text(RestudyLabels.resetAll),
+      subtitle: Text(
+        enabled ? RestudyLabels.resetAllHint : RestudyLabels.nothingLearned,
+      ),
+      onTap: enabled ? () => _reset(context, ref, count) : null,
     );
   }
 }

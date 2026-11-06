@@ -1948,3 +1948,53 @@ Android 에뮬레이터(Medium Phone, Android 16, arm64, Google Play 이미지)�
 결과: core **555** · voicevox_block **63**(새) · app **248** · tools/dict **112**(+30) · tools/voice **47**(새) · iOS RunnerTests · Android 단위 **15**개(+4, `AudioPathTest`) 통과, `flutter analyze`·`dart analyze` 문제 없음, 생성기 `--check` 3개 통과, `asset_check.py`·`--release` 모두 ok.
 
 - `no_network_test.dart`가 새 패키지 `packages/voicevox_block`도 검사합니다(의존성 `crypto`·`shiori_core`, 연결 코드 없음).
+
+## 29. 학습한 단어 다시 학습: 더 학습하기, 처음부터 다시 학습, 전체 초기화 (2026-11-07)
+
+새 단어를 처음 보자마자 「알고있음」하면 4단계(21일 뒤)로 가고, 학습은 때가 된 카드만 고르므로 그동안 그 단어를 다시 볼 길이 없었습니다.
+복습 간격 규칙(4절 학습 규칙)은 그대로 두고, 학습한 단어로 돌아가는 길을 셋 더했습니다. 저장 스키마는 v4 그대로입니다(카드 행만 지움).
+
+### 29.1 동작
+
+| 기능 | 자리 | 동작 |
+|---|---|---|
+| 더 학습하기 | 홈 큰 버튼, 재생목록 화면 학습 버튼(오늘 할 것이 없을 때 그 자리), 학습 화면 「지금 학습할 카드가 없어요」·「오늘 학습 끝」 | 복습할 때가 안 된 카드만, 기억 단계 낮은 것 → 복습 날짜 이른 것 → 단어 순서로 최대 10장(`dailyGoal`). 숨긴 단어·때가 된 카드·새 단어는 고르지 않습니다. 고를 카드가 없으면 버튼이 없습니다(홈·재생목록은 지금처럼 꺼진 버튼). 세션 머리 글자는 「더 학습하기」 |
+| ㄴ 알고있음 | | 카드(단계·다음 복습·횟수) 그대로. 누른 기록은 남아 「오늘 n개 외움」에 셉니다. 버튼 아래 시간은 남은 시간(다음 복습까지) |
+| ㄴ 다시 학습 | | 평소와 같음: 1단계·지금 복습·잊은 횟수 +1. 같은 세션에서 다시 나와 알고있음하면 평소 규칙(min(현재, 2) 또는 1단계) |
+| 처음부터 다시 학습 | 재생목록 화면 단어 줄 ⋮ 메뉴(카드가 있는 단어만) | 그 단어의 카드를 지워 새 단어로. 확인 창 없이 바로, 스낵바 「「語」 새 단어로 돌렸어요 · 되돌리기」. 되돌리기는 그 사이 다시 학습하지 않았으면 원래 카드로. 누른 기록·숨김은 그대로 |
+| 모든 단어 처음부터 다시 학습 | 설정 → 학습 기록 | 확인 창(「모든 단어를 처음부터 다시 학습할까요?」, 학습한 단어 수, 「취소」/「처음부터」) 뒤에만 모든 카드를 지움. 누른 기록·숨김·재생목록·단어는 그대로. 학습한 단어가 없으면 줄이 꺼짐 |
+
+### 29.2 설계
+
+- 포트 `ReviewRepository`에 `deleteCards(wordIds, {scope})`(지운 카드를 돌려줌, 없는 id는 건너뜀)와 `deleteAllCards({scope})`(null이면 모든 scope, 지운 수)를 더했습니다. 하나로 합치지 않은 것은 인자를 빠뜨려 전부 지우는 일을 막기 위해서입니다.
+  drift는 500개씩 `IN`으로 읽은 뒤 같은 조각을 지우고, 모두 트랜잭션 하나입니다. `review_logs`에는 FK가 없어 카드를 지워도 기록은 남습니다.
+- `StudyService`: `startMoreSession`(`SessionBuilder.buildMore`), `resetWords`·`restoreCards`·`resetAll`(각각 트랜잭션 하나), `StudySummary.aheadCount`(숨기지 않은 단어 중 때가 안 된 카드 수 — 버튼을 보일지 정함).
+- 앞당긴 카드는 `SessionItem.ahead`로 표시합니다(세션을 만들 때 정함, 다시 학습해도 유지). `answer`는 `ahead`이고 이 세션에서 다시 학습하지 않은 카드의 알고있음만 카드를 쓰지 않고 기록만 남깁니다. 평소 세션의 결과는 바뀌지 않습니다.
+- 앱: 학습 화면 컨트롤러의 키가 `({scope, more})` 레코드입니다. 학습 화면 안의 「더 학습하기」는 그 화면을 앞당긴 세션으로 바꿉니다(뒤로 가면 원래 화면). 문구는 `app/lib/features/study/restudy_labels.dart` 한 곳에 있습니다.
+- G2: 테이블·열 변경 없음, `schemaVersion` 4 그대로, `dart run build_runner build --delete-conflicting-outputs` 뒤 생성 코드 diff 없음.
+
+### 29.3 테스트
+
+| 묶음 | 파일 | 내용 |
+|---|---|---|
+| 앞당긴 세션 고르기 | core `test/study/session_builder_more_test.dart` | 때가 안 된 카드만·단계 → 날짜 → 단어 순서, 숨김·때가 된 카드·새 단어 제외, 상한, 지금 막 때가 된 카드는 제외, `ahead` 표시가 다시 학습 뒤에도 유지 |
+| 유스케이스 | core `test/study/restudy_service_test.dart` | 단어 초기화(새 단어로 다음 세션에 나옴, 다른 카드·기록 그대로, 없는 id, 숨김 유지, 되돌리기·그 사이 학습한 단어 건너뜀), 전체 초기화(모든 scope, 기록·숨김·재생목록 그대로), 앞당긴 알고있음(카드 그대로·기록·오늘 외운 수), 다시 학습·그 뒤 알고있음 평소 규칙, 미리보기 시간, 평소 세션 회귀 |
+| 저장소 계약 | storage_drift `test/contract/card_reset_contract.dart`(메모리·drift 같은 테스트) | 지정 scope·단어만 지움, 돌려준 카드, 중복·없는 id, 1,200개(조각 넘김), scope별·전체 삭제 수, 기록 유지, 실패한 트랜잭션은 되돌림 |
+| 화면 | app `restudy_playlist_test.dart`, `restudy_study_test.dart`, `settings_reset_test.dart` | ⋮ 메뉴 → 새 단어 → 되돌리기, 새 단어엔 메뉴 없음, 재생목록·홈·학습 화면의 「더 학습하기」(있을 때만), 설정 확인 창·취소·처음부터 |
+| 재시작 | app `integration_test/persistence_test.dart` 단계 `restudy`·`restudy-reopen` | 빈 앱에 지어낸 단어 3개(2·4·3단계, 때가 안 됨)를 넣고 홈 「더 학습하기」에서 다시 학습 1번, 재생목록에서 한 단어 처음부터 → 앱을 끄고 다시 열어도 그대로(1단계·잊은 횟수 1, 카드 없음, 나머지 3단계, 기록 1개, 홈 「오늘 학습 시작 · 2장」) |
+
+결과: core **585**(+30) · storage_drift **174**(+20) · app **262**(+14) 통과, `dart analyze`·`flutter analyze` 문제 없음.
+
+### 29.4 시뮬레이터 (iPhone 17, iOS 26.5, 합성 샘플만)
+
+- `persistence_test.dart` 단계 `restudy` → 앱 종료 → `restudy-reopen`: 둘 다 통과(실제 DB 파일).
+- `restudy_screenshots_test.dart`(메모리 DB, 샘플 쪽 「DAY 20 여행·교통」을 모두 알고있음으로 학습한 뒤): 통과.
+
+| 스크린샷 | 내용 |
+|---|---|
+| `85_playlist_word_reset_menu.png` | 재생목록 단어 줄 ⋮ 메뉴: 이 목록에서 빼기 · 다른 목록에 추가 · 처음부터 다시 학습 |
+| `86_playlist_word_reset.png` | 처음부터 다시 학습 뒤 스낵바 「「乗り換える」 새 단어로 돌렸어요 · 되돌리기」 |
+| `87_playlist_study_more.png` | 모두 때가 안 된 재생목록: 학습 버튼 자리의 「더 학습하기」와 안내 글 |
+| `88_home_study_more.png` | 홈: 복습 0 · 새 단어 0일 때 큰 버튼 「더 학습하기」 |
+| `89_settings_reset_all_confirm.png` | 설정 → 모든 단어 처음부터 다시 학습의 확인 창 |
+

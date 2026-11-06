@@ -8,6 +8,7 @@ import 'package:shiori/features/capture/capture_screen.dart';
 import 'package:shiori/features/playlists/playlist_screen.dart';
 import 'package:shiori/features/playlists/playlists_screen.dart';
 import 'package:shiori/features/settings/settings_screen.dart';
+import 'package:shiori/features/study/restudy_labels.dart';
 import 'package:shiori/features/study/study_scope_sheet.dart';
 import 'package:shiori/features/study/study_screen.dart';
 import 'package:shiori/shared/format.dart';
@@ -183,6 +184,8 @@ class _TodayCard extends StatelessWidget {
     final fresh = s?.newCount ?? 0;
     final cards = (due + fresh) < goal ? due + fresh : goal;
     final canStudy = cards > 0;
+    // Nothing for today, but cards whose review time has not come: 더 학습하기.
+    final canStudyMore = !canStudy && (s?.aheadCount ?? 0) > 0;
     final numberStyle = TextStyle(
       color: t.sheet,
       fontSize: 40,
@@ -256,7 +259,7 @@ class _TodayCard extends StatelessWidget {
           ),
           const SizedBox(height: Space.xl),
           PressScale(
-            enabled: canStudy,
+            enabled: canStudy || canStudyMore,
             child: SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
@@ -268,11 +271,22 @@ class _TodayCard extends StatelessWidget {
                 ),
                 onPressed: canStudy
                     ? () => pushScreen<void>(context, const StudyScreen())
+                    : canStudyMore
+                    ? () => pushScreen<void>(
+                        context,
+                        const StudyScreen(more: true),
+                      )
                     : null,
-                icon: const Icon(Icons.play_arrow_rounded),
+                icon: Icon(
+                  canStudyMore
+                      ? Icons.replay_rounded
+                      : Icons.play_arrow_rounded,
+                ),
                 label: Text(
                   canStudy
                       ? '오늘 학습 시작 · $cards장'
+                      : canStudyMore
+                      ? RestudyLabels.more
                       : (s?.wordCount == 0
                             ? '먼저 페이지를 등록해 주세요'
                             : '지금은 복습할 단어가 없어요'),
@@ -295,10 +309,12 @@ class _TodayCard extends StatelessWidget {
               ),
             ),
           ],
-          if (canStudy) ...[
+          if (canStudy || canStudyMore) ...[
             const SizedBox(height: Space.sm),
             Text(
-              '모든 재생목록에서 복습할 단어를 먼저, 남은 자리는 새 단어로 채워요',
+              canStudy
+                  ? '모든 재생목록에서 복습할 단어를 먼저, 남은 자리는 새 단어로 채워요'
+                  : RestudyLabels.moreHint,
               style: labelStyle.copyWith(fontSize: 12),
             ),
           ],

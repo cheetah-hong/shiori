@@ -5,6 +5,7 @@ import 'package:shiori/app/data.dart';
 import 'package:shiori/app/theme.dart';
 import 'package:shiori/features/playlists/playlist_actions.dart';
 import 'package:shiori/features/playlists/playlist_picker.dart';
+import 'package:shiori/features/study/restudy_labels.dart';
 import 'package:shiori/features/study/study_screen.dart';
 import 'package:shiori/shared/format.dart';
 import 'package:shiori/shared/hide_labels.dart';
@@ -13,8 +14,9 @@ import 'package:shiori/shared/widgets.dart';
 import 'package:shiori_core/shiori_core.dart';
 
 /// One playlist: its words in order with their memory level, studying only
-/// them, taking a word out, adding it to another playlist, renaming and
-/// deleting the playlist. Words hidden with 이미 알아요 are listed under
+/// them (or, with nothing to study today, 더 학습하기), taking a word out,
+/// adding it to another playlist, studying a word from the start again,
+/// renaming and deleting the playlist. Words hidden with 이미 알아요 are listed under
 /// 「숨긴 단어 n개 보기」, where they can be shown again.
 class PlaylistScreen extends ConsumerWidget {
   const PlaylistScreen({super.key, required this.playlistId});
@@ -41,6 +43,7 @@ class PlaylistScreen extends ConsumerWidget {
           cards: cardsState.value ?? const <String, ReviewCard>{},
           cardsFailed: cardsState.hasError,
           studyCards: summary == null ? 0 : summary.dueCount + summary.newCount,
+          aheadCards: summary?.aheadCount ?? 0,
           maxLevel: ref.watch(reviewSchedulerProvider).maxLevel,
         ),
         AsyncError(:final error) => Center(
@@ -89,6 +92,7 @@ class _Body extends ConsumerStatefulWidget {
     required this.cards,
     required this.cardsFailed,
     required this.studyCards,
+    required this.aheadCards,
     required this.maxLevel,
   });
 
@@ -100,6 +104,9 @@ class _Body extends ConsumerStatefulWidget {
 
   /// Due reviews plus new words of this playlist.
   final int studyCards;
+
+  /// Cards of this playlist whose review time has not come (더 학습하기).
+  final int aheadCards;
   final int maxLevel;
 
   @override
@@ -126,6 +133,13 @@ class _BodyState extends ConsumerState<_Body> {
       word: word,
     ),
     _WordAction.addElsewhere => _addElsewhere(word),
+    _WordAction.reset => resetWord(
+      messenger: ScaffoldMessenger.of(context),
+      study: ref.read(studyServiceProvider),
+      revision: ref.read(dataRevisionProvider.notifier),
+      playlistId: widget.view.playlist.id,
+      word: word,
+    ),
   };
 
   Future<void> _addElsewhere(Word word) async {
@@ -191,22 +205,10 @@ class _BodyState extends ConsumerState<_Body> {
                     ],
                   ),
                   const SizedBox(height: Space.lg),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: widget.studyCards == 0
-                          ? null
-                          : () => pushScreen<void>(
-                              context,
-                              StudyScreen(
-                                scope: PlaylistOnly(view.playlist.id),
-                              ),
-                            ),
-                      icon: const Icon(Icons.play_arrow_rounded),
-                      label: Text(
-                        widget.studyCards == 0 ? '지금은 학습할 카드가 없어요' : '이 목록 학습',
-                      ),
-                    ),
+                  _StudyButton(
+                    scope: PlaylistOnly(view.playlist.id),
+                    studyCards: widget.studyCards,
+                    aheadCards: widget.aheadCards,
                   ),
                   if (widget.cardsFailed) ...[
                     const SizedBox(height: Space.sm),
@@ -293,7 +295,52 @@ class _BodyState extends ConsumerState<_Body> {
   }
 }
 
-enum _WordAction { remove, addElsewhere }
+enum _WordAction { remove, addElsewhere, reset }
+
+/// 이 목록 학습; with nothing to study today, 더 학습하기 when some card can
+/// be brought forward, otherwise off.
+class _StudyButton extends StatelessWidget {
+  const _StudyButton({
+    required this.scope,
+    required this.studyCards,
+    required this.aheadCards,
+  });
+
+  final PlaylistOnly scope;
+  final int studyCards;
+  final int aheadCards;
+
+  @override
+  Widget build(BuildContext context) {
+    if (studyCards == 0 && aheadCards > 0) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          FilledButton.tonalIcon(
+            onPressed: () => pushScreen<void>(
+              context,
+              StudyScreen(scope: scope, more: true),
+            ),
+            icon: const Icon(Icons.replay_rounded),
+            label: const Text(RestudyLabels.more),
+          ),
+          const SizedBox(height: Space.xs),
+          Text(RestudyLabels.moreHint, style: context.text.bodySmall),
+        ],
+      );
+    }
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.icon(
+        onPressed: studyCards == 0
+            ? null
+            : () => pushScreen<void>(context, StudyScreen(scope: scope)),
+        icon: const Icon(Icons.play_arrow_rounded),
+        label: Text(studyCards == 0 ? '지금은 학습할 카드가 없어요' : '이 목록 학습'),
+      ),
+    );
+  }
+}
 
 class _Stat extends StatelessWidget {
   const _Stat({required this.value, required this.label, this.color});
@@ -407,15 +454,21 @@ class _WordList extends StatelessWidget {
                     tooltip: '${w.headword} 메뉴',
                     iconColor: t.ink3,
                     onSelected: (action) => onAction(w, action),
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(
+                    itemBuilder: (_) => [
+                      const PopupMenuItem(
                         value: _WordAction.remove,
                         child: Text('이 목록에서 빼기'),
                       ),
-                      PopupMenuItem(
+                      const PopupMenuItem(
                         value: _WordAction.addElsewhere,
                         child: Text('다른 목록에 추가'),
                       ),
+                      // A new word has nothing to start again from.
+                      if (cards.containsKey(w.id))
+                        const PopupMenuItem(
+                          value: _WordAction.reset,
+                          child: Text(RestudyLabels.resetWord),
+                        ),
                     ],
                   ),
                 ],

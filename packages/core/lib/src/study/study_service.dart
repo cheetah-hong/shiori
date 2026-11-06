@@ -47,6 +47,7 @@ final class StudySummary {
     required this.knownToday,
     required this.wordCount,
     this.hiddenCount = 0,
+    this.aheadCount = 0,
   });
 
   /// Review cards whose time has come, hidden words left out.
@@ -63,10 +64,18 @@ final class StudySummary {
 
   /// Of [wordCount], the words the learner hid.
   final int hiddenCount;
+
+  /// Cards whose review time has not come (what 더 학습하기 can bring
+  /// forward), hidden words left out.
+  final int aheadCount;
 }
 
-/// Study use cases: summary, building a session, answering a card, hiding a
-/// card the learner already knows.
+/// Study use cases: summary, building a session (today's or 더 학습하기),
+/// answering a card, hiding a card the learner already knows, and making
+/// learned words new again (one word or all).
+///
+/// Writes run in one transaction each; resetting removes cards only, never
+/// the press log or a word's hidden state.
 final class StudyService {
   /// [hidden] defaults to [library] when that block also hides words (both
   /// stock blocks do).
@@ -125,6 +134,9 @@ final class StudyService {
           .where((c) => shown.contains(c.wordId) && c.isDue(now))
           .length,
       newCount: shown.where((id) => !cards.containsKey(id)).length,
+      aheadCount: cards.values
+          .where((c) => shown.contains(c.wordId) && !c.isDue(now))
+          .length,
       // Presses made before a word was hidden still happened today.
       knownToday: todayLogs
           .where((l) => l.answer == Answer.known && ids.contains(l.wordId))
@@ -142,19 +154,67 @@ final class StudyService {
   Future<StudySession> startSession({
     StudyScope scope = const AllWords(),
     int? goal,
-  }) async {
+  }) => _startWith(builder.build, scope, goal);
+
+  /// 더 학습하기: a session of cards whose review time has not come yet
+  /// (`SessionBuilder.buildMore`).
+  Future<StudySession> startMoreSession({
+    StudyScope scope = const AllWords(),
+    int? goal,
+  }) => _startWith(builder.buildMore, scope, goal);
+
+  Future<StudySession> _startWith(
+    StudySession Function({
+      required List<Word> words,
+      required Map<String, ReviewCard> cards,
+      required DateTime now,
+      required int goal,
+    })
+    build,
+    StudyScope scope,
+    int? goal,
+  ) async {
     final words = await _wordsOf(scope);
     final cards = await reviews.cards(
       wordIds: words.map((w) => w.id),
       scope: cardScopeFor(scope),
     );
-    return builder.build(
+    return build(
       words: words,
       cards: cards,
       now: clock.now(),
       goal: goal ?? settings.dailyGoal,
     );
   }
+
+  /// 처음부터 다시 학습: removes the cards of [wordIds] so they are new words
+  /// again, and returns the removed cards (for [restoreCards]). Hidden words
+  /// stay hidden; the press log is kept.
+  Future<List<ReviewCard>> resetWords(
+    Iterable<String> wordIds, {
+    StudyScope scope = const AllWords(),
+  }) {
+    final ids = wordIds.toList();
+    final cardScope = cardScopeFor(scope);
+    return reviews.transaction(
+      () => reviews.deleteCards(ids, scope: cardScope),
+    );
+  }
+
+  /// Undoes [resetWords]: puts [cards] back, except for words that got a new
+  /// card meanwhile.
+  Future<void> restoreCards(List<ReviewCard> cards) =>
+      reviews.transaction(() async {
+        for (final card in cards) {
+          if (await reviews.card(card.wordId, scope: card.scope) == null) {
+            await reviews.saveCard(card);
+          }
+        }
+      });
+
+  /// Removes every card (every scope): all words are new again. Hidden words,
+  /// playlists and the press log stay. Returns how many cards were removed.
+  Future<int> resetAll() => reviews.transaction(reviews.deleteAllCards);
 
   /// Applies [answer] to the current card, stores the new card and the log
   /// in one transaction, and returns the next session state.
@@ -174,13 +234,18 @@ final class StudyService {
     final wordId = item.word.id;
     switch (answer) {
       case Answer.known:
-        final card = scheduler.known(
-          wordId: wordId,
-          before: item.before,
-          retries: item.retries,
-          now: now,
-        );
-        await reviews.saveCard(card);
+        // A card brought forward and known at once keeps its level and its
+        // next review; only the press is logged.
+        final kept = _keptOnKnown(item);
+        final card =
+            kept ??
+            scheduler.known(
+              wordId: wordId,
+              before: item.before,
+              retries: item.retries,
+              now: now,
+            );
+        if (kept == null) await reviews.saveCard(card);
         await reviews.addLog(
           ReviewLog(
             wordId: wordId,
@@ -234,7 +299,19 @@ final class StudyService {
       hidden ??
       (throw StateError('no HiddenWordRepository: words cannot be hidden'));
 
-  /// Interval for the 알고있음 button of [item].
-  Duration previewKnown(SessionItem item) =>
-      scheduler.previewKnown(before: item.before, retries: item.retries);
+  /// Interval for the 알고있음 button of [item]: for a card brought forward
+  /// that 알고있음 would keep, the time left until its review.
+  Duration previewKnown(SessionItem item) {
+    if (_keptOnKnown(item) case final kept?) {
+      final left = kept.dueAt.difference(clock.now());
+      return left.isNegative ? Duration.zero : left;
+    }
+    return scheduler.previewKnown(before: item.before, retries: item.retries);
+  }
+
+  /// The card 알고있음 leaves as it is: one brought forward (더 학습하기) and
+  /// not retried in this session. After a 다시 학습 the card is due, so the
+  /// usual rule applies.
+  static ReviewCard? _keptOnKnown(SessionItem item) =>
+      item.ahead && item.retries == 0 ? item.before : null;
 }

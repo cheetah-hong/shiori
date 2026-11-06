@@ -55,6 +55,26 @@ final class InMemoryReviewRepository implements ReviewRepository {
   Future<void> addLog(ReviewLog log) => _tx.run(() => _logs.add(log));
 
   @override
+  Future<List<ReviewCard>> deleteCards(
+    Iterable<String> wordIds, {
+    CardScope scope = CardScope.shared,
+  }) => _tx.run(() {
+    final inScope = _cards[scope];
+    if (inScope == null) return const <ReviewCard>[];
+    return List<ReviewCard>.unmodifiable([
+      for (final id in wordIds.toSet()) ?inScope.remove(id),
+    ]);
+  });
+
+  @override
+  Future<int> deleteAllCards({CardScope? scope}) => _tx.run(() {
+    if (scope != null) return _cards.remove(scope)?.length ?? 0;
+    final count = _cards.values.fold(0, (n, cards) => n + cards.length);
+    _cards.clear();
+    return count;
+  });
+
+  @override
   Future<List<ReviewLog>> logs({DateTime? since, CardScope? scope}) =>
       _tx.run(() {
         // Oldest first; presses at the same instant keep the order they

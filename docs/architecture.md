@@ -142,6 +142,18 @@ runApp(ProviderScope(
 
 간격(`StudySettings.intervals`), 하루 시작 시각(`dayStartHour`, 기본 04시), 세션 크기(`dailyGoal`, 기본 10)는 설정값입니다.
 
+학습한 단어를 다시 학습하는 길은 셋입니다(verification.md 29절). 위 간격 규칙은 바꾸지 않습니다.
+
+| 기능 | 고르는 것·결과 |
+|---|---|
+| 더 학습하기 (`StudyService.startMoreSession`) | 복습할 때가 **안 된** 카드만, 기억 단계 낮은 것 → 복습 날짜 이른 것 → 단어 순서로 최대 `dailyGoal`장. 때가 된 카드·새 단어·숨긴 단어는 고르지 않음(평소 학습 버튼이 맡음) |
+| 더 학습하기에서 처음 알고있음 | 카드(단계·다음 복습·횟수) 그대로, 누른 기록만 남음(오늘 외운 수에 셈) |
+| 더 학습하기에서 다시 학습 | 평소와 같음: 1단계·지금 복습·잊은 횟수 +1. 그 뒤의 알고있음은 평소 규칙(min(현재, 2) 또는 1단계) |
+| 처음부터 다시 학습 (`resetWords`, 단어 하나) | 그 단어의 카드를 지워 새 단어로. 누른 기록·숨김은 그대로. 되돌리기(`restoreCards`)는 그 사이 다시 학습하지 않은 단어만 원래 카드로 |
+| 모든 단어 처음부터 (`resetAll`, 설정) | 모든 scope의 카드를 지움. 누른 기록·숨김·재생목록·단어는 그대로 |
+
+저장소 포트 `ReviewRepository.deleteCards(wordIds, {scope})`(지운 카드를 돌려줌)와 `deleteAllCards({scope})`(null이면 모든 scope)가 카드 행만 지웁니다. 스키마는 v4 그대로입니다.
+
 ## 5. 배포 준비 (flavor, 차단 검사, 충돌 기록, 서명)
 
 교재 본문(판독 기록, 정답, 사진)은 저장소에 넣지 않습니다. 로컬 전용 폴더 `$SHIORI_PRIVATE_DIR/textbook/`
