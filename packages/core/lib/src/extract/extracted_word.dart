@@ -3,6 +3,7 @@
 library;
 
 import 'package:shiori_core/src/extract/fragment.dart';
+import 'package:shiori_core/src/extract/latin_debris.dart';
 import 'package:shiori_core/src/models/captured_entry.dart';
 import 'package:shiori_core/src/models/evidence.dart';
 import 'package:shiori_core/src/models/part_of_speech.dart';
@@ -110,6 +111,8 @@ final class ExtractedWord {
     this.meaningCandidates = const [],
     this.headwordCandidates = const [],
     this.printedPos,
+    this.usagePos,
+    this.meaningRepair,
   });
 
   /// Dictionary form: kanji (with okurigana) or, for kana words, the kana.
@@ -157,6 +160,15 @@ final class ExtractedWord {
   /// for the word's senses.
   final PartOfSpeech? printedPos;
 
+  /// The class a sentence word's sentence uses it as (`静かだ`: な-adjective)
+  /// when the dictionary gives it several; null otherwise. Next to
+  /// [printedPos] when the glossary is asked for the word's senses.
+  final PartOfSpeech? usagePos;
+
+  /// What became of Latin debris in the photo's meaning (latin_debris.dart);
+  /// null when the meaning had none.
+  final MeaningRepairKind? meaningRepair;
+
   /// The weakest pairing of the word; [PairConfidence.low] when nothing is
   /// paired with the headword at all.
   PairConfidence get pairConfidence {
@@ -181,6 +193,7 @@ final class ExtractedWord {
     Object? example = _unset,
     List<String>? meaningCandidates,
     List<String>? headwordCandidates,
+    Object? meaningRepair = _unset,
   }) => ExtractedWord(
     headword: headword,
     origin: origin ?? this.origin,
@@ -214,6 +227,10 @@ final class ExtractedWord {
       headwordCandidates ?? this.headwordCandidates,
     ),
     printedPos: printedPos,
+    usagePos: usagePos,
+    meaningRepair: identical(meaningRepair, _unset)
+        ? this.meaningRepair
+        : meaningRepair as MeaningRepairKind?,
   );
 
   /// The review-draft entry the capture screens use. Fields the photo did
@@ -253,6 +270,17 @@ final class ExtractedWord {
         if (meaning == null) const EntryIssue.missing(EntryField.meaning),
         if (meaning != null && fromDictionary)
           const EntryIssue.inferred(EntryField.meaning, note: '사전 뜻'),
+        if (meaningRepair
+            case MeaningRepairKind.trimmed || MeaningRepairKind.senseDropped)
+          const EntryIssue.corrected(
+            EntryField.meaning,
+            note: latinDebrisRemovedNote,
+          ),
+        if (meaningRepair == MeaningRepairKind.flagged)
+          const EntryIssue.suspect(
+            EntryField.meaning,
+            note: latinDebrisUnsureNote,
+          ),
         if (meaning != null &&
             !fromDictionary &&
             meaningLink?.confidence != PairConfidence.high)

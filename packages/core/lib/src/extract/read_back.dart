@@ -319,6 +319,8 @@ ExtractedWord _restored(
     headwordNote: '${kana.text} → $written (사전 역조회)',
     meaningCandidates: w.meaningCandidates,
     printedPos: w.printedPos,
+    usagePos: w.usagePos,
+    meaningRepair: w.meaningRepair,
   );
 }
 

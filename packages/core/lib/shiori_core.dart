@@ -36,6 +36,8 @@ export 'src/capture/learner_edits.dart';
 export 'src/extract/extracted_word.dart';
 export 'src/extract/fragment.dart';
 export 'src/extract/general_extractor.dart';
+export 'src/extract/latin_debris.dart'
+    show latinDebrisRemovedNote, latinDebrisUnsureNote;
 export 'src/extract/meaning_senses.dart';
 export 'src/extract/page_draft.dart';
 

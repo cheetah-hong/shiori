@@ -266,7 +266,7 @@ final class SentenceSegmenter {
           for (final d in ds) d.base: found(d.base),
         }, costs: costs.words);
         if (lemmas.isEmpty) continue;
-        final lemma = _usable(lemmas, j - i);
+        final lemma = _usable(lemmas, j - i, atEnd: j == n);
         if (lemma == null) continue;
         final total = best[i] + lemma.cost;
         if (total < best[j]) {
@@ -291,18 +291,37 @@ final class SentenceSegmenter {
       path.add(t);
       j = t.start - offset;
     }
-    return _mergeUnknown(path.reversed.toList());
+    return _mergeUnknown(
+      _stemsRead(path.reversed.toList(), offset, candidates, found),
+    );
   }
 
   /// The cheapest lemma, unless a one-character kana surface would be read
-  /// as a word usually written in kanji (に as 二).
-  static Lemma? _usable(List<Lemma> lemmas, int length) {
+  /// as a word usually written in kanji (に as 二), or the form ends in an
+  /// imperative な before more of the piece (休みなので is 休み + なので,
+  /// not 休みな + ので).
+  static Lemma? _usable(List<Lemma> lemmas, int length, {required bool atEnd}) {
     for (final l in lemmas) {
       if (length == 1 && l.entry.isKanaForm && !l.entry.writtenInKana) continue;
+      if (!atEnd && _imperativeNa.contains(l.steps.firstOrNull)) continue;
       return l;
     }
     return null;
   }
+
+  /// [path] with every stem read as a noun before a conjugation's ending
+  /// read as the verb or adjective it conjugates ([readStem]).
+  static List<LatticeToken> _stemsRead(
+    List<LatticeToken> path,
+    int offset,
+    Map<(int, int), List<Deinflection>> candidates,
+    List<LexiconEntry> Function(String form) found,
+  ) => [
+    for (final (i, t) in path.indexed)
+      i + 1 < path.length
+          ? readStem(t, path[i + 1], offset, candidates, found) ?? t
+          : t,
+  ];
 
   /// Neighbouring unknown characters as one token.
   static List<LatticeToken> _mergeUnknown(List<LatticeToken> tokens) {
@@ -325,3 +344,71 @@ final class SentenceSegmenter {
     return out;
   }
 }
+
+/// Rules whose ending is an imperative な (休みな, 行くな): read only at the
+/// end of a piece.
+const Set<String> _imperativeNa = {
+  'casual polite imperative',
+  'imperative negative',
+};
+
+/// Shortest start of the next token taken as a conjugation's ending: one
+/// character endings (た, て) are already cheaper as the conjugated form.
+const int minStemEnding = 2;
+
+/// [t] as the verb or adjective it is the stem of, when the lattice read it
+/// as a word of its own (a noun 決め) before a grammar expression that
+/// swallowed the conjugation's ending (なければならない): [t] and the
+/// start of [next] (longest first, at least [minStemEnding] characters) are
+/// a conjugated form of that word, and [t] alone is its stem. Null when not.
+/// [candidates] and [found] are the piece's (offsets from [offset]).
+LatticeToken? readStem(
+  LatticeToken t,
+  LatticeToken next,
+  int offset,
+  Map<(int, int), List<Deinflection>> candidates,
+  List<LexiconEntry> Function(String form) found,
+) {
+  if (!t.known || t.steps.isNotEmpty || t.isFunctionWord) return null;
+  if (next.start != t.end || !_isKana(next.surface.runes.first)) return null;
+  final a = t.start - offset, b = t.end - offset;
+  List<Lemma> conjugated(int end) {
+    final ds = candidates[(a, end)] ?? const <Deinflection>[];
+    return [
+      for (final l in rankLemmas(ds, {
+        for (final d in ds) d.base: found(d.base),
+      }))
+        if (l.conjugated &&
+            _conjugates(l.deinflection.tag) &&
+            l.entry.id != t.entry?.id &&
+            !_imperativeNa.contains(l.steps.firstOrNull))
+          l,
+    ];
+  }
+
+  final stemOf = {for (final l in conjugated(b)) l.entry.id};
+  if (stemOf.isEmpty) return null;
+  final ending = next.surface.runes.length;
+  for (var k = ending; k >= minStemEnding; k--) {
+    if (b + k - a > maxWordLength) continue;
+    for (final l in conjugated(b + k)) {
+      if (!stemOf.contains(l.entry.id)) continue;
+      return LatticeToken(
+        surface: t.surface,
+        base: l.base,
+        start: t.start,
+        end: t.end,
+        readings: l.entry.readings,
+        partsOfSpeech: l.entry.partsOfSpeech,
+        steps: l.steps,
+        cost: t.cost,
+        entry: l.entry,
+      );
+    }
+  }
+  return null;
+}
+
+/// Verb and い-adjective tags: the words a stem belongs to.
+bool _conjugates(String? tag) =>
+    tag != null && (tag.startsWith('v') || tag == 'adj-i');

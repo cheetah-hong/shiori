@@ -178,8 +178,8 @@ List<_Set> get _sets => [
   _Set('other textbook', '$_textbook/other-books/fixtures', _otherTruth, 8, [
     15,
     15,
-    11,
-    4,
+    12,
+    3,
   ]),
   _Set('curled page, photo', '$_pairs/fx_raw', _curledTruth, 6, [
     15,
@@ -209,8 +209,8 @@ List<_Set> get _sets => [
   _Set('other textbook, photo', '$_pairs/fx_raw_ob', _otherTruth, 8, [
     15,
     15,
-    11,
-    6,
+    12,
+    5,
   ]),
   // The checkbox column no longer passes for a lost headword here: a kana
   // headword stays as printed (found 14 -> 15, extras 6 -> 5).
@@ -219,7 +219,7 @@ List<_Set> get _sets => [
     '$_pairs/fx_vflat_ob',
     _otherTruth,
     6,
-    [15, 15, 10, 5],
+    [15, 15, 10, 4],
     recorded: false,
   ),
   const _Set(
@@ -277,6 +277,33 @@ List<List<String>> _values(CaptureDraft draft) => [
 ];
 
 const String _filled = '<dictionary>';
+
+/// Entries a later change was approved to alter, by set and page
+/// (snapshots/conj-mixed-changes.json): left out on both sides of the
+/// comparison (conj_mixed_local_test checks them).
+Map<String, Object?> get _approvedChanges {
+  final f = File('$_textbook/snapshots/conj-mixed-changes.json');
+  return f.existsSync()
+      ? (jsonDecode(f.readAsStringSync()) as Map).cast<String, Object?>()
+      : const {};
+}
+
+/// [pages] (values by page, now or recorded) without the rows of
+/// [_approvedChanges] for [set].
+Map<String, List<List<String>>> _withoutApproved(String set, Object? pages) {
+  final approved = (_approvedChanges[set] as Map?)?.cast<String, Object?>();
+  return {
+    for (final MapEntry(key: fixture, value: rows)
+        in (pages! as Map).cast<String, Object?>().entries)
+      fixture: [
+        for (final row in rows! as List)
+          if (!((approved?[fixture] as List?) ?? const []).contains(
+            (row as List)[0],
+          ))
+            row.cast<String>(),
+      ],
+  };
+}
 
 /// [was] (recorded) with the meaning of every entry [now] marks [_filled]
 /// marked so too.
@@ -389,9 +416,12 @@ void main() {
       expect(s.high, greaterThanOrEqualTo(set.minHigh), reason: set.name);
       if (!set.recorded) continue;
       expect(before, isNotNull, reason: 'no values recorded before the rule');
+      final now = _withoutApproved(set.name, values);
       expect(
-        jsonEncode(values),
-        jsonEncode(_maskFilled(values, before![set.name])),
+        jsonEncode(now),
+        jsonEncode(
+          _maskFilled(now, _withoutApproved(set.name, before![set.name])),
+        ),
         reason: '${set.name}: values changed',
       );
     }

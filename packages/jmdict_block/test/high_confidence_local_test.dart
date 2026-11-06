@@ -88,7 +88,7 @@ final _sets = [
     '$_textbook/other-books/fixtures',
     '$_textbook/other-books/ground_truth.json',
     6,
-    const [15, 15, 11, 4],
+    const [15, 15, 12, 3],
   ),
 ];
 

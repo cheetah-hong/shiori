@@ -102,8 +102,8 @@ List<_Set> get _sets => [
   _Set('other textbook', '$_textbook/other-books/fixtures', _otherTruth, 8, [
     15,
     15,
-    11,
-    4,
+    12,
+    3,
   ]),
   _Set('curled page, photo', '$_pairs/fx_raw', _curledTruth, 6, [
     15,
@@ -133,14 +133,14 @@ List<_Set> get _sets => [
   _Set('other textbook, photo', '$_pairs/fx_raw_ob', _otherTruth, 8, [
     15,
     15,
-    11,
-    6,
+    12,
+    5,
   ]),
   _Set('other textbook, scanner app', '$_pairs/fx_vflat_ob', _otherTruth, 6, [
     15,
     15,
     10,
-    5,
+    4,
   ]),
   const _Set(
     'synthetic word-list pages',
@@ -227,6 +227,20 @@ Set<String> _answerWords(String meaning) => {
           .split(RegExp('[,，、/·;~]')))
     if (_norm(w).isNotEmpty) _norm(w),
 };
+
+/// Entries a later change was approved to alter on [set], by page
+/// (snapshots/conj-mixed-changes.json): left out of the comparison with the
+/// values recorded before (conj_mixed_local_test checks them).
+Map<String, List<String>> _approvedChanges(String set) {
+  final f = File('$_textbook/snapshots/conj-mixed-changes.json');
+  if (!f.existsSync()) return const {};
+  final all = (jsonDecode(f.readAsStringSync()) as Map).cast<String, Object?>();
+  return {
+    for (final MapEntry(:key, :value)
+        in ((all[set] as Map?) ?? const {}).cast<String, Object?>().entries)
+      key: (value! as List).cast<String>(),
+  };
+}
 
 bool _names(KoreanSense s, Set<String> answer) =>
     s.words.map(_norm).any(answer.contains);
@@ -316,10 +330,15 @@ void main() {
       expect(s.high, greaterThanOrEqualTo(set.minHigh), reason: set.name);
       if (write) continue;
       final old = (before![set.name] as Map).cast<String, Object?>();
-      for (final MapEntry(key: fixture, value: now) in values.entries) {
+      final approved = _approvedChanges(set.name);
+      for (final MapEntry(key: fixture, value: all) in values.entries) {
+        bool kept(Map<String, Object?> e) =>
+            !(approved[fixture]?.contains(e['headword']) ?? false);
+        final now = all.where(kept).toList();
         final was = [
           for (final e in old[fixture] as List)
-            (e as Map).cast<String, Object?>(),
+            if (kept((e as Map).cast<String, Object?>()))
+              e.cast<String, Object?>(),
         ];
         expect(now.length, was.length, reason: '${set.name} $fixture');
         for (var i = 0; i < now.length; i++) {

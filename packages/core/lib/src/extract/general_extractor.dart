@@ -21,11 +21,13 @@ import 'package:shiori_core/src/extract/hanja.dart';
 import 'package:shiori_core/src/extract/headword_repair.dart';
 import 'package:shiori_core/src/extract/hungarian.dart';
 import 'package:shiori_core/src/extract/lattice.dart';
+import 'package:shiori_core/src/extract/latin_debris.dart';
 import 'package:shiori_core/src/extract/meaning_marks.dart';
 import 'package:shiori_core/src/extract/meaning_senses.dart';
 import 'package:shiori_core/src/extract/pairing.dart';
 import 'package:shiori_core/src/extract/read_back.dart';
 import 'package:shiori_core/src/extract/script_runs.dart';
+import 'package:shiori_core/src/extract/sentence_usage.dart';
 import 'package:shiori_core/src/models/ocr.dart';
 import 'package:shiori_core/src/models/part_of_speech.dart';
 import 'package:shiori_core/src/models/word_key.dart';
@@ -158,7 +160,10 @@ final class GeneralExtractor {
         lexicon: page.lexicon,
       );
     }
-    found = page.withoutLonelyWords(found);
+    found = withStemsAbsorbed(
+      page.withoutLonelyWords(found),
+      sentenceWords.stems,
+    );
     final merged = _merge(found);
     final skipped = <String>[];
     final kept = <ExtractedWord>[];
@@ -188,7 +193,9 @@ final class GeneralExtractor {
           if (w.origin == WordOrigin.wordList) ?w.headwordFragmentId,
       },
     );
-    final words = [for (final w in settled) _unsettledHeadword(w)];
+    final words = [
+      for (final w in settled) _unsettledHeadword(_withoutLatinDebris(w)),
+    ];
     final all = page.fragments;
     final used = <int>{
       ...readings.used,
@@ -269,7 +276,7 @@ final class _SenseCache {
       form,
       w.readings,
       limit: meaningSenses,
-      pos: w.printedPos ?? partOfSpeechOf(w.partsOfSpeech),
+      pos: w.printedPos ?? w.usagePos ?? partOfSpeechOf(w.partsOfSpeech),
     ),
     translation: w.origin == WordOrigin.sentence ? w.example?.ko : null,
   );
@@ -1281,11 +1288,11 @@ final class _Page {
         (unconfirmed && content == 0 ? w.unconfirmedPenalty : 0);
   }
 
-  /// Words of every sentence, with the sentence and its translation.
-  ({List<ExtractedWord> words, Set<int> used}) sentenceWords(
-    Set<int> usedKorean,
-    PairWeights w,
-  ) {
+  /// Words of every sentence, with the sentence and its translation, and
+  /// the sentence words that are only a verb's stem ([stemOnlyOf], by
+  /// [stemKey]).
+  ({List<ExtractedWord> words, Set<int> used, Map<String, Set<String>> stems})
+  sentenceWords(Set<int> usedKorean, PairWeights w) {
     // The engine's lowest confidence: a sentence read out of a Korean
     // paragraph's garbage, not a printed sentence. Left out before the
     // translations are assigned, so it takes none.
@@ -1313,25 +1320,35 @@ final class _Page {
     );
     final words = <ExtractedWord>[];
     final used = <int>{};
+    final stems = <String, Set<String>>{};
     for (final (i, s) in sentences.indexed) {
       final translation = assigned[i] == null ? null : korean[assigned[i]!];
-      final tokens = hasLexicon
-          ? [
-              for (final t in SentenceSegmenter.onlyContent(
-                segmenter.segmentFound(s.text, lexicon.cached),
-              ))
-                if (_isSentenceWord(t, s.text)) t,
-            ]
+      final path = hasLexicon
+          ? segmenter.segmentFound(s.text, lexicon.cached)
           : const <LatticeToken>[];
-      if (tokens.isEmpty) continue;
+      final content = [
+        for (final t in SentenceSegmenter.onlyContent(path))
+          if (_isSentenceWord(t, s.text)) t,
+      ];
+      if (content.isEmpty) continue;
       used.add(s.id);
       if (translation != null) used.add(translation.id);
-      for (final t in tokens) {
+      // A run of kanji split into words (a page band, 第3課復習) is no
+      // example sentence.
+      final example = _asSentence.contains(s.id) && !s.text.runes.any(isKana)
+          ? null
+          : WordExample(ja: s.text, ko: translation?.text);
+      LatticeToken? after(LatticeToken t) =>
+          path.where((n) => n.start == t.end).firstOrNull;
+      for (final t in content) {
+        if (isCounterAfterNumber(t, s.text)) continue;
         final kana = t.base.runes.every(isKana);
+        final stemOf = stemOnlyOf(t, after(t), lexicon.cached);
         words.add(
           ExtractedWord(
             headword: t.base,
             origin: WordOrigin.sentence,
+            usagePos: usagePos(t, after(t)),
             readings: kana || t.readings.isEmpty
                 ? const []
                 : [t.readings.first],
@@ -1349,13 +1366,14 @@ final class _Page {
               ocrConfidence: s.confidence,
               corrected: s.corrected,
             ),
-            example: WordExample(ja: s.text, ko: translation?.text),
+            example: example,
             headwordFragmentId: s.id,
           ),
         );
+        if (stemOf.isNotEmpty) stems[stemKey(words.last)] = stemOf;
       }
     }
-    return (words: words, used: used);
+    return (words: words, used: used, stems: stems);
   }
 }
 
@@ -1474,6 +1492,18 @@ ExtractedWord _better(ExtractedWord a, ExtractedWord b) {
       w.pairConfidence.index +
       (w.readingSource == FieldSource.photo ? 1 : 0);
   return score(b) > score(a) ? b : a;
+}
+
+/// [w] with the Latin debris taken out of its photo meaning
+/// (latin_debris.dart). After the confidence step, which saw the meaning as
+/// read.
+ExtractedWord _withoutLatinDebris(ExtractedWord w) {
+  final meaning = w.meaning;
+  if (meaning == null || w.meaningSource != FieldSource.photo) return w;
+  final r = repairLatinDebris(meaning);
+  return r.kind == null
+      ? w
+      : w.copyWith(meaning: r.meaning, meaningRepair: r.kind);
 }
 
 /// A word whose headword the page did not settle (several dictionary
