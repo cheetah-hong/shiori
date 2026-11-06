@@ -1,6 +1,5 @@
 import 'package:shiori_core/src/capture/text/chars.dart';
 import 'package:shiori_core/src/capture/text/py.dart';
-import 'package:shiori_core/src/capture/text/sequence_matcher.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -87,30 +86,6 @@ void main() {
 
     test('pyInt reads full-width digits', () {
       expect(pyInt(' １２ '), 12);
-    });
-  });
-
-  group('SequenceMatcher.ratio matches difflib', () {
-    const cases = <(String, String, double)>[
-      ('次の駅で急行に乗り換えてください。', '次の駅で急行に乗り換えてください。', 1.0),
-      ('abcd', 'bcde', 0.75),
-      (
-        'private Thread currentThread;',
-        'private volatile Thread currentThread;',
-        0.8656716417910447,
-      ),
-      ('', '', 1.0),
-      ('', 'abc', 0.0),
-      ('窓口で大阪までの切符を二枚買いました。', '窓ロで大坂までの切符を二枚買いました', 0.8648648648648649),
-    ];
-    for (final (a, b, expected) in cases) {
-      test('"$a" vs "$b"', () => expect(sequenceRatio(a, b), expected));
-    }
-
-    test('autojunk drops popular characters when b has 200+ items', () {
-      final a = 'x' * 150 + 'ab' * 40;
-      final b = 'ab' * 30 + 'y' * 180;
-      expect(sequenceRatio(a, b), 0.0);
     });
   });
 

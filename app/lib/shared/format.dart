@@ -25,19 +25,6 @@ String elapsedLabel(Duration d) {
 /// `DAY 01`
 String dayNumber(int day) => 'DAY ${day.toString().padLeft(2, '0')}';
 
-/// `DAY 01 자연, 몸 · 10쪽`, leaving out what is unknown.
-String pageMetaLabel(PageMeta meta) {
-  final day = meta.day;
-  final title = meta.title;
-  final page = meta.page;
-  final parts = [
-    if (day != null)
-      [dayNumber(day), if (title != null && title.isNotEmpty) title].join(' '),
-    if (page != null) '$page쪽',
-  ];
-  return parts.isEmpty ? '쪽 정보 없음' : parts.join(' · ');
-}
-
 /// `DAY 01 · 12쪽` for a saved word.
 String wordSourceLabel(Word w) {
   final day = w.day;

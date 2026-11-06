@@ -1,5 +1,5 @@
-// E9: words from the general extractor save as ordinary words (the saved
-// Word has the same fields as before; evidence stays on the review draft).
+// E9: words from the word extractor save as ordinary words (the saved Word
+// has the same fields as before; evidence stays on the review draft).
 import 'package:shiori_core/shiori_core.dart';
 import 'package:test/test.dart';
 
@@ -19,16 +19,13 @@ void main() {
   });
 
   Future<List<Word>> saveFixture(String fixture) async {
-    final draft = await syntheticRouter().fromScan(
+    final draft = await pageDraft(
+      syntheticExtractor(),
       await loadGeneralScan(fixture),
     );
-    expect(draft.route!.route, CaptureRoute.general);
-    final book = await service.createTextbook(
-      '내 단어장',
-      templateId: draft.templateId,
-    );
+    final book = await service.createTextbook('내 단어장');
     final result = await service.saveDraft(draft, textbookId: book.id);
-    expect(result.added, draft.entries.length);
+    expect(result.saved, draft.entries.length);
     return library.words(textbookId: book.id);
   }
 
@@ -65,7 +62,8 @@ void main() {
   );
 
   test('a word the learner left out is not saved', () async {
-    final draft = await syntheticRouter().fromScan(
+    final draft = await pageDraft(
+      syntheticExtractor(),
       await loadGeneralScan('g03'),
     );
     final book = await service.createTextbook('내 단어장');

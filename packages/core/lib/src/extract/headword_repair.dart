@@ -1,12 +1,13 @@
 /// Headwords OCR split or misread, mended by content before pairing:
-/// two kanji words a space cut apart (`交通 事故`) and a kana-only headword
-/// with a look-alike glyph (`ニつ` for `二つ`), each only when the dictionary
-/// has the mended word and a kana reading on the same row reads it.
+/// two kanji words a space cut apart (`交通 事故`), a kana-only headword
+/// with a look-alike glyph (`ニつ` for `二つ`) and a kana ending read in
+/// katakana (`光ル` for `光る`), each only when the dictionary has the mended
+/// word and a kana reading on the same row reads it.
 /// Also the forms of a headword printed with an optional prefix in brackets
 /// (`(お)みやげ`).
 library;
 
-import 'package:shiori_core/src/capture/correctors/confusables.dart';
+import 'package:shiori_core/src/extract/confusables.dart';
 import 'package:shiori_core/src/extract/fragment.dart';
 import 'package:shiori_core/src/extract/script_runs.dart';
 
@@ -156,6 +157,58 @@ Map<int, Mend> mendKanaLookalikes(
       );
       break;
     }
+  }
+  return out;
+}
+
+/// [text] with the katakana it ends in written in hiragana (`光ル` → `光る`),
+/// when a kanji comes before that ending; null otherwise. The long vowel
+/// mark has no hiragana twin: a text with one in its ending stays.
+String? katakanaEndingInHiragana(String text) {
+  final runes = text.runes.toList();
+  var start = runes.length;
+  while (start > 0 && isKatakana(runes[start - 1])) {
+    start--;
+  }
+  if (start == runes.length || start == 0) return null;
+  if (!runes.take(start).any(isKanji)) return null;
+  final ending = runes.skip(start).toList();
+  if (ending.contains(_longVowelMark)) return null;
+  return String.fromCharCodes([
+    ...runes.take(start),
+    for (final c in ending) c - _katakanaToHiragana,
+  ]);
+}
+
+const int _longVowelMark = 0x30FC;
+
+/// Code point distance from a katakana to its hiragana twin.
+const int _katakanaToHiragana = 0x60;
+
+/// A kanji headword the dictionary does not know whose kana ending OCR read
+/// in katakana (`光ル`): the hiragana ending (`光る`) when a kana on the same
+/// row reads that spelling (`ひかる`). [known] tells whether the dictionary
+/// has a form.
+Map<int, Mend> mendKatakanaEndings(
+  List<Fragment> fragments, {
+  required bool Function(String text) known,
+  required ReadsAs reads,
+}) {
+  final out = <int, Mend>{};
+  for (final f in fragments) {
+    if (f.kind != FragmentKind.kanjiWord ||
+        f.pass != OcrPass.japanese ||
+        f.inlineReadingOf != null ||
+        known(f.text)) {
+      continue;
+    }
+    final v = katakanaEndingInHiragana(f.text);
+    if (v == null) continue;
+    if (!_kanaRightOf(f, fragments).any((k) => reads(v, k.text))) continue;
+    out[f.id] = (
+      fragment: f.copyWith(text: v, corrected: true),
+      note: '${f.text} → $v (글자 보정+사전)',
+    );
   }
   return out;
 }

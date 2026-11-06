@@ -7,6 +7,7 @@ import 'package:shiori/app/app.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori/adapters/bundled_dictionary.dart';
 import 'package:shiori/app/startup.dart';
+import 'package:jmdict_block/jmdict_block.dart';
 import 'package:shiori_core/shiori_core.dart';
 import 'package:shiori_storage_drift/shiori_storage_drift.dart';
 
@@ -84,12 +85,12 @@ void main() {
     );
     expect(started, isTrue, reason: 'starts before the first frame');
     final c = ProviderContainer.test(overrides: [override]);
-    expect(c.read(dictionaryProvider), isA<EmptyDictionary>());
+    expect(c.read(lexiconProvider), isA<EmptyLexicon>());
 
     final opened = BundledDictionary.opened(openMiniJmdict(), testEdition);
     addTearDown(opened.close);
     unpacking.complete(opened);
     await c.read(bundledDictionaryProvider.future);
-    expect(c.read(dictionaryProvider), same(opened.jmdict));
+    expect(c.read(lexiconProvider), isA<JmdictLexiconAdapter>());
   });
 }

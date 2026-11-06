@@ -1,8 +1,8 @@
-// A4, A5 and extra-high (local only, real dictionaries): the general
-// extractor alone on the recorded word-list pages as the Android channel
-// reads them (ML Kit, lines in pieces), the routed capture on the scanner
-// app's pages next to the photos they were made from, and no extra word at
-// high confidence on any recorded set. Skipped without the dictionary files
+// A4, A5, D4-D6 and extra-high (local only, real dictionaries): the capture
+// as the app makes it (every page read by the word extractor) on the
+// recorded word-list pages as both channels read them, on the scanner app's
+// pages next to the photos they were made from, and no extra word at high
+// confidence on any recorded set. Skipped without the dictionary files
 // (SHIORI_JMDICT_DB and SHIORI_KO_GLOSSARY_DB, SQLite; else the app's gzip
 // assets next to $SHIORI_PRIVATE_DIR), and the recorded sets without
 // $SHIORI_PRIVATE_DIR/textbook. Prints numbers only.
@@ -47,7 +47,7 @@ final class _Set {
 
   bool get exists => File(truth).existsSync() && Directory(dir).existsSync();
 
-  ExtractTruth get answers => ExtractTruth.fromAnyJson(
+  ExtractTruth get answers => ExtractTruth.fromJson(
     (jsonDecode(File(truth).readAsStringSync()) as Map).cast<String, Object?>(),
   );
 
@@ -138,7 +138,6 @@ void main() {
   JmdictDictionary? jmdict;
   KrdictGlossary? glossary;
   late GeneralExtractor general;
-  late CaptureRouter router;
 
   setUpAll(() {
     if (noDictionary != null) return;
@@ -147,16 +146,6 @@ void main() {
     general = GeneralExtractor(
       lexicon: JmdictLexiconAdapter(jmdict!),
       koreanGlossary: glossary,
-    );
-    router = CaptureRouter(
-      template: CapturePipeline.standard(
-        dictionary: JmdictDictionaryAdapter(jmdict!),
-        glossary: glossary,
-      ),
-      general: GeneralExtractor(
-        lexicon: JmdictLexiconAdapter(jmdict!),
-        koreanGlossary: glossary,
-      ),
     );
   });
   tearDownAll(() {
@@ -175,10 +164,12 @@ void main() {
       ]),
   ]);
 
-  Future<ExtractScore> routed(_Set set) async => ExtractScore([
+  /// The review drafts the app makes of [set]'s pages.
+  Future<ExtractScore> captured(_Set set) async => ExtractScore([
     for (final page in set.pages)
       scoreExtractPage(page, [
-        for (final e in (await router.fromScan(
+        for (final e in (await pageDraft(
+          general,
           await set.load(page.fixture),
         )).entries)
           ScoredWord.fromCaptured(e),
@@ -196,22 +187,38 @@ void main() {
 
   test('A4 the word-list pages as ML Kit reads them, general extractor '
       'alone: found 58 or more of 59, every reading right, 1 or fewer '
-      'meanings wrong, 2 or fewer extras, nothing wrong at high', () async {
-    final s = await alone(_mlKit);
-    show('ML Kit pieces, general alone', s);
+      'meanings wrong, 2 or fewer extras, 33 or more high (D5), nothing '
+      'wrong at high', () async {
+    final s = await captured(_mlKit);
+    show('ML Kit pieces, as the app reads them', s);
     expect(s.vocab, 59);
     expect(s.found, greaterThanOrEqualTo(58));
     expect(s.readingsOk, s.found);
     expect(_meaningsWrong(s), lessThanOrEqualTo(1));
     expect(s.extras, lessThanOrEqualTo(2));
+    expect(s.high, greaterThanOrEqualTo(33));
     expect(s.highWrong, 0);
     expect(s.extraHigh, 0);
   }, skip: skip);
 
-  test('A5 the curled page from the scanner app, routed: 14 or more of 15, '
+  test('D4 the word-list pages as Vision reads them: all 59 found and read '
+      'right, 1 or fewer meanings wrong, no extra, 17 or more high', () async {
+    final s = await captured(_vision);
+    show('Vision, as the app reads them', s);
+    expect(s.vocab, 59);
+    expect(s.found, 59);
+    expect(s.readingsOk, 59);
+    expect(_meaningsWrong(s), lessThanOrEqualTo(1));
+    expect(s.extras, 0);
+    expect(s.high, greaterThanOrEqualTo(17));
+    expect(s.highWrong, 0);
+    expect(s.extraHigh, 0);
+  }, skip: skip);
+
+  test('A5 the curled page from the scanner app: 14 or more of 15, '
       'no meaning wrong, 1 or fewer extras', () async {
-    final s = await routed(_curledScan);
-    show('curled page, scanner app, routed', s);
+    final s = await captured(_curledScan);
+    show('curled page, scanner app', s);
     expect(s.vocab, 15);
     expect(s.found, greaterThanOrEqualTo(14));
     expect(s.readingsOk, s.found);
@@ -221,31 +228,33 @@ void main() {
   }, skip: skip);
 
   test('A5 the photos the scans were made from do not get worse', () async {
-    final curled = await routed(_curledPhoto);
-    show('curled page, photo, routed', curled);
+    final curled = await captured(_curledPhoto);
+    show('curled page, photo', curled);
     expect(curled.found, 15);
     expect(curled.readingsOk, 15);
     expect(_meaningsWrong(curled), 0);
     expect(curled.extras, 0);
 
     for (final set in [_examplesPhoto, _examplesScan]) {
-      final s = await routed(set);
-      show('${set.name}, routed', s);
+      final s = await captured(set);
+      show(set.name, s);
       expect(s.found, s.vocab, reason: set.name);
       expect(s.readingsOk, s.vocab, reason: set.name);
       expect(_meaningsWrong(s), 0, reason: set.name);
       expect(s.extras, 0, reason: set.name);
+      // D6: the example pages went to the row template before; high >= 4.
+      expect(s.high, greaterThanOrEqualTo(4), reason: set.name);
     }
 
-    final photo = await routed(_otherPhoto);
-    show('other textbook, photo, routed', photo);
+    final photo = await captured(_otherPhoto);
+    show('other textbook, photo', photo);
     expect(photo.found, 15);
     expect(_meaningsOk(photo), greaterThanOrEqualTo(11));
     expect(_sentenceWords(photo), greaterThanOrEqualTo(30));
     expect(photo.extras, lessThanOrEqualTo(6));
 
-    final scan = await routed(_otherScan);
-    show('other textbook, scanner app, routed', scan);
+    final scan = await captured(_otherScan);
+    show('other textbook, scanner app', scan);
     expect(scan.found, greaterThanOrEqualTo(14));
     expect(_meaningsOk(scan), greaterThanOrEqualTo(9));
     expect(_sentenceWords(scan), greaterThanOrEqualTo(30));
@@ -253,11 +262,11 @@ void main() {
   }, skip: skip);
 
   test('no recorded set has an extra word at high confidence, nor a wrong '
-      'one, alone or routed', () async {
+      'one, from the extractor or on the review draft', () async {
     for (final set in sets) {
       for (final (how, s) in [
-        ('alone', await alone(set)),
-        ('routed', await routed(set)),
+        ('extractor', await alone(set)),
+        ('review draft', await captured(set)),
       ]) {
         show('${set.name}, $how', s);
         expect(s.extraHigh, 0, reason: '${set.name}, $how');

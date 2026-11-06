@@ -1,4 +1,4 @@
-// The extraction score tool: general extractor and row template side by side.
+// The extraction score tool.
 import 'dart:io';
 
 import 'package:test/test.dart';
@@ -11,23 +11,27 @@ Future<ProcessResult> _evalTool(List<String> args) => Process.run(
 );
 
 void main() {
-  test(
-    'synthetic general pages: a row per page and a total for both ways',
-    () async {
-      final r = await _evalTool(['--template']);
+  test('synthetic general pages: a row per page and a total', () async {
+    final r = await _evalTool([]);
 
-      expect(r.exitCode, 0, reason: '${r.stdout}\n${r.stderr}');
-      final out = r.stdout as String;
-      expect(out, contains('== general'));
-      expect(out, contains('== template'));
-      for (final page in ['g01', 'g02', 'g03', 'g04', 'g05']) {
-        expect(out, contains(page));
-      }
-      expect(RegExp('^TOTAL', multiLine: true).allMatches(out), hasLength(2));
-    },
-  );
+    expect(r.exitCode, 0, reason: '${r.stdout}\n${r.stderr}');
+    final out = r.stdout as String;
+    expect(out, contains('== general'));
+    for (final page in ['g01', 'g02', 'g03', 'g04', 'g05']) {
+      expect(out, contains(page));
+    }
+    expect(RegExp('^TOTAL', multiLine: true).allMatches(out), hasLength(1));
+  });
 
-  test('template answers (legacy format) are scored by headword', () async {
+  test('the template flags are gone', () async {
+    for (final flag in ['--template', '--routed']) {
+      final r = await _evalTool([flag]);
+      expect(r.stdout as String, isNot(contains('== template')), reason: flag);
+      expect(r.stdout as String, isNot(contains('== routed')), reason: flag);
+    }
+  });
+
+  test('the word-book pages are scored by headword', () async {
     final r = await _evalTool(['--fixtures', synthetic.dir]);
 
     expect(r.exitCode, 0, reason: '${r.stdout}\n${r.stderr}');

@@ -47,8 +47,7 @@ Trap pages for the pairing confidence (answers in ground_truth_traps.json, not i
     python3 tools/synthetic/make_general_pages.py --check   # exit 1 when the committed files are out of date
 
 Files: the OCR passes, ground_truth.json (format "general-1": vocab printed as word pairs, content
-words of the sentences in dictionary form, words not to be penalized), ground_truth_legacy.json
-(g04 in make_pages.py's answer format, for the list parser), lexicon.json (dictionary facts for
+words of the sentences in dictionary form, words not to be penalized), lexicon.json (dictionary facts for
 every Japanese word used, values taken from JMdict) and korean_glosses.json (a small stand-in for a
 Japanese-Korean gloss table, holding about half of the native-Korean-meaning words).
 """
@@ -96,7 +95,7 @@ class GPage(mp.Page):
     """Both OCR passes of one page plus its general answer sheet."""
 
     def __init__(self, fixture: str, kind: str, seed: int):
-        super().__init__(fixture, 0, kind, 0, "", seed)
+        super().__init__(fixture, 0, seed)
         self.kind = kind
         self.vocab: list[dict] = []
         self.sentence_words: list[str] = []
@@ -340,7 +339,7 @@ CURL_GEOMETRY = dict(ax0=0.2112, ay0=0.2459, gap=0.0458, drift=0.0012, reading_x
 def page_g04() -> GPage:
     """DAY 05 list page held by hand: the row slope changes row by row; the next page's numbers."""
     p = GPage("g04", "warped", seed=104)
-    p.page, p.template, p.day, p.title = 4, "list", 5, "가게, 물건"
+    p.page = 4
     p.both("DAY", "DAY", 0.2461, 0.1148, 0.0640, 0.0248)
     p.both("05", "05", 0.2422, 0.1453, 0.0736, 0.0494)
     p.both(None, "가게, 물건", 0.3720, 0.1291, 0.1508, 0.0412, c_ko=0.5)
@@ -724,7 +723,7 @@ C01_ROWS = [
 
 def page_c01() -> GPage:
     """A clean, flat word-list page (as a scanner app gives it) whose checkboxes OCR glued to the
-    headwords: the rows and numbers fit the row template, the headword cells do not."""
+    headwords: rows and numbers in order, marks in front of the headwords."""
     p = GPage("c01", "marked-list", seed=201)
     p.both("★三人=試験上大ON卓", "★ 표시 = 시험에 자주 나온 단어", 0.5465, 0.1265, 0.2461, 0.0132, 0.3, 0.5)
     p.both("DAY", "DAY", 0.8430, 0.2064, 0.0174, 0.0233)
@@ -1044,9 +1043,6 @@ def render() -> dict[str, str]:
             files[name] = dump(data, 0)
     files["ground_truth.json"] = dump({"_note": GT_NOTE, "format": "general-1",
                                        "pages": [p.general_answer() for p in pages]}, 1)
-    legacy = [p.answer() for p in pages if p.kind == "warped"]
-    files["ground_truth_legacy.json"] = dump({"_note": NOTE + " The warped page in the answer format of "
-                                              "tools/synthetic/make_pages.py.", "pages": legacy}, 1)
     files["lexicon.json"] = dump(lexicon(), 1)
     files["korean_glosses.json"] = dump({"_note": GLOSS_NOTE, "glosses": KOREAN_GLOSSES}, 1)
     android = [make() for make in ANDROID_PAGES]

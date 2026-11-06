@@ -35,34 +35,16 @@ void main() {
     },
   );
 
-  test(
-    'T19 curled word-list page: all 15 readings and meanings on their headwords; '
-    'the row template shifts',
-    () async {
-      final p = page('g04');
-      expect(p.vocab, hasLength(15));
+  test('T19 curled word-list page: all 15 readings and meanings on their '
+      'headwords', () async {
+    final p = page('g04');
+    expect(p.vocab, hasLength(15));
 
-      final general = await _general(p);
-      final scan = await loadGeneralScan(p.fixture);
-      final draft = await CapturePipeline.standard().fromScan(scan);
-      final template = scoreExtractPage(p, [
-        for (final e in draft.entries) ScoredWord.fromCaptured(e),
-      ]);
-      print(
-        'g04 general: found ${general.found} reading ${general.readingsOk} '
-        'meaning ${general.meanings.ok}; template: found ${template.found} '
-        'reading ${template.readingsOk} meaning ${template.meanings.ok}',
-      );
+    final general = await _general(p);
 
-      expect(general.found, 15);
-      expect(general.readingsOk, 15);
-      expect(general.meanings, (ok: 15, of: 15));
-      expect(general.highWrong, 0);
-      expect(
-        template.readingsOk + template.meanings.ok,
-        lessThan(30),
-        reason: 'the row template pairs some cells with the next row',
-      );
-    },
-  );
+    expect(general.found, 15);
+    expect(general.readingsOk, 15);
+    expect(general.meanings, (ok: 15, of: 15));
+    expect(general.highWrong, 0);
+  });
 }

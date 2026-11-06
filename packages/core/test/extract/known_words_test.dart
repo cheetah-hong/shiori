@@ -12,10 +12,7 @@ OcrScan _sentencePage() => scan(
   ko: [line('학교까지 달렸다.', 0.55, 0.10, c: 1.0)],
 );
 
-CaptureRouter _router() => CaptureRouter(
-  template: templatePipeline(),
-  general: GeneralExtractor(lexicon: testLexicon()),
-);
+GeneralExtractor _extractor() => GeneralExtractor(lexicon: testLexicon());
 
 void main() {
   test('the extractor leaves a known sentence word out and names it', () async {
@@ -29,21 +26,21 @@ void main() {
   });
 
   test(
-    'the routed draft carries the skipped words for the review summary',
+    'the review draft carries the skipped words for the review summary',
     () async {
-      final draft = await _router().fromScan(
+      final draft = await pageDraft(
+        _extractor(),
         _sentencePage(),
         knownHeadwords: {'学校'},
       );
 
-      expect(draft.route!.route, CaptureRoute.general);
       expect(draft.entries.map((e) => e.headword), isNot(contains('学校')));
       expect(draft.skippedKnown, ['学校']);
     },
   );
 
   test('nothing known: nothing skipped', () async {
-    final draft = await _router().fromScan(_sentencePage());
+    final draft = await pageDraft(_extractor(), _sentencePage());
 
     expect(draft.entries.map((e) => e.headword), contains('学校'));
     expect(draft.skippedKnown, isEmpty);
@@ -63,21 +60,16 @@ void main() {
     expect(r.skippedKnown, ['学校']);
   });
 
-  test(
-    'row-template pages are not filtered (saving again updates them)',
-    () async {
-      final page = await synthetic.loadScan('s010');
-      final first = (await templatePipeline().fromScan(
-        page,
-      )).entries.firstWhere((e) => e.headword.isNotEmpty).headword;
-      final s010 = await syntheticRouter().fromScan(
-        page,
-        knownHeadwords: {first},
-      );
+  test('a word-book page is filtered like any other page', () async {
+    final page = await synthetic.loadScan('s010');
+    final extractor = syntheticExtractor();
+    final first = (await pageDraft(
+      extractor,
+      page,
+    )).entries.firstWhere((e) => e.headword.isNotEmpty).headword;
+    final s010 = await pageDraft(extractor, page, knownHeadwords: {first});
 
-      expect(s010.route!.route, CaptureRoute.template);
-      expect(s010.entries.map((e) => e.headword), contains(first));
-      expect(s010.skippedKnown, isEmpty);
-    },
-  );
+    expect(s010.entries.map((e) => e.headword), isNot(contains(first)));
+    expect(s010.skippedKnown, [first]);
+  });
 }

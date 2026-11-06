@@ -8,21 +8,25 @@ void main() {
   late InMemoryLibraryRepository repo;
   late LibraryService service;
 
-  CaptureDraft page({int? day, required List<(String, String)> words}) =>
-      CaptureDraft(
-        templateId: 'vocab.list',
-        meta: PageMeta(day: day, title: '자연', page: 10),
-        entries: [
-          for (final (no, head) in words)
-            CapturedEntry(
-              no: no,
-              headword: head,
-              readings: const ['よみ'],
-              pos: PartOfSpeech.noun,
-              meaning: '뜻',
-            ),
-        ],
-      );
+  /// Words of [textbookId] as earlier app versions saved them: numbered,
+  /// on a DAY (or none).
+  Future<void> put(
+    String textbookId, {
+    int? day,
+    required List<(String, String)> words,
+  }) => repo.saveWords([
+    for (final (no, head) in words)
+      Word(
+        id: '$textbookId:$no',
+        textbookId: textbookId,
+        day: day,
+        no: no,
+        headword: head,
+        readings: const ['よみ'],
+        meaning: '뜻',
+        createdAt: now,
+      ),
+  ]);
 
   setUp(() async {
     repo = InMemoryLibraryRepository();
@@ -34,10 +38,7 @@ void main() {
     () async {
       expect(service.hidden, same(repo));
       final tb = await service.createTextbook('단어장');
-      await service.saveDraft(
-        page(day: 1, words: [('0001', '雨'), ('0002', '雪')]),
-        textbookId: tb.id,
-      );
+      await put(tb.id, day: 1, words: [('0001', '雨'), ('0002', '雪')]);
       await service.hideWords(['${tb.id}:0002']);
       expect((await repo.word('${tb.id}:0002'))?.hiddenAt, now);
       await service.unhideWords(['${tb.id}:0002']);
@@ -58,15 +59,13 @@ void main() {
 
   test('the overview keeps hidden words and says which they are', () async {
     final tb = await service.createTextbook('단어장');
-    await service.saveDraft(
-      page(day: 1, words: [('0001', '雨'), ('0002', '雪'), ('0003', '風')]),
-      textbookId: tb.id,
+    await put(
+      tb.id,
+      day: 1,
+      words: [('0001', '雨'), ('0002', '雪'), ('0003', '風')],
     );
-    await service.saveDraft(
-      page(day: 2, words: [('0004', '山')]),
-      textbookId: tb.id,
-    );
-    await service.saveDraft(page(words: [('0005', '川')]), textbookId: tb.id);
+    await put(tb.id, day: 2, words: [('0004', '山')]);
+    await put(tb.id, words: [('0005', '川')]);
     await service.hideWords([
       '${tb.id}:0002',
       '${tb.id}:0004',
@@ -86,10 +85,7 @@ void main() {
 
   test('nothing hidden: the overview counts as before', () async {
     final tb = await service.createTextbook('단어장');
-    await service.saveDraft(
-      page(day: 1, words: [('0001', '雨')]),
-      textbookId: tb.id,
-    );
+    await put(tb.id, day: 1, words: [('0001', '雨')]);
     final overview = await service.overview(tb.id);
     expect((overview.hiddenCount, overview.shownCount), (0, 1));
     expect(overview.hiddenWords, isEmpty);

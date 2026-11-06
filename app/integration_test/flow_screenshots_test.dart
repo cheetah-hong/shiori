@@ -83,20 +83,18 @@ void main() {
     await tapText(tester, '확인');
     await shot(tester, '09_home_after_study');
 
-    // List-layout page where OCR skipped two simple kanji (layout A).
+    // Word-list page where OCR skipped two simple kanji.
     await tapText(tester, '페이지 등록');
     await tapText(tester, 'DAY 01 자연, 몸');
-    expect(find.text('표제어 없음 · 눌러서 입력'), findsWidgets);
+    expect(find.byKey(const ValueKey('review-heading')), findsOneWidget);
     await shot(tester, '10_review_flags');
-    await tapText(tester, '표제어 없음 · 눌러서 입력');
-    await tester.enterText(find.widgetWithText(TextField, '표제어'), '日');
+    await tester.tap(find.byTooltip('고치기').first);
+    await tester.pumpAndSettle();
     await shot(tester, '11_entry_editor');
     await tapText(tester, '고치기', last: true);
-    await tapText(tester, '표제어 없음 · 눌러서 입력');
-    await tester.enterText(find.widgetWithText(TextField, '표제어'), '空');
-    await tapText(tester, '고치기', last: true);
     await shot(tester, '12_review_fixed');
-    await tapText(tester, '단어 12개 저장');
+    await tester.tap(find.textContaining('개 저장').last);
+    await tester.pumpAndSettle();
     await shot(tester, '13_home_two_pages');
 
     // Library: textbook › DAY › words with memory levels.

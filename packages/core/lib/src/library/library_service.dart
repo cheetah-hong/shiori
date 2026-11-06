@@ -1,5 +1,4 @@
 import 'package:shiori_core/src/models/capture_draft.dart';
-import 'package:shiori_core/src/models/captured_entry.dart';
 import 'package:shiori_core/src/models/library.dart';
 import 'package:shiori_core/src/ports/clock.dart';
 import 'package:shiori_core/src/ports/hidden_word_repository.dart';
@@ -17,21 +16,13 @@ final class LibraryException implements Exception {
 }
 
 final class SaveResult {
-  const SaveResult({
-    required this.added,
-    required this.updated,
-    required this.skipped,
-  });
+  const SaveResult({required this.saved, required this.skipped});
 
-  final int added;
-
-  /// Words already saved from an earlier capture of the same page.
-  final int updated;
+  /// New words.
+  final int saved;
 
   /// Entries left out by the learner or without a headword.
   final int skipped;
-
-  int get saved => added + updated;
 }
 
 final class DayOverview {
@@ -74,6 +65,9 @@ final class TextbookOverview {
   int get shownCount => wordCount - hiddenCount;
 }
 
+/// Digits of a word's position in its save (a page holds far fewer words).
+const int _positionDigits = 4;
+
 /// Library use cases: textbooks, saving a reviewed draft, browsing by DAY,
 /// hiding words the learner already knows.
 final class LibraryService {
@@ -108,7 +102,7 @@ final class LibraryService {
       hidden ??
       (throw StateError('no HiddenWordRepository: words cannot be hidden'));
 
-  Future<Textbook> createTextbook(String title, {String? templateId}) async {
+  Future<Textbook> createTextbook(String title) async {
     final clean = title.trim();
     if (clean.isEmpty) throw const LibraryException('교재 이름이 비어 있습니다');
     final now = clock.now();
@@ -119,18 +113,15 @@ final class LibraryService {
         id: await _freshTextbookId(now),
         title: clean,
         createdAt: now,
-        templateId: templateId,
       );
       await library.saveTextbook(textbook);
       return textbook;
     });
   }
 
-  /// Saves the included entries of [draft] as words of [textbookId].
-  ///
-  /// Word ids are `textbookId:number`, so capturing a page again updates the
-  /// same words instead of adding duplicates. The DAY and the words are saved
-  /// in one transaction: if either fails, neither is kept.
+  /// Saves the included entries of [draft] as new words of [textbookId], in
+  /// the draft's order. All of them are saved in one transaction: if one
+  /// fails, none is kept.
   Future<SaveResult> saveDraft(
     CaptureDraft draft, {
     required String textbookId,
@@ -141,51 +132,29 @@ final class LibraryService {
       throw const LibraryException('교재를 찾지 못했어요. 다시 골라 주세요');
     }
     final now = clock.now();
-    final meta = draft.meta;
-    await _saveDay(textbookId, meta);
-
-    final existing = {
-      for (final w in await library.words(textbookId: textbookId)) w.id: w,
-    };
+    final stamp = await _freshStamp(textbookId, now);
     final words = <Word>[];
-    final usedIds = <String>{};
-    var added = 0, updated = 0, skipped = 0;
+    var skipped = 0;
     for (final (i, e) in draft.entries.indexed) {
       if (!e.included || e.headword.trim().isEmpty) {
         skipped++;
         continue;
       }
-      var id = _wordId(textbookId, e, meta, i, now);
-      // Two rows with the same number (a misread digit) must not overwrite
-      // each other: the later one gets its own id.
-      if (!usedIds.add(id)) {
-        id = '$id~$i';
-        usedIds.add(id);
-      }
-      final previous = existing[id];
-      if (previous == null) {
-        added++;
-      } else {
-        updated++;
-      }
       words.add(
         Word(
-          id: id,
+          id: _wordId(textbookId, stamp, i),
           textbookId: textbookId,
-          day: meta.day,
-          no: e.no,
           headword: e.headword.trim(),
           readings: List.unmodifiable(e.readings),
           pos: e.pos,
           meaning: e.meaning.trim(),
           example: e.example,
-          page: meta.page,
-          createdAt: previous?.createdAt ?? now,
+          createdAt: now,
         ),
       );
     }
     await library.saveWords(words);
-    return SaveResult(added: added, updated: updated, skipped: skipped);
+    return SaveResult(saved: words.length, skipped: skipped);
   }
 
   Future<TextbookOverview> overview(String textbookId) async {
@@ -212,30 +181,23 @@ final class LibraryService {
     );
   }
 
-  Future<void> _saveDay(String textbookId, PageMeta meta) async {
-    final number = meta.day;
-    if (number == null) return;
-    final title = meta.title?.trim() ?? '';
-    final current = (await library.days(
-      textbookId,
-    )).where((d) => d.number == number).firstOrNull;
-    // Keep a title read earlier when this page's footer had none.
-    if (current != null && title.isEmpty) return;
-    await library.saveDay(
-      TextbookDay(textbookId: textbookId, number: number, title: title),
-    );
-  }
+  /// `textbookId:w<stamp>-<position>`: the words of one save share their
+  /// time, and the position is zero-padded so the ids sort in the draft's
+  /// order (`-0010` after `-0002`).
+  String _wordId(String textbookId, int stamp, int index) =>
+      '$textbookId:w$stamp-${index.toString().padLeft(_positionDigits, '0')}';
 
-  String _wordId(
-    String textbookId,
-    CapturedEntry e,
-    PageMeta meta,
-    int index,
-    DateTime now,
-  ) {
-    final no = e.no;
-    if (no != null) return '$textbookId:$no';
-    return '$textbookId:p${meta.page ?? 'x'}-${now.microsecondsSinceEpoch}-$index';
+  /// The save time in microseconds, moved on past any earlier save at the
+  /// same instant (a clock that did not move) so no word is overwritten.
+  Future<int> _freshStamp(String textbookId, DateTime now) async {
+    final ids = {
+      for (final w in await library.words(textbookId: textbookId)) w.id,
+    };
+    var stamp = now.microsecondsSinceEpoch;
+    while (ids.any((id) => id.startsWith('$textbookId:w$stamp-'))) {
+      stamp++;
+    }
+    return stamp;
   }
 
   Future<String> _freshTextbookId(DateTime now) async {

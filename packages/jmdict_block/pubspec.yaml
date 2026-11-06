@@ -1,7 +1,7 @@
 name: jmdict_block
 description: >-
   The JMdict dictionary block for Shiori: adapts dict_jmdict to the core
-  Dictionary port. Pure Dart, so the capture pipeline can be tested and scored
+  Lexicon port. Pure Dart, so the word extractor can be tested and scored
   with the dictionary without Flutter.
 version: 0.1.0
 publish_to: none

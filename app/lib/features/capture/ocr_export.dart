@@ -1,5 +1,5 @@
 /// "판독 기록 내보내기": the page's two OCR passes in the recorded-fixture
-/// format and the route decision, handed to the share sheet so a page read
+/// format, handed to the share sheet so a page read
 /// on a phone can be replayed on a desktop. Only in builds that are not
 /// release builds; the photo is never part of it.
 library;
@@ -56,41 +56,16 @@ Future<void> shareFiles(List<ExportFile> files) async {
   );
 }
 
-/// `<name>.ja.json`, `<name>.ko.json` (each pass as `FixtureTextRecognizer`
-/// reads it back) and `<name>.route.json` (the route, its reasons and the
-/// numbers it was decided on). [at] names the files.
-List<ExportFile> ocrExportFiles(
-  OcrScan scan, {
-  required DateTime at,
-  RouteDecision? route,
-}) {
+/// `<name>.ja.json` and `<name>.ko.json`, each pass as
+/// `FixtureTextRecognizer` reads it back. [at] names the files.
+List<ExportFile> ocrExportFiles(OcrScan scan, {required DateTime at}) {
   final name = 'shiori-ocr-${_stamp(at)}';
   const json = JsonEncoder.withIndent(' ');
   return [
     ExportFile('$name.ja.json', json.convert(scan.japanese.toJson())),
     ExportFile('$name.ko.json', json.convert(scan.korean.toJson())),
-    ExportFile('$name.route.json', json.convert(_routeJson(route))),
   ];
 }
-
-Map<String, Object?> _routeJson(RouteDecision? route) => route == null
-    ? const {'route': null}
-    : {
-        'route': route.route.name,
-        'reasons': [for (final r in route.reasons) r.name],
-        'summary': route.summary,
-        'fit': {
-          'entries': route.fit.entries,
-          'numberedRows': route.fit.numberedRows,
-          'duplicateNumbers': route.fit.duplicateNumbers,
-          'missingMeanings': route.fit.missingMeanings,
-          'missingReadings': route.fit.missingReadings,
-          'missingHeadwords': route.fit.missingHeadwords,
-          'numberOrder': route.fit.numberOrder,
-          'columnsMeasured': route.fit.columnsMeasured,
-          'markedHeadwords': route.fit.markedHeadwords,
-        },
-      };
 
 String _stamp(DateTime t) {
   String two(int n) => n.toString().padLeft(2, '0');
@@ -101,10 +76,9 @@ String _stamp(DateTime t) {
 /// The review screen's export button: shown only when the export is on and
 /// the page's OCR passes are at hand.
 class OcrExportButton extends ConsumerWidget {
-  const OcrExportButton({super.key, required this.scan, this.route});
+  const OcrExportButton({super.key, required this.scan});
 
   final OcrScan? scan;
-  final RouteDecision? route;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -119,7 +93,7 @@ class OcrExportButton extends ConsumerWidget {
         _share(
           context,
           export,
-          ocrExportFiles(scan, at: ref.read(clockProvider).now(), route: route),
+          ocrExportFiles(scan, at: ref.read(clockProvider).now()),
         ),
       ),
     );

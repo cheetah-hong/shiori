@@ -15,7 +15,8 @@ final class Textbook {
   final String title;
   final DateTime createdAt;
 
-  /// Template the pages of this book were parsed with, if known.
+  /// Layout the pages of this book were read with, kept from earlier app
+  /// versions (`vocab.list`, `vocab.entry`); null for books made since.
   final String? templateId;
 
   Textbook copyWith({String? title}) => Textbook(

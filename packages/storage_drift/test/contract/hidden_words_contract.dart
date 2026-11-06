@@ -373,35 +373,37 @@ void _study(
       expect(await rev().cards(), cards);
     });
 
-    test('capturing the page again keeps a word hidden', () async {
+    test('saving another page keeps a word hidden', () async {
       final library = LibraryService(
         library: lib(),
         clock: FixedClock(now),
         hidden: hid(),
       );
       final tb = await library.createTextbook('단어장');
-      CaptureDraft page(String meaning) => CaptureDraft(
-        templateId: 'vocab.list',
-        meta: const PageMeta(day: 1, title: '자연', page: 10),
+      CaptureDraft page(List<String> heads) => CaptureDraft(
         entries: [
-          for (final (no, head) in [('0001', '雨'), ('0002', '雪')])
+          for (final head in heads)
             CapturedEntry(
-              no: no,
               headword: head,
               readings: const ['よみ'],
               pos: PartOfSpeech.noun,
-              meaning: meaning,
+              meaning: '뜻',
             ),
         ],
       );
-      await library.saveDraft(page('비'), textbookId: tb.id);
-      await library.hideWords(['${tb.id}:0001']);
-      final again = await library.saveDraft(page('비 (고침)'), textbookId: tb.id);
-      expect((again.added, again.updated), (0, 2));
-      final rain = await lib().word('${tb.id}:0001');
-      expect(rain?.meaning, '비 (고침)');
-      expect(rain?.hiddenAt, now);
-      expect((await lib().word('${tb.id}:0002'))?.isHidden, isFalse);
+      await library.saveDraft(page(['雨', '雪']), textbookId: tb.id);
+      final rain = (await lib().words(
+        textbookId: tb.id,
+      )).firstWhere((w) => w.headword == '雨');
+      await library.hideWords([rain.id]);
+      final again = await library.saveDraft(page(['風']), textbookId: tb.id);
+      expect(again.saved, 1);
+      final words = {
+        for (final w in await lib().words(textbookId: tb.id)) w.headword: w,
+      };
+      expect(words['雨']?.hiddenAt, now);
+      expect(words['雪']?.isHidden, isFalse);
+      expect(words['風']?.isHidden, isFalse);
     });
   });
 }

@@ -1,4 +1,4 @@
-// E8: the review screen for the general extractor's words — where each cell
+// E8: the review screen for the word extractor's words — where each cell
 // came from, how sure its pairing is, the photo piece behind it, candidates,
 // the tray of unpaired fragments, sentence words with their sentence, and
 // "높음 전체 승인" behind its switch.
@@ -32,7 +32,6 @@ CapturedEntry _word({
   Example? example,
   List<EntryIssue> issues = const [],
 }) => CapturedEntry(
-  no: null,
   headword: headword,
   readings: readings,
   pos: PartOfSpeech.noun,
@@ -57,20 +56,6 @@ Fragment _fragment(int id, String text, FragmentKind kind, double y) =>
 /// 運動 high, 部屋 from the dictionary, 食べる low with candidates, 学校 from
 /// a sentence; two unpaired fragments; 図書館 skipped as known.
 CaptureDraft _draft() => CaptureDraft(
-  templateId: generalTemplateId,
-  meta: PageMeta.empty,
-  route: chooseRoute(
-    const TemplateFit(
-      entries: 0,
-      numberedRows: 0,
-      duplicateNumbers: 0,
-      missingMeanings: 0,
-      missingReadings: 0,
-      missingHeadwords: 0,
-      numberOrder: 0,
-      columnsMeasured: false,
-    ),
-  ),
   entries: [
     _word(
       headword: '運動',
@@ -172,12 +157,9 @@ Future<void> _show(WidgetTester tester, Finder f) async {
 }
 
 void main() {
-  testWidgets('summary: the route and the words skipped as known', (
-    tester,
-  ) async {
+  testWidgets('summary: the words skipped as known', (tester) async {
     await _pump(tester);
 
-    expect(find.textContaining('범용 추출'), findsWidgets);
     expect(find.text('이미 있는 단어 1개 건너뜀'), findsOneWidget);
   });
 

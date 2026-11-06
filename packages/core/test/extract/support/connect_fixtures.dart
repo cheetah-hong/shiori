@@ -1,5 +1,5 @@
-// Shared blocks for the tests of the routed capture (row template or general
-// extractor): an in-memory Korean glossary and the local page sets.
+// Shared blocks for the capture tests: an in-memory Korean glossary and the
+// local page sets.
 import 'dart:io';
 
 import 'package:shiori_core/shiori_core.dart';
@@ -84,17 +84,9 @@ MemoryKoreanGlossary generalGlossary() {
   );
 }
 
-/// The row-template pipeline the reference scores were measured with.
-CapturePipeline templatePipeline() => CapturePipeline.standard();
-
-/// The routed capture on the synthetic general lexicon.
-CaptureRouter syntheticRouter({KoreanGlossary? glossary}) => CaptureRouter(
-  template: templatePipeline(),
-  general: GeneralExtractor(
-    lexicon: generalLexicon(),
-    koreanGlossary: glossary,
-  ),
-);
+/// The word extractor on the synthetic general lexicon.
+GeneralExtractor syntheticExtractor({KoreanGlossary? glossary}) =>
+    GeneralExtractor(lexicon: generalLexicon(), koreanGlossary: glossary);
 
 String get _textbook => '${privateDir()}/textbook';
 

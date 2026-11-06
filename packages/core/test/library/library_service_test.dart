@@ -6,33 +6,32 @@ void main() {
   late InMemoryLibraryRepository repo;
   late LibraryService service;
 
-  CapturedEntry entry(String no, String head, {bool included = true}) =>
-      CapturedEntry(
-        no: no,
-        headword: head,
-        readings: const ['よみ'],
-        pos: PartOfSpeech.noun,
-        meaning: '뜻',
-        included: included,
-      );
+  CapturedEntry entry(String head, {bool included = true}) => CapturedEntry(
+    headword: head,
+    readings: const ['よみ'],
+    pos: PartOfSpeech.noun,
+    meaning: '뜻',
+    included: included,
+  );
 
-  CaptureDraft draft(
-    List<CapturedEntry> entries, {
-    PageMeta meta = const PageMeta(day: 1, title: '자연, 몸', page: 10),
-  }) => CaptureDraft(templateId: 'vocab.list', meta: meta, entries: entries);
+  CaptureDraft draft(List<CapturedEntry> entries) =>
+      CaptureDraft(entries: entries);
+
+  /// Twelve made-up words, in the order the photo shows them.
+  const twelve = [
+    '雨', '雪', '空', '海', '山', '川', '朝', '昼', '夜', '春', '夏', '秋', //
+  ];
 
   setUp(() {
     repo = InMemoryLibraryRepository();
     service = LibraryService(library: repo, clock: FixedClock(now));
   });
 
-  test('creates a textbook with a trimmed title', () async {
-    final tb = await service.createTextbook(
-      '  JLPT 단어장 ',
-      templateId: 'vocab.list',
-    );
-    expect(tb.title, 'JLPT 단어장');
+  test('creates a textbook with a trimmed title and no layout', () async {
+    final tb = await service.createTextbook('  내 단어장 ');
+    expect(tb.title, '내 단어장');
     expect(tb.createdAt, now);
+    expect(tb.templateId, isNull);
     expect(await repo.textbook(tb.id), tb);
   });
 
@@ -49,110 +48,124 @@ void main() {
     expect(a.id, isNot(b.id));
   });
 
-  test('saves the DAY and the included words with their page', () async {
+  test('saves the included words, with no number, DAY or page', () async {
     final tb = await service.createTextbook('단어장');
     final result = await service.saveDraft(
-      draft([
-        entry('0001', '雨'),
-        entry('0002', '雪', included: false),
-        entry('0003', '空'),
-      ]),
+      draft([entry('雨'), entry('雪', included: false), entry('空')]),
       textbookId: tb.id,
     );
-    expect((result.added, result.updated, result.skipped), (2, 0, 1));
-    expect((await repo.days(tb.id)).single.title, '자연, 몸');
+    expect((result.saved, result.skipped), (2, 1));
+    expect(await repo.days(tb.id), isEmpty);
     final words = await repo.words(textbookId: tb.id);
-    expect(words.map((w) => (w.id, w.day, w.page)), [
-      ('${tb.id}:0001', 1, 10),
-      ('${tb.id}:0003', 1, 10),
+    expect(words.map((w) => (w.headword, w.no, w.day, w.page)), [
+      ('雨', null, null, null),
+      ('空', null, null, null),
     ]);
+    expect(words.map((w) => w.id).toSet(), hasLength(2));
+    expect(words.every((w) => w.id.startsWith('${tb.id}:')), isTrue);
   });
 
-  test(
-    'saving the same page again updates words and keeps when they were added',
-    () async {
-      final tb = await service.createTextbook('단어장');
-      await service.saveDraft(draft([entry('0001', 'ー')]), textbookId: tb.id);
-      final later = LibraryService(
-        library: repo,
-        clock: FixedClock(now.add(const Duration(days: 1))),
-      );
-      final result = await later.saveDraft(
-        draft([entry('0001', '雨')]),
-        textbookId: tb.id,
-      );
-      expect((result.added, result.updated), (0, 1));
-      final w = (await repo.words()).single;
-      expect((w.headword, w.createdAt), ('雨', now));
-    },
-  );
-
-  test('entries without a number still get distinct ids', () async {
+  test('D10 a page of twelve words reads back in the photo\'s order', () async {
     final tb = await service.createTextbook('단어장');
-    final noNumber = entry('x', '何').copyWith(no: null);
     await service.saveDraft(
-      draft([noNumber, noNumber.copyWith(headword: '誰')], meta: PageMeta.empty),
+      draft([for (final h in twelve) entry(h)]),
       textbookId: tb.id,
     );
-    final words = await repo.words();
-    expect(words.map((w) => w.id).toSet().length, 2);
-    expect(words.every((w) => w.day == null), isTrue);
-    expect(await repo.days(tb.id), isEmpty);
+    final words = await repo.words(textbookId: tb.id);
+    expect(words.map((w) => w.headword), twelve);
+    // The order is in the ids themselves, so any store sorting by id keeps it.
+    final byId = [...words]..sort((a, b) => a.id.compareTo(b.id));
+    expect(byId.map((w) => w.headword), twelve);
+  });
+
+  test('D10 new words are studied in the photo\'s order', () async {
+    final tb = await service.createTextbook('단어장');
+    await service.saveDraft(
+      draft([for (final h in twelve) entry(h)]),
+      textbookId: tb.id,
+    );
+    final study = StudyService(
+      library: repo,
+      reviews: InMemoryReviewRepository(),
+      scheduler: const LeitnerFourStepScheduler(),
+      clock: FixedClock(now),
+      settings: const StudySettings(dailyGoal: 12),
+    );
+    final session = await study.startSession(textbookId: tb.id);
+    expect(session.queue.map((i) => i.word.headword), twelve);
+  });
+
+  test('D10 a later page comes after an earlier one', () async {
+    final tb = await service.createTextbook('단어장');
+    await service.saveDraft(
+      draft([for (final h in twelve.take(6)) entry(h)]),
+      textbookId: tb.id,
+    );
+    final later = LibraryService(
+      library: repo,
+      clock: FixedClock(now.add(const Duration(minutes: 1))),
+    );
+    await later.saveDraft(
+      draft([for (final h in twelve.skip(6)) entry(h)]),
+      textbookId: tb.id,
+    );
+    expect((await repo.words()).map((w) => w.headword), twelve);
+  });
+
+  test('two pages saved at the same instant keep every word', () async {
+    final tb = await service.createTextbook('단어장');
+    await service.saveDraft(draft([entry('雨')]), textbookId: tb.id);
+    final again = await service.saveDraft(
+      draft([entry('雪')]),
+      textbookId: tb.id,
+    );
+    expect(again.saved, 1);
+    expect((await repo.words()).map((w) => w.headword), ['雨', '雪']);
   });
 
   test('an entry whose headword is still empty is not saved', () async {
     final tb = await service.createTextbook('단어장');
     final result = await service.saveDraft(
-      draft([entry('0002', ''), entry('0003', '空')]),
+      draft([entry(''), entry('空')]),
       textbookId: tb.id,
     );
-    expect((result.added, result.skipped, result.saved), (1, 1, 1));
+    expect((result.saved, result.skipped), (1, 1));
   });
-
-  test(
-    'a later page without a DAY title keeps the title read earlier',
-    () async {
-      final tb = await service.createTextbook('단어장');
-      await service.saveDraft(draft([entry('0001', '雨')]), textbookId: tb.id);
-      await service.saveDraft(
-        draft([entry('0013', '海')], meta: const PageMeta(day: 1, page: 11)),
-        textbookId: tb.id,
-      );
-      expect((await repo.days(tb.id)).single.title, '자연, 몸');
-    },
-  );
 
   test('saving into an unknown textbook fails', () async {
     expect(
-      () => service.saveDraft(draft([entry('0001', '雨')]), textbookId: 'nope'),
+      () => service.saveDraft(draft([entry('雨')]), textbookId: 'nope'),
       throwsA(isA<LibraryException>()),
     );
   });
 
-  test('two rows with the same number in one page are both kept', () async {
+  test('words saved before keep their DAY and number', () async {
     final tb = await service.createTextbook('단어장');
-    final result = await service.saveDraft(
-      draft([entry('0009', '九'), entry('0009', '十')]),
-      textbookId: tb.id,
+    await repo.saveDay(
+      TextbookDay(textbookId: tb.id, number: 1, title: '자연, 몸'),
     );
-    expect((result.added, result.saved), (2, 2));
-    expect(
-      (await repo.words()).map((w) => w.headword),
-      unorderedEquals(['九', '十']),
-    );
-  });
+    await repo.saveWords([
+      Word(
+        id: '${tb.id}:0001',
+        textbookId: tb.id,
+        day: 1,
+        no: '0001',
+        headword: '雨',
+        readings: const ['あめ'],
+        meaning: '비',
+        page: 10,
+        createdAt: now.subtract(const Duration(days: 3)),
+      ),
+    ]);
+    await service.saveDraft(draft([entry('雪')]), textbookId: tb.id);
 
-  test('a DAY whose words moved to another DAY is not listed', () async {
-    final tb = await service.createTextbook('단어장');
-    await service.saveDraft(draft([entry('0001', '雨')]), textbookId: tb.id);
-    await service.saveDraft(
-      draft([
-        entry('0001', '雨'),
-      ], meta: const PageMeta(day: 2, title: '둘', page: 12)),
-      textbookId: tb.id,
-    );
     final overview = await service.overview(tb.id);
-    expect(overview.days.map((d) => d.day.number), [2]);
+    expect(overview.wordCount, 2);
+    expect(overview.days.map((d) => (d.day.title, d.words.length)), [
+      ('자연, 몸', 1),
+    ]);
+    expect(overview.days.single.words.single.no, '0001');
+    expect(overview.undated.map((w) => w.headword), ['雪']);
   });
 
   test('overview of an unknown textbook is a library error', () async {
@@ -160,40 +173,19 @@ void main() {
     expect(const LibraryException('x').toString(), contains('x'));
   });
 
-  test('textbook overview counts words per day', () async {
-    final tb = await service.createTextbook('단어장');
-    await service.saveDraft(
-      draft([entry('0001', '雨'), entry('0002', '雪')]),
-      textbookId: tb.id,
-    );
-    await service.saveDraft(
-      draft([
-        entry('0031', '朝'),
-      ], meta: const PageMeta(day: 2, title: '시간', page: 14)),
-      textbookId: tb.id,
-    );
-    final overview = await service.overview(tb.id);
-    expect(overview.wordCount, 3);
-    expect(overview.days.map((d) => (d.day.number, d.words.length)), [
-      (1, 2),
-      (2, 1),
-    ]);
-  });
-
-  test('a failed word write keeps neither the DAY nor any word', () async {
+  test('a failed word write keeps no word', () async {
     final failing = _FailingWords();
     final service = LibraryService(library: failing, clock: FixedClock(now));
     final tb = await service.createTextbook('단어장');
     await expectLater(
-      service.saveDraft(draft([entry('0001', '雨')]), textbookId: tb.id),
+      service.saveDraft(draft([entry('雨')]), textbookId: tb.id),
       throwsA(isA<StateError>()),
     );
-    expect(await failing.days(tb.id), isEmpty);
     expect(await failing.words(), isEmpty);
   });
 }
 
-/// Fails on writing words after the DAY was written (a full disk, say).
+/// Fails on writing words after they were written (a full disk, say).
 final class _FailingWords extends _Delegating {
   @override
   Future<void> saveWords(List<Word> words) async {

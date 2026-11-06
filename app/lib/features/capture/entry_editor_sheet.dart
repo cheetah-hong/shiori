@@ -59,7 +59,7 @@ class _EntryEditorSheetState extends State<EntryEditorSheet> {
   }
 
   /// Pressing 고치기: changed cells lose their flags, and looking at the entry
-  /// confirms "의심" and "사전에 없음" on every cell (see [applyLearnerEdits]).
+  /// confirms "의심" on every cell (see [applyLearnerEdits]).
   CapturedEntry _result() {
     final exJa = _exampleJa.text.trim();
     return applyLearnerEdits(
@@ -97,10 +97,7 @@ class _EntryEditorSheetState extends State<EntryEditorSheet> {
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    '${_e.no ?? ''} 고치기',
-                    style: context.text.titleLarge,
-                  ),
+                  child: Text('고치기', style: context.text.titleLarge),
                 ),
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),

@@ -1,35 +1,12 @@
-/// JMdict lookups in pure Dart: headword candidates by reading, headword and
-/// reading pair checks, and suggestions for OCR glyph confusions.
+/// JMdict lookups in pure Dart: every entry spelled as a set of forms, in
+/// one call (the word extractor's dictionary facts).
 ///
 /// Data: JMdict by the Electronic Dictionary Research and Development Group,
 /// CC BY-SA 4.0. Apps must show [DictionaryInfo.attribution].
 library;
 
-export 'src/confusables.dart'
-    show
-        confusableInKanji,
-        confusableWhole,
-        areConfusable,
-        glyphEdits,
-        glyphVariants;
 export 'src/form_lookup.dart' show FormEntry;
 export 'src/jmdict_dictionary.dart'
-    show
-        DictionaryWord,
-        JmdictDictionary,
-        JmdictFormatException,
-        jmdictSchemaVersion;
-export 'src/kana.dart' show hasKanji, isKanaOnly, toHiragana, toKatakana;
-export 'src/models.dart'
-    show
-        DictionaryInfo,
-        GlyphEdit,
-        GlyphEditKind,
-        HeadwordCandidate,
-        HeadwordSuggestion,
-        PairCheck,
-        PairMatch,
-        SuggestionBasis,
-        WordClass,
-        wordClassesOf;
+    show JmdictDictionary, JmdictFormatException, jmdictSchemaVersion;
+export 'src/models.dart' show DictionaryInfo;
 export 'src/priority.dart' show Priority, PriorityTag;

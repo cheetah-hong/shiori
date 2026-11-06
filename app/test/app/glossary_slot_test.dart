@@ -1,4 +1,4 @@
-// The Korean glossary slot and the corrector chain built on it.
+// The Korean glossary slot and the word extractor built on it.
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:krdict_block/krdict_block.dart';
@@ -10,19 +10,20 @@ import '../support/glossary.dart';
 
 void main() {
   test('holds the glossary block once the bundled data is open', () async {
-    final opened = BundledGlossary.opened(openMiniKrdict(), testGlossaryEdition);
+    final opened = BundledGlossary.opened(
+      openMiniKrdict(),
+      testGlossaryEdition,
+    );
     addTearDown(opened.close);
     final c = ProviderContainer.test(
       overrides: [bundledGlossaryProvider.overrideWith((ref) async => opened)],
     );
     await c.read(bundledGlossaryProvider.future);
     expect(c.read(koreanGlossaryProvider), isA<KrdictGlossary>());
-    final filler = c
-        .read(capturePipelineProvider)
-        .correctors
-        .whereType<KoreanMeaningFiller>()
-        .single;
-    expect(filler.glossary, same(opened.krdict));
+    expect(
+      c.read(generalExtractorProvider).koreanGlossary,
+      same(opened.krdict),
+    );
   });
 
   test('stays empty without glossary data', () async {
@@ -35,5 +36,6 @@ void main() {
     );
     await c.read(bundledGlossaryProvider.future);
     expect(c.read(koreanGlossaryProvider), isA<EmptyKoreanGlossary>());
+    expect(c.read(generalExtractorProvider).koreanGlossary, isNull);
   });
 }

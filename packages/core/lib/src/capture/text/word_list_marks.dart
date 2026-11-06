@@ -1,7 +1,6 @@
 /// Marks word lists print around their words, as OCR reads them: the POS
-/// badge in front of a meaning and the dash of an empty reading cell. Shared
-/// by the row templates (`capture/vocab/fields.dart`) and the word extractor
-/// (`extract/fragment_collector.dart`).
+/// badge in front of a meaning and the dash of an empty reading cell (used by
+/// `extract/fragment_collector.dart`).
 library;
 
 /// POS badges as OCR reads them → the badge they are. OCR misreads: 통 → 동,

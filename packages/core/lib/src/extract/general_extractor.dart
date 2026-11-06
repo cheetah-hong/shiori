@@ -11,7 +11,7 @@
 /// 6. One word per headword; known headwords dropped; leftovers kept.
 library;
 
-import 'package:shiori_core/src/capture/correctors/confusables.dart';
+import 'package:shiori_core/src/extract/confusables.dart';
 import 'package:shiori_core/src/extract/confidence.dart';
 import 'package:shiori_core/src/extract/deconjugator.dart';
 import 'package:shiori_core/src/extract/extracted_word.dart';
@@ -595,9 +595,12 @@ final class _Page {
     await lexicon.lookup({
       for (final f in _words) ...[
         for (final d in deconjugator.deconjugate(f.text)) d.base,
-        if (f.kind == FragmentKind.kanjiWord)
+        if (f.kind == FragmentKind.kanjiWord) ...[
           for (final v in lookalikeVariants(f.text))
             for (final d in deconjugator.deconjugate(v)) d.base,
+          if (katakanaEndingInHiragana(f.text) case final v?)
+            for (final d in deconjugator.deconjugate(v)) d.base,
+        ],
         if (f.droppedPrefix case final prefix?)
           for (final d in deconjugator.deconjugate('$prefix${f.text}')) d.base,
         if (f.kind == FragmentKind.kana)
@@ -690,15 +693,17 @@ final class _Page {
   final Map<int, String> _mendNotes = {};
 
   /// Joins kanji words a space split and mends kana-only headwords with a
-  /// look-alike glyph, when a kana on the row reads the mended word.
+  /// look-alike glyph and kanji headwords with a katakana ending, when a
+  /// kana on the row reads the mended word.
   void mendHeadwords() {
     if (!hasLexicon) return;
     fragments = List.unmodifiable(joinSplitHeadwords(fragments, reads: _reads));
-    final mends = mendKanaLookalikes(
-      fragments,
-      known: (t) => _lemmas(t).isNotEmpty || lexicon.cached(t).isNotEmpty,
-      reads: _reads,
-    );
+    bool known(String t) =>
+        _lemmas(t).isNotEmpty || lexicon.cached(t).isNotEmpty;
+    final mends = {
+      ...mendKanaLookalikes(fragments, known: known, reads: _reads),
+      ...mendKatakanaEndings(fragments, known: known, reads: _reads),
+    };
     if (mends.isEmpty) return;
     fragments = List.unmodifiable([
       for (final f in fragments) mends[f.id]?.fragment ?? f,

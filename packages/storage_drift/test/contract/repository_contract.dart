@@ -470,17 +470,14 @@ void _useCaseContract(
   group('use cases', () {
     final now = DateTime(2026, 11, 5, 21);
 
-    CaptureDraft page(String meaning) => CaptureDraft(
-      templateId: 'vocab.list',
-      meta: const PageMeta(day: 1, title: '자연, 몸', page: 10),
+    CaptureDraft page(List<String> heads) => CaptureDraft(
       entries: [
-        for (final (no, head) in [('0001', '雨'), ('0002', '雪')])
+        for (final head in heads)
           CapturedEntry(
-            no: no,
             headword: head,
             readings: const ['よみ'],
             pos: PartOfSpeech.noun,
-            meaning: meaning,
+            meaning: '뜻',
           ),
       ],
     );
@@ -492,24 +489,42 @@ void _useCaseContract(
       clock: FixedClock(at),
     );
 
-    test('capturing a page again keeps the learning state', () async {
+    test('saving another page keeps the learning state', () async {
       final library = LibraryService(library: lib(), clock: FixedClock(now));
       final tb = await library.createTextbook('단어장');
-      await library.saveDraft(page('비'), textbookId: tb.id);
+      await library.saveDraft(page(['雨', '雪']), textbookId: tb.id);
 
       final service = study(now);
       var session = await service.startSession();
       session = await service.answer(session, Answer.retry);
       session = await service.answer(session, Answer.known);
       final before = await rev().cards();
-      expect(before.keys, unorderedEquals(['${tb.id}:0001', '${tb.id}:0002']));
+      expect(before, hasLength(2));
 
-      final again = await library.saveDraft(page('비 (고침)'), textbookId: tb.id);
-      expect((again.added, again.updated), (0, 2));
-      expect((await lib().word('${tb.id}:0001'))?.meaning, '비 (고침)');
+      final again = await library.saveDraft(page(['風']), textbookId: tb.id);
+      expect(again.saved, 1);
+      expect((await lib().words(textbookId: tb.id)), hasLength(3));
       expect(await rev().cards(), before);
       expect((await rev().logs()).length, 2);
     });
+
+    test(
+      'D10 a page of twelve words reads back in the photo\'s order',
+      () async {
+        const twelve = [
+          '雨', '雪', '空', '海', '山', '川', '朝', '昼', '夜', '春', '夏', '秋', //
+        ];
+        final library = LibraryService(library: lib(), clock: FixedClock(now));
+        final tb = await library.createTextbook('단어장');
+        await library.saveDraft(page(twelve), textbookId: tb.id);
+        expect(
+          (await lib().words(textbookId: tb.id)).map((w) => w.headword),
+          twelve,
+        );
+        final session = await study(now).startSession(goal: 12);
+        expect(session.queue.map((i) => i.word.headword), twelve);
+      },
+    );
 
     test('two textbooks created at once keep different ids', () async {
       final library = LibraryService(library: lib(), clock: FixedClock(now));
@@ -524,8 +539,8 @@ void _useCaseContract(
     test('known today follows the study day boundary (04:00)', () async {
       final library = LibraryService(library: lib(), clock: FixedClock(now));
       final tb = await library.createTextbook('단어장');
-      await library.saveDraft(page('비'), textbookId: tb.id);
-      final ids = ['${tb.id}:0001', '${tb.id}:0002'];
+      await library.saveDraft(page(['雨', '雪']), textbookId: tb.id);
+      final ids = [for (final w in await lib().words(textbookId: tb.id)) w.id];
       await rev().addLog(_log(ids[0], DateTime(2026, 11, 6, 3, 59, 59)));
       await rev().addLog(_log(ids[1], DateTime(2026, 11, 6, 4)));
 

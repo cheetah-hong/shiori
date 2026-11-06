@@ -1,4 +1,5 @@
-import 'package:shiori_core/src/eval/ground_truth.dart';
+/// The answer format this file reads.
+const String extractTruthFormat = 'general-1';
 
 /// Answers for word extraction, matched by headword (`ground_truth.json`
 /// with `"format": "general-1"`).
@@ -8,8 +9,16 @@ import 'package:shiori_core/src/eval/ground_truth.dart';
 final class ExtractTruth {
   const ExtractTruth(this.pages);
 
-  /// Throws [FormatException] when a field has the wrong shape.
+  /// Throws [FormatException] when the file is not in this format (an
+  /// older answer file would otherwise score as having no words) or a field
+  /// has the wrong shape.
   factory ExtractTruth.fromJson(Map<String, Object?> json) {
+    if (json['format'] != extractTruthFormat) {
+      throw FormatException(
+        'answers need "format": "$extractTruthFormat"',
+        json['format'],
+      );
+    }
     final pages = json['pages'];
     if (pages is! List) {
       throw const FormatException('answers need a "pages" list');
@@ -18,32 +27,6 @@ final class ExtractTruth {
       for (final p in pages) ExtractTruthPage.fromJson(_map(p)),
     ]);
   }
-
-  /// The template answers as extraction answers: every entry is a printed
-  /// word; nothing comes from sentences.
-  factory ExtractTruth.fromLegacy(GroundTruth truth) => ExtractTruth([
-    for (final p in truth.pages)
-      ExtractTruthPage(
-        page: '${p.page}',
-        fixture: p.fixture,
-        kind: 'template',
-        scoresSentences: false,
-        vocab: [
-          for (final e in p.entries)
-            TruthWord(
-              headword: e.headword,
-              readings: e.readings,
-              meaning: e.meaning,
-            ),
-        ],
-      ),
-  ]);
-
-  /// Either answer format: `"format": "general-1"`, or the template answers.
-  factory ExtractTruth.fromAnyJson(Map<String, Object?> json) =>
-      json['format'] == 'general-1'
-      ? ExtractTruth.fromJson(json)
-      : ExtractTruth.fromLegacy(GroundTruth.fromJson(json));
 
   final List<ExtractTruthPage> pages;
 }
@@ -87,8 +70,9 @@ final class ExtractTruthPage {
   /// Headwords that cost nothing when returned.
   final Set<String> ignore;
 
-  /// False for template answers: they list no sentence words, so words from
-  /// the page's example sentences are neither scored nor counted as extras.
+  /// False for answers that list no sentence words (`"scores_sentences":
+  /// false`): words from the page's example sentences are then neither
+  /// scored nor counted as extras.
   final bool scoresSentences;
 }
 

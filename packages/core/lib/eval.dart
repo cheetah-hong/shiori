@@ -1,10 +1,7 @@
-/// Capture scoring against hand-made ground truth (tests and `tool/eval_capture.dart`).
+/// Word extraction scoring against hand-made answers (tests and `tool/eval_extract.dart`).
 ///
 /// Kept out of the main library so the app never ships it.
 library;
 
-export 'package:shiori_core/src/eval/capture_scorer.dart';
 export 'package:shiori_core/src/eval/extract_scorer.dart';
 export 'package:shiori_core/src/eval/extract_truth.dart';
-export 'package:shiori_core/src/eval/ground_truth.dart';
-export 'package:shiori_core/src/eval/reference_diff.dart';

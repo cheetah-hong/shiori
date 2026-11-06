@@ -1,4 +1,4 @@
-// Shared blocks for the pairing-confidence tests: the routed capture with
+// Shared blocks for the pairing-confidence tests: the capture with
 // dictionary values copied from the real dictionaries (synthetic words only),
 // and the trap pages of the general set.
 import 'package:shiori_core/eval.dart';
@@ -11,7 +11,21 @@ import 'extract_fixtures.dart';
 /// The Korean glossary's real senses for the synthetic words.
 MemoryKoreanGlossary realGlossary() => MemoryKoreanGlossary(realSenses);
 
-/// The row-template pages' words as the real dictionary has them.
+/// The same senses, read backwards as the app's glossary is: the readings of
+/// the word-book pages' words (every entry of a spelling, merged).
+MemoryKoreanGlossary realReverseGlossary() => MemoryKoreanGlossary(
+  realSenses,
+  readings: {
+    for (final key in realSenses.keys)
+      key: [
+        for (final w in rowPageWords)
+          if (w.kanji.contains(key)) ...w.readings,
+      ],
+  },
+);
+
+/// The word-book pages' words (tools/synthetic/make_pages.py) as the real
+/// dictionary has them.
 InMemoryLexicon rowLexicon() => InMemoryLexicon(rowPageWords);
 
 /// The general pages' lexicon plus the trap pages' words.
@@ -21,15 +35,11 @@ InMemoryLexicon trapLexicon() => InMemoryLexicon([
   ...trapWords,
 ]);
 
-/// The routed capture as the app builds it: the row template (no JMdict
-/// adapter: the synthetic pages were scored without one) and the general
-/// extractor on [lexicon] with [glossary]. Template pages take their
-/// evidence from the same lexicon and glossary.
-CaptureRouter confidenceRouter(Lexicon lexicon, {KoreanGlossary? glossary}) =>
-    CaptureRouter(
-      template: CapturePipeline.standard(glossary: glossary),
-      general: GeneralExtractor(lexicon: lexicon, koreanGlossary: glossary),
-    );
+/// The word extractor as the app builds it, on [lexicon] with [glossary].
+GeneralExtractor confidenceExtractor(
+  Lexicon lexicon, {
+  KoreanGlossary? glossary,
+}) => GeneralExtractor(lexicon: lexicon, koreanGlossary: glossary);
 
 /// Answers of the trap pages g21-g23.
 ExtractTruth trapTruth() =>
@@ -40,11 +50,11 @@ ExtractTruth trapTruth() =>
 Future<({int high, int highWrong})> highCounts(
   ExtractTruth truth,
   Future<OcrScan> Function(String fixture) load,
-  CaptureRouter router,
+  GeneralExtractor extractor,
 ) async {
   var high = 0, highWrong = 0;
   for (final page in truth.pages) {
-    final draft = await router.fromScan(await load(page.fixture));
+    final draft = await pageDraft(extractor, await load(page.fixture));
     final score = scoreExtractPage(page, [
       for (final e in draft.entries) ScoredWord.fromCaptured(e),
     ]);

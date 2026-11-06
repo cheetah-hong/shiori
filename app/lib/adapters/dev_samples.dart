@@ -5,7 +5,7 @@ import 'package:shiori_core/shiori_core.dart';
 /// DEVELOPMENT ONLY: the `dev` flavor.
 ///
 /// `assets/dev_samples/` holds the OCR passes of synthetic pages (made-up words
-/// laid out like the textbook, `tools/synthetic/make_pages.py`) so the whole
+/// on word-book pages, `tools/synthetic/make_pages.py`) so the whole
 /// flow runs on a simulator without a camera. Only the dev flavor bundles them
 /// (pubspec.yaml), and the dev flavor never builds for release
 /// (docs/architecture.md, 5).
@@ -39,14 +39,14 @@ final class DevSample {
 }
 
 const List<DevSample> devSamples = [
-  DevSample(id: 's010', page: 10, detail: 'DAY 01 자연, 몸', layout: '목록형'),
-  DevSample(id: 's011', page: 11, detail: 'DAY 01 자연, 몸', layout: '목록형'),
-  DevSample(id: 's140', page: 140, detail: 'DAY 20 여행·교통', layout: '항목형 · 예문'),
-  DevSample(id: 's147', page: 147, detail: 'DAY 21 쇼핑', layout: '항목형 · 예문'),
+  DevSample(id: 's010', page: 10, detail: 'DAY 01 자연, 몸', layout: '합성 단어장'),
+  DevSample(id: 's011', page: 11, detail: 'DAY 01 자연, 몸', layout: '합성 단어장'),
+  DevSample(id: 's140', page: 140, detail: 'DAY 20 여행·교통', layout: '합성 단어장 · 예문'),
+  DevSample(id: 's147', page: 147, detail: 'DAY 21 쇼핑', layout: '합성 단어장 · 예문'),
 ];
 
-/// Synthetic pages for the general extractor (tools/synthetic/make_general_pages.py):
-/// laid out unlike the word book, so the row template does not fit them.
+/// Synthetic pages laid out unlike a word book
+/// (tools/synthetic/make_general_pages.py): dialogue, word boxes, patterns.
 const List<DevSample> generalDevSamples = [
   DevSample(id: 'g06', page: 61, detail: '범용 · 문형과 설명 단락', layout: '범용'),
   DevSample(id: 'g01', page: 38, detail: '범용 · 대화와 단어 상자', layout: '범용'),

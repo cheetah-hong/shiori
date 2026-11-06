@@ -9,28 +9,24 @@ enum IssueKind {
   /// The field could not be read. The review screen asks the learner to check it.
   missing,
 
-  /// A corrector changed what OCR read. Shown as "자동 보정됨".
+  /// A fix changed what OCR read (a look-alike glyph). Shown as "자동 보정됨".
   corrected,
 
-  /// OCR read nothing and a corrector filled in a likely value (a POS guessed
-  /// from the headword). Lighter than [missing]: usually right.
+  /// OCR read nothing and a likely value was filled in (a reading or a
+  /// meaning from the dictionary). Lighter than [missing]: usually right.
   inferred,
 
   /// The field was read but looks incomplete (a meaning ending in a comma).
   /// The learner should check it, like [missing].
   suspect,
 
-  /// The dictionary does not have the headword with its reading, and no
-  /// look-alike glyph explains it. Shown as "사전에 없음"; counts as "확인 필요".
-  unverified,
-
-  /// The learner chose the value (a dictionary candidate for an unread
-  /// headword). Shown like [corrected], but not counted as an automatic fix.
+  /// The learner chose the value (a candidate, or a fragment from the
+  /// tray). Shown like [corrected], but not counted as an automatic fix.
   picked,
 }
 
 /// How the review screen should present a field.
-enum FieldStatus { ok, inferred, corrected, suspect, unverified, needsReview }
+enum FieldStatus { ok, inferred, corrected, suspect, needsReview }
 
 final class EntryIssue {
   const EntryIssue(this.field, this.kind, {this.note});
@@ -45,9 +41,6 @@ final class EntryIssue {
 
   const EntryIssue.suspect(this.field, {this.note}) : kind = IssueKind.suspect;
 
-  const EntryIssue.unverified(this.field, {this.note})
-    : kind = IssueKind.unverified;
-
   const EntryIssue.picked(this.field, {this.note}) : kind = IssueKind.picked;
 
   final EntryField field;
@@ -56,7 +49,7 @@ final class EntryIssue {
   /// Human readable detail, for example `ー → 一`.
   final String? note;
 
-  /// Same code as the reference parser, for example `headword:missing`.
+  /// For example `headword:missing`.
   String get code => '${field.name}:${kind.name}';
 
   @override
@@ -73,7 +66,7 @@ final class EntryIssue {
   String toString() => note == null ? code : '$code($note)';
 }
 
-/// Example sentence printed under an N3 entry, with its Korean translation.
+/// Example sentence the word came with, and its Korean translation.
 final class Example {
   const Example({required this.ja, required this.ko});
 
@@ -96,7 +89,6 @@ const Object _unset = Object();
 /// A word read from a page, before the learner saves it (review draft).
 final class CapturedEntry {
   const CapturedEntry({
-    required this.no,
     required this.headword,
     required this.readings,
     required this.pos,
@@ -109,41 +101,37 @@ final class CapturedEntry {
     this.evidence,
   });
 
-  /// Textbook word number (`0001`), or null when it could not be inferred.
-  final String? no;
   final String headword;
 
-  /// Readings in kana. Empty for kana-only words (printed as `–`).
+  /// Readings in kana. Empty for kana-only words.
   final List<String> readings;
   final PartOfSpeech? pos;
   final String meaning;
   final Example? example;
   final List<EntryIssue> issues;
 
-  /// Suggestions from a `Dictionary` block when the headword was not read.
+  /// Spellings the dictionary suggests for a headword OCR lost.
   final List<String> headwordCandidates;
 
   /// Whether the learner keeps this entry when saving.
   final bool included;
 
-  /// The headword as the template read it, before any corrector ran. Lets a
-  /// later corrector undo an earlier one. Null for entries made by hand.
+  /// The headword as OCR read it, before any fix. Null for entries made by
+  /// hand.
   final String? ocrHeadword;
 
-  /// Where each cell came from and how sure its pairing is (general
-  /// extractor only; null for the row templates). Shown on the review
-  /// screen, never saved.
+  /// Where each cell came from and how sure its pairing is. Shown on the
+  /// review screen, never saved.
   final EntryEvidence? evidence;
 
-  /// The strongest flag on [field]: missing, then unverified, suspect,
-  /// corrected (or picked by the learner), inferred.
+  /// The strongest flag on [field]: missing, then suspect, corrected (or
+  /// picked by the learner), inferred.
   FieldStatus statusOf(EntryField field) {
     final kinds = {
       for (final i in issues)
         if (i.field == field) i.kind,
     };
     if (kinds.contains(IssueKind.missing)) return FieldStatus.needsReview;
-    if (kinds.contains(IssueKind.unverified)) return FieldStatus.unverified;
     if (kinds.contains(IssueKind.suspect)) return FieldStatus.suspect;
     if (kinds.contains(IssueKind.corrected) ||
         kinds.contains(IssueKind.picked)) {
@@ -153,16 +141,13 @@ final class CapturedEntry {
     return FieldStatus.ok;
   }
 
-  /// A field is missing, looks wrong or is not in the dictionary: the learner
-  /// should look at the entry.
+  /// A field is missing or looks wrong: the learner should look at the
+  /// entry.
   bool get needsReview => issues.any(
-    (i) =>
-        i.kind == IssueKind.missing ||
-        i.kind == IssueKind.suspect ||
-        i.kind == IssueKind.unverified,
+    (i) => i.kind == IssueKind.missing || i.kind == IssueKind.suspect,
   );
 
-  /// A corrector changed a cell (not a value the learner picked).
+  /// A cell was fixed automatically (not a value the learner picked).
   bool get wasCorrected => issues.any((i) => i.kind == IssueKind.corrected);
 
   /// Flagged for the learner in any way other than a missing example
@@ -170,7 +155,6 @@ final class CapturedEntry {
   bool get isFlagged => issues.any((i) => i.field != EntryField.example);
 
   CapturedEntry copyWith({
-    Object? no = _unset,
     String? headword,
     List<String>? readings,
     Object? pos = _unset,
@@ -182,7 +166,6 @@ final class CapturedEntry {
     Object? ocrHeadword = _unset,
     Object? evidence = _unset,
   }) => CapturedEntry(
-    no: identical(no, _unset) ? this.no : no as String?,
     headword: headword ?? this.headword,
     readings: List.unmodifiable(readings ?? this.readings),
     pos: identical(pos, _unset) ? this.pos : pos as PartOfSpeech?,
@@ -237,7 +220,6 @@ final class CapturedEntry {
   @override
   bool operator ==(Object other) =>
       other is CapturedEntry &&
-      other.no == no &&
       other.headword == headword &&
       listEquals(other.readings, readings) &&
       other.pos == pos &&
@@ -251,7 +233,6 @@ final class CapturedEntry {
 
   @override
   int get hashCode => Object.hash(
-    no,
     headword,
     Object.hashAll(readings),
     pos,
@@ -266,6 +247,6 @@ final class CapturedEntry {
 
   @override
   String toString() =>
-      'CapturedEntry($no $headword|${readings.join('/')}|${pos?.badge}|$meaning'
+      'CapturedEntry($headword|${readings.join('/')}|${pos?.badge}|$meaning'
       ' issues=$issues)';
 }

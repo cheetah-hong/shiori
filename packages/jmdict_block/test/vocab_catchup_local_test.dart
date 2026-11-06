@@ -45,7 +45,7 @@ final class _Set {
 
   bool get exists => File(truth).existsSync() && Directory(dir).existsSync();
 
-  ExtractTruth get answers => ExtractTruth.fromAnyJson(
+  ExtractTruth get answers => ExtractTruth.fromJson(
     (jsonDecode(File(truth).readAsStringSync()) as Map).cast<String, Object?>(),
   );
 
@@ -240,16 +240,19 @@ void main() {
     expect(s.highWrong, 0);
   }, skip: skipRecorded);
 
-  test('V5 the synthetic word-list pages through the general extractor: '
-      'found 32 or more of 35, 1 or fewer meanings wrong, 8 or fewer '
-      'extras', () async {
+  test('V5 D1 the synthetic word-list pages through the general extractor: '
+      'found 33 or more of 35, 1 or fewer meanings wrong, 2 or fewer '
+      'extras and duplicates, 21 or more high', () async {
     final s = await score(_syntheticOld);
     show('synthetic word-list pages', s);
     expect(s.vocab, 35);
-    expect(s.found, greaterThanOrEqualTo(32));
+    expect(s.found, greaterThanOrEqualTo(33));
     expect(s.readingsOk, s.found);
     expect(meaningsWrong(s), lessThanOrEqualTo(1));
-    expect(s.extras, lessThanOrEqualTo(8));
+    // The two rows OCR read no headword of: the row templates' one extra and
+    // one duplicate, the extractor's two kana words.
+    expect(s.extras + s.duplicates, lessThanOrEqualTo(2));
+    expect(s.high, greaterThanOrEqualTo(21));
     expect(s.highWrong, 0);
   }, skip: noDictionary);
 

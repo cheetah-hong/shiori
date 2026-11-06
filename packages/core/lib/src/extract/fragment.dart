@@ -88,7 +88,7 @@ final class Fragment {
   final String? droppedPrefix;
 
   /// The POS badge printed before a Korean meaning (`명`, `동`, `い형`,
-  /// `な형`, `부`…), as the row templates name it; null without one.
+  /// `な형`, `부`…); null without one.
   final String? posBadge;
 
   /// [text] starts with one badge syllable glued to the rest (`명` of

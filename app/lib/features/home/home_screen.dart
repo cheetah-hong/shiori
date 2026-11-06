@@ -369,7 +369,7 @@ class _EmptyShelf extends StatelessWidget {
           ),
           const SizedBox(height: Space.md),
           Text(
-            '번호, 표제어, 읽기, 품사, 뜻과 교재 예문을 그대로 모아요. 확인이 필요한 칸만 빨간 펜으로 표시해 드려요.',
+            '사진 속 일본어 단어와 읽기·품사·뜻, 예문을 모아요. 확인이 필요한 칸만 빨간 펜으로 표시해 드려요.',
             style: context.text.bodyMedium?.copyWith(
               color: t.ink2,
               height: 1.55,

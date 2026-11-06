@@ -115,20 +115,19 @@ void main() {
     });
   });
 
-  test('template answers convert: every entry is a printed word', () {
-    final legacy = GroundTruth.fromJson({
+  test('answers that list no sentence words say so', () {
+    final t = ExtractTruth.fromJson({
+      'format': 'general-1',
       'pages': [
         {
-          'page': 10,
+          'page': '10',
           'fixture': 's010',
-          'day': 1,
-          'title': 't',
-          'entries': [
+          'kind': 'word-list',
+          'scores_sentences': false,
+          'vocab': [
             {
-              'no': '0001',
               'headword': '雨',
               'readings': ['あめ'],
-              'pos': '명',
               'meaning': '비',
             },
           ],
@@ -136,14 +135,13 @@ void main() {
       ],
     });
 
-    final t = ExtractTruth.fromLegacy(legacy);
-
     expect(t.pages.single.page, '10');
     expect(t.pages.single.fixture, 's010');
     expect(t.pages.single.vocab.single.headword, '雨');
     expect(t.pages.single.vocab.single.readings, ['あめ']);
     expect(t.pages.single.vocab.single.meaning, '비');
     expect(t.pages.single.sentenceWords, isEmpty);
+    expect(t.pages.single.scoresSentences, isFalse);
   });
 
   test('general-1 answers load, and a malformed file fails loudly', () {
@@ -192,7 +190,6 @@ void main() {
     expect(fromWord.meaning, '요리');
 
     const e = CapturedEntry(
-      no: '0001',
       headword: '雨',
       readings: ['あめ'],
       pos: PartOfSpeech.noun,

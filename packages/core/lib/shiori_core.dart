@@ -1,13 +1,11 @@
-/// Shiori core: models, ports (block slots), capture pipeline and study logic.
+/// Shiori core: models, ports (block slots), word capture and study logic.
 ///
 /// Pure Dart. The app plugs adapters into the ports; this package knows none of them.
 library;
 
 // Models
 export 'src/models/capture_draft.dart';
-export 'src/models/capture_route.dart';
 export 'src/models/captured_entry.dart';
-export 'src/models/column_scale.dart';
 export 'src/models/evidence.dart';
 export 'src/models/library.dart';
 export 'src/models/ocr.dart';
@@ -17,8 +15,6 @@ export 'src/models/review.dart';
 
 // Ports: the slots blocks plug into
 export 'src/ports/clock.dart';
-export 'src/ports/dictionary.dart';
-export 'src/ports/entry_corrector.dart';
 export 'src/ports/hidden_word_repository.dart';
 export 'src/ports/lexicon.dart';
 export 'src/ports/image_source.dart';
@@ -27,34 +23,17 @@ export 'src/ports/repositories.dart';
 export 'src/ports/review_scheduler.dart';
 export 'src/ports/speech.dart';
 export 'src/ports/text_recognizer.dart';
-export 'src/ports/textbook_template.dart';
 
-// Capture: OCR lines → review draft
-export 'src/capture/capture_pipeline.dart';
-export 'src/capture/capture_router.dart';
-export 'src/capture/correctors/badge_misread_corrector.dart';
-export 'src/capture/correctors/confusable_glyph_corrector.dart';
-export 'src/capture/correctors/cut_meaning_flagger.dart';
-export 'src/capture/correctors/dictionary_candidate_corrector.dart';
-export 'src/capture/correctors/dictionary_pair_corrector.dart';
-export 'src/capture/correctors/kana_okurigana_corrector.dart';
-export 'src/capture/correctors/korean_meaning_filler.dart';
-export 'src/capture/correctors/meaning_punctuation_corrector.dart';
-export 'src/capture/correctors/missing_field_flagger.dart';
-export 'src/capture/correctors/pos_inference_corrector.dart';
-export 'src/capture/correctors/reading_lookalike_corrector.dart';
+// Capture: the review screen's edits, recorded OCR
 export 'src/capture/evidence_edits.dart';
 export 'src/capture/fixture_text_recognizer.dart';
 export 'src/capture/learner_edits.dart';
-export 'src/capture/template_evidence.dart';
-export 'src/capture/vocab/entry_template.dart';
-export 'src/capture/vocab/list_template.dart';
-export 'src/capture/template_registry.dart';
 
 // Word extraction that does not depend on a page layout
 export 'src/extract/extracted_word.dart';
 export 'src/extract/fragment.dart';
 export 'src/extract/general_extractor.dart';
+export 'src/extract/page_draft.dart';
 
 // Library and study use cases
 export 'src/library/library_service.dart';

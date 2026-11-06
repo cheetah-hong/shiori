@@ -6,11 +6,9 @@ import 'package:shiori/app/data.dart';
 import 'package:shiori/app/theme.dart';
 import 'package:shiori/features/capture/ocr_export.dart';
 import 'package:shiori/features/capture/entry_editor_sheet.dart';
-import 'package:shiori/features/capture/entry_tile.dart';
 import 'package:shiori/features/capture/evidence_tile.dart';
 import 'package:shiori/features/capture/evidence_view.dart';
 import 'package:shiori/features/capture/fragment_tray.dart';
-import 'package:shiori/shared/format.dart';
 import 'package:shiori/shared/widgets.dart';
 import 'package:shiori_core/shiori_core.dart';
 
@@ -24,6 +22,9 @@ final class ExistingTextbook extends SaveTarget {
 
   final Textbook textbook;
 }
+
+/// The name a new textbook starts with.
+const String defaultTextbookTitle = '내 단어장';
 
 final class NewTextbook extends SaveTarget {
   const NewTextbook(this.title);
@@ -61,12 +62,6 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   SaveTarget? _target;
   bool _onlyFlagged = false;
   bool _saving = false;
-
-  TextbookTemplate? get _template =>
-      ref.read(templateRegistryProvider).byId(_draft.templateId);
-
-  String get _templateLabel =>
-      _draft.isGeneral ? '범용 추출' : _template?.label ?? _draft.templateId;
 
   EvidencePage get _page =>
       EvidencePage(photo: widget.photo, scan: widget.scan);
@@ -118,17 +113,12 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
 
   SaveTarget _defaultTarget(List<ShelfItem> shelf) => shelf.isNotEmpty
       ? ExistingTextbook(shelf.last.textbook)
-      : NewTextbook(_template?.suggestedTextbookTitle ?? '내 단어장');
+      : const NewTextbook(defaultTextbookTitle);
 
   Future<void> _edit(int index) async {
     final edited = await showEntryEditor(context, _draft.entries[index]);
     if (edited != null && mounted) _replace(index, edited);
   }
-
-  /// A dictionary candidate fills the empty headword; the cell shows as fixed
-  /// by the learner (not counted as an automatic fix).
-  void _pick(int index, String headword) =>
-      _replace(index, pickHeadword(_draft.entries[index], headword));
 
   void _toggle(int index, bool included) =>
       _replace(index, _draft.entries[index].copyWith(included: included));
@@ -139,18 +129,6 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     if (_draft.needsReviewCount == 0) _onlyFlagged = false;
   });
 
-  Future<void> _editMeta() async {
-    final meta = await showModalBottomSheet<PageMeta>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (_) => _MetaEditor(meta: _draft.meta),
-    );
-    if (meta != null && mounted) {
-      setState(() => _draft = _draft.copyWith(meta: meta));
-    }
-  }
-
   Future<void> _chooseTarget(List<ShelfItem> shelf) async {
     final target = await showModalBottomSheet<SaveTarget>(
       context: context,
@@ -158,7 +136,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       useSafeArea: true,
       builder: (_) => _TargetPicker(
         shelf: shelf,
-        suggestedTitle: _template?.suggestedTextbookTitle ?? '내 단어장',
+        suggestedTitle: defaultTextbookTitle,
       ),
     );
     if (target != null && mounted) setState(() => _target = target);
@@ -172,10 +150,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       final library = ref.read(libraryServiceProvider);
       final textbookId = switch (target) {
         ExistingTextbook(:final textbook) => textbook.id,
-        NewTextbook(:final title) => (await library.createTextbook(
-          title,
-          templateId: _draft.templateId,
-        )).id,
+        NewTextbook(:final title) => (await library.createTextbook(title)).id,
       };
       final result = await library.saveDraft(_draft, textbookId: textbookId);
       if (!mounted) return;
@@ -184,9 +159,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            result.updated == 0
-                ? '단어 ${result.saved}개를 저장했어요'
-                : '단어 ${result.added}개를 더하고 ${result.updated}개를 고쳤어요',
+            '단어 ${result.saved}개를 저장했어요',
           ),
         ),
       );
@@ -236,7 +209,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('검토'),
-        actions: [OcrExportButton(scan: widget.scan, route: _draft.route)],
+        actions: [OcrExportButton(scan: widget.scan)],
       ),
       body: CustomScrollView(
         slivers: [
@@ -250,10 +223,8 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
             sliver: SliverToBoxAdapter(
               child: _Summary(
                 draft: _draft,
-                templateLabel: _templateLabel,
                 sourceLabel: widget.sourceLabel,
                 target: target,
-                onEditMeta: _editMeta,
                 onChooseTarget: () => _chooseTarget(shelf),
                 onApproveHigh:
                     _draft.entries.any((e) => e.evidence != null) &&
@@ -297,26 +268,15 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
               separatorBuilder: (_, _) => const SizedBox(height: Space.sm),
               itemBuilder: (_, k) {
                 final i = visible[k];
-                if (entries[i].evidence != null && _draft.isGeneral) {
-                  return EvidenceEntryTile(
-                    key: ValueKey('general-$i'),
-                    index: i,
-                    entry: entries[i],
-                    onEdit: () => _edit(i),
-                    onToggle: (v) => _toggle(i, v),
-                    onShowEvidence: (field) => _showEvidence(i, field),
-                    onPickCandidate: (field, value) =>
-                        _pickCandidate(i, field, value),
-                  );
-                }
-                return EntryTile(
-                  key: ValueKey('entry-${entries[i].no}-$i'),
+                return EvidenceEntryTile(
+                  key: ValueKey('word-$i'),
                   index: i,
-                  onShowEvidence: (field) => _showEvidence(i, field),
                   entry: entries[i],
-                  onTap: () => _edit(i),
+                  onEdit: () => _edit(i),
                   onToggle: (v) => _toggle(i, v),
-                  onPickCandidate: (c) => _pick(i, c),
+                  onShowEvidence: (field) => _showEvidence(i, field),
+                  onPickCandidate: (field, value) =>
+                      _pickCandidate(i, field, value),
                 );
               },
             ),
@@ -397,22 +357,18 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
 class _Summary extends StatelessWidget {
   const _Summary({
     required this.draft,
-    required this.templateLabel,
     required this.sourceLabel,
     required this.target,
-    required this.onEditMeta,
     required this.onChooseTarget,
     this.onApproveHigh,
   });
 
   final CaptureDraft draft;
-  final String templateLabel;
   final String? sourceLabel;
   final SaveTarget target;
-  final VoidCallback onEditMeta;
   final VoidCallback onChooseTarget;
 
-  /// "높음 전체 승인"; null hides the button (switched off, or a template page).
+  /// "높음 전체 승인"; null hides the button (switched off, or no evidence).
   final VoidCallback? onApproveHigh;
 
   @override
@@ -432,52 +388,25 @@ class _Summary extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          InkWell(
-            onTap: onEditMeta,
-            borderRadius: BorderRadius.circular(Radii.tile),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    pageMetaLabel(draft.meta),
-                    style: context.text.titleLarge,
-                  ),
-                ),
-                Icon(Icons.edit_outlined, size: 18, color: t.ink3),
-              ],
-            ),
+          Text(
+            '단어 ${draft.entries.length}개',
+            key: const ValueKey('review-heading'),
+            style: context.text.titleLarge,
           ),
           const SizedBox(height: Space.xs),
           Text(
             [
-              templateLabel,
               ?sourceLabel,
               if (ms > 0) '판독 ${(ms / 1000).toStringAsFixed(1)}초',
             ].join(' · '),
+            key: const ValueKey('review-source'),
             style: context.text.bodySmall,
           ),
-          if (draft.columnScale?.isDefault ?? false) ...[
-            const SizedBox(height: Space.sm),
-            const _ColumnScaleNotice(),
-          ],
-          if (draft.isGeneral) ...[
-            const SizedBox(height: Space.sm),
-            Text(
-              draft.route!.summary,
-              key: const ValueKey('route-summary'),
-              style: context.text.bodySmall?.copyWith(color: t.ink2),
-            ),
-          ],
           const SizedBox(height: Space.md),
           Wrap(
             spacing: Space.sm,
             runSpacing: Space.xs,
             children: [
-              Pill(
-                '단어 ${draft.entries.length}',
-                background: t.paper2,
-                foreground: t.ink,
-              ),
               if (draft.entries.any((e) => e.evidence != null))
                 Pill(
                   '높음 ${draft.entries.where((e) => e.evidence?.isHigh ?? false).length}',
@@ -544,121 +473,6 @@ class _Summary extends StatelessWidget {
                 Icon(Icons.unfold_more, color: t.ink3),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// The page's columns were read at the default frame (not measured), so cells
-/// may have landed in the wrong column.
-class _ColumnScaleNotice extends StatelessWidget {
-  const _ColumnScaleNotice();
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-    return Row(
-      key: const ValueKey('column-scale-notice'),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(Icons.info_outline, size: 16, color: t.warn),
-        const SizedBox(width: Space.xs),
-        Expanded(
-          child: Text(
-            '칸 위치를 재지 못해 기본값으로 읽었어요. 칸이 어긋났을 수 있어요.',
-            style: context.text.bodySmall?.copyWith(color: t.warn),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _MetaEditor extends StatefulWidget {
-  const _MetaEditor({required this.meta});
-
-  final PageMeta meta;
-
-  @override
-  State<_MetaEditor> createState() => _MetaEditorState();
-}
-
-class _MetaEditorState extends State<_MetaEditor> {
-  late final _day = TextEditingController(
-    text: widget.meta.day?.toString() ?? '',
-  );
-  late final _title = TextEditingController(text: widget.meta.title ?? '');
-  late final _page = TextEditingController(
-    text: widget.meta.page?.toString() ?? '',
-  );
-
-  @override
-  void dispose() {
-    _day.dispose();
-    _title.dispose();
-    _page.dispose();
-    super.dispose();
-  }
-
-  PageMeta _result() {
-    final title = _title.text.trim();
-    return PageMeta(
-      day: _positive(_day.text),
-      title: title.isEmpty ? null : title,
-      page: _positive(_page.text),
-    );
-  }
-
-  static int? _positive(String text) {
-    final n = int.tryParse(text.trim());
-    return n != null && n > 0 ? n : null;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        Space.gutter,
-        0,
-        Space.gutter,
-        Space.xl + MediaQuery.viewInsetsOf(context).bottom,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text('쪽 정보', style: context.text.titleLarge),
-          const SizedBox(height: Space.lg),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _day,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'DAY'),
-                ),
-              ),
-              const SizedBox(width: Space.md),
-              Expanded(
-                child: TextField(
-                  controller: _page,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: '쪽'),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: Space.md),
-          TextField(
-            controller: _title,
-            decoration: const InputDecoration(labelText: 'DAY 제목'),
-          ),
-          const SizedBox(height: Space.xl),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(_result()),
-            child: const Text('적용'),
           ),
         ],
       ),

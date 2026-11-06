@@ -209,8 +209,8 @@ final class ExtractedWord {
     ),
   );
 
-  /// The review-draft entry the capture screens use. No word number (the
-  /// extractor does not know one); fields the photo did not give are flagged
+  /// The review-draft entry the capture screens use. Fields the photo did
+  /// not give are flagged
   /// missing, and a meaning paired below [PairConfidence.high] is flagged for
   /// review. [fragments] (the extraction's) give the photo boxes behind each
   /// cell.
@@ -227,7 +227,6 @@ final class ExtractedWord {
     ];
     final fromDictionary = meaningSource == FieldSource.dictionary;
     return CapturedEntry(
-      no: null,
       headword: headword,
       readings: readings,
       pos: partOfSpeechOf(partsOfSpeech),

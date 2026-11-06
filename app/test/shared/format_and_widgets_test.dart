@@ -4,7 +4,6 @@ import 'package:shiori/app/theme.dart';
 import 'package:shiori/features/capture/entry_editor_sheet.dart';
 import 'package:shiori/shared/format.dart';
 import 'package:shiori/shared/widgets.dart';
-import 'package:shiori_core/shiori_core.dart';
 
 void main() {
   group('format', () {
@@ -15,17 +14,11 @@ void main() {
       expect(intervalLabel(const Duration(days: 21)), '21일 후');
     });
 
-    test('dates, elapsed time and page labels', () {
+    test('dates, elapsed time and readings', () {
       expect(dateHeading(DateTime(2026, 11, 5)), '11월 5일 목요일');
       expect(elapsedLabel(const Duration(seconds: 42)), '42초');
       expect(elapsedLabel(const Duration(seconds: -5)), '0초');
       expect(elapsedLabel(const Duration(minutes: 2, seconds: 17)), '2분 17초');
-      expect(
-        pageMetaLabel(const PageMeta(day: 1, title: '자연, 몸', page: 10)),
-        'DAY 01 자연, 몸 · 10쪽',
-      );
-      expect(pageMetaLabel(const PageMeta(page: 10)), '10쪽');
-      expect(pageMetaLabel(PageMeta.empty), '쪽 정보 없음');
       expect(readingsLabel(const ['あした', 'あす']), 'あした / あす');
       expect(readingsLabel(const []), '–');
     });

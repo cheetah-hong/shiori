@@ -11,18 +11,21 @@
 nihongo-app/
 ├── packages/core/          순수 Dart (Flutter 의존 없음)
 │   ├── lib/src/models/     OcrScan, CapturedEntry, CaptureDraft, Textbook·TextbookDay·Word, ReviewCard·ReviewLog
-│   ├── lib/src/ports/      포트 11개 (아래 블록 지도)
-│   ├── lib/src/capture/    캡처 파이프라인: 줄 정리(ML Kit 낮은 신뢰도 줄, 기호 잡음), 교재 템플릿 A(목록형)·B(항목형), 보정기 체인, 템플릿 자동 판별
+│   ├── lib/src/ports/      포트 10개 (아래 블록 지도)
+│   ├── lib/src/extract/    단어 추출기(배치에 기대지 않음, docs/extraction.md)와 검토 초안 만들기(page_draft.dart)
+│   ├── lib/src/capture/    검토 화면의 편집(후보 고르기, 조각 붙이기, 고치기), 녹화 판독 블록, 문자 분류
 │   ├── lib/src/study/      라이트너 4단계 스케줄러, 세션 빌더, 세션, 학습 일 경계, StudyService
 │   ├── lib/src/library/    LibraryService (검토 초안 저장, 교재 › DAY 보기)
 │   ├── lib/src/storage/    InMemory 저장소 (테스트용 블록, 트랜잭션 포함)
 │   ├── lib/src/eval/       채점기 (lib/eval.dart로만 공개, 앱은 쓰지 않음)
-│   ├── test/               단위·회귀 테스트, fixtures/synthetic/ (합성 페이지 판독 기록·정답), fixtures/synthetic_mlkit/ (같은 단어의 ML Kit형 판독)
-│   └── tool/eval_capture.dart   점수표 출력
-├── packages/storage_drift/ 순수 Dart, SQLite 저장 블록 (drift): 테이블, 저장소 두 개, 스키마 덤프 drift_schemas/ (v1·v2), 마이그레이션 단계
-├── packages/dict_jmdict/   순수 Dart, JMdict SQLite 조회 (core를 모름). 테스트 DB test/fixtures/mini_jmdict.sql
-├── packages/jmdict_block/  순수 Dart, 사전 블록: dict_jmdict를 core `Dictionary` 포트에 맞춘 어댑터.
-│                           tool/eval_capture_dict.dart (사전 끔/켬 점수표)
+│   ├── test/               단위·회귀 테스트, fixtures/synthetic/ (합성 단어장 쪽 판독 기록·정답), fixtures/synthetic_mlkit/ (같은 단어의 ML Kit형 판독),
+│   │                       fixtures/synthetic_general/ (배치가 다른 합성 쪽)
+│   └── tool/eval_extract.dart   점수표 출력 (표제어 기준)
+├── packages/storage_drift/ 순수 Dart, SQLite 저장 블록 (drift): 테이블, 저장소 두 개, 스키마 덤프 drift_schemas/ (v1~v3), 마이그레이션 단계
+├── packages/dict_jmdict/   순수 Dart, JMdict SQLite 조회(표기 여러 개를 한 번에, core를 모름). 테스트 DB test/fixtures/mini_jmdict.sql
+├── packages/jmdict_block/  순수 Dart, 사전 블록: dict_jmdict를 core `Lexicon` 포트에 맞춘 어댑터.
+│                           tool/eval_extract_dict.dart (실제 JMdict·한국어 뜻 사전 점수표)
+├── packages/krdict_block/  순수 Dart, 한국어 뜻 사전 블록 (한국어기초사전 역색인 SQLite)
 ├── app/                    Flutter (iOS·Android)
 │   ├── lib/app/blocks.dart 블록 지도: 끼우는 자리를 모두 이 파일 하나에
 │   ├── lib/app/theme.dart  디자인 토큰 (기획 페이지 팔레트)
@@ -35,8 +38,8 @@ nihongo-app/
 │   ├── assets/dev_samples/ 합성 샘플 페이지의 판독 기록 (개발용, 배포 빌드에서 막음, 5절)
 │   ├── assets/dict/        JMdict full-lean gzip + 판 표시 파일 (빌드해서 만듦, git 제외, 5절)
 │   └── integration_test/   시뮬레이터 흐름 스크린샷, 실제 OCR 채널 탐침
-├── tools/reference/        Python 기준 구현 (parse_eval.py), 판독 도구, 기준 출력 덤프 도구
-├── tools/synthetic/        합성 페이지 생성기 (make_pages.py)
+├── tools/ocr/              사진 → Apple Vision 두 패스 판독 기록 (make_fixture.py, vision_ocr.swift)
+├── tools/synthetic/        합성 페이지 생성기 (make_pages.py 단어장 쪽, make_general_pages.py 배치가 다른 쪽)
 ├── tools/dict/             JMdict → SQLite (build_jmdict_db.py), 앱 asset (build_app_asset.py), 효과 측정
 └── docs/                   이 문서, verification.md, dictionary.md, screenshots/
 ```
@@ -47,13 +50,13 @@ nihongo-app/
    (pubspec 의존성은 NFKC 정규화용 `unorm_dart` 하나).
    사전은 `app → jmdict_block → (core, dict_jmdict)`입니다. core와 `dict_jmdict`는 서로를 모르고,
    어댑터 패키지가 Flutter 없이 둘을 잇습니다(사전을 켠 점수 측정을 `dart run`으로 돌리기 위해).
-2. 화면(`features/`)은 포트와 `core`의 유스케이스(`CapturePipeline`, `LibraryService`, `StudyService`)만 부릅니다.
+2. 화면(`features/`)은 포트와 `core`의 유스케이스(`GeneralExtractor`·`pageDraft`, `LibraryService`, `StudyService`)만 부릅니다.
    구체 블록 클래스는 `blocks.dart`만 압니다.
 3. 포트 수준의 실패는 `core`의 예외로 올라옵니다(`TextRecognitionException`, `ImageSourceException`, `LibraryException`).
    화면은 이것들을 잡아 한국어 문구를 보여 주고, 그 밖의 예외는 로그·보고 뒤 "다시 시도" 상태로 바꿉니다(화면이 멈추지 않게).
    OCR 블록이 돌려준 JSON이 형식에 맞지 않으면 `FormatException`으로 바로 실패합니다(좌표를 0으로 채우지 않음).
 4. 모델은 불변입니다. 검토 수정, 세션 진행은 모두 새 객체를 돌려줍니다(`CapturedEntry.edit`, `StudySession.afterKnown`).
-5. 콘텐츠(`Word`)와 학습 상태(`ReviewCard`)는 다른 저장소입니다. 단어를 다시 찍어 갱신해도 학습 기록은 그대로 남습니다.
+5. 콘텐츠(`Word`)와 학습 상태(`ReviewCard`)는 다른 저장소입니다. 단어를 다시 저장해도 학습 기록은 그대로 남습니다.
 
 ## 2. 블록 지도
 
@@ -61,11 +64,8 @@ nihongo-app/
 |---|---|---|---|
 | `TextRecognizer` | iOS `OcrChannel.swift` (Apple Vision, ja·ko 두 번, 글 방향으로 회전 판별), Android `OcrChannel.kt` (ML Kit japanese → korean, 조각 단위, 줄 각도로 회전 판별) → `PlatformTextRecognizer` | `textRecognizerProvider` | Cloud Vision, Claude |
 | `TextRecognizer` (샘플) | `FixtureTextRecognizer` + `assets/dev_samples/` (합성 페이지). dev flavor에서만 켜짐(5.1절) | `sampleRecognizerProvider` (켜짐: `devSamplesEnabledProvider`) | (개발용 전용) |
-| `TextbookTemplate` | `ListPageTemplate`(A 목록형), `EntryPageTemplate`(B 항목형) + `TemplateRegistry` 자동 판별 | `templateRegistryProvider` | 다른 교재 템플릿 |
-| `EntryCorrector` (체인) | `ConfusableGlyphCorrector` → `KanaOkuriganaCorrector` → `ReadingLookalikeCorrector` → `BadgeMisreadCorrector` → `MeaningPunctuationCorrector` → `PosInferenceCorrector` → `CutMeaningFlagger` → `DictionaryCandidateCorrector`(표제어 빈 줄에 후보, 품사 힌트) → `DictionaryPairCorrector`(표제어·읽기 짝 확인: 규칙이 망친 단어 되돌리기, 헷갈리는 글자 고치기, "사전에 없음") → `MissingFieldFlagger` (`standardCorrectors()`) | `entryCorrectorsProvider` | |
-| `Dictionary` (`byReading(pos:)`, `byHeadword`, `checkPair` → `PairStatus`, `fixHeadword`) | `JmdictDictionaryAdapter` (`packages/jmdict_block`, JMdict full-lean SQLite, CC BY-SA 4.0). 사전 asset이 없거나 열지 못하면 `EmptyDictionary` | `dictionaryProvider` (열기: `bundledDictionaryProvider`) | 데이터 정기 갱신 자동화 |
-| `Lexicon` (`lookup(forms)`: 표기 여러 개 → 읽기·품사·빈도, 범용 단어 추출용) | `JmdictLexiconAdapter` (`packages/jmdict_block`), 테스트·합성 세트는 `InMemoryLexicon`. 쪽마다 `CaptureRouter`가 가로줄 틀이 확실히 맞으면 틀, 아니면 범용 추출기(+한국어 뜻 사전)로 읽음 (`docs/extraction.md` 9절) | `lexiconProvider` → `generalExtractorProvider` → `captureRouterProvider` | 범용이 단어장에서도 틀을 따라잡으면 틀 걷어내기 |
-| `KoreanGlossary` (`lookup(headword, readings:)` → 뜻 묶음 `KoreanSense`, `sources` 출처·판) | `KrdictGlossary` (`packages/krdict_block`, 한국어기초사전 일본어 대역어 역색인 SQLite, CC BY-SA 2.0 KR, `app/assets/dict/ko-glossary.*`, docs/dictionary.md 11절). 체인의 `KoreanMeaningFiller`가 `DictionaryPairCorrector` 뒤·`MissingFieldFlagger` 앞에서 빈 뜻 칸만 1순위 뜻으로 채움("추정"). asset이 없으면 `EmptyKoreanGlossary`, 체인에 채우기 없음 | `koreanGlossaryProvider` (열기: `bundledGlossaryProvider`) | 위키낱말사전(같은 DB), 뜻 묶음 후보 칩, 기기 번역 |
+| `Lexicon` (`lookup(forms)`: 표기 여러 개 → 읽기·품사·빈도) | `JmdictLexiconAdapter` (`packages/jmdict_block`, JMdict full-lean SQLite, CC BY-SA 4.0), 테스트·합성 세트는 `InMemoryLexicon`. 사전 asset이 없거나 열지 못하면 `EmptyLexicon`. 모든 쪽을 단어 추출기(+한국어 뜻 사전)로 읽음(`docs/extraction.md`; 가로줄 틀 경로는 2026-11-06에 걷어냄, 같은 문서 9절) | `lexiconProvider` (열기: `bundledDictionaryProvider`) → `generalExtractorProvider` | 데이터 정기 갱신 자동화 |
+| `KoreanGlossary` (`lookup(headword, readings:)` → 뜻 묶음 `KoreanSense`, `sources` 출처·판; 거꾸로 찾기 `KoreanReverseGlossary`) | `KrdictGlossary` (`packages/krdict_block`, 한국어기초사전 일본어 대역어 역색인 SQLite, CC BY-SA 2.0 KR, `app/assets/dict/ko-glossary.*`, docs/dictionary.md 11절). 추출기가 짝짓기 근거, 사진에 뜻이 없는 사전 낱말의 1순위 뜻("추정"), 못 읽은 표제어 되살리기에 씀. asset이 없으면 `EmptyKoreanGlossary` | `koreanGlossaryProvider` (열기: `bundledGlossaryProvider`) | 위키낱말사전(같은 DB), 기기 번역 |
 | `ImageSource` | `ImagePickerSource` (카메라·앨범, 판독 뒤 임시 파일 `discard`) | `imageSourceProvider` | 문서 스캐너(cunning_document_scanner), 굽은 페이지 펴기 |
 | `LibraryRepository` | `DriftLibraryRepository` (SQLite, `packages/storage_drift`). 테스트: `InMemoryLibraryRepository`. 홈 교재 목록은 `textbookStats()`(교재별 단어 수·DAY를 한 번에) | `libraryRepositoryProvider` (DB: `appDatabaseProvider`) | 백업·동기화 |
 | `HiddenWordRepository` (「이미 알아요」 숨기기·되살리기, `hiddenWords()`) | 서재 블록이 함께 구현(`DriftLibraryRepository`는 `words.hidden_at`, 스키마 v3). `words()`는 숨긴 단어도 돌려주고 `Word.isHidden`으로 구분, 학습 세션·오늘 학습 수에서 빠짐 (verification.md 16절) | (없음: `StudyService`·`LibraryService`가 서재 블록에서 꺼냄) | 백업·동기화 |
@@ -76,7 +76,7 @@ nihongo-app/
 | 설정값 | `StudySettings` (간격, 하루 시작 04시, 세션 10장) | `studySettingsProvider` | 설정 화면 |
 | `CrashReporter` / `CrashLog` (앱, `lib/app/crash_reporting.dart`) | `FileCrashLog` (앱 지원 폴더의 텍스트 파일, 64KiB, 전송 없음). `main.dart`의 `installCrashHandlers`가 전역 오류 처리기에 연결 | `crashLogProvider` | 충돌 보고 서비스(5.3절) |
 
-조립만 하는 provider(교체 대상 아님): `capturePipelineProvider`, `libraryServiceProvider`, `studyServiceProvider`.
+조립만 하는 provider(교체 대상 아님): `generalExtractorProvider`, `libraryServiceProvider`, `studyServiceProvider`.
 
 ## 3. 블록 교체 예시 (한 줄)
 
@@ -86,7 +86,7 @@ runApp(ProviderScope(
   overrides: [
     textRecognizerProvider.overrideWithValue(CloudVisionRecognizer()),   // OCR 바꾸기
     // reviewSchedulerProvider.overrideWithValue(FsrsScheduler()),       // 복습 방식 바꾸기
-    // dictionaryProvider.overrideWithValue(EmptyDictionary()),          // 사전 끄기 (기본: 번들 JMdict)
+    // lexiconProvider.overrideWithValue(EmptyLexicon()),                // 사전 끄기 (기본: 번들 JMdict)
   ],
   child: const ShioriApp(),
 ));
@@ -94,29 +94,28 @@ runApp(ProviderScope(
 
 새 블록이 지켜야 할 것은 포트 인터페이스 하나입니다. 예를 들어 OCR 블록은
 `Future<OcrScan> recognize(PageImage)`만 구현하고, 일본어 우선·한국어 우선 두 판독을
-`OcrScan(japanese:, korean:)`에 담으면 템플릿·보정기·검토 화면은 그대로 동작합니다.
+`OcrScan(japanese:, korean:)`에 담으면 단어 추출기·검토 화면은 그대로 동작합니다.
 테스트에서도 같은 방식입니다(`app/test/app/blocks_test.dart`의 "swapping a block is one override").
 
 ## 4. 흐름
 
 ```
 사진(ImageSource) ─┐
-샘플(dev_samples) ─┴→ TextRecognizer ──OcrScan(ja, ko)──→ prepareScan (줄 정리: ML Kit 낮은 신뢰도 줄,
-                      (세운 좌표)                              기호 잡음 ★·☆·*·＊ 떼어 버리기)
+샘플(dev_samples) ─┴→ TextRecognizer ──OcrScan(ja, ko)──→ GeneralExtractor.extract (docs/extraction.md)
+                      (세운 좌표)                              조각 수집·분류 → 사전 일괄 조회 → 표제어 고치기
+                                                             → 읽기·뜻 짝짓기(내용 + 위치) → 문장 단어 → 되살리기 → 신뢰도
                                                              ▼
-                                         TemplateRegistry.detect (예문 줄 0 → A형, 3 이상 → B형, 그 사이는 번호 간격 > 0.08 → B형)
-                                                             │ 칸 위치 = 상수 × 쪽마다 잰 배율 (번호 → 읽기 칸 거리)
+                                         pageDraft → CaptureDraft (사진 속 순서, 칸별 출처·신뢰도·근거 조각, 짝 없는 조각, 건너뛴 단어)
                                                              ▼
-                                         TextbookTemplate.parse → 원본 항목 + PageMeta(DAY·제목·쪽)
-                                                             ▼
-                                         EntryCorrector 체인 (사전 포함) → CaptureDraft (칸별 상태: 정상·추정·자동 보정됨·사전에 없음·의심·확인 필요)
-                                                             ▼
-                                         검토 화면(수정·제외·교재 선택) → LibraryService.saveDraft
-                                                             ▼                    (단어 id = 교재id:번호, 다시 찍으면 갱신)
+                                         검토 화면(후보 고르기·조각 붙이기·고치기·제외·교재 선택) → LibraryService.saveDraft
+                                                             ▼                    (단어 id = 교재id:w저장시각-쪽안순번, 번호·DAY·쪽 없음)
                                          StudyService: 복습할 카드 먼저 + 새 단어로 채운 세션
                                                              ▼
                                          알고있음 / 다시 학습 → ReviewScheduler → ReviewRepository
 ```
+
+- 이미 라이브러리에 있는 표제어(모든 교재, 숨긴 단어 포함)는 건너뛰고 그 수를 검토 화면 요약에 보입니다.
+- 앞 버전이 저장한 단어(번호·DAY·쪽이 있는 것)는 그대로 읽히고 서재에서 DAY별로 묶여 보입니다. 새로 저장하는 단어에는 번호·DAY·쪽이 없습니다(2026-11-06, verification.md 20절).
 
 ### 학습 규칙
 
@@ -137,9 +136,9 @@ runApp(ProviderScope(
 ## 5. 배포 준비 (flavor, 차단 검사, 충돌 기록, 서명)
 
 교재 본문(판독 기록, 정답, 사진)은 저장소에 넣지 않습니다. 로컬 전용 폴더 `$SHIORI_PRIVATE_DIR/textbook/`
-(기본 `<저장소>/.private`)에 두고, 실제 교재 회귀 테스트와 기준 구현 대조 테스트는 그 자료가 있을 때만 돕니다(없으면 건너뜀).
-저장소의 테스트와 앱의 "샘플 페이지로 해 보기"는 **합성 페이지**를 씁니다. 지어낸 단어를 교재와 같은 배치로 놓고,
-해석 규칙이 다루는 OCR 실수를 일부러 넣었습니다(`tools/synthetic/make_pages.py`, 4쪽 35단어).
+(기본 `<저장소>/.private`)에 두고, 실제 교재 회귀 테스트는 그 자료가 있을 때만 돕니다(없으면 건너뜀).
+저장소의 테스트와 앱의 "샘플 페이지로 해 보기"는 **합성 페이지**를 씁니다. 지어낸 단어를 단어장 쪽에 놓고 OCR 실수를 일부러 넣은 4쪽 35단어
+(`tools/synthetic/make_pages.py`)와, 배치가 다른 쪽(`tools/synthetic/make_general_pages.py`)입니다.
 실제 OCR 탐침(`integration_test/vision_channel_probe_test.dart`)은 저장소 밖의 사진과 정답 경로를 `--dart-define`으로 받습니다.
 
 ### 5.1 flavor: dev와 prod
@@ -216,9 +215,9 @@ runApp(ProviderScope(
 |---|---|---|---|
 | 1 | ~~drift 저장소~~ (완료) | `LibraryRepository`, `ReviewRepository` | 앱을 꺼도 단어와 학습 상태가 남습니다. 포트에 트랜잭션 추가. 스키마 v2(★ 열 걷어냄)와 v1 → v2 마이그레이션(verification.md 7.2절). 남은 일: 백업(3단계) |
 | 2 | 기기 판독 고정 데이터 | 로컬 전용 회귀 세트 | 실제 iPhone·Android에서 같은 쪽을 판독해 `$SHIORI_PRIVATE_DIR/textbook/`의 회귀 세트에 추가 (verification.md 4절) |
-| 3 | 문서 스캐너 | `ImageSource` | 옆으로 누운 사진은 OCR 채널이 세웁니다(verification.md 6절). 해석기는 칸 위치를 내용에서 재므로 스캐너가 자른 페이지도 읽음. 남은 일: 펼친 책에서 페이지 찾기(모서리 고치기 화면) |
-| 4 | ~~JMdict~~ (완료) | `Dictionary` | 읽기로 표제어 후보, 짝 확인("사전에 없음"), 헷갈리는 글자 고치기, 정보 화면의 출처 표기. 남은 일: 데이터 정기 갱신 자동화(라이선스 의무, `docs/dictionary.md` 8·9절) |
+| 3 | 문서 스캐너 | `ImageSource` | 옆으로 누운 사진은 OCR 채널이 세웁니다(verification.md 6절). 추출기는 배치에 기대지 않으므로 스캐너가 자른 페이지도 읽음. 남은 일: 펼친 책에서 페이지 찾기(모서리 고치기 화면) |
+| 4 | ~~JMdict~~ (완료) | `Lexicon` | 표기·읽기·품사·빈도, 정보 화면의 출처 표기. 남은 일: 데이터 정기 갱신 자동화(라이선스 의무, `docs/dictionary.md` 8·9절) |
 | 5 | flutter_tts | `Speech` | 블록만 바꾸면 카드에 발음 버튼이 나타남 |
 | 6 | FSRS | `ReviewScheduler` | 복습 기록이 쌓인 뒤 |
-| 7 | Claude (선택) | `TextRecognizer` 또는 `EntryCorrector` | 비용 문제로 나중. 서버 함수 필요 |
+| 7 | Claude (선택) | `TextRecognizer` | 비용 문제로 나중. 서버 함수 필요 |
 | - | 홈 화면 위젯, 백업 | 새 포트 | 3단계 |

@@ -1,9 +1,8 @@
 /// Block slot: dictionary facts the word extractor needs (forms, readings,
 /// parts of speech, frequency), many forms per call.
 ///
-/// Separate from `Dictionary` (which serves the textbook templates) so either
-/// can grow without touching the other. The app plugs in JMdict through the
-/// `jmdict_block` adapter; core knows no dictionary data.
+/// The app plugs in JMdict through the `jmdict_block` adapter; core knows no
+/// dictionary data.
 library;
 
 /// JMdict priority tags as bits, the layout of the `pri` columns:

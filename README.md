@@ -1,17 +1,18 @@
 # 시오리 (가칭)
 
-교재 사진을 찍으면 단어장이 되는 일본어 단어 학습 앱. 첫 버전은 JLPT 단어장(N5–N3)에 흔한 두 가지 쪽 형식(단어 목록형, 예문이 있는 항목형)을 지원합니다.
+교재 사진을 찍으면 단어장이 되는 일본어 단어 학습 앱. 쪽의 배치에 기대지 않고 사진 속 일본어 단어·읽기·한국어 뜻을 내용으로 짝지어 모읍니다([docs/extraction.md](docs/extraction.md)).
 
-- `packages/core/` 순수 Dart: 모델, 포트, 캡처 파이프라인, 학습 로직
+- `packages/core/` 순수 Dart: 모델, 포트, 단어 추출기, 학습 로직
 - `packages/dict_jmdict/` JMdict(SQLite) 조회
-- `packages/jmdict_block/` 사전 블록: `dict_jmdict`를 core `Dictionary` 포트에 맞춘 어댑터(순수 Dart)
+- `packages/jmdict_block/` 사전 블록: `dict_jmdict`를 core `Lexicon` 포트에 맞춘 어댑터(순수 Dart)
+- `packages/krdict_block/` 한국어 뜻 사전 블록(한국어기초사전 일본어 대역어 역색인)
 - `packages/storage_drift/` 저장 블록(SQLite, drift): 교재·DAY·단어와 복습 카드·기록을 기기에 저장
 - `app/` Flutter (iOS·Android): 화면, 기기 어댑터, 블록 지도(`app/lib/app/blocks.dart`)
-- `research/` OCR·스캔 실험 기록, `tools/` 기준 구현·합성 페이지·사전 빌드 도구
+- `research/` OCR·스캔 실험 기록, `tools/` 합성 페이지·판독 기록·사전 빌드 도구
 - 구조: [docs/architecture.md](docs/architecture.md) · 검증: [docs/verification.md](docs/verification.md) · 사전: [docs/dictionary.md](docs/dictionary.md)
 
 ```bash
-cd packages/core && dart test && dart run tool/eval_capture.dart   # 합성 세트 점수표
+cd packages/core && dart test && dart run tool/eval_extract.dart   # 합성 세트 점수표
 python3 tools/dict/build_app_asset.py                               # 사전 asset(app/assets/dict/, git 제외). 없으면 앱은 사전 없이 동작
 cd app && flutter test && flutter run                               # 합성 샘플 페이지로 흐름 확인 (dev flavor)
 ```

@@ -1,9 +1,7 @@
 // V10: "판독 기록 내보내기" on the review screen of a build that is not a
 // release build. It hands both OCR passes in the recorded-fixture format
-// (`<name>.ja.json`, `<name>.ko.json`) and the route decision to the share
-// sheet, never the photo; a release build has no such button.
-import 'dart:convert';
-
+// (`<name>.ja.json`, `<name>.ko.json`) to the share sheet, never the photo;
+// a release build has no such button.
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shiori/features/capture/ocr_export.dart';
@@ -14,10 +12,7 @@ import '../support/harness.dart';
 
 Future<({CaptureDraft draft, OcrScan scan})> _page() async {
   final scan = await fixtureFileRecognizer.recognize(const PageImage('g01'));
-  final draft = await CaptureRouter(
-    template: CapturePipeline.standard(),
-    general: GeneralExtractor(),
-  ).fromScan(scan);
+  final draft = await pageDraft(GeneralExtractor(), scan);
   return (draft: draft, scan: scan);
 }
 
@@ -34,10 +29,8 @@ void _sameLines(OcrPage a, OcrPage b) {
 }
 
 void main() {
-  testWidgets('not a release build: the button hands both passes and the '
-      'route to the share sheet, and they read back as the same lines', (
-    tester,
-  ) async {
+  testWidgets('not a release build: the button hands both passes to the '
+      'share sheet, and they read back as the same lines', (tester) async {
     usePhoneSize(tester);
     final page = (await tester.runAsync(_page))!;
     final shared = <ExportFile>[];
@@ -66,15 +59,11 @@ void main() {
     await tester.tap(button);
     await tester.pump();
 
-    expect(shared, hasLength(3));
+    expect(shared, hasLength(2));
     final byName = {for (final f in shared) f.name: f.text};
     final ja = byName.keys.singleWhere((n) => n.endsWith('.ja.json'));
     final name = ja.substring(0, ja.length - '.ja.json'.length);
-    expect(byName.keys.toSet(), {
-      '$name.ja.json',
-      '$name.ko.json',
-      '$name.route.json',
-    });
+    expect(byName.keys.toSet(), {'$name.ja.json', '$name.ko.json'});
 
     final again = (await tester.runAsync(
       () => FixtureTextRecognizer(
@@ -86,13 +75,6 @@ void main() {
     expect(again.japanese.engine, page.scan.japanese.engine);
     expect(again.korean.languages, page.scan.korean.languages);
 
-    final route = (jsonDecode(byName['$name.route.json']!) as Map)
-        .cast<String, Object?>();
-    expect(route['route'], page.draft.route!.route.name);
-    expect(route['reasons'], [
-      for (final r in page.draft.route!.reasons) r.name,
-    ]);
-    expect(route['fit'], isA<Map<String, Object?>>());
     // The photo never leaves the phone this way.
     for (final f in shared) {
       expect(f.name, endsWith('.json'));

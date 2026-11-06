@@ -17,11 +17,11 @@ const testEdition = DictionaryEdition(
   builtOn: '2026-11-05',
 );
 
-/// The fixture as an in-memory dictionary block.
-JmdictDictionaryAdapter openMiniJmdict() {
+/// The fixture as an in-memory dictionary.
+JmdictDictionary openMiniJmdict() {
   final db = sqlite3.openInMemory()
     ..execute(File(miniJmdictSql).readAsStringSync());
-  return JmdictDictionaryAdapter(JmdictDictionary.fromDatabase(db));
+  return JmdictDictionary.fromDatabase(db);
 }
 
 /// The fixture as SQLite file bytes, like the unpacked asset.

@@ -65,7 +65,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(page11);
     await tester.pumpAndSettle();
-    await waitFor(tester, find.text('DAY 01 자연, 몸 · 11쪽'));
+    await waitFor(tester, find.byKey(const ValueKey('review-heading')));
     await tester.scrollUntilVisible(find.text('鼻'), 200);
     await tester.drag(find.byType(Scrollable).first, const Offset(0, -120));
     await tester.pumpAndSettle();

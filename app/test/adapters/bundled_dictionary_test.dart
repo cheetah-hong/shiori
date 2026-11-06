@@ -36,7 +36,7 @@ void main() {
   test('no asset: no dictionary, a log line, and no exception', () async {
     final d = await open(MemoryAssetBundle({}));
     expect(d.isAvailable, isFalse);
-    expect(d.dictionary, isA<EmptyDictionary>());
+    expect(d.lexicon, isA<EmptyLexicon>());
     expect(d.info, isNull);
     expect(d.problem, isNotNull);
     expect(logs, isNotEmpty);
@@ -48,7 +48,7 @@ void main() {
     final d = await open(bundleWith(gz, editionJson(sha: 'v1')));
     addTearDown(d.close);
     expect(d.isAvailable, isTrue);
-    expect(await d.dictionary.checkPair('二', ['に']), PairStatus.known);
+    expect((await d.lexicon.lookup(['二'])).keys, ['二']);
     expect(d.edition?.sourceSha256, 'v1');
     expect(d.info?.attribution, contains('JMdict'));
     expect(unpacked().existsSync(), isTrue);
@@ -88,7 +88,7 @@ void main() {
   test('a broken gzip: no dictionary, no half-written file', () async {
     final d = await open(bundleWith(const [1, 2, 3], editionJson()));
     expect(d.isAvailable, isFalse);
-    expect(d.dictionary, isA<EmptyDictionary>());
+    expect(d.lexicon, isA<EmptyLexicon>());
     expect(logs, isNotEmpty);
     expect(marker().existsSync(), isFalse);
     expect(unpacked().existsSync(), isFalse);
@@ -120,7 +120,7 @@ void main() {
     final d = await open(bundleWith(gz, editionJson(sha: 'v1')));
     addTearDown(d.close);
     expect(d.isAvailable, isTrue);
-    expect(await d.dictionary.checkPair('二', ['に']), PairStatus.known);
+    expect((await d.lexicon.lookup(['二'])).keys, ['二']);
   });
 
   test(

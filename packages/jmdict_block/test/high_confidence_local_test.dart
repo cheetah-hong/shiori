@@ -1,7 +1,8 @@
-// C8 on recorded pages with the real dictionaries (local only): the routed
-// capture with JMdict and the Korean glossary. No high entry is wrong; each
-// set has at least as many high entries as measured when the rules were set;
-// the values stay as they were. Prints numbers only. Skipped without the
+// C8 on recorded pages with the real dictionaries (local only): the capture
+// as the app makes it, with JMdict and the Korean glossary. No high entry is
+// wrong; each set has at least as many high entries as its lower bound; the
+// values hold (D4-D6: the word-list pages, which went to the row template
+// before, as the word extractor reads them). Prints numbers only. Skipped without the
 // recorded pages ($SHIORI_PRIVATE_DIR/textbook) or the dictionary files
 // (SHIORI_JMDICT_DB and SHIORI_KO_GLOSSARY_DB, SQLite; else the app's gzip
 // assets next to the private folder).
@@ -43,15 +44,15 @@ final class _Set {
   final String dir;
   final String truth;
 
-  /// Lower bound of high entries (set from the measurement, G0).
+  /// Lower bound of high entries (set from the measurement).
   final int minHigh;
 
-  /// found, readings right, meanings right, extras: as before the rules.
+  /// found, readings right, meanings right, extras.
   final List<int> values;
 
   bool get exists => File(truth).existsSync() && Directory(dir).existsSync();
 
-  ExtractTruth get answers => ExtractTruth.fromAnyJson(
+  ExtractTruth get answers => ExtractTruth.fromJson(
     (jsonDecode(File(truth).readAsStringSync()) as Map).cast<String, Object?>(),
   );
 
@@ -62,28 +63,28 @@ final class _Set {
 
 final _sets = [
   _Set(
-    'recorded textbook pages (template)',
+    'recorded textbook pages',
     '$_textbook/vocab_n5n3',
     '$_textbook/vocab_n5n3/general/ground_truth.json',
-    40,
-    const [57, 57, 56, 1],
+    17,
+    const [59, 59, 58, 0],
   ),
   _Set(
-    'recorded textbook pages, ML Kit (template)',
+    'recorded textbook pages, ML Kit',
     '$_textbook/ocr-android/fixtures_segment',
     '$_textbook/vocab_n5n3/general/ground_truth.json',
-    36,
-    const [52, 52, 51, 4],
+    33,
+    const [58, 58, 57, 1],
   ),
   _Set(
-    'curled phone page (general)',
+    'curled phone page',
     '$_textbook/device-iphone13mini/fixtures',
     '$_textbook/device-iphone13mini/general/ground_truth.json',
     4,
     const [15, 15, 15, 0],
   ),
   _Set(
-    'other textbook (general)',
+    'other textbook',
     '$_textbook/other-books/fixtures',
     '$_textbook/other-books/ground_truth.json',
     6,
@@ -111,21 +112,15 @@ void main() {
 
   JmdictDictionary? jmdict;
   KrdictGlossary? glossary;
-  late CaptureRouter router;
+  late GeneralExtractor extractor;
 
   setUpAll(() {
     if (skip != null) return;
     jmdict = JmdictDictionary.open(jmdictPath!);
     glossary = KrdictGlossary.open(glossaryPath!);
-    router = CaptureRouter(
-      template: CapturePipeline.standard(
-        dictionary: JmdictDictionaryAdapter(jmdict!),
-        glossary: glossary,
-      ),
-      general: GeneralExtractor(
-        lexicon: JmdictLexiconAdapter(jmdict!),
-        koreanGlossary: glossary,
-      ),
+    extractor = GeneralExtractor(
+      lexicon: JmdictLexiconAdapter(jmdict!),
+      koreanGlossary: glossary,
     );
   });
   tearDownAll(() {
@@ -137,7 +132,8 @@ void main() {
   Future<ExtractScore> score(_Set set) async => ExtractScore([
     for (final page in set.answers.pages)
       scoreExtractPage(page, [
-        for (final e in (await router.fromScan(
+        for (final e in (await pageDraft(
+          extractor,
           await set.load(page.fixture),
         )).entries)
           ScoredWord.fromCaptured(e),
@@ -145,7 +141,7 @@ void main() {
   ]);
 
   test('C8 every recorded set: high but wrong 0, high entries at or above '
-      'the measured bound, values unchanged', () async {
+      'the lower bound, values hold', () async {
     for (final set in _sets) {
       final s = await score(set);
       // Printed for the score table (numbers only).

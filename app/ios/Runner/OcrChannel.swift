@@ -6,7 +6,7 @@ import Vision
 ///
 /// `recognize(path)` reads the photo Japanese-first and Korean-first and returns
 /// `{"ja": OcrPage, "ko": OcrPage, "turned": degrees, "timing": {...}}` as JSON.
-/// Each OcrPage has the shape the research probe (tools/reference/vision_ocr.swift) recorded:
+/// Each OcrPage has the shape the research probe (tools/ocr/vision_ocr.swift) recorded:
 /// lines with t, c, x, y, w, h, normalized, origin at the top-left of the upright image.
 ///
 /// - Upright: EXIF first; then the reading direction of the first Japanese pass votes. A photo

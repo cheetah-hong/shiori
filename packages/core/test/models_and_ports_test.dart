@@ -39,11 +39,6 @@ void main() {
         const TextbookDay(textbookId: 'a', number: 1, title: 'x').hashCode,
       );
       expect(
-        const PageMeta(day: 1).copyWith(page: 12),
-        const PageMeta(day: 1, page: 12),
-      );
-      expect(const PageMeta(day: 1).hashCode, const PageMeta(day: 1).hashCode);
-      expect(
         const PageImage('s010', label: '10쪽'),
         const PageImage('s010', label: '10쪽'),
       );
@@ -72,7 +67,6 @@ void main() {
 
     test('CapturedEntry and CaptureDraft', () {
       CapturedEntry e() => const CapturedEntry(
-        no: '0001',
         headword: '口',
         readings: ['くち'],
         pos: PartOfSpeech.noun,
@@ -82,11 +76,7 @@ void main() {
       expect(e(), e());
       expect(e().hashCode, e().hashCode);
       expect(e(), isNot(e().copyWith(readings: ['こう'])));
-      CaptureDraft d() => CaptureDraft(
-        templateId: 'vocab.list',
-        meta: const PageMeta(day: 1),
-        entries: [e()],
-      );
+      CaptureDraft d() => CaptureDraft(entries: [e()]);
       expect(d(), d());
       expect(d().hashCode, d().hashCode);
       expect(d(), isNot(d().replaceEntry(0, e().copyWith(included: false))));

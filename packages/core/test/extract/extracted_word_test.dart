@@ -43,7 +43,6 @@ void main() {
 
     final e = w.toCapturedEntry();
 
-    expect(e.no, isNull);
     expect(e.headword, '行く');
     expect(e.readings, ['いく']);
     expect(e.pos, PartOfSpeech.verb);

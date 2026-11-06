@@ -1,6 +1,6 @@
-// E7 (app side) and the general sample page: a page the row template does
-// not fit goes through the general extractor, and words already in the
-// library (every word the repository lists) are skipped and counted.
+// E7 (app side) and the general sample page: every page goes through the
+// word extractor, and words already in the library (every word the
+// repository lists) are skipped and counted.
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -66,9 +66,7 @@ void main() {
     }
   });
 
-  testWidgets('the general sample opens the review with the general route', (
-    tester,
-  ) async {
+  testWidgets('the general sample opens the review', (tester) async {
     usePhoneSize(tester);
     final blocks = TestBlocks();
     await tester.pumpWidget(app(blocks));
@@ -77,7 +75,8 @@ void main() {
     await _openGeneralSample(tester);
 
     expect(find.text('검토'), findsOneWidget);
-    expect(find.textContaining('범용 추출'), findsWidgets);
+    expect(find.byKey(const ValueKey('review-heading')), findsOneWidget);
+    expect(find.textContaining('범용 추출'), findsNothing);
     expect(find.textContaining('건너뜀'), findsNothing);
   });
 

@@ -1,8 +1,6 @@
-/// Small helpers that reproduce Python semantics the reference parser relies on.
-///
-/// The Dart port must give the same numbers as `parse_eval.py`, so sorting must be
-/// stable, `min` must return the first minimum, and `round(x, 2)` must round
-/// half to even on the exact binary value.
+/// Small helpers with Python's semantics: a stable sort, `min` that returns
+/// the first minimum, `round(x, 2)` that rounds half to even on the exact
+/// binary value.
 library;
 
 import 'package:shiori_core/src/capture/text/chars.dart';

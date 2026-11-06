@@ -1,19 +1,17 @@
 // Score table of the layout-free word extractor with the real JMdict, next
-// to the extractor without a dictionary and the textbook row templates.
+// to the extractor without a dictionary.
 //
 //   dart run tool/eval_extract_dict.dart --db FILE [--fixtures DIR] [--gt FILE]
-//       [--glosses FILE] [--glossary FILE] [--template] [--routed] [--verbose]
-//       [--no-warmup]
+//       [--glosses FILE] [--glossary FILE] [--verbose] [--no-warmup]
 //
 // --glossary: the Korean glossary SQLite file (tools/dict/build_ko_glossary.py;
 // the app's asset app/assets/dict/ko-glossary.sqlite.gz, unzipped), plugged
-// into the extractor as a pairing signal and for meanings the page lacks.
-// --routed also scores CaptureRouter (row template when it fits, general
-// extractor otherwise), as the app reads pages.
+// into the extractor as a pairing signal and for meanings the page lacks, as
+// the app reads pages.
 //
 // --db: a JMdict SQLite file (tools/dict/build_jmdict_db.py; the app's asset
 // app/assets/dict/jmdict-full-lean.sqlite.gz, unzipped). Not committed.
-// --fixtures, --gt, --glosses, --template, --verbose: as in
+// --fixtures, --gt, --glosses, --verbose: as in
 // packages/core/tool/eval_extract.dart (default fixtures: the synthetic pages
 // for the extractor). Recorded textbook pages are local only, under
 // "$SHIORI_PRIVATE_DIR/textbook"; --verbose quotes them.
@@ -44,7 +42,7 @@ Future<void> main(List<String> args) async {
   }
   final glossPath = _option(args, '--glosses');
   final glosses = glossPath == null ? null : _glosses(File(glossPath));
-  final truth = ExtractTruth.fromAnyJson(_json(truthFile));
+  final truth = ExtractTruth.fromJson(_json(truthFile));
   final recognizer = FixtureTextRecognizer(
     (name) => File('$dir/$name').readAsString(),
   );
@@ -74,23 +72,6 @@ Future<void> main(List<String> args) async {
         ),
       ),
       'general, no dictionary': generalRun(GeneralExtractor()),
-      if (args.contains('--template'))
-        'template (row templates, JMdict)': templateRun(
-          CapturePipeline.standard(dictionary: JmdictDictionaryAdapter(jmdict)),
-        ),
-      if (args.contains('--routed'))
-        'routed (template when it fits, else general)': routedRun(
-          CaptureRouter(
-            template: CapturePipeline.standard(
-              dictionary: JmdictDictionaryAdapter(jmdict),
-              glossary: glossary,
-            ),
-            general: GeneralExtractor(
-              lexicon: JmdictLexiconAdapter(jmdict),
-              koreanGlossary: glossary,
-            ),
-          ),
-        ),
     };
     for (final MapEntry(key: name, value: run) in runs.entries) {
       final score = await scoreExtractor(

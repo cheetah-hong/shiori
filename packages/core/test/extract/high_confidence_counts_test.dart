@@ -1,7 +1,7 @@
-// C1, C2, C7 (general side): on every synthetic set, through the router, no
-// high entry is wrong; there are at least as many high entries as measured
-// when the rules were set; the values (found, readings, meanings, sentence
-// words, extras) are what they were before the confidence rules.
+// C1, C2, C7, D1, D2: on every synthetic set, through the capture the app
+// uses (every page read by the word extractor), no high entry is wrong;
+// there are at least as many high entries as the lower bounds; the values
+// (found, readings, meanings, sentence words, extras) hold.
 import 'package:shiori_core/eval.dart';
 import 'package:shiori_core/shiori_core.dart';
 import 'package:test/test.dart';
@@ -14,23 +14,25 @@ import 'support/extract_fixtures.dart';
 ExtractTruth get _general =>
     ExtractTruth.fromJson(readGeneralJson('ground_truth.json'));
 
-ExtractTruth _rows(FixtureSet set) =>
-    ExtractTruth.fromAnyJson(set.readJson('ground_truth.json'));
+ExtractTruth _rows(FixtureSet set) => set.truth;
 
 Future<ExtractScore> _score(
   ExtractTruth truth,
   Future<OcrScan> Function(String) load,
-  CaptureRouter router,
+  GeneralExtractor extractor,
 ) async => ExtractScore([
   for (final page in truth.pages)
     scoreExtractPage(page, [
-      for (final e in (await router.fromScan(await load(page.fixture))).entries)
+      for (final e in (await pageDraft(
+        extractor,
+        await load(page.fixture),
+      )).entries)
         ScoredWord.fromCaptured(e),
     ]),
 ]);
 
-/// Every routed run of the synthetic sets: (name, answers, loader, router).
-List<(String, ExtractTruth, Future<OcrScan> Function(String), CaptureRouter)>
+/// Every run of the synthetic sets: (name, answers, loader, extractor).
+List<(String, ExtractTruth, Future<OcrScan> Function(String), GeneralExtractor)>
 _runs() => [
   for (final (name, glossary) in [
     ('none', null),
@@ -41,14 +43,14 @@ _runs() => [
       'general, glossary $name',
       _general,
       loadGeneralScan,
-      confidenceRouter(generalLexicon(), glossary: glossary),
+      confidenceExtractor(generalLexicon(), glossary: glossary),
     ),
   for (final glossary in [null, realGlossary()])
     (
       'traps, glossary ${glossary == null ? 'none' : 'real senses'}',
       trapTruth(),
       loadGeneralScan,
-      confidenceRouter(trapLexicon(), glossary: glossary),
+      confidenceExtractor(trapLexicon(), glossary: glossary),
     ),
   for (final set in [synthetic, syntheticMlKit])
     for (final glossary in [null, realGlossary()])
@@ -56,15 +58,15 @@ _runs() => [
         '${set.name}, glossary ${glossary == null ? 'none' : 'real senses'}',
         _rows(set),
         set.loadScan,
-        confidenceRouter(rowLexicon(), glossary: glossary),
+        confidenceExtractor(rowLexicon(), glossary: glossary),
       ),
 ];
 
 void main() {
-  test('C1 high but wrong 0 on every synthetic set, template and general '
-      'routes, with and without a glossary', () async {
-    for (final (name, truth, load, router) in _runs()) {
-      final s = await _score(truth, load, router);
+  test('C1 high but wrong 0 on every synthetic set, with and without a '
+      'glossary', () async {
+    for (final (name, truth, load, extractor) in _runs()) {
+      final s = await _score(truth, load, extractor);
       // Printed for the score table in the test output.
       print('$name: high ${s.high}, high but wrong ${s.highWrong}');
       expect(s.highWrong, 0, reason: name);
@@ -75,9 +77,9 @@ void main() {
     'C1 a high entry is high on every paired cell and needs no review',
     () async {
       var seen = 0;
-      for (final (name, truth, load, router) in _runs()) {
+      for (final (name, truth, load, extractor) in _runs()) {
         for (final page in truth.pages) {
-          final draft = await router.fromScan(await load(page.fixture));
+          final draft = await pageDraft(extractor, await load(page.fixture));
           for (final e in draft.entries) {
             if (!(e.evidence?.isHigh ?? false)) continue;
             seen++;
@@ -106,7 +108,7 @@ void main() {
       final s = await _score(
         _general,
         loadGeneralScan,
-        confidenceRouter(generalLexicon(), glossary: realGlossary()),
+        confidenceExtractor(generalLexicon(), glossary: realGlossary()),
       );
       print('synthetic general: high ${s.high} (was 8)');
       expect(s.high, greaterThanOrEqualTo(25));
@@ -114,24 +116,26 @@ void main() {
     },
   );
 
-  test('C2 high entries: synthetic row-template 4 pages >= 22, ML Kit kind '
+  test('D1 D2 high entries: synthetic word-book 4 pages >= 21, ML Kit kind '
       '>= 10 (real dictionary values)', () async {
     final rows = await _score(
       _rows(synthetic),
       synthetic.loadScan,
-      confidenceRouter(rowLexicon(), glossary: realGlossary()),
+      confidenceExtractor(rowLexicon(), glossary: realGlossary()),
     );
     final mlKit = await _score(
       _rows(syntheticMlKit),
       syntheticMlKit.loadScan,
-      confidenceRouter(rowLexicon(), glossary: realGlossary()),
+      confidenceExtractor(rowLexicon(), glossary: realGlossary()),
     );
     print(
-      'synthetic rows: high ${rows.high}, ML Kit kind: high ${mlKit.high} '
-      '(both were 0)',
+      'synthetic word book: high ${rows.high}, ML Kit kind: high '
+      '${mlKit.high}',
     );
-    expect(rows.high, greaterThanOrEqualTo(22));
+    expect(rows.high, greaterThanOrEqualTo(21));
+    expect(rows.highWrong, 0);
     expect(mlKit.high, greaterThanOrEqualTo(10));
+    expect(mlKit.highWrong, 0);
   });
 
   test('C7 the general pages\' values stay as they were (only the confidence '
@@ -160,7 +164,7 @@ void main() {
       final s = await _score(
         _general,
         loadGeneralScan,
-        confidenceRouter(generalLexicon(), glossary: glossary),
+        confidenceExtractor(generalLexicon(), glossary: glossary),
       );
       expect(
         values(
@@ -177,7 +181,7 @@ void main() {
     final traps = await _score(
       trapTruth(),
       loadGeneralScan,
-      confidenceRouter(trapLexicon(), glossary: realGlossary()),
+      confidenceExtractor(trapLexicon(), glossary: realGlossary()),
     );
     expect(
       [traps.found, traps.readingsOk, traps.meanings.ok, traps.extras],
@@ -185,23 +189,32 @@ void main() {
     );
   });
 
-  test('C7 the row-template pages\' word scores stay as they were', () async {
-    for (final (set, glossary, want) in [
-      (synthetic, null, [33, 33, 31, 1, 1]),
-      (synthetic, realGlossary(), [33, 33, 32, 1, 1]),
-      (syntheticMlKit, null, [17, 17, 16, 1, 0]),
-      (syntheticMlKit, realGlossary(), [17, 17, 16, 1, 0]),
+  test('D1 D2 the word-book pages, read by the word extractor with a '
+      'glossary that reads backwards (as the app\'s does), score at least '
+      'what the row templates did (found 33/35 and 17/18, one wrong meaning '
+      'at most, extras and duplicates two at most)', () async {
+    for (final (set, glossary, found) in [
+      (synthetic, realReverseGlossary(), 33),
+      (syntheticMlKit, realReverseGlossary(), 17),
     ]) {
       final s = await _score(
         _rows(set),
         set.loadScan,
-        confidenceRouter(rowLexicon(), glossary: glossary),
+        confidenceExtractor(rowLexicon(), glossary: glossary),
       );
-      expect(
-        [s.found, s.readingsOk, s.meanings.ok, s.extras, s.duplicates],
-        want,
-        reason: '${set.name} ${glossary == null ? 'none' : 'real'}',
+      final why = set.name;
+      print(
+        '$why: found ${s.found}, readings ${s.readingsOk}, meanings '
+        '${s.meanings.ok}/${s.meanings.of}, extras ${s.extras}, '
+        'duplicates ${s.duplicates}, high ${s.high}',
       );
+      expect(s.found, greaterThanOrEqualTo(found), reason: why);
+      expect(s.readingsOk, s.found, reason: why);
+      expect(s.meanings.of - s.meanings.ok, lessThanOrEqualTo(1), reason: why);
+      // The row templates gave the two rows OCR read no headword of as one
+      // extra and one duplicate; the extractor gives their kana.
+      expect(s.extras + s.duplicates, lessThanOrEqualTo(2), reason: why);
+      expect(s.highWrong, 0, reason: why);
     }
   });
 }

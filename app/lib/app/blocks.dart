@@ -15,7 +15,6 @@ library;
 
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:jmdict_block/jmdict_block.dart';
 import 'package:shiori/adapters/bundled_dictionary.dart';
 import 'package:shiori/adapters/bundled_glossary.dart';
 import 'package:shiori/adapters/dev_samples.dart';
@@ -50,11 +49,6 @@ final sampleRecognizerProvider = Provider<TextRecognizer>(
 /// Page photos: image_picker. Next: document scanner, page flattening.
 final imageSourceProvider = Provider<ImageSource>((ref) => ImagePickerSource());
 
-/// Textbook layouts, auto-detected per page. Next: other textbooks.
-final templateRegistryProvider = Provider<TemplateRegistry>(
-  (ref) => TemplateRegistry(const [ListPageTemplate(), EntryPageTemplate()]),
-);
-
 /// JMdict unpacked from the app's assets. `main.dart` starts opening it before
 /// the first frame without waiting for it.
 /// Never fails: without the asset it holds `BundledDictionary.unavailable`.
@@ -65,14 +59,6 @@ final bundledDictionaryProvider = FutureProvider<BundledDictionary>((
   ref.onDispose(dictionary.close);
   return dictionary;
 });
-
-/// Dictionary for headword candidates and pair checks: JMdict once it is
-/// open, `EmptyDictionary` until then or without dictionary data.
-final dictionaryProvider = Provider<Dictionary>(
-  (ref) =>
-      ref.watch(bundledDictionaryProvider).value?.dictionary ??
-      const EmptyDictionary(),
-);
 
 /// The Korean glossary (한국어기초사전) unpacked from the app's assets, like
 /// JMdict: `main.dart` starts opening it before the first frame.
@@ -92,26 +78,14 @@ final koreanGlossaryProvider = Provider<KoreanGlossary>(
       const EmptyKoreanGlossary(),
 );
 
-/// Corrector chain, in order (`standardCorrectors` in core). Without
-/// glossary data there is no meaning filler: the chain the reference scores
-/// were measured with.
-final entryCorrectorsProvider = Provider<List<EntryCorrector>>((ref) {
-  final glossary = ref.watch(koreanGlossaryProvider);
-  return standardCorrectors(
-    ref.watch(dictionaryProvider),
-    glossary: glossary is EmptyKoreanGlossary ? null : glossary,
-  );
-});
-
 /// Dictionary facts for the general word extractor (forms, readings, POS,
 /// frequency): JMdict once it is open, `EmptyLexicon` until then or without
 /// dictionary data.
-final lexiconProvider = Provider<Lexicon>((ref) {
-  final jmdict = ref.watch(bundledDictionaryProvider).value?.jmdict;
-  return jmdict == null
-      ? const EmptyLexicon()
-      : JmdictLexiconAdapter(jmdict.jmdict);
-});
+final lexiconProvider = Provider<Lexicon>(
+  (ref) =>
+      ref.watch(bundledDictionaryProvider).value?.lexicon ??
+      const EmptyLexicon(),
+);
 
 /// The SQLite file behind both storage blocks. `main.dart` opens it (the app
 /// support folder is only known asynchronously) and overrides this provider.
@@ -154,20 +128,14 @@ final crashLogProvider = Provider<CrashLog>((ref) => FileCrashLog.appSupport());
 
 /// "높음 전체 승인" on the review screen: confirms every entry whose
 /// pairings are all high. On because no measured set has a high entry that
-/// is wrong (docs/verification.md, 15); turn it off here if one appears.
+/// is wrong (docs/verification.md, 15 and 20); turn it off here if one
+/// appears.
 final highConfidenceApprovalProvider = Provider<bool>((ref) => true);
 
 // ---------------------------------------------------------------- composed from the blocks above
 
-final capturePipelineProvider = Provider<CapturePipeline>(
-  (ref) => CapturePipeline(
-    templates: ref.watch(templateRegistryProvider),
-    correctors: ref.watch(entryCorrectorsProvider),
-  ),
-);
-
-/// The layout-free word extractor: JMdict for the forms, the Korean glossary
-/// for pairing and for meanings the page does not give.
+/// The word extractor every page is read with: JMdict for the forms, the
+/// Korean glossary for pairing and for meanings the page does not give.
 final generalExtractorProvider = Provider<GeneralExtractor>((ref) {
   final glossary = ref.watch(koreanGlossaryProvider);
   return GeneralExtractor(
@@ -175,15 +143,6 @@ final generalExtractorProvider = Provider<GeneralExtractor>((ref) {
     koreanGlossary: glossary is EmptyKoreanGlossary ? null : glossary,
   );
 });
-
-/// Per page: the row template when it clearly fits, the general extractor
-/// otherwise (docs/extraction.md, 9).
-final captureRouterProvider = Provider<CaptureRouter>(
-  (ref) => CaptureRouter(
-    template: ref.watch(capturePipelineProvider),
-    general: ref.watch(generalExtractorProvider),
-  ),
-);
 
 final libraryServiceProvider = Provider<LibraryService>(
   (ref) => LibraryService(

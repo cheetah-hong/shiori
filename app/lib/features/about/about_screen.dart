@@ -162,8 +162,8 @@ class _DictionaryCard extends StatelessWidget {
           Text('JMdict', style: context.text.titleLarge),
           const SizedBox(height: Space.xs),
           Text(
-            '표제어 후보와 사전 확인에 EDRDG의 JMdict를 씁니다. '
-            '뜻은 교재에서 가져옵니다(교재에 뜻이 없을 때만 아래 한국어 뜻 사전).',
+            '사진 속 낱말의 표기·읽기·품사 확인과 문장을 원형 단어로 나누는 데 '
+            'EDRDG의 JMdict를 씁니다. 뜻은 사진에서 가져옵니다(사진에 뜻이 없을 때만 아래 한국어 뜻 사전).',
             style: context.text.bodySmall,
           ),
           const SizedBox(height: Space.md),
@@ -347,7 +347,7 @@ class _NoDictionary extends StatelessWidget {
           Expanded(
             child: Text(
               '이 앱에는 사전 데이터가 들어 있지 않아요. '
-              '표제어 후보와 사전 확인 없이 동작합니다.',
+              '사전 확인 없이 사진의 글자만으로 단어를 모읍니다.',
               style: context.text.bodyMedium,
             ),
           ),

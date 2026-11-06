@@ -9,10 +9,10 @@ import '../support/real_dictionary.dart';
 import 'support/confidence_fixtures.dart';
 import 'support/extract_fixtures.dart';
 
-Future<CaptureDraft> _trap(String fixture) async => confidenceRouter(
-  trapLexicon(),
-  glossary: realGlossary(),
-).fromScan(await loadGeneralScan(fixture));
+Future<CaptureDraft> _trap(String fixture) async => pageDraft(
+  confidenceExtractor(trapLexicon(), glossary: realGlossary()),
+  await loadGeneralScan(fixture),
+);
 
 Future<List<String>> Function(String, List<String>) _glosses(
   Map<String, List<String>> table,
@@ -27,7 +27,6 @@ void main() {
     test('on neighbouring rows: neither reading pair is high (values '
         'right)', () async {
       final draft = await _trap('g21');
-      expect(draft.route!.route, CaptureRoute.general);
       for (final h in ['橋', '箸']) {
         final e = entryOf(draft, h);
         expect(e.readings, ['はし'], reason: h);

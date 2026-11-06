@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-"""Synthetic textbook pages for tests and the app's sample pages.
+"""Synthetic word-book pages for tests and the app's sample pages.
 
-Writes made-up words, meanings and example sentences laid out like the two textbook layouts, as the
-two OCR passes a device would return (`<page>.ja.json`, `<page>.ko.json`: lines {t,c,x,y,w,h},
-normalized boxes, top-left origin), plus `ground_truth.json` with the answers.
+Writes made-up words, meanings and example sentences on two kinds of word-book page (one row per word;
+entries with example sentences), as the two OCR passes a device would return (`<page>.ja.json`,
+`<page>.ko.json`: lines {t,c,x,y,w,h}, normalized boxes, top-left origin), plus `ground_truth.json`
+with the answers in the word extractor's format ("general-1": the printed words with their readings
+and meanings, matched by headword; words of the related-word boxes not penalized; the example
+sentences' words not scored).
 
     python3 tools/synthetic/make_pages.py           # write packages/core/test/fixtures/synthetic/ and app/assets/dev_samples/
     python3 tools/synthetic/make_pages.py --check   # exit 1 when the committed files are out of date
 
-The core copy also gets ground_truth.json and reference_output.json (the frozen reference parser's output,
-which the Dart parity test compares cell by cell).
+The core copy also gets ground_truth.json; the app copy holds the OCR passes only.
 
 A second set, packages/core/test/fixtures/synthetic_mlkit/, holds two of the same pages as the Android
 ML Kit channel returns them (engine "mlkit", lines cut into pieces at column gaps, continuous confidences),
@@ -21,7 +23,7 @@ lines not returned, long furigana lines, a stray glyph glued in front of a sente
 kanji misread as a look-alike kanji (a silent error).
 
 Every word, meaning, sentence and translation here is invented for the tests. The OCR side carries the
-mistakes the parsing and correction rules exist for, so the tests exercise them without real pages:
+mistakes a reader of such pages must survive, so the tests exercise them without real pages:
   checkbox glyphs, a word number that was not read, numbers that lost a digit or read I/l/| for 1,
   a ★ that was not read, ★ on its own or glued to the headword, a skewed page (row slope, drifting
   number column), the neighbouring page's number column, a dash for "no reading" (-, –, 一),
@@ -31,23 +33,19 @@ mistakes the parsing and correction rules exist for, so the tests exercise them 
   garbage glued in front of a translation, an example OCR did not read, DAY misread in the footer,
   and a page with no footer (DAY header and page line instead).
 
-The ★ printed beside some words (`star=True` on a row) is only noise for the parser: it is cut out of the
-OCR lines and dropped, so the answers carry no ★.
+The ★ printed beside some words (`star=True` on a row) is only noise: the answers carry no ★.
 """
 from __future__ import annotations
 
 import json
 import random
-from collections.abc import Callable, Sequence
-import subprocess
 import sys
-import tempfile
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 OUT_DIRS = [REPO / "packages" / "core" / "test" / "fixtures" / "synthetic", REPO / "app" / "assets" / "dev_samples"]
 MLKIT_DIR = REPO / "packages" / "core" / "test" / "fixtures" / "synthetic_mlkit"
-REFERENCE_DUMP = REPO / "tools" / "reference" / "dump_reference.py"
 NOTE = ("Synthetic pages made by tools/synthetic/make_pages.py. Every word, meaning, example and "
         "translation is invented; no textbook content.")
 
@@ -69,13 +67,13 @@ def text_width(t: str, per_char: float) -> float:
 class Page:
     """Both OCR passes of one page plus its answer sheet."""
 
-    def __init__(self, fixture: str, page: int, template: str, day: int, title: str, seed: int,
-                 engine: str = "synthetic"):
-        self.fixture, self.page, self.template, self.day, self.title = fixture, page, template, day, title
+    def __init__(self, fixture: str, page: int, seed: int, engine: str = "synthetic"):
+        self.fixture, self.page = fixture, page
         self.engine = engine
         self.ja: list[dict] = []
         self.ko: list[dict] = []
         self.entries: list[dict] = []
+        self.ignore: list[str] = []
         self.rng = random.Random(seed)
 
     def jitter(self, amount: float = 0.0008) -> float:
@@ -107,8 +105,16 @@ class Page:
         }
 
     def answer(self) -> dict:
-        return {"page": self.page, "fixture": self.fixture, "template": self.template, "day": self.day,
-                "title": self.title, "entries": self.entries}
+        """The page in the word extractor's answer format: the printed words, nothing from sentences."""
+        return {"page": str(self.page), "fixture": self.fixture, "kind": "word-list", "scores_sentences": False,
+                "vocab": [{"headword": e["headword"], "readings": e["readings"], "meaning": e["meaning"]}
+                          for e in self.entries],
+                "sentence_words": [], "ignore": self.ignore}
+
+    def related(self, ko_t: str) -> None:
+        """A 관련어 box prints a real word with its reading and meaning: not penalized when found."""
+        if ko_t.startswith("관련어 "):
+            self.ignore.append(ko_t.split()[1])
 
 
 def _reading_order(line: dict) -> tuple:
@@ -170,7 +176,7 @@ def list_row(p: Page, i: int, r: dict, *, ax0: float, ay0: float, gap: float, dr
 
 def page_s010() -> Page:
     """DAY 01, first page: DAY header instead of a footer, the next page's numbers on the right."""
-    p = Page("s010", 10, "list", 1, "자연, 몸", seed=10)
+    p = Page("s010", 10, seed=10)
     # header and page edge
     p.both("DAY", "DAY", 0.2461, 0.1148, 0.0640, 0.0248)
     p.both("01", "01", 0.2422, 0.1453, 0.0736, 0.0494)
@@ -219,7 +225,7 @@ def page_s010() -> Page:
 
 def page_s011() -> Page:
     """DAY 01, second page: legend, footer with DAY misread as 이, stronger skew."""
-    p = Page("s011", 11, "list", 1, "자연, 몸", seed=11)
+    p = Page("s011", 11, seed=11)
     p.both("★三人=試験上大ON卓", "★ 표시 = 시험에 자주 나온 단어", 0.5465, 0.1265, 0.2461, 0.0132, 0.3, 0.5)
     p.both("DAY", "DAY", 0.8430, 0.2064, 0.0174, 0.0233)
     p.both("mp3は豆", "mp3 듣기", 0.0338, 0.2003, 0.0782, 0.0186, 0.3, 1.0)
@@ -292,6 +298,7 @@ def entry_block(p: Page, e: dict, *, ax: float, ty: float) -> None:
     for ja_t, ko_t in e.get("boxes", []):
         y += 0.0050
         p.both(ja_t, ko_t, ax + 0.21, y, text_width(ko_t, 0.0098), 0.0199, 0.3, 0.5)
+        p.related(ko_t)
         y += 0.0200
     ex = e["example"]
     p.truth(e["no"], e["headword"], e["readings"], e["pos"], e["meaning"],
@@ -306,7 +313,7 @@ def neighbour_page_edge(p: Page, lines: list[tuple[str | None, str | None, float
 
 def page_s140() -> Page:
     """DAY 20 (entry layout): footer, legend, furigana, 관련어 and 문형 boxes."""
-    p = Page("s140", 140, "entry", 20, "여행·교통", seed=140)
+    p = Page("s140", 140, seed=140)
     p.both("★三人=試験上大ON卓", "★ 표시 = 시험에 자주 나온 단어", 0.5637, 0.0703, 0.2370, 0.0167, 0.3, 0.5)
     p.both("DAY", "DAY", 0.8547, 0.2442, 0.0174, 0.0233)
     neighbour_page_edge(p, [("駅前で会いましょう。", "역 앞에서 만나요.", 0.1201),
@@ -353,7 +360,7 @@ def page_s140() -> Page:
 
 def page_s147() -> Page:
     """DAY 21 (entry layout): footer DAY unreadable (the Japanese pass has it), an example not read."""
-    p = Page("s147", 147, "entry", 21, "쇼핑", seed=147)
+    p = Page("s147", 147, seed=147)
     p.both("★三人=試験上大ON卓", "★ 표시 = 시험에 자주 나온 단어", 0.5282, 0.0850, 0.2440, 0.0245, 0.3, 0.5)
     p.both("DAY", "DAY", 0.8798, 0.5887, 0.0233, 0.0247)
     neighbour_page_edge(p, [("いらっしゃいませ。", "어서 오세요.", 0.2880), ("袋はご利用ですか。", "봉투 필요하세요?", 0.6292)])
@@ -436,7 +443,7 @@ def mk_list_row(p: Page, i: int, r: dict, *, ax0: float, ay0: float, gap: float,
 
 def page_m011() -> Page:
     """s011's words as ML Kit reads them."""
-    p = Page("m011", 11, "list", 1, "자연, 몸", seed=1011, engine="mlkit")
+    p = Page("m011", 11, seed=1011, engine="mlkit")
     p.ja.append(box("★三人=試験上大", 0.5465, 0.1265, 0.2190, 0.0112, 0.31))
     p.ko.append(box("★ 표시 = 시험에 자주 나온 단어", 0.5465, 0.1265, 0.2190, 0.0112, 0.83))
     p.ko.append(box("DAY", 0.8430, 0.2064, 0.0155, 0.0198, 0.9))
@@ -520,6 +527,7 @@ def mk_entry_block(p: Page, e: dict, *, ax: float, ty: float) -> None:
     for _ja_t, ko_t in e.get("boxes", []):
         y += 0.0050
         p.ko.append(box(ko_t, ax + 0.21, y, text_width(ko_t, 0.0098) * MK_W, 0.0199 * MK_H, mk_conf(p)))
+        p.related(ko_t)
         y += 0.0200
     ex = e["example"]
     p.truth(e["no"], e["headword"], e["readings"], e["pos"], e["meaning"],
@@ -528,7 +536,7 @@ def mk_entry_block(p: Page, e: dict, *, ax: float, ty: float) -> None:
 
 def page_m140() -> Page:
     """s140's words as ML Kit reads them."""
-    p = Page("m140", 140, "entry", 20, "여행·교통", seed=1140, engine="mlkit")
+    p = Page("m140", 140, seed=1140, engine="mlkit")
     p.ko.append(box("★ 표시 = 시험에 자주 나온 단어", 0.5637, 0.0703, 0.2109, 0.0142, 0.8))
     entries = [
         # ri of the reading read as katakana リ
@@ -579,28 +587,17 @@ def render(pages: Sequence[PageBuilder] = PAGES) -> dict[str, str]:
         for name, data in p.files().items():
             files[name] = json.dumps(data, ensure_ascii=False, indent=0) + "\n"
         answers.append(p.answer())
-    files["ground_truth.json"] = json.dumps({"_note": NOTE, "pages": answers}, ensure_ascii=False, indent=1) + "\n"
+    files["ground_truth.json"] = json.dumps({"_note": NOTE, "format": "general-1", "pages": answers},
+                                            ensure_ascii=False, indent=1) + "\n"
     return files
-
-
-def reference_output(files: dict[str, str]) -> str:
-    """The frozen reference parser's output for these pages (tools/reference/dump_reference.py)."""
-    with tempfile.TemporaryDirectory() as tmp:
-        for name, text in files.items():
-            (Path(tmp) / name).write_text(text, encoding="utf-8")
-        subprocess.run([sys.executable, str(REFERENCE_DUMP), "--data", tmp], check=True, stdout=subprocess.DEVNULL)
-        return (Path(tmp) / "reference_output.json").read_text(encoding="utf-8")
 
 
 def main(argv: list[str]) -> int:
     check = "--check" in argv
     files = render()
-    core_only = {"ground_truth.json": files["ground_truth.json"], "reference_output.json": reference_output(files)}
+    passes = {k: v for k, v in files.items() if k != "ground_truth.json"}  # the app only replays the OCR passes
+    targets = [(OUT_DIRS[0], files), (OUT_DIRS[1], passes), (MLKIT_DIR, render(MLKIT_PAGES))]
     stale = []
-    targets = [(out, {**files, **core_only} if out == OUT_DIRS[0]
-                else {k: v for k, v in files.items() if k not in core_only})  # the app only replays the OCR passes
-               for out in OUT_DIRS]
-    targets.append((MLKIT_DIR, render(MLKIT_PAGES)))  # Dart-only set: no reference output
     for out, wanted in targets:
         for name, text in wanted.items():
             f = out / name
@@ -615,7 +612,7 @@ def main(argv: list[str]) -> int:
             print(f"out of date: {s} (run python3 tools/synthetic/make_pages.py)", file=sys.stderr)
         return 1 if stale else 0
     print("wrote " + ", ".join(str(d.relative_to(REPO)) for d in [*OUT_DIRS, MLKIT_DIR])
-          + " (ground truth for the core and ML Kit sets, reference output for the core set)")
+          + " (ground truth for the core and ML Kit sets)")
     return 0
 
 

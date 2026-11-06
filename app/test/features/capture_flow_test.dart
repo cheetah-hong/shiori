@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shiori/app/blocks.dart';
-import 'package:shiori/features/capture/entry_tile.dart';
 import 'package:shiori_core/shiori_core.dart';
 
 import '../support/harness.dart';
@@ -105,7 +104,8 @@ Future<void> openSample(WidgetTester tester, String detail) async {
 
 void main() {
   testWidgets(
-    'sample page 10: review flags the unread headwords, a fix clears it, save fills the home screen',
+    'sample page 10: the review lists its words without page info, a fix '
+    'clears a flag, save fills the home screen',
     (tester) async {
       usePhoneSize(tester);
       final blocks = TestBlocks();
@@ -116,39 +116,56 @@ void main() {
       await openSample(tester, 'DAY 01 자연, 몸');
 
       expect(find.text('검토'), findsOneWidget);
-      expect(find.text('DAY 01 자연, 몸 · 10쪽'), findsOneWidget);
-      expect(find.text('확인 필요 2'), findsWidgets);
-      expect(find.text('표제어 없음 · 눌러서 입력'), findsNWidgets(2));
-      expect(
-        find.text('단어 10개 저장'),
-        findsOneWidget,
-        reason: 'two rows have no headword yet',
-      );
-      expect(find.text('표제어가 빈 단어 2개는 저장하지 않아요'), findsOneWidget);
+      // No DAY, title or page is read from the page any more.
+      expect(find.text('단어 11개'), findsOneWidget);
+      expect(find.textContaining('DAY'), findsNothing);
+      expect(find.text('쪽 정보 없음'), findsNothing);
+      expect(find.text('단어 11개 저장'), findsOneWidget);
 
-      // Fix 0002 (日) in the editor.
-      await tester.tap(find.text('표제어 없음 · 눌러서 입력').first);
+      // くち (its kanji was not read) is fixed in the editor.
+      final reviewBefore = tester
+          .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, '전체 11'))
+          .selected;
+      expect(reviewBefore, isTrue);
+      await tester.scrollUntilVisible(find.text('くち'), 200);
+      await tester.tap(
+        find.descendant(
+          of: find.ancestor(
+            of: find.text('くち'),
+            matching: find.byWidgetPredicate(
+              (w) =>
+                  w.key is ValueKey<String> &&
+                  (w.key! as ValueKey<String>).value.startsWith('entry-'),
+            ),
+          ),
+          matching: find.byTooltip('고치기'),
+        ),
+      );
       await tester.pumpAndSettle();
-      await tester.enterText(find.widgetWithText(TextField, '표제어'), '日');
+      await tester.enterText(find.widgetWithText(TextField, '표제어'), '口');
       await tester.tap(find.text('고치기').last);
       await tester.pumpAndSettle();
-      expect(find.text('표제어 없음 · 눌러서 입력'), findsOneWidget);
-      expect(find.text('표제어가 빈 단어 1개는 저장하지 않아요'), findsOneWidget);
+      expect(find.text('口'), findsOneWidget);
 
       await tester.tap(find.text('단어 11개 저장'));
       await tester.pumpAndSettle();
 
       expect(find.text('단어 11개를 저장했어요'), findsOneWidget);
-      expect(find.text('JLPT 단어장'), findsOneWidget);
-      expect(find.text('DAY 01 · 단어 11개'), findsOneWidget);
+      expect(find.text('내 단어장'), findsOneWidget);
       expect(
         find.text('11'),
         findsOneWidget,
         reason: '11 new words on the today card',
       );
       final words = await blocks.library.words();
-      expect(words.map((w) => w.headword), contains('日'));
-      expect(words.every((w) => w.page == 10 && w.day == 1), isTrue);
+      expect(words.map((w) => w.headword), contains('口'));
+      expect(
+        words.every((w) => w.page == null && w.day == null && w.no == null),
+        isTrue,
+      );
+      // Saved in the photo's order.
+      expect(words.first.headword, '雨');
+      expect(words.last.headword, 'ちょっと');
 
       // The save message must not follow the learner onto the study buttons.
       await tester.tap(find.textContaining('오늘 학습 시작'));
@@ -157,16 +174,16 @@ void main() {
     },
   );
 
-  testWidgets('entry-layout sample keeps its examples', (tester) async {
+  testWidgets('the example-page sample opens with its words', (tester) async {
     usePhoneSize(tester);
     final blocks = TestBlocks();
     await tester.pumpWidget(app(blocks));
     await tester.pumpAndSettle();
     await openSample(tester, 'DAY 20 여행·교통');
 
-    expect(find.text('DAY 20 여행·교통 · 140쪽'), findsOneWidget);
-    expect(find.text('次の駅で急行に乗り換えてください。'), findsOneWidget);
-    expect(find.byType(EntryTile), findsWidgets);
+    expect(find.text('검토'), findsOneWidget);
+    expect(find.text('乗り換える'), findsOneWidget);
+    expect(find.byKey(const ValueKey('review-heading')), findsOneWidget);
   });
 
   testWidgets('excluding an entry lowers the save count', (tester) async {
@@ -264,7 +281,8 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('카메라로 찍기'));
       await tester.pumpAndSettle();
-      expect(find.text('DAY 20 여행·교통 · 140쪽'), findsOneWidget);
+      expect(find.text('검토'), findsOneWidget);
+      expect(find.text('乗り換える'), findsOneWidget);
       expect(camera.discarded, ['s140']);
     },
   );
@@ -316,7 +334,12 @@ void main() {
     await tester.pumpAndSettle();
     await openSample(tester, 'DAY 21 쇼핑');
     expect(find.text('뜻 없음'), findsNothing);
-    await tester.tap(find.text('値段'));
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('entry-0')),
+        matching: find.byTooltip('고치기'),
+      ),
+    );
     await tester.pumpAndSettle();
     await tester.enterText(find.widgetWithText(TextField, '뜻'), '');
     await tester.tap(find.text('고치기').last);

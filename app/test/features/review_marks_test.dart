@@ -1,5 +1,5 @@
-// The review screen's marks: dictionary candidates, "사전에 없음", and guesses
-// shown apart from cells that look wrong. Synthetic words only.
+// The review screen's marks: headword candidates, cells that need a look, and
+// guesses shown apart from cells that look wrong. Synthetic words only.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shiori/app/theme.dart';
@@ -9,14 +9,12 @@ import 'package:shiori_core/shiori_core.dart';
 import '../support/harness.dart';
 
 CapturedEntry _word(
-  String no,
   String headword, {
   List<String> readings = const ['よみ'],
   String meaning = '뜻',
   List<EntryIssue> issues = const [],
   List<String> candidates = const [],
 }) => CapturedEntry(
-  no: no,
   headword: headword,
   readings: readings,
   pos: PartOfSpeech.noun,
@@ -24,31 +22,36 @@ CapturedEntry _word(
   issues: issues,
   headwordCandidates: candidates,
   ocrHeadword: headword,
+  evidence: EntryEvidence(
+    origin: WordOrigin.wordList,
+    fields: {
+      EntryField.headword: FieldEvidence(
+        source: FieldSource.photo,
+        candidates: candidates,
+      ),
+    },
+  ),
 );
 
 final _draft = CaptureDraft(
-  templateId: 'vocab.list',
-  meta: const PageMeta(day: 1, title: '자연', page: 10),
   entries: [
     _word(
-      '0002',
       '',
       readings: const ['ひ'],
       issues: const [EntryIssue.missing(EntryField.headword)],
       candidates: const ['日', '火'],
     ),
     _word(
-      '0003',
       '雨傘具',
-      issues: const [EntryIssue.unverified(EntryField.headword)],
+      issues: const [
+        EntryIssue.suspect(EntryField.headword, note: '사전 역조회 후보 2'),
+      ],
     ),
     _word(
-      '0004',
       '切符',
-      issues: const [EntryIssue.inferred(EntryField.pos, note: '품사 추정: 명')],
+      issues: const [EntryIssue.inferred(EntryField.readings, note: '사전')],
     ),
     _word(
-      '0005',
       '到着',
       meaning: '도착,',
       issues: const [
@@ -60,44 +63,30 @@ final _draft = CaptureDraft(
 
 /// A page with one automatic fix, an unread headword, a suspect meaning and a
 /// word without flags.
-CaptureDraft _page({ColumnScale? scale}) => CaptureDraft(
-  templateId: 'vocab.list',
-  meta: const PageMeta(day: 2, title: '날씨', page: 20),
-  columnScale: scale,
+CaptureDraft _page() => CaptureDraft(
   entries: [
     _word(
-      '0011',
       '一日',
       issues: const [
         EntryIssue.corrected(EntryField.headword, note: 'ー日 → 一日'),
       ],
     ),
     _word(
-      '0012',
       '',
       readings: const ['ひ'],
       issues: const [EntryIssue.missing(EntryField.headword)],
       candidates: const ['日', '火'],
     ),
     _word(
-      '0013',
       '到着',
       meaning: '도착,',
       issues: const [
         EntryIssue.suspect(EntryField.meaning, note: '뜻 끝이 잘렸을 수 있음'),
       ],
     ),
-    CapturedEntry(
-      no: '0014',
-      headword: '晴れ',
-      readings: const ['はれ'],
-      pos: PartOfSpeech.noun,
-      meaning: '맑음',
-    ),
+    _word('晴れ', readings: const ['はれ'], meaning: '맑음'),
   ],
 );
-
-const _scaleNotice = '칸 위치를 재지 못해 기본값으로 읽었어요. 칸이 어긋났을 수 있어요.';
 
 Finder _mark(EntryField field, FieldStatus status) =>
     find.byKey(ValueKey('mark-${field.name}-${status.name}'));
@@ -110,38 +99,40 @@ Color? _colorOf(WidgetTester tester, Finder mark) {
 }
 
 void main() {
-  testWidgets('a candidate chip fills the headword and marks it fixed', (
-    tester,
-  ) async {
+  testWidgets('D11 a headword candidate chip fills the headword and marks it '
+      'fixed', (tester) async {
     usePhoneSize(tester);
     await tester.pumpWidget(screen(TestBlocks(), ReviewScreen(draft: _draft)));
     await tester.pumpAndSettle();
     expect(find.text('확인 필요 3'), findsWidgets);
 
-    final chip = find.widgetWithText(ActionChip, '日');
+    final chip = find.byKey(const ValueKey('candidate-0-headword-日'));
     expect(chip, findsOneWidget);
-    expect(find.widgetWithText(ActionChip, '火'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('candidate-0-headword-火')),
+      findsOneWidget,
+    );
     await tester.tap(chip);
     await tester.pumpAndSettle();
 
-    expect(find.text('日'), findsOneWidget);
-    expect(find.widgetWithText(ActionChip, '火'), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('cell-0-headword')),
+        matching: find.text('日'),
+      ),
+      findsOneWidget,
+    );
     expect(_mark(EntryField.headword, FieldStatus.corrected), findsOneWidget);
-    expect(find.text('표제어 없음 · 눌러서 입력'), findsNothing);
+    expect(find.text('표제어 없음'), findsNothing);
     expect(find.text('확인 필요 2'), findsWidgets);
     expect(find.text('단어 4개 저장'), findsOneWidget);
   });
 
-  testWidgets('a word not in the dictionary needs a look', (tester) async {
+  testWidgets('a doubtful headword needs a look', (tester) async {
     usePhoneSize(tester);
     await tester.pumpWidget(screen(TestBlocks(), ReviewScreen(draft: _draft)));
     await tester.pumpAndSettle();
-    final mark = _mark(EntryField.headword, FieldStatus.unverified);
-    expect(mark, findsOneWidget);
-    expect(
-      find.descendant(of: mark, matching: find.text('사전에 없음')),
-      findsOneWidget,
-    );
+    expect(_mark(EntryField.headword, FieldStatus.suspect), findsOneWidget);
     await tester.tap(find.widgetWithText(ChoiceChip, '확인 필요 3'));
     await tester.pumpAndSettle();
     expect(find.text('雨傘具'), findsOneWidget);
@@ -152,8 +143,9 @@ void main() {
     usePhoneSize(tester);
     await tester.pumpWidget(screen(TestBlocks(), ReviewScreen(draft: _draft)));
     await tester.pumpAndSettle();
-    final guess = _mark(EntryField.pos, FieldStatus.inferred);
+    final guess = _mark(EntryField.readings, FieldStatus.inferred);
     final suspect = _mark(EntryField.meaning, FieldStatus.suspect);
+    await tester.scrollUntilVisible(suspect, 200);
     expect(guess, findsOneWidget);
     expect(suspect, findsOneWidget);
     expect(
@@ -173,16 +165,30 @@ void main() {
     usePhoneSize(tester);
     await tester.pumpWidget(screen(TestBlocks(), ReviewScreen(draft: _page())));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      _mark(EntryField.meaning, FieldStatus.suspect),
+      200,
+    );
     expect(_mark(EntryField.meaning, FieldStatus.suspect), findsOneWidget);
     expect(find.text('확인 필요 2'), findsWidgets);
 
-    await tester.tap(find.text('도착,'));
+    final edit = find.descendant(
+      of: find.byKey(const ValueKey('entry-2')),
+      matching: find.byTooltip('고치기'),
+    );
+    await tester.ensureVisible(edit);
+    await tester.pumpAndSettle();
+    await tester.tap(edit);
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, '고치기'));
     await tester.pumpAndSettle();
 
     expect(_mark(EntryField.meaning, FieldStatus.suspect), findsNothing);
     expect(find.text('도착,'), findsOneWidget, reason: 'the value is kept');
+    await tester.scrollUntilVisible(
+      find.widgetWithText(ChoiceChip, '확인 필요 1'),
+      -200,
+    );
     expect(find.text('확인 필요 1'), findsWidgets);
   });
 
@@ -194,38 +200,20 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('자동 보정 1'), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(ActionChip, '日'));
+    await tester.tap(find.byKey(const ValueKey('candidate-1-headword-日')));
     await tester.pumpAndSettle();
 
     expect(find.text('자동 보정 1'), findsOneWidget);
-    expect(find.text('직접 고름 → 日'), findsOneWidget);
     expect(_mark(EntryField.headword, FieldStatus.corrected), findsNWidgets(2));
     expect(find.text('확인 필요 1'), findsWidgets);
   });
 
-  group('the page notice for columns read at the default frame', () {
-    for (final (label, scale, shown) in [
-      (
-        'too few rows',
-        const ColumnScale(1.0, ColumnScaleSource.tooFewRows),
-        true,
-      ),
-      (
-        'out of range',
-        const ColumnScale(1.0, ColumnScaleSource.outOfRange),
-        true,
-      ),
-      ('measured', const ColumnScale(0.98, ColumnScaleSource.reading), false),
-      ('not measured', null, false),
-    ]) {
-      testWidgets(label, (tester) async {
-        usePhoneSize(tester);
-        await tester.pumpWidget(
-          screen(TestBlocks(), ReviewScreen(draft: _page(scale: scale))),
-        );
-        await tester.pumpAndSettle();
-        expect(find.text(_scaleNotice), shown ? findsOneWidget : findsNothing);
-      });
-    }
+  testWidgets('no notice about columns: the page is not read in columns', (
+    tester,
+  ) async {
+    usePhoneSize(tester);
+    await tester.pumpWidget(screen(TestBlocks(), ReviewScreen(draft: _page())));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('칸 위치'), findsNothing);
   });
 }

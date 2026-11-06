@@ -38,16 +38,9 @@ void main() {
     expect(c.read(devSamplesEnabledProvider), devSamplesEnabled);
     expect(c.read(sampleRecognizerProvider), isA<FixtureTextRecognizer>());
     expect(c.read(imageSourceProvider), isA<ImagePickerSource>());
-    expect(c.read(templateRegistryProvider).templates.map((t) => t.id), [
-      'vocab.list',
-      'vocab.entry',
-    ]);
-    expect(c.read(dictionaryProvider), isA<EmptyDictionary>());
-    // The core's standard chain (its order is tested in packages/core).
-    expect(
-      c.read(entryCorrectorsProvider).map((e) => e.id),
-      standardCorrectors(const EmptyDictionary()).map((e) => e.id),
-    );
+    expect(c.read(lexiconProvider), isA<EmptyLexicon>());
+    expect(c.read(koreanGlossaryProvider), isA<EmptyKoreanGlossary>());
+    expect(c.read(generalExtractorProvider).lexicon, isA<EmptyLexicon>());
     expect(c.read(libraryRepositoryProvider), isA<DriftLibraryRepository>());
     expect(c.read(reviewRepositoryProvider), isA<DriftReviewRepository>());
     expect(c.read(reviewSchedulerProvider), isA<LeitnerFourStepScheduler>());
@@ -78,10 +71,6 @@ void main() {
     );
     expect(c.read(studyServiceProvider).clock, same(clock));
     expect(c.read(reviewSchedulerProvider).maxLevel, 1);
-    expect(
-      c.read(capturePipelineProvider).correctors.length,
-      standardCorrectors(const EmptyDictionary()).length,
-    );
   });
 
   test('storage needs the database opened by main', () {
@@ -127,15 +116,14 @@ void main() {
         ],
       );
       await c.read(bundledDictionaryProvider.future);
-      expect(c.read(dictionaryProvider), isA<JmdictDictionaryAdapter>());
-      expect(c.read(dictionaryProvider), same(opened.jmdict));
-      // The corrector chain and the pipeline are built on it.
-      final pair = c
-          .read(capturePipelineProvider)
-          .correctors
-          .whereType<DictionaryPairCorrector>()
-          .single;
-      expect(pair.dictionary, same(opened.jmdict));
+      final lexicon = c.read(lexiconProvider);
+      expect(lexicon, isA<JmdictLexiconAdapter>());
+      expect((lexicon as JmdictLexiconAdapter).jmdict, same(opened.jmdict));
+      // The word extractor is built on it.
+      expect(
+        c.read(generalExtractorProvider).lexicon,
+        isA<JmdictLexiconAdapter>(),
+      );
     });
 
     test('stays empty without dictionary data', () async {
@@ -147,15 +135,16 @@ void main() {
         ],
       );
       await c.read(bundledDictionaryProvider.future);
-      expect(c.read(dictionaryProvider), isA<EmptyDictionary>());
+      expect(c.read(lexiconProvider), isA<EmptyLexicon>());
     });
 
     test('swapping the dictionary is one override', () {
-      const other = EmptyDictionary();
+      final other = InMemoryLexicon(const []);
       final c = ProviderContainer.test(
-        overrides: [dictionaryProvider.overrideWithValue(other)],
+        overrides: [lexiconProvider.overrideWithValue(other)],
       );
-      expect(c.read(dictionaryProvider), same(other));
+      expect(c.read(lexiconProvider), same(other));
+      expect(c.read(generalExtractorProvider).lexicon, same(other));
     });
   });
 }

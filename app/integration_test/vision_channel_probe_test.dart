@@ -1,9 +1,10 @@
-// Runs the real device OCR channel on page photos and scores the result,
-// like tools/reference/parse_eval.py does for recorded OCR passes.
+// Runs the real device OCR channel on page photos and scores what the word
+// extractor makes of them, by headword (as tool/eval_extract.dart does for
+// recorded OCR passes).
 //
 //   cd app && flutter test integration_test/vision_channel_probe_test.dart -d <device> \
 //     --dart-define=SHIORI_PROBE_PHOTOS=<dir with <fixture>.jpg for every page> \
-//     --dart-define=SHIORI_PROBE_TRUTH=<ground_truth.json>
+//     --dart-define=SHIORI_PROBE_TRUTH=<ground_truth.json, "format": "general-1">
 //     [--dart-define=SHIORI_PROBE_VERBOSE=true]   (lists wrong words: textbook text)
 //     [--dart-define=SHIORI_PROBE_DUMP=<dir>]     (writes <page>.{ja,ko}.json there:
 //                                                  recorded passes for the local regression sets)
@@ -34,15 +35,15 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   test(
-    'device OCR channel reads the photos at the reference level',
+    'device OCR channel reads the photos for the word extractor',
     () async {
       const recognizer = PlatformTextRecognizer();
-      final truth = GroundTruth.fromJson(
+      final truth = ExtractTruth.fromJson(
         (jsonDecode(File(_truth).readAsStringSync()) as Map)
             .cast<String, Object?>(),
       );
       final timings = <String>[];
-      final score = await scoreCapture(
+      final score = await scoreExtractor(
         truth: truth,
         loadScan: (fixture) async {
           // The adapter drops the channel's diagnostics; read them here.
@@ -65,14 +66,14 @@ void main() {
           );
           return scan;
         },
-        pipeline: CapturePipeline.standard(),
+        run: generalRun(GeneralExtractor()),
       );
       // The score table is this probe's output (a test run, never shipped).
       // ignore: avoid_print
       print(
         'engine=${recognizer.id}\n${timings.join('\n')}\n${score.table(verbose: _verbose)}',
       );
-      expect(score.total('found').ok, greaterThan(0));
+      expect(score.found, greaterThan(0));
     },
     skip: _photos.isEmpty || _truth.isEmpty
         ? 'set SHIORI_PROBE_PHOTOS and SHIORI_PROBE_TRUTH'

@@ -28,16 +28,11 @@ void main() {
     'the sample recognizer reads every page from the asset bundle',
     () async {
       final recognizer = devSampleRecognizer(rootBundle);
-      final pipeline = CapturePipeline.standard();
-      for (final sample in devSamples) {
-        final draft = await pipeline.fromScan(
+      final extractor = GeneralExtractor();
+      for (final sample in [...devSamples, ...generalDevSamples]) {
+        final draft = await pageDraft(
+          extractor,
           await recognizer.recognize(sample.image),
-        );
-        expect(draft.meta.page, sample.page, reason: sample.id);
-        expect(
-          draft.templateId,
-          sample.layout.startsWith('목록') ? 'vocab.list' : 'vocab.entry',
-          reason: sample.id,
         );
         expect(draft.entries, isNotEmpty, reason: sample.id);
       }

@@ -43,7 +43,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(sample);
     await tester.pumpAndSettle();
-    await waitFor(tester, find.byKey(const ValueKey('route-summary')));
+    await waitFor(tester, find.byKey(const ValueKey('review-heading')));
     expect(find.byTooltip('판독 기록 내보내기'), findsOneWidget);
     await tester.pumpAndSettle();
     await binding.takeScreenshot('40_review_ocr_export');

@@ -34,7 +34,7 @@ void main() {
     final dict = JmdictDictionary.open(path);
     addTearDown(dict.close);
 
-    expect(dict.hasPair('二', 'に'), isTrue);
+    expect(dict.lookupForms(['二']).keys, ['二']);
   });
 
   test('rejects databases with another schema', () {
@@ -79,12 +79,9 @@ void main() {
   test('a closed dictionary refuses lookups; closing twice is fine', () {
     final dict = openMiniDictionary()..close();
 
-    expect(() => dict.hasPair('二', 'に'), throwsStateError);
-    // Calls that would return early on their input still refuse.
-    expect(() => dict.lookupByReading(''), throwsStateError);
-    expect(() => dict.lookupByHeadword(''), throwsStateError);
-    expect(() => dict.checkPair('', 'に'), throwsStateError);
-    expect(() => dict.suggestHeadword('', ''), throwsStateError);
+    expect(() => dict.lookupForms(['二']), throwsStateError);
+    // A call that would return early on its input still refuses.
+    expect(() => dict.lookupForms(const []), throwsStateError);
     dict.close();
   });
 }

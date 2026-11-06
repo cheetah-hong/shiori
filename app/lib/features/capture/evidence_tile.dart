@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:shiori/app/theme.dart';
 import 'package:shiori/features/capture/evidence_view.dart';
-import 'package:shiori/features/capture/entry_tile.dart';
 import 'package:shiori/shared/widgets.dart';
 import 'package:shiori_core/shiori_core.dart';
 
-/// One word of the general extractor on the review screen.
+/// One word on the review screen.
 ///
 /// Every cell names where it came from (사진 / 사전 / 번역) and, for the
 /// reading and the meaning, how sure the pairing with the headword is in
 /// three steps (높음 / 중간 / 낮음, in words and colour, read out to screen
 /// readers). Tapping a cell opens the piece of the page it came from; cells
-/// below high offer their candidates as chips. A word from a sentence shows
+/// below high offer their candidates as chips (a headword OCR lost, its
+/// dictionary spellings). A word from a sentence shows
 /// the sentence and its translation.
 class EvidenceEntryTile extends StatelessWidget {
   const EvidenceEntryTile({
@@ -117,6 +117,12 @@ class EvidenceEntryTile extends StatelessWidget {
                         child: e.headword.isEmpty
                             ? const _Missing('표제어 없음')
                             : Text(e.headword, style: JpType.print(24, t.ink)),
+                      ),
+                      _Candidates(
+                        index: index,
+                        entry: e,
+                        field: EntryField.headword,
+                        onPick: onPickCandidate,
                       ),
                       if (e.readings.isNotEmpty ||
                           e.statusOf(EntryField.readings) ==
@@ -468,6 +474,53 @@ class _IncludeBox extends StatelessWidget {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The mark next to a cell, by its status. None for ok and missing cells
+/// (missing ones show their placeholder instead of their text).
+class FieldMark extends StatelessWidget {
+  const FieldMark._({super.key, required this.status});
+
+  static FieldMark? of(CapturedEntry entry, EntryField field) {
+    final status = entry.statusOf(field);
+    if (status == FieldStatus.ok || status == FieldStatus.needsReview) {
+      return null;
+    }
+    return FieldMark._(
+      key: ValueKey('mark-${field.name}-${status.name}'),
+      status: status,
+    );
+  }
+
+  final FieldStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final (label, fg, bg) = switch (status) {
+      FieldStatus.suspect => ('의심', t.warn, t.warnBg),
+      FieldStatus.corrected => ('고침', t.ok, t.okBg),
+      // A guess is usually right: grey text, no fill.
+      _ => ('추정', t.ink3, Colors.transparent),
+    };
+    final guess = status == FieldStatus.inferred;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(Radii.chip),
+        border: guess ? Border.all(color: t.paper3) : null,
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: fg,
+          fontSize: 11,
+          fontWeight: guess ? FontWeight.w500 : FontWeight.w800,
         ),
       ),
     );

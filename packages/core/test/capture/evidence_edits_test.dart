@@ -12,7 +12,6 @@ CapturedEntry _entry({
   PairConfidence meaningConfidence = PairConfidence.medium,
   List<String> candidates = const ['뛰다'],
 }) => CapturedEntry(
-  no: null,
   headword: headword,
   readings: const ['はしる'],
   pos: PartOfSpeech.verb,
@@ -100,7 +99,6 @@ void main() {
     final ja = entryFromFragment(_fragment('散歩', FragmentKind.kanjiWord));
     expect(ja.headword, '散歩');
     expect(ja.meaning, '');
-    expect(ja.no, isNull);
     expect(ja.statusOf(EntryField.meaning), FieldStatus.needsReview);
     expect(ja.evidence!.of(EntryField.headword)!.boxes, hasLength(1));
 
@@ -112,13 +110,10 @@ void main() {
 
   test('approving every high entry confirms only those', () {
     final draft = CaptureDraft(
-      templateId: generalTemplateId,
-      meta: PageMeta.empty,
       entries: [
         _entry(meaningConfidence: PairConfidence.high),
         _entry(headword: '食べる'),
         const CapturedEntry(
-          no: '0001',
           headword: '本',
           readings: ['ほん'],
           pos: null,

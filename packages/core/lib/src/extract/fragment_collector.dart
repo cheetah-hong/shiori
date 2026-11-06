@@ -218,16 +218,25 @@ int _kanaCount(String s) => s.runes.where(isKana).length;
 int _hangulCount(String s) => s.runes.where(isHangul).length;
 
 /// Median height of the Japanese pass's lines of two letters or more (the
-/// page's type size), or null when there is none.
+/// page's type size), or null when there is none. A row of checkboxes read
+/// as box-like glyphs (`ロロロ`, `■口口`) is not type: a word list prints one
+/// per word, smaller than the words, and they would pull the median down.
 double? _japaneseLineHeight(List<_Run> runs) {
   final heights = [
     for (final r in runs)
       if (r.pass == OcrPass.japanese &&
           r.script == Script.japanese &&
-          _letters(r.text) >= 2)
+          _letters(r.text) >= 2 &&
+          !_boxRow(r.text))
         r.y1 - r.y0,
   ]..sort();
   return heights.isEmpty ? null : heights[heights.length ~/ 2];
+}
+
+/// Every glyph of [text] (spaces aside) is one OCR reads for a checkbox.
+bool _boxRow(String text) {
+  final bare = text.replaceAll(RegExp(r'\s'), '');
+  return bare.isNotEmpty && bare.runes.every(_boxRowGlyphs.contains);
 }
 
 String _letterText(String s) => String.fromCharCodes(
@@ -474,8 +483,8 @@ const Set<String> _spelledBadges = {'명사', '동사', '형용사', '부사'};
 
 final String _badges = badgeAlternation({...posBadges.keys, ..._spelledBadges});
 
-/// The POS badge word lists print before a meaning, as OCR reads them
-/// (shared with the row templates), maybe in brackets.
+/// The POS badge word lists print before a meaning, as OCR reads them,
+/// maybe in brackets.
 final RegExp _posBadge = RegExp('^\\[?($_badges)\\]?$badgeSeparator');
 
 /// The badge [read] is, spelled-out names folded to the badge.

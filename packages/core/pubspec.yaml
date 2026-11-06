@@ -1,7 +1,7 @@
 name: shiori_core
 description: >-
-  Pure Dart core of Shiori: models, ports (block slots), the capture pipeline
-  that turns OCR lines into textbook entries, and the study (SRS) logic.
+  Pure Dart core of Shiori: models, ports (block slots), the word extractor
+  that turns OCR lines into review entries, and the study (SRS) logic.
   No Flutter dependency.
 version: 0.1.0
 publish_to: none

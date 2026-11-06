@@ -58,16 +58,14 @@ final class DictionaryEdition {
 
 /// The dictionary the app runs with: JMdict, or nothing and why.
 final class BundledDictionary {
-  const BundledDictionary.opened(
-    JmdictDictionaryAdapter this.jmdict,
-    this.edition,
-  ) : problem = null;
+  const BundledDictionary.opened(JmdictDictionary this.jmdict, this.edition)
+    : problem = null;
 
   const BundledDictionary.unavailable(String this.problem)
     : jmdict = null,
       edition = null;
 
-  final JmdictDictionaryAdapter? jmdict;
+  final JmdictDictionary? jmdict;
   final DictionaryEdition? edition;
 
   /// Why there is no dictionary (for the log and the 정보 screen).
@@ -75,8 +73,11 @@ final class BundledDictionary {
 
   bool get isAvailable => jmdict != null;
 
-  /// The block for the dictionary slot.
-  Dictionary get dictionary => jmdict ?? const EmptyDictionary();
+  /// The block for the word extractor's dictionary slot.
+  Lexicon get lexicon => switch (jmdict) {
+    final JmdictDictionary j => JmdictLexiconAdapter(j),
+    null => const EmptyLexicon(),
+  };
 
   /// Source, licence and notice of the data; null without a dictionary.
   DictionaryInfo? get info => jmdict?.info;
@@ -140,7 +141,6 @@ DictionaryEdition _parseEdition(String text) => switch (jsonDecode(text)) {
   _ => throw const FormatException('dictionary edition: not a JSON object'),
 };
 
-JmdictDictionaryAdapter _open(File file) =>
-    JmdictDictionaryAdapter(JmdictDictionary.open(file.path));
+JmdictDictionary _open(File file) => JmdictDictionary.open(file.path);
 
 void _log(String message) => debugPrint('[shiori] dictionary: $message');

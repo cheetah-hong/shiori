@@ -1,5 +1,3 @@
-import 'package:shiori_core/src/capture/capture_pipeline.dart';
-import 'package:shiori_core/src/capture/capture_router.dart';
 import 'package:shiori_core/src/capture/text/chars.dart';
 import 'package:shiori_core/src/eval/extract_truth.dart';
 import 'package:shiori_core/src/extract/extracted_word.dart';
@@ -7,8 +5,8 @@ import 'package:shiori_core/src/extract/general_extractor.dart';
 import 'package:shiori_core/src/models/captured_entry.dart';
 import 'package:shiori_core/src/models/ocr.dart';
 
-/// What the scorer needs of a returned word, from either the word extractor
-/// or a textbook template.
+/// What the scorer needs of a returned word, from the word extractor or a
+/// review entry.
 final class ScoredWord {
   const ScoredWord({
     required this.headword,
@@ -26,8 +24,8 @@ final class ScoredWord {
     origin: w.origin,
   );
 
-  /// A review entry: a template's has no pairing confidence; a general
-  /// extractor's carries it (and its origin) in its evidence.
+  /// A review entry: its evidence carries the pairing confidence and the
+  /// origin (an entry made by hand has none).
   factory ScoredWord.fromCaptured(CapturedEntry e) => ScoredWord(
     headword: e.headword,
     readings: e.readings,
@@ -40,7 +38,7 @@ final class ScoredWord {
   final List<String> readings;
   final String? meaning;
 
-  /// Null for templates (they have no pairing confidence).
+  /// Null for an entry without evidence.
   final PairConfidence? confidence;
   final WordOrigin origin;
 }
@@ -364,18 +362,4 @@ Future<List<ScoredWord>> Function(OcrScan) generalRun(GeneralExtractor e) =>
     (scan) async => [
       for (final w in (await e.extract(scan)).words)
         ScoredWord.fromExtracted(w),
-    ];
-
-/// [scoreExtractor]'s `run` for the routed capture (what the app does).
-Future<List<ScoredWord>> Function(OcrScan) routedRun(CaptureRouter r) =>
-    (scan) async => [
-      for (final e in (await r.fromScan(scan)).entries)
-        ScoredWord.fromCaptured(e),
-    ];
-
-/// [scoreExtractor]'s `run` for the textbook templates.
-Future<List<ScoredWord>> Function(OcrScan) templateRun(CapturePipeline p) =>
-    (scan) async => [
-      for (final e in (await p.fromScan(scan)).entries)
-        ScoredWord.fromCaptured(e),
     ];

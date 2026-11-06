@@ -1,15 +1,14 @@
-// Measurements of the Korean glossary on word lists and capture fixtures.
+// Measurements of the Korean glossary on word lists.
 //
 //   dart run tool/measure_glossary.dart coverage --db FILE --jlpt DIR
 //   dart run tool/measure_glossary.dart precision --db FILE --gt FILE [--gt FILE …] [--verbose]
-//   dart run tool/measure_glossary.dart capture --db FILE --fixtures DIR [--gt FILE] [--verbose]
 //
 // --db: the glossary SQLite file (gunzip app/assets/dict/ko-glossary.sqlite.gz).
 // coverage: n5.csv, n4.csv, n3.csv in --jlpt (columns expression, reading; the
 //   open JLPT decks), share of words with at least one meaning.
-// precision: entries of ground_truth.json files (headword, readings, meaning):
-//   share whose answer has a word in the first meaning, and in the first three.
-// capture: the score table without and with the meaning filler.
+// precision: printed words of ground_truth.json files (`"format": "general-1"`:
+//   headword, readings, meaning): share whose answer has a word in the first
+//   meaning, and in the first three.
 // --verbose prints one line per word; on textbook data those quote the pages,
 // so keep them out of anything committed.
 import 'dart:convert';
@@ -19,12 +18,12 @@ import 'package:krdict_block/krdict_block.dart';
 import 'package:shiori_core/eval.dart';
 import 'package:shiori_core/shiori_core.dart';
 
-Future<void> main(List<String> args) async {
+void main(List<String> args) {
   final command = args.isEmpty ? '' : args.first;
   final db = _option(args, '--db');
   if (db == null ||
-      !const {'coverage', 'precision', 'capture'}.contains(command)) {
-    stderr.writeln('usage: (coverage|precision|capture) --db FILE …');
+      !const {'coverage', 'precision'}.contains(command)) {
+    stderr.writeln('usage: (coverage|precision) --db FILE …');
     exitCode = 2;
     return;
   }
@@ -39,8 +38,6 @@ Future<void> main(List<String> args) async {
           _options(args, '--gt'),
           args.contains('--verbose'),
         );
-      case 'capture':
-        await _capture(glossary, args);
     }
   } finally {
     glossary.close();
@@ -126,20 +123,23 @@ void _precision(KrdictGlossary g, List<String> truthFiles, bool verbose) {
   final watch = Stopwatch();
   final lines = <String>[];
   for (final path in truthFiles) {
-    final truth = GroundTruth.fromJson(
+    final truth = ExtractTruth.fromJson(
       (jsonDecode(File(path).readAsStringSync()) as Map)
           .cast<String, Object?>(),
     );
     for (final page in truth.pages) {
-      for (final e in page.entries) {
-        if (e.headword.isEmpty || e.meaning.trim().isEmpty) continue;
+      for (final e in page.vocab) {
+        final meaning = e.meaning;
+        if (e.headword.isEmpty || meaning == null || meaning.trim().isEmpty) {
+          continue;
+        }
         total++;
         watch.start();
         final senses = g.lookupSync(e.headword, readings: e.readings);
         watch.stop();
         lookups++;
         if (senses.isNotEmpty) found++;
-        final answer = _answerWords(e.meaning);
+        final answer = _answerWords(meaning);
         bool strict(KoreanSense s) => s.words.map(_norm).any(answer.contains);
         bool loose(KoreanSense s) => s.words.any((w) => _looseHit(w, answer));
         if (senses.isNotEmpty && strict(senses.first)) first++;
@@ -148,8 +148,8 @@ void _precision(KrdictGlossary g, List<String> truthFiles, bool verbose) {
         if (senses.any(loose)) top3Loose++;
         if (verbose && !(senses.isNotEmpty && strict(senses.first))) {
           lines.add(
-            '${page.page} ${e.no} ${e.headword}|${e.readings.join('/')} '
-            'answer=${e.meaning} got=${[for (final s in senses) s.text]}',
+            '${page.page} ${e.headword}|${e.readings.join('/')} '
+            'answer=$meaning got=${[for (final s in senses) s.text]}',
           );
         }
       }
@@ -198,69 +198,6 @@ bool _looseHit(String word, Set<String> answer) {
             (a.startsWith(w) || w.startsWith(a))),
   );
 }
-
-// ---------------------------------------------------------------- capture
-
-Future<void> _capture(KrdictGlossary g, List<String> args) async {
-  final dir = _option(args, '--fixtures') ?? '../core/test/fixtures/synthetic';
-  final truthFile = File(_option(args, '--gt') ?? '$dir/ground_truth.json');
-  final verbose = args.contains('--verbose');
-  final truth = GroundTruth.fromJson(
-    (jsonDecode(truthFile.readAsStringSync()) as Map).cast<String, Object?>(),
-  );
-  final recognizer = FixtureTextRecognizer(
-    (name) => File('$dir/$name').readAsString(),
-  );
-  Future<OcrScan> load(String fixture) =>
-      recognizer.recognize(PageImage(fixture));
-  final off = CapturePipeline.standard();
-  final on = CapturePipeline.standard(glossary: g);
-  final before = await scoreCapture(
-    truth: truth,
-    loadScan: load,
-    pipeline: off,
-  );
-  final after = await scoreCapture(truth: truth, loadScan: load, pipeline: on);
-  stdout
-    ..writeln('== meaning filler off')
-    ..writeln(before.table())
-    ..writeln()
-    ..writeln('== meaning filler on')
-    ..writeln(after.table());
-  var filled = 0;
-  final lines = <String>[];
-  final watch = Stopwatch();
-  for (final page in truth.pages) {
-    final scan = await load(page.fixture);
-    watch.start();
-    final draft = await on.fromScan(scan);
-    watch.stop();
-    for (final e in draft.entries) {
-      if (!e.issues.any(
-        (i) => i.field == EntryField.meaning && i.kind == IssueKind.inferred,
-      )) {
-        continue;
-      }
-      filled++;
-      final answer = page.entries.where((t) => t.no == e.no).firstOrNull;
-      lines.add(
-        '${page.page} ${e.no} ${e.headword} filled=${e.meaning} '
-        'answer=${answer?.meaning}',
-      );
-    }
-  }
-  stdout.writeln(
-    'meanings filled: $filled; pipeline with the glossary: '
-    '${(watch.elapsedMicroseconds / 1000 / truth.pages.length).toStringAsFixed(1)} ms/page',
-  );
-  if (verbose) {
-    for (final l in lines) {
-      stdout.writeln('  $l');
-    }
-  }
-}
-
-// ---------------------------------------------------------------- options
 
 String? _option(List<String> args, String name) {
   final i = args.indexOf(name);

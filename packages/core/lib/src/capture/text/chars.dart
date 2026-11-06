@@ -1,7 +1,6 @@
-/// Character classes used by the textbook templates.
+/// Character classes.
 ///
-/// Ranges are copied from the reference parser (`tools/reference/parse_eval.py`)
-/// and work on Unicode code points (`String.runes`), like Python strings do.
+/// They work on Unicode code points (`String.runes`).
 library;
 
 import 'package:unorm_dart/unorm_dart.dart' as unorm;

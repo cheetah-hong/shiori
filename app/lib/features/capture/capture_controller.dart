@@ -72,8 +72,8 @@ Future<Uint8List?> _readPhotoFile(PageImage image) async {
 /// How the capture keeps the photo for the review screen. Tests override it.
 final photoReaderProvider = Provider<PhotoReader>((ref) => _readPhotoFile);
 
-/// Photo (or sample) → `TextRecognizer` block → `CaptureRouter` (row
-/// template or general extractor) → review draft.
+/// Photo (or sample) → `TextRecognizer` block → word extractor → review
+/// draft.
 final class CaptureController extends Notifier<CaptureState> {
   @override
   CaptureState build() => const CaptureIdle();
@@ -104,7 +104,7 @@ final class CaptureController extends Notifier<CaptureState> {
   void reset() => state = const CaptureIdle();
 
   /// The bundled dictionaries start opening with the app (`main.dart`). A
-  /// page waits for them so the corrector chain is built on them even for the
+  /// page waits for them so the extractor is built on them even for the
   /// first page; they never fail (without data they are empty blocks).
   Future<void> _dictionariesOpened() => Future.wait<void>([
     ref.read(bundledDictionaryProvider.future).then((_) {}, onError: _ignore),
@@ -114,7 +114,7 @@ final class CaptureController extends Notifier<CaptureState> {
   static void _ignore(Object _) {}
 
   /// Every headword in the library (hidden words too: the repository lists
-  /// them all), for the general extractor to skip.
+  /// them all), for the extractor to skip.
   Future<Set<String>> _knownHeadwords() async => {
     for (final w in await ref.read(libraryRepositoryProvider).words())
       w.headword,
@@ -133,9 +133,13 @@ final class CaptureController extends Notifier<CaptureState> {
       if (!ref.mounted) return;
       await _dictionariesOpened();
       if (!ref.mounted) return;
-      final draft = await ref
-          .read(captureRouterProvider)
-          .fromScan(scan, lookupKnown: _knownHeadwords);
+      final known = await _knownHeadwords();
+      if (!ref.mounted) return;
+      final draft = await pageDraft(
+        ref.read(generalExtractorProvider),
+        scan,
+        knownHeadwords: known,
+      );
       if (!ref.mounted) return;
       state = draft.entries.isEmpty && draft.skippedKnown.isEmpty
           ? const CaptureFailed(
@@ -153,7 +157,7 @@ final class CaptureController extends Notifier<CaptureState> {
     } on Exception catch (e, stack) {
       _unexpected(e, stack);
     } on Error catch (e, stack) {
-      // A bug in a template or corrector block. Report it like any uncaught
+      // A bug in a block. Report it like any uncaught
       // error, but do not leave the reading overlay on screen forever.
       _unexpected(e, stack);
     }

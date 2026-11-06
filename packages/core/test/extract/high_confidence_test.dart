@@ -1,5 +1,5 @@
 // E5: no entry the review screen would show as high is wrong, on every
-// synthetic set through the router (row template or general extractor).
+// synthetic set as the app reads it.
 import 'package:shiori_core/eval.dart';
 import 'package:shiori_core/shiori_core.dart';
 import 'package:test/test.dart';
@@ -11,11 +11,11 @@ import 'support/extract_fixtures.dart';
 Future<({int high, int highWrong})> _score(
   ExtractTruth truth,
   Future<OcrScan> Function(String) load,
-  CaptureRouter router,
+  GeneralExtractor extractor,
 ) async {
   var high = 0, highWrong = 0;
   for (final page in truth.pages) {
-    final draft = await router.fromScan(await load(page.fixture));
+    final draft = await pageDraft(extractor, await load(page.fixture));
     final score = scoreExtractPage(page, [
       for (final e in draft.entries) ScoredWord.fromCaptured(e),
     ]);
@@ -52,7 +52,7 @@ void main() {
       final s = await _score(
         truth,
         loadGeneralScan,
-        syntheticRouter(glossary: glossary),
+        syntheticExtractor(glossary: glossary),
       );
       // Printed for the score table in the test output.
       print('general, glossary $name: high ${s.high}');
@@ -61,28 +61,26 @@ void main() {
     final s = await _score(
       truth,
       loadGeneralScan,
-      syntheticRouter(glossary: _withSinoKorean()),
+      syntheticExtractor(glossary: _withSinoKorean()),
     );
     expect(s.high, greaterThanOrEqualTo(3));
   });
 
   test(
-    'synthetic row-template pages (plain and ML Kit): high but wrong 0',
+    'synthetic word-book pages (plain and ML Kit): high but wrong 0',
     () async {
       for (final set in [synthetic, syntheticMlKit]) {
-        final truth = ExtractTruth.fromAnyJson(
-          set.readJson('ground_truth.json'),
-        );
-        final s = await _score(truth, set.loadScan, syntheticRouter());
+        final s = await _score(set.truth, set.loadScan, syntheticExtractor());
         expect(s.highWrong, 0, reason: set.name);
       }
     },
   );
 
   test('a high entry carries high on every paired field', () async {
-    final draft = await syntheticRouter(
-      glossary: _withSinoKorean(),
-    ).fromScan(await loadGeneralScan('g01'));
+    final draft = await pageDraft(
+      syntheticExtractor(glossary: _withSinoKorean()),
+      await loadGeneralScan('g01'),
+    );
     final high = [
       for (final e in draft.entries)
         if (e.evidence?.isHigh ?? false) e,

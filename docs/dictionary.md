@@ -7,6 +7,10 @@
   - 이 문서
 - 처음 보고 때는 core와 `app/`을 건드리지 않고 7절을 제안으로 적었습니다. **7절은 이후 적용됐습니다**(위치는 7절, 결과는 `docs/verification.md` 8절).
 - 교재 측정은 저장소에 포함하지 않은 교재 5쪽(59단어) 비공개 세트로 했습니다(4절).
+- **2026-11-06 걷어냄:** 가로줄 틀 경로를 걷어내면서(`docs/extraction.md` 9절) 이 사전을 쓰던 보정기(표제어 후보, 짝 확인·「사전에 없음」, 헷갈리는 글자 고치기)와
+  core `Dictionary` 포트·`JmdictDictionaryAdapter`, `dict_jmdict`의 그 질의(`lookupByReading`·`lookupByHeadword`·`hasPair`·`checkPair`·`suggestHeadword`)와 측정 도구
+  (`tools/dict/eval_dict.py`, `tool/query_batch.dart`)도 걷어냈습니다. 지금 사전은 단어 추출기의 `Lexicon` 포트(`lookupForms`, 표기 여러 개를 한 번에)로만 씁니다.
+  아래 1~10절은 그때의 결과 보고로 남깁니다.
 
 ## 1. 요약
 
@@ -91,14 +95,12 @@
 
 API와 규칙은 `packages/dict_jmdict/README.md`에 있습니다. 요약입니다.
 
-| 메서드 | 구분 | 하는 일 |
-|---|---|---|
-| `lookupByReading(kana, {limit, requireKanji, prefer})` | 기본 | 표제어 후보와 순위 근거(`priority`, `rankReason`) |
-| `hasPair(headword, reading)` | 기본 | 짝이 그대로 있는가 |
-| `checkPair(headword, reading)` | 추가 | 교재 표기 차이를 허용한 짝 확인 → `PairMatch` |
-| `suggestHeadword(ocrText, reading, {limit, prefer})` | 기본 | 헷갈리는 글자 표(기준 보정기와 같은 목록, 양방향)와 가나 문자 바꾸기로 사전에 있는 짝만 순위대로 |
-| `lookupByHeadword(headword)` | 추가 | core 포트의 `byHeadword`용 |
-| `info` | 추가 | 출처, 날짜, sha256, 라이선스, 표기 문구 |
+| 메서드 | 하는 일 |
+|---|---|
+| `lookupForms(forms)` | 표기 여러 개를 한 번에: 한자 표기·가나 읽기(두 문자 모두) → 항목, 표기, 읽기, 한자 표기 전부, 품사, 우선 표시·nf, `uk` (단어 추출기, `docs/extraction.md` 6절) |
+| `info` | 출처, 날짜, sha256, 라이선스, 표기 문구 |
+
+(2026-11-06 전에는 `lookupByReading`·`hasPair`·`checkPair`·`suggestHeadword`·`lookupByHeadword`가 더 있었습니다. 아래 검증 숫자는 그때의 것입니다.)
 
 - **의존성**: `sqlite3: ">=3.4.0 <3.6.0"` 하나뿐입니다(dart:ffi, 빌드 훅으로 SQLite 동봉. `packages/storage_drift`와 같은 범위: 3.6부터는 Flutter 3.41이 고정한 meta 1.17과 맞지 않음). Flutter와 core에는 의존하지 않습니다. 루트 workspace 파일은 만들지 않았습니다.
 - **검증**
@@ -200,9 +202,9 @@ API와 규칙은 `packages/dict_jmdict/README.md`에 있습니다. 요약입니�
 - 교재 59줄에서는 1·2만 쓰였습니다(60/60 `exact`).
 - 상용어판에서는 교재의 두 줄이 7로 통과했습니다.
 
-## 7. core `Dictionary` 포트에 맞춘 어댑터 (**적용됨**)
+## 7. core `Dictionary` 포트에 맞춘 어댑터 (적용됐다가 2026-11-06 걷어냄)
 
-처음에는 제안으로 쓴 절입니다. 아래 스케치는 그때 모습 그대로 두고, 실제 위치와 달라진 점만 적습니다.
+처음에는 제안으로 쓴 절이고, 적용됐다가 가로줄 틀 경로와 함께 걷어냈습니다(머리말). 기록으로 남깁니다. 아래 스케치는 그때 모습 그대로 두고, 실제 위치와 달라진 점만 적습니다.
 
 | 절 | 실제 위치 | 스케치와 다른 점 |
 |---|---|---|
@@ -454,23 +456,20 @@ python3 tools/dict/build_jmdict_db.py --only tools/dict/test_forms.txt --glosses
     --sql packages/dict_jmdict/test/fixtures/mini_jmdict.sql
 # 패키지
 (cd packages/dict_jmdict && dart pub get && dart analyze && dart test)
-# 효과 측정 (기준 해석기: --prototype DIR, 기본은 tools/reference, 없으면 research/ocr/prototype)
-# 교재 데이터는 비공개 폴더 $SHIORI_PRIVATE_DIR/textbook/vocab_n5n3 에서 읽음 (SHIORI_PRIVATE_DIR 기본값 <repo>/.private)
-python3 tools/dict/eval_dict.py --fetch-jlpt --verbose
-# 저장소에 있는 합성 세트로 돌리기 (--data는 tools/reference/parse_eval.py로 넘어감)
-python3 tools/dict/eval_dict.py --data packages/core/test/fixtures/synthetic
+# 효과 측정: 단어 추출기 점수표 (실제 JMdict·한국어 뜻 사전, docs/extraction.md 7절)
+(cd packages/jmdict_block && dart run tool/eval_extract_dict.dart --db <JMdict SQLite> --glossary <한국어 뜻 사전 SQLite> \
+    --fixtures ../core/test/fixtures/synthetic)
 ```
+(4·5절의 측정 도구 `tools/dict/eval_dict.py`는 2026-11-06에 걷어냈습니다.)
 
 | 경로 | 내용 |
 |---|---|
 | `tools/dict/build_jmdict_db.py` | JMdict XML → SQLite(판본 선택, 크기표, 테스트용 SQL 덤프) |
 | `tools/dict/build_app_asset.py` | 앱 asset(full-lean gzip + 판 표시 파일). 테스트 `tools/dict/test_build_app_asset.py` |
 | `tools/dict/test_forms.txt` | 테스트 DB에 넣을 JMdict 표기 목록 |
-| `tools/dict/eval_dict.py` | 효과 측정(기준 해석기 + Dart 패키지 호출) |
-| `packages/dict_jmdict/lib/` | 패키지(`jmdict_dictionary.dart`, `confusables.dart`, `spelling.dart`, `priority.dart`, `kana.dart`, `models.dart`) |
-| `packages/dict_jmdict/test/` | 단위 테스트 63개와 테스트 DB |
-| `packages/jmdict_block/` | core 포트 어댑터, 테스트 19개, 사전 끔/켬 점수표 `tool/eval_capture_dict.dart` |
-| `packages/dict_jmdict/tool/query_batch.dart` | 측정용 일괄 호출 도구 |
+| `packages/dict_jmdict/lib/` | 패키지(`jmdict_dictionary.dart`, `form_lookup.dart`, `priority.dart`, `models.dart`) |
+| `packages/dict_jmdict/test/` | 단위 테스트와 테스트 DB |
+| `packages/jmdict_block/` | core `Lexicon` 포트 어댑터, 실제 사전 점수표 `tool/eval_extract_dict.dart` |
 
 ## 11. 한국어 뜻 사전 (한국어기초사전 일본어 대역어 역색인, 2026-11-05)
 
@@ -554,8 +553,8 @@ iOS prod release `Runner.app`은 36.1 MB입니다(11절 기록 때 JMdict만 넣
 gzip -dc app/assets/dict/ko-glossary.sqlite.gz > /tmp/ko.sqlite
 cd packages/krdict_block
 dart run tool/measure_glossary.dart coverage  --db /tmp/ko.sqlite --jlpt <n5.csv·n4.csv·n3.csv 폴더>
-dart run tool/measure_glossary.dart precision --db /tmp/ko.sqlite --gt "$SHIORI_PRIVATE_DIR/textbook/vocab_n5n3/ground_truth.json" --gt <다른 정답 파일>
-dart run tool/measure_glossary.dart capture   --db /tmp/ko.sqlite --fixtures ../core/test/fixtures/synthetic
+dart run tool/measure_glossary.dart precision --db /tmp/ko.sqlite --gt "$SHIORI_PRIVATE_DIR/textbook/vocab_n5n3/general/ground_truth.json" --gt <다른 정답 파일>
+# (뜻 채움 효과를 틀 파이프라인으로 재던 capture 명령은 2026-11-06에 걷어냄. 효과는 단어 추출기 점수표로 봄)
 ```
 
 ### 11.6 앱

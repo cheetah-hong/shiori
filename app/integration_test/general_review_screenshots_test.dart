@@ -1,5 +1,5 @@
-// The general extractor on a simulator: a synthetic page laid out unlike the
-// word book goes to the general route; the review screen shows where each
+// The word extractor on a simulator: a synthetic page laid out unlike a
+// word book; the review screen shows where each
 // cell came from, how sure its pairing is, the piece of the page behind a
 // cell, the tray of unpaired fragments; then the words are saved.
 //
@@ -34,7 +34,7 @@ void main() {
     expect(finder, findsWidgets);
   }
 
-  testWidgets('general route: review evidence, tray, save', (tester) async {
+  testWidgets('review evidence, tray, save', (tester) async {
     final database = ShioriDatabase.memory();
     addTearDown(database.close);
     await tester.pumpWidget(
@@ -62,7 +62,7 @@ void main() {
     await shot(tester, '28_capture_general_samples');
     await tester.tap(sample);
     await tester.pumpAndSettle();
-    await waitFor(tester, find.byKey(const ValueKey('route-summary')));
+    await waitFor(tester, find.byKey(const ValueKey('review-heading')));
     await shot(tester, '29_review_general');
 
     await tester.tap(find.byKey(const ValueKey('cell-0-meaning')));

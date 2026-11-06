@@ -1,17 +1,15 @@
-// Score table of the layout-free word extractor, by headword, next to the
-// textbook row templates on the same pages.
+// Score table of the layout-free word extractor, by headword.
 //
 //   dart run tool/eval_extract.dart [--fixtures DIR] [--gt FILE]
-//       [--lexicon FILE] [--glosses FILE] [--template] [--routed] [--verbose]
-//       [--no-warmup]
+//       [--lexicon FILE] [--glosses FILE] [--verbose] [--no-warmup]
 //
 // DIR defaults to the synthetic pages for the extractor
-// (test/fixtures/synthetic_general); --gt to DIR/ground_truth.json, in either
-// answer format (general-1, or the templates' answers). --lexicon: an
+// (test/fixtures/synthetic_general); --gt to DIR/ground_truth.json
+// (`"format": "general-1"`). --lexicon: an
 // in-memory dictionary file (default DIR/lexicon.json when it exists; none
 // otherwise). With the real JMdict use packages/jmdict_block/tool/eval_extract_dict.dart.
 // --glosses: a {"glosses": {headword: [Korean, ...]}} file standing in for a
-// Korean gloss dictionary. --template also scores CapturePipeline.standard().
+// Korean gloss dictionary.
 // --verbose lists every mistake; on recorded textbook pages those quote the
 // page, so keep them out of anything committed.
 // Times per page come after one untimed read of the first page (the VM's
@@ -36,7 +34,7 @@ Future<void> main(List<String> args) async {
       : null;
   final glossPath = _option(args, '--glosses');
   final glosses = glossPath == null ? null : _glosses(File(glossPath));
-  final truth = ExtractTruth.fromAnyJson(_json(truthFile));
+  final truth = ExtractTruth.fromJson(_json(truthFile));
   final recognizer = FixtureTextRecognizer(
     (name) => File('$dir/$name').readAsString(),
   );
@@ -64,37 +62,6 @@ Future<void> main(List<String> args) async {
       'glosses: ${glossPath ?? 'none'})',
     )
     ..writeln(general.table(verbose: verbose));
-  if (args.contains('--routed')) {
-    final routed = await scoreExtractor(
-      truth: truth,
-      loadScan: load,
-      warmUp: warmUp,
-      run: routedRun(
-        CaptureRouter(
-          template: CapturePipeline.standard(),
-          general: GeneralExtractor(
-            lexicon: lexicon ?? const EmptyLexicon(),
-            koreanGlosses: glosses,
-          ),
-        ),
-      ),
-    );
-    stdout
-      ..writeln()
-      ..writeln('== routed (template when it fits, else general)')
-      ..writeln(routed.table(verbose: verbose));
-  }
-  if (!args.contains('--template')) return;
-  final template = await scoreExtractor(
-    truth: truth,
-    loadScan: load,
-    warmUp: warmUp,
-    run: templateRun(CapturePipeline.standard()),
-  );
-  stdout
-    ..writeln()
-    ..writeln('== template (row templates, no dictionary)')
-    ..writeln(template.table(verbose: verbose));
 }
 
 Map<String, Object?> _json(File f) =>

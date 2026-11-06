@@ -12,8 +12,3 @@ JmdictDictionary openMiniDictionary() {
     ..execute(File(miniFixturePath).readAsStringSync());
   return JmdictDictionary.fromDatabase(db);
 }
-
-/// Headwords of [candidates], in order.
-List<String> headwords(Iterable<HeadwordCandidate> candidates) => [
-  for (final c in candidates) c.headword,
-];

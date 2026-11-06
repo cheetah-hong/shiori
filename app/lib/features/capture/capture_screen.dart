@@ -52,7 +52,7 @@ class CaptureScreen extends ConsumerWidget {
               ),
               children: [
                 Text(
-                  '단어장 한 쪽을 위에서 똑바로 찍어 주세요.\n목록형(N5·N4)과 예문이 있는 항목형(N3)을 알아서 구분합니다.',
+                  '교재 한 쪽을 위에서 똑바로 찍어 주세요.\n사진 속 일본어 단어와 읽기·뜻을 내용으로 짝지어 모읍니다.',
                   style: context.text.bodyMedium?.copyWith(
                     color: t.ink2,
                     height: 1.55,
