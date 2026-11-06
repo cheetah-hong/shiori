@@ -148,4 +148,46 @@ void main() {
       expect(korean, ['9, 별']);
     });
   });
+  // S1: sentence punctuation. `?` `!` `？` `！` `。` end a sentence: a box
+  // with one of them joins neither its left nor its right neighbour. `.` and
+  // `．` separate the senses of one meaning line (`조용히 앉다. 말이 없다.`):
+  // those boxes join as before.
+  group('S1 sentence punctuation in touching Korean boxes', () {
+    for (final mark in ['?', '!', '？', '！', '。']) {
+      test('a box ending in $mark: apart from the box after it', () {
+        final lines = [
+          _box('어디 가요$mark', 0.600, 0.070),
+          _box('저기요', 0.600 + 0.070 + _h * 0.4, 0.042),
+        ];
+        expect(identical(joinTouchingKorean(lines), lines), isTrue);
+      });
+
+      test('a box ending in $mark: apart from the box before it', () {
+        final lines = [
+          _box('어디에', 0.600, 0.042),
+          _box('가요$mark', 0.600 + 0.042 + _h * 0.4, 0.042),
+        ];
+        expect(identical(joinTouchingKorean(lines), lines), isTrue);
+      });
+    }
+
+    for (final mark in ['.', '．']) {
+      test('a box ending in $mark: joins the box after it', () {
+        final out = joinTouchingKorean([
+          _box('조용히 앉다$mark', 0.600, 0.084),
+          _box('말이 없다$mark', 0.600 + 0.084 + _h * 0.4, 0.070),
+        ]);
+        expect(_texts(out), ['조용히 앉다$mark 말이 없다$mark']);
+      });
+    }
+
+    test('lines a whole line apart (one box per line): the same list', () {
+      final lines = [
+        _box('조용히 앉다.', 0.600, 0.084),
+        _box('말이 없다.', 0.600, 0.070, y: 0.39 + _h * 1.5),
+        _box('어디 가요?', 0.600, 0.070, y: 0.39 + _h * 3),
+      ];
+      expect(identical(joinTouchingKorean(lines), lines), isTrue);
+    });
+  });
 }

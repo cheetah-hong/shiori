@@ -28,12 +28,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:shiori/adapters/app_database.dart';
+import 'package:shiori/adapters/dev_samples.dart';
 import 'package:shiori/app/app.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori_core/shiori_core.dart';
 import 'package:shiori_storage_drift/shiori_storage_drift.dart';
 
 const _step = String.fromEnvironment('SHIORI_PERSISTENCE_STEP');
+
+/// The example-page sample: its word list and the words of its example
+/// sentences. How many words the page gives depends on the dictionary and
+/// the extraction rules, so the steps read the counts off the screen.
+const _sampleDetail = 'DAY 20 여행·교통';
+
+final _addButton = RegExp(r'^단어 (\d+)개 추가$');
+final _startButton = RegExp(r'^오늘 학습 시작 · (\d+)장$');
+final _knownToday = RegExp(r'^오늘 (\d+)개 외움$');
 
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -75,6 +85,35 @@ void main() {
     return database;
   }
 
+  /// The number in the one text on screen that matches [pattern].
+  Future<int> countOnScreen(WidgetTester tester, RegExp pattern) async {
+    final finder = find.textContaining(pattern);
+    await waitFor(tester, finder);
+    final text = tester.widget<Text>(finder.first).data!;
+    return int.parse(pattern.firstMatch(text)!.group(1)!);
+  }
+
+  /// How many words adding the sample saves into an empty library: the
+  /// sample read again with the app's own extractor and dictionaries.
+  Future<int> sampleWordCount(WidgetTester tester) async {
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(ShioriApp)),
+    );
+    await container.read(bundledDictionaryProvider.future);
+    await container.read(bundledGlossaryProvider.future);
+    final sample = devSamples.singleWhere((s) => s.detail == _sampleDetail);
+    final scan = await container
+        .read(sampleRecognizerProvider)
+        .recognize(sample.image);
+    final draft = await pageDraft(
+      container.read(generalExtractorProvider),
+      scan,
+    );
+    return draft.entries
+        .where((e) => e.included && e.headword.trim().isNotEmpty)
+        .length;
+  }
+
   /// The words of the one playlist, in its order (the order studied).
   Future<List<Word>> playlistWords(ShioriDatabase database) async {
     final library = DriftLibraryRepository(database);
@@ -83,42 +122,51 @@ void main() {
   }
 
   testWidgets('save a page and study it', (tester) async {
-    await pumpApp(tester);
+    final database = await pumpApp(tester);
     await waitFor(tester, find.text('먼저 페이지를 등록해 주세요'));
 
     await tapText(tester, '페이지 등록');
-    await tapText(tester, 'DAY 20 여행·교통');
-    await tapText(tester, '단어 6개 추가');
+    await tapText(tester, _sampleDetail);
+    final added = await countOnScreen(tester, _addButton);
+    await tapText(tester, '단어 $added개 추가');
     // A fresh database has no playlist yet: the new-playlist form is already
     // open with 내 단어장 filled in.
     await waitFor(tester, find.text('만들고 추가'));
     await tapText(tester, '만들고 추가');
-    await tapText(tester, '오늘 학습 시작 · 6장');
+
+    // Today's session: every new word, up to the daily goal.
+    final cards = await countOnScreen(tester, _startButton);
+    final goal = const StudySettings().dailyGoal;
+    expect(cards, added < goal ? added : goal);
+    await tapText(tester, '오늘 학습 시작 · $cards장');
     await tapText(tester, '다시 학습');
-    for (var i = 0; i < 6; i++) {
+    for (var i = 0; i < cards; i++) {
       await tapText(tester, '알고있음');
     }
     expect(find.text('오늘 학습 끝'), findsOneWidget);
     await tapText(tester, '확인');
-    await waitFor(tester, find.text('오늘 6개 외움'));
+    await waitFor(tester, find.text('오늘 $cards개 외움'));
+    expect(await DriftLibraryRepository(database).words(), hasLength(added));
   }, skip: _step != 'save');
 
   testWidgets('after a restart the words and memory levels are back', (
     tester,
   ) async {
     final database = await pumpApp(tester);
-    await waitFor(tester, find.text('오늘 6개 외움'));
+    final cards = await countOnScreen(tester, _knownToday);
     expect(find.text('먼저 페이지를 등록해 주세요'), findsNothing);
 
-    // Read back from the file: 6 words; the retried word at level 2, the
-    // others at level 4; 7 presses (one 다시 학습, six 알고있음).
+    // Read back from the file: every word of the sample; of the cards
+    // studied, the retried one at level 2 and the others at level 4; one
+    // press more than cards (one 다시 학습, then 알고있음 for each card).
     final words = await DriftLibraryRepository(database).words();
     final reviews = DriftReviewRepository(database);
     final levels = (await reviews.cards()).values.map((c) => c.level).toList()
       ..sort();
-    expect(words.length, 6);
-    expect(levels, [2, 4, 4, 4, 4, 4]);
-    expect((await reviews.logs()).length, 7);
+    expect(words, hasLength(await sampleWordCount(tester)));
+    expect(cards, greaterThan(0));
+    expect(levels, [2, for (var i = 1; i < cards; i++) 4]);
+    expect((await reviews.logs()).length, cards + 1);
 
     await tapText(tester, '내 단어장');
     await tester.drag(find.byType(Scrollable).first, const Offset(0, -400));
