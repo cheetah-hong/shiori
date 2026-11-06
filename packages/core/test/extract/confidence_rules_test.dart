@@ -185,12 +185,12 @@ void main() {
   });
 
   test('read at the engine\'s lowest confidence (also as the device channel '
-      'passes 0.3 on): not high', () async {
+      'passes 0.3 on) with no meaning to back it: not high', () async {
+    // No gloss: the meaning pairs by placement only. With a gloss-named
+    // meaning the faint reading is high (faint_read_test.dart).
     final extractor = GeneralExtractor(
       lexicon: trapLexicon(),
-      koreanGlosses: _glosses({
-        '橋': ['다리'],
-      }),
+      koreanGlosses: _glosses({}),
     );
     final r = await extractor.extract(
       scan(
