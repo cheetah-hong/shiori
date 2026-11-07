@@ -78,6 +78,7 @@ final class GeneralExtractor {
     this.lexicon = const EmptyLexicon(),
     KoreanGlossLookup? koreanGlosses,
     this.koreanGlossary,
+    this.meaningFallback,
     this.weights = const PairWeights(),
   }) : _givenGlosses = koreanGlosses;
 
@@ -95,6 +96,10 @@ final class GeneralExtractor {
   /// [koreanGlosses]) and its first sense the meaning of a dictionary word
   /// the page gives none; the other senses are offered as candidates.
   final KoreanGlossary? koreanGlossary;
+
+  /// A second glossary (위키낱말사전) for the meaning of a dictionary word the
+  /// page gives none and [koreanGlossary] has no sense for.
+  final KoreanGlossary? meaningFallback;
   final PairWeights weights;
 
   /// Words on the page. Headwords in [knownHeadwords] (already in the
@@ -110,7 +115,7 @@ final class GeneralExtractor {
       _CachingLexicon(lexicon),
       hasLexicon: lexicon is! EmptyLexicon,
     );
-    final senses = _SenseCache(koreanGlossary);
+    final senses = _SenseCache(koreanGlossary, fallback: meaningFallback);
     final glosses =
         _givenGlosses ?? (koreanGlossary == null ? null : senses.words);
     await page.prefetch();
@@ -174,7 +179,7 @@ final class GeneralExtractor {
         skipped.add(w.headword);
       }
     }
-    final filled = koreanGlossary == null
+    final filled = koreanGlossary == null && meaningFallback == null
         ? kept
         : [for (final w in kept) await senses.fill(w)];
     // After merging: the merge picks between words by their confidence.
@@ -230,9 +235,13 @@ final class GeneralExtractor {
 /// ([fill], [meaningSenses] senses with the class the word is printed as,
 /// ordered by [orderMeaningSenses]).
 final class _SenseCache {
-  _SenseCache(this.glossary);
+  _SenseCache(this.glossary, {this.fallback});
 
   final KoreanGlossary? glossary;
+
+  /// Asked only to fill an empty meaning [glossary] has no sense for, under
+  /// any of the word's forms (docs/dictionary.md, 13.4).
+  final KoreanGlossary? fallback;
   final Map<String, Future<List<KoreanSense>>> _found = {};
 
   Future<List<KoreanSense>> _ask(
@@ -240,10 +249,13 @@ final class _SenseCache {
     List<String> readings, {
     required int limit,
     PartOfSpeech? pos,
+    bool fromFallback = false,
   }) {
-    final g = glossary;
+    final g = fromFallback ? fallback : glossary;
     if (g == null) return Future.value(const []);
-    final key = '$headword|${readings.join('/')}|$limit|${pos?.name}';
+    final key =
+        '${fromFallback ? 'fallback|' : ''}$headword|${readings.join('/')}|'
+        '$limit|${pos?.name}';
     return _found[key] ??= () async {
       try {
         return await g.lookup(
@@ -270,18 +282,35 @@ final class _SenseCache {
   /// negative after it puts a sense used with a negative first.
   Future<List<KoreanSense>> _meaningSenses(
     ExtractedWord w,
-    String form,
-  ) async => orderMeaningSenses(
+    String form, {
+    bool fromFallback = false,
+  }) async => orderMeaningSenses(
     form,
     await _ask(
       form,
       w.readings,
       limit: meaningSenses,
       pos: w.printedPos ?? w.usagePos ?? partOfSpeechOf(w.partsOfSpeech),
+      fromFallback: fromFallback,
     ),
     translation: w.origin == WordOrigin.sentence ? w.example?.ko : null,
     negated: w.origin == WordOrigin.sentence && w.negated,
   );
+
+  /// The senses of [w]'s headword, else of its forms without an optional
+  /// prefix's brackets (`(お)みやげ` → おみやげ, みやげ), the first that has
+  /// any.
+  Future<List<KoreanSense>> _sensesOfForms(
+    ExtractedWord w, {
+    bool fromFallback = false,
+  }) async {
+    var found = await _meaningSenses(w, w.headword, fromFallback: fromFallback);
+    for (final form in optionalPrefixForms(w.headword)) {
+      if (found.isNotEmpty) break;
+      found = await _meaningSenses(w, form, fromFallback: fromFallback);
+    }
+    return found;
+  }
 
   /// A dictionary word with no meaning on the page takes the first sense
   /// (source: dictionary, never high); the next senses, at most
@@ -291,11 +320,11 @@ final class _SenseCache {
     // Only words the lexicon knows: a meaning for a misread one would look
     // checked.
     if (w.partsOfSpeech.isEmpty) return w;
-    var found = await _meaningSenses(w, w.headword);
-    // `(お)みやげ`: the word without its optional prefix's brackets.
-    for (final form in optionalPrefixForms(w.headword)) {
-      if (found.isNotEmpty) break;
-      found = await _meaningSenses(w, form);
+    var found = await _sensesOfForms(w);
+    // The fallback only for a meaning the page did not give, and only when
+    // no form of the word is in the glossary (おX there wins over X here).
+    if (found.isEmpty && w.meaning == null && fallback != null) {
+      found = await _sensesOfForms(w, fromFallback: true);
     }
     if (found.isEmpty) return w;
     final meaning = w.meaning;
@@ -306,8 +335,9 @@ final class _SenseCache {
         meaningLink: const PairLink(
           confidence: PairConfidence.medium,
           signals: {PairSignal.koreanGloss},
-          note: '사전 뜻',
+          note: dictionaryMeaningNote,
         ),
+        meaningGlossary: found.first.source,
         meaningCandidates: [
           for (final s in found.skip(1).take(maxMeaningCandidates)) s.text,
         ],

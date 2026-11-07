@@ -17,6 +17,7 @@ export 'src/models/word_key.dart';
 
 // Ports: the slots blocks plug into
 export 'src/ports/clock.dart';
+export 'src/ports/fallback_glossary.dart';
 export 'src/ports/hidden_word_repository.dart';
 export 'src/ports/lexicon.dart';
 export 'src/ports/image_source.dart';

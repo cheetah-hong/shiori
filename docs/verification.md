@@ -2052,3 +2052,63 @@ iPhone 17 시뮬레이터(실제 사전·발음 asset)에서 `save` → 앱 종�
 | `app/integration_test/persistence_test.dart` | 30.3절 |
 
 결과: core **598**(+13) · jmdict_block **27**(로컬 포함) · app **262** 통과, analyze 문제 없음, 생성기 `--check` 3개 통과. 로컬 세트 값은 27절 그대로입니다.
+
+
+## 31. 위키낱말사전 보조 사전: 기초사전에 없는 낱말의 뜻 (2026-11-07)
+
+사진에 뜻이 없는 사전 낱말 가운데 **한국어기초사전 역색인이 뜻을 하나도 주지 못하는 것만** 위키낱말사전(한국어판 일본어 항목 → 없으면 영어판 번역표)으로 채웁니다.
+규칙·판·라이선스는 `docs/dictionary.md` 13절, 원천 조사는 `research/meaning/README.md`입니다. 교재 쪽은 숫자만 적습니다.
+
+### 31.1 바꾼 것
+
+| 항목 | 위치 | 내용 |
+|---|---|---|
+| 영어판 행 | `tools/dict/wikt_en_rows.py` (새) | 영어판 원자료(3.08 GB gzip)를 읽으면서 sha256·크기를 재고, 번역표에 일·한이 함께 있는 영어 뜻만 남김(27,578행) |
+| 보조 사전 빌드 | `tools/dict/build_wikt_glossary.py` (새) | 키마다 한국어판 → 없으면 영어판, 기초사전이 답하는 키는 뺌, 기초사전과 같은 schema 2. `--sample-sql`·`--check` |
+| 검사 | `tools/dict/asset_check.py` | `wikt-glossary`: release에 필수(없음·깨짐·판 어긋남·곁의 기초사전과 `krdict_sqlite_sha256` 다름 → 실패), 일반 실행은 있으면 검사·없으면 한 줄 |
+| core | `ports/fallback_glossary.dart` (새), `general_extractor.dart`, `extracted_word.dart` | `FallbackKoreanGlossary`, `GeneralExtractor(meaningFallback:)` — 빈 뜻을 채울 때만, 모든 표기가 기초사전에 없을 때. `ExtractedWord.meaningGlossary` → 근거 `사전 뜻: 위키낱말사전` |
+| 블록 | — | 그대로(`KrdictGlossary`가 보조 사전 파일도 엶, `sense.source` 1 = 위키낱말사전) |
+| 앱 | `bundled_glossary.dart`, `blocks.dart`, `about_screen.dart` | 두 asset을 함께 풂(보조 사전이 없으면 로그 한 줄), `wiktionaryGlossaryProvider` → 추출기, 정보 화면 카드·라이선스 페이지 항목 |
+
+### 31.2 결과 (실제 JMdict·기초사전 2026-10-19판·보조 사전)
+
+| 측정 | 전 | 후 |
+|---|---|---|
+| 74단어 1순위 · 5순위 안 | 54 · 63 | **56 · 65** |
+| 15세트 + 실기기 쪽 검토 초안의 빈 뜻 | 49 | 30 (19개 채움: 문맥상 맞음 17, 틀림 1, OCR 조각에 뜻 1) |
+| JLPT N5 · N4 · N3 (718 · 668 · 2,140) 중 기초사전이 비는 낱말 | 44 · 49 · 159 | 채움 25 · 27 · 79 (합 131/252) |
+| 위 131개의 1순위, 눈으로 본 판정 | — | 맞음 24 · 25 · 73 = **122 (93%)** |
+| 앱 asset 증가 | — | gzip 1,461,627 B (SQLite 4,079,616 B) |
+
+- 세트별 찾음·읽기·여분·높음은 모두 그대로이고, 뜻 맞음은 줄지 않았습니다(세트 정답에 있는 낱말 중 채워진 것은 0). **높음인데 틀림 0, 여분인데 높음 0, 보조 사전 뜻 중 높음 0.**
+- 값 불변: 같은 실행에서 보조 사전 없이·있이 두 번 뽑아 항목마다 모든 값(표제어·읽기·품사·뜻·예문·표시·칸별 출처·신뢰도·근거·후보·조각 수)을 비교했습니다. 바뀐 항목은 **전에 뜻이 비어 있던 19개뿐**입니다.
+- ML Kit 낱말 상자 세트도 하한(높음 36·뜻 56) 그대로입니다.
+- JLPT에서 틀린 꼴: 쓰임 설명이나 다른 뜻이 첫 묶음(대표 낱말 하나에 「많이」, 영어 뜻이 넓은 번역표의 다른 낱말). 같은 한자의 다른 읽기를 가리지 못하는 경우는 읽기 칸을 따라 걸렀습니다.
+
+### 31.3 테스트
+
+| 파일 | 내용 |
+|---|---|
+| `tools/dict/test_build_wikt_glossary.py` (새, 20) | W1: 뜻풀이·번역어 규칙, 오쿠리가나 읽기·옛 표기 거부, 키 규칙, 한국어판이 영어판보다 앞, 중복 제거, 기초사전 키·짝 읽기 빼기, 판 정보, 같은 입력 같은 바이트, sha256 고정, 행 파일 머리말·잘린 파일 거부, 견본 SQL |
+| `tools/dict/test_asset_check_wikt.py` (새, 11) | W2: release에서 없음·깨짐·판 어긋남·다른 기초사전이면 실패와 만드는 명령, 일반 실행은 없어도 통과, 나이 제한 없음, `--check` |
+| `tools/dict/test_asset_check.py` | 결정에 따라 견본 asset을 만드는 함수가 보조 사전도 만듦(한 줄) |
+| `packages/core/test/ports/fallback_glossary_test.dart` (새, 5) · `extract/meaning_fallback_test.dart` (새, 7) | W3: 주 사전에 뜻이 있으면 같은 결과·보조 사전을 묻지 않음, 비면 보조 사전 뜻(같은 인자), 둘 다 비면 없음. 추출기: 빈 뜻만 채움, 중간·「위키낱말사전」 표시, 사진 뜻·짝짓기는 그대로, 나머지 항목 값 같음 |
+| `packages/krdict_block/test/wikt_glossary_test.dart` (새, 8) | W4: 메모리 SQLite(견본)로 판·출처, 묶음, 읽기, 오쿠리가나, 키 규칙, 영어판 행, 기초사전 낱말 없음 |
+| `app/test/adapters/bundled_wikt_glossary_test.dart` (새, 6) · `features/about_wikt_test.dart` (새, 3) · `features/review_wikt_source_test.dart` (새, 2) | W5: 두 asset 풀기, 없거나 깨지면 기초사전만·로그 한 줄, 추출기에 연결, 정보 화면 카드·없을 때 문구, 라이선스 항목, 검토 화면의 추정 표시와 근거 출처 |
+| `packages/jmdict_block/test/meaning_gap_local_test.dart` (새, 로컬, 3) | W6: 31.2절 하한 |
+| 보완 | `packages/core/test/extract/meaning_fallback_prefix_test.dart` (2): `(お)X`에서 기초사전의 `おX`가 보조 사전의 `X`보다 앞. `app/test/features/about_wikt_damaged_test.dart` (2): 열지 못한 보조 사전과 없는 보조 사전의 문구. `tools/dict/test_build_wikt_glossary_extra.py` (5): 한자 괄호·일본어 조각·괄호 안 구분자, 잘린 행 파일, 임시 파일 없음 |
+| `app/integration_test/wikt_screenshots_test.dart` (새) | 스크린샷 90~93 |
+
+결과: core **612**(+14) · krdict_block **100**(+8) · jmdict_block **30**(+3, 로컬 포함) · app **275**(+13) · tools/dict **148**(+36) · research/meaning **20** 통과, analyze 문제 없음,
+생성기 `--check` 3개 통과, `asset_check.py --release --engine ios` 모두 ok(이 체크아웃 asset).
+
+### 31.4 스크린샷 (iPhone 17 시뮬레이터, dev, 실제 asset, 합성 샘플)
+
+`cd app && flutter drive -d <iPhone 17> --flavor dev --driver=test_driver/integration_test.dart --target=integration_test/wikt_screenshots_test.dart`
+
+| 파일 | 화면 |
+|---|---|
+| `90_about_wikt.png` | 정보: 위키낱말사전 카드(출처 두 줄, CC BY-SA 4.0, 한국어판·영어판 링크, 만든 날) |
+| `91_license_wikt.png` | 라이선스 페이지의 위키낱말사전 항목 |
+| `92_review_wikt_meaning.png` | 검토: DAY 20 예문 낱말 大阪 → 오사카(사전·중간·추정) |
+| `93_evidence_wikt.png` | 근거 조각: 출처 사전 · 짝 신뢰도 중간 · 사전 뜻: 위키낱말사전 |

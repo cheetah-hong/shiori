@@ -7,6 +7,7 @@ import 'package:shiori_core/src/extract/latin_debris.dart';
 import 'package:shiori_core/src/models/captured_entry.dart';
 import 'package:shiori_core/src/models/evidence.dart';
 import 'package:shiori_core/src/models/part_of_speech.dart';
+import 'package:shiori_core/src/ports/korean_glossary.dart';
 
 export 'package:shiori_core/src/models/evidence.dart'
     show FieldSource, PairConfidence, WordOrigin;
@@ -91,6 +92,9 @@ final class WordExample {
   String toString() => 'WordExample($ja / $ko)';
 }
 
+/// How a meaning filled from the dictionary is noted.
+const String dictionaryMeaningNote = '사전 뜻';
+
 final class ExtractedWord {
   const ExtractedWord({
     required this.headword,
@@ -114,6 +118,7 @@ final class ExtractedWord {
     this.usagePos,
     this.negated = false,
     this.meaningRepair,
+    this.meaningGlossary,
   });
 
   /// Dictionary form: kanji (with okurigana) or, for kana words, the kana.
@@ -151,6 +156,18 @@ final class ExtractedWord {
 
   /// Other meanings to offer: the glossary's other senses.
   final List<String> meaningCandidates;
+
+  /// The glossary a meaning filled from the dictionary came from; null for
+  /// a meaning from the page.
+  final GlossarySource? meaningGlossary;
+
+  /// How a meaning from the dictionary is noted: `사전 뜻`, with the
+  /// glossary's name when it is not the Basic Korean Dictionary
+  /// (`사전 뜻: 위키낱말사전`).
+  String get _dictionaryNote => switch (meaningGlossary) {
+    null || GlossarySource.krdict => dictionaryMeaningNote,
+    final GlossarySource other => '$dictionaryMeaningNote: ${other.label}',
+  };
 
   /// Headwords to offer when OCR did not read the printed one and the
   /// glossary read backwards gives more than one spelling for its kana.
@@ -199,6 +216,7 @@ final class ExtractedWord {
     List<String>? meaningCandidates,
     List<String>? headwordCandidates,
     Object? meaningRepair = _unset,
+    Object? meaningGlossary = _unset,
   }) => ExtractedWord(
     headword: headword,
     origin: origin ?? this.origin,
@@ -237,6 +255,9 @@ final class ExtractedWord {
     meaningRepair: identical(meaningRepair, _unset)
         ? this.meaningRepair
         : meaningRepair as MeaningRepairKind?,
+    meaningGlossary: identical(meaningGlossary, _unset)
+        ? this.meaningGlossary
+        : meaningGlossary as GlossarySource?,
   );
 
   /// The review-draft entry the capture screens use. Fields the photo did
@@ -275,7 +296,7 @@ final class ExtractedWord {
           ),
         if (meaning == null) const EntryIssue.missing(EntryField.meaning),
         if (meaning != null && fromDictionary)
-          const EntryIssue.inferred(EntryField.meaning, note: '사전 뜻'),
+          EntryIssue.inferred(EntryField.meaning, note: _dictionaryNote),
         if (meaningRepair
             case MeaningRepairKind.trimmed || MeaningRepairKind.senseDropped)
           const EntryIssue.corrected(
@@ -329,7 +350,7 @@ final class ExtractedWord {
                   ? boxes([meaningLink?.fragmentId])
                   : const [],
               candidates: meaningCandidates,
-              note: fromDictionary ? '사전 뜻' : meaningLink?.note,
+              note: fromDictionary ? _dictionaryNote : meaningLink?.note,
             ),
           if (example != null)
             EntryField.example: FieldEvidence(

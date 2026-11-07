@@ -4,13 +4,15 @@
   python3 tools/dict/asset_check.py [--dir app/assets/dict] [--voice-dir app/assets/voice]
                                     [--accent-dir app/assets/accent] [--max-age-days N | --release]
 
-For each asset (JMdict full-lean and the Korean glossary): the edition file has every
+For each asset (JMdict full-lean, the Korean glossary and its Wiktionary fallback): the
+edition file has every
 field the app reads, the gzip has the size the edition gives, it unpacks completely,
 the SQLite file inside has the size and sha256 the edition gives, and the database's
 own meta agrees with the edition. Prints one line per problem and exits 1, or one
 `ok` line per asset and exits 0. --max-age-days N also fails an asset built more than
 N days ago (off by default). --release is the check a release build runs (Xcode and
-Gradle): every asset must match its edition, and JMdict must be at most
+Gradle): every asset must match its edition (the Wiktionary fallback too, cut against the
+Korean glossary next to it; a plain run checks it only when it is built), and JMdict must be at most
 RELEASE_MAX_AGE_DAYS old; on failure it also prints the command that fixes it. Only
 the Python 3 standard library is used.
 
@@ -59,12 +61,21 @@ ASSETS = {
     "ko-glossary": ("ko-glossary.sqlite.gz", "ko-glossary.edition.json"),
 }
 
+# The Wiktionary fallback glossary (build_wikt_glossary.py): a release needs it, a plain
+# check reports it when it is there (debug builds run without it). It is cut against the
+# Basic Korean Dictionary asset next to it (its edition names that asset's sqlite_sha256).
+FALLBACK_ASSETS = {
+    "wikt-glossary": ("wikt-glossary.sqlite.gz", "wikt-glossary.edition.json"),
+}
+ALL_ASSETS = {**ASSETS, **FALLBACK_ASSETS}
+
 
 # Fields the app or this check reads from each edition file.
 COMMON_FIELDS = ("variant", "built_on", "gzip_bytes", "sqlite_bytes", "sqlite_sha256")
 EDITION_FIELDS = {
     "jmdict-full-lean": COMMON_FIELDS + ("source_sha256", "jmdict_created", "license"),
     "ko-glossary": COMMON_FIELDS + ("sources", "attribution"),
+    "wikt-glossary": COMMON_FIELDS + ("sources", "attribution", "krdict_sqlite_sha256"),
 }
 SOURCE_FIELDS = ("source", "name", "publisher", "edition", "license", "license_url", "source_sha256")
 SIZE_FIELDS = ("gzip_bytes", "sqlite_bytes")
@@ -81,6 +92,8 @@ REFRESH_COMMAND = "python3 tools/dict/refresh.py"
 REBUILD_COMMANDS = {
     "jmdict-full-lean": "python3 tools/dict/build_app_asset.py",
     "ko-glossary": "python3 tools/dict/build_ko_glossary.py --source <krdict JSON zip>",
+    "wikt-glossary": "python3 tools/dict/build_wikt_glossary.py --kowikt <kowiktionary gzip> "
+                     "--kowikt-dump <day> --en-rows <rows>",
 }
 
 
@@ -132,8 +145,12 @@ def _meta_problems(name: str, edition: dict, meta: dict[str, str]) -> list[str]:
     else:
         sources = edition.get("sources") or [{}]
         first = sources[0] if isinstance(sources[0], dict) else {}
-        pairs = [("sources[0].edition", first.get("edition"), meta.get("krdict.edition")),
+        prefix = "wiktionary" if name == "wikt-glossary" else "krdict"
+        pairs = [("sources[0].edition", first.get("edition"), meta.get(f"{prefix}.edition")),
                  ("variant", edition.get("variant"), meta.get("variant"))]
+        if name == "wikt-glossary":
+            pairs.append(("krdict_sqlite_sha256", edition.get("krdict_sqlite_sha256"),
+                          meta.get("krdict_sqlite_sha256")))
     return [f"{name}: edition {field} is {want!r}, the database inside says {got!r}"
             for field, want, got in pairs if want is not None and want != got]
 
@@ -194,10 +211,30 @@ def check_dir(directory: Path, *, max_age_days: int | None = None, today: dt.dat
     """Problems of the assets [names] in [directory], one line each."""
     problems = []
     for name in names:
-        gz_name, edition_name = ASSETS[name]
+        gz_name, edition_name = ALL_ASSETS[name]
         problems += check_asset(name, directory / gz_name, directory / edition_name,
                                 max_age_days=max_age_days, today=today)
     return problems
+
+
+def _is_built(directory: Path, name: str) -> bool:
+    """Either file of asset [name] is in [directory]."""
+    return any((directory / f).exists() for f in ALL_ASSETS[name])
+
+
+def fallback_cut_problems(directory: Path) -> list[str]:
+    """The fallback glossary must be cut against the Basic Korean Dictionary asset next to it
+    (checked only when both match their editions)."""
+    gz, edition = (directory / f for f in ALL_ASSETS["wikt-glossary"])
+    ko_gz, ko_edition = (directory / f for f in ASSETS["ko-glossary"])
+    if check_asset("wikt-glossary", gz, edition) or check_asset("ko-glossary", ko_gz, ko_edition):
+        return []
+    want = json.loads(ko_edition.read_text(encoding="utf-8")).get("sqlite_sha256")
+    got = json.loads(edition.read_text(encoding="utf-8")).get("krdict_sqlite_sha256")
+    if want == got:
+        return []
+    return [f"wikt-glossary: edition krdict_sqlite_sha256 is {str(got)[:16]}…, the ko-glossary asset "
+            f"next to it is {str(want)[:16]}… (rebuild the fallback after the glossary)"]
 
 
 def _speech_dirs(voice_dir: Path | None, accent_dir: Path | None) -> dict[str, Path | None]:
@@ -209,6 +246,17 @@ def report(directory: Path, *, max_age_days: int | None = None, names: tuple[str
     """Print the check of [names] in [directory] and of the speech assets whose folder is
     given; 0 when all are good, else 1."""
     problems = check_dir(directory, max_age_days=max_age_days, names=names)
+    # With every dictionary asked for, the fallback glossary too when it is built.
+    fallback = names == tuple(ASSETS) and _is_built(directory, "wikt-glossary")
+    if fallback:
+        problems += check_dir(directory, max_age_days=max_age_days, names=("wikt-glossary",))
+        problems += fallback_cut_problems(directory)
+        names = names + ("wikt-glossary",)
+    elif names == tuple(ASSETS):
+        print("wikt-glossary: not built (a release needs it: "
+              f"{REBUILD_COMMANDS['wikt-glossary']})")
+    elif "wikt-glossary" in names:
+        problems += fallback_cut_problems(directory)
     dirs = _speech_dirs(voice_dir, accent_dir)
     speech_problems, speech_failed = speech_check.check_speech(dirs)
     for p in problems + speech_problems:
@@ -229,8 +277,10 @@ def _release_split(directory: Path, today: dt.date | None) -> tuple[list[str], l
     problems: list[str] = []
     mismatched: list[str] = []
     too_old: list[str] = []
-    for name, (gz_name, edition_name) in ASSETS.items():
+    for name, (gz_name, edition_name) in ALL_ASSETS.items():
         found = check_asset(name, directory / gz_name, directory / edition_name)
+        if name in FALLBACK_ASSETS and not found:
+            found = fallback_cut_problems(directory)
         if found:
             problems += found
             mismatched.append(name)
@@ -262,7 +312,7 @@ def release_report(directory: Path, *, voice_dir: Path | None = None, accent_dir
         print(f"engine ({engine}): ok")
     for p in problems + speech_problems + engine_problems:
         print(p)
-    for name in ASSETS:
+    for name in ALL_ASSETS:
         if name not in mismatched and name not in too_old:
             print(f"{name}: ok")
     for name, directory_given in dirs.items():

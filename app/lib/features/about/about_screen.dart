@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/adapters/bundled_dictionary.dart';
 import 'package:shiori/adapters/bundled_glossary.dart';
+import 'package:shiori/adapters/dictionary_problem.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/theme.dart';
 import 'package:shiori/features/about/crash_log_screen.dart';
@@ -23,6 +24,8 @@ const _notice =
     "and are used in conformance with the Group's licence.";
 
 const _krdictUrl = 'https://krdict.korean.go.kr';
+const _koWiktionaryUrl = 'https://ko.wiktionary.org';
+const _enWiktionaryUrl = 'https://en.wiktionary.org';
 
 /// The licence the converted JMdict data is distributed under.
 const _ccBySa40Url = 'https://creativecommons.org/licenses/by-sa/4.0/';
@@ -65,8 +68,16 @@ class AboutScreen extends ConsumerWidget {
             const SizedBox(height: Space.section),
             const SectionLabel('한국어 뜻 사전'),
             switch (glossary) {
-              AsyncData(:final value) when value.isAvailable => _GlossaryCard(
-                edition: value.edition!,
+              AsyncData(:final value) when value.isAvailable => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _GlossaryCard(edition: value.edition!),
+                  const SizedBox(height: Space.md),
+                  if (value.wiktionaryEdition case final edition?)
+                    _WiktionaryCard(edition: edition)
+                  else
+                    _NoWiktionary(problem: value.wiktionaryProblemKind),
+                ],
               ),
               AsyncData(:final value) when isNoticeable(value.problemKind) =>
                 DictionaryNotice(problem: value.problemKind),
@@ -330,6 +341,81 @@ class _GlossaryCard extends StatelessWidget {
   }
 }
 
+/// The Wiktionary fallback glossary: meanings of words the Basic Korean
+/// Dictionary has none for, credited as CC BY-SA 4.0 asks (source, licence,
+/// that the data was changed).
+class _WiktionaryCard extends StatelessWidget {
+  const _WiktionaryCard({required this.edition});
+
+  final GlossaryEdition edition;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final licenses = {for (final s in edition.sources) s.licenseUrl: s.license};
+    return _Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('위키낱말사전', style: context.text.titleLarge),
+          const SizedBox(height: Space.xs),
+          Text(
+            '한국어기초사전에 없는 낱말만, 위키낱말사전(한국어판, 없으면 영어판 번역표)의 '
+            '한국어 뜻으로 뜻 칸을 채웁니다. 채운 뜻에는 "추정" 표시가 붙습니다.',
+            style: context.text.bodySmall,
+          ),
+          for (final source in edition.sources) ...[
+            const SizedBox(height: Space.md),
+            Container(
+              padding: const EdgeInsets.all(Space.md),
+              decoration: BoxDecoration(
+                color: t.paper,
+                borderRadius: BorderRadius.circular(Radii.tile),
+              ),
+              child: Text(
+                source.attribution,
+                style: context.text.bodyMedium?.copyWith(height: 1.5),
+              ),
+            ),
+          ],
+          const SizedBox(height: Space.lg),
+          for (final MapEntry(key: url, value: name) in licenses.entries)
+            _Link(label: '라이선스 ($name)', url: url),
+          const _Link(label: '한국어 위키낱말사전', url: _koWiktionaryUrl),
+          const _Link(label: '영어 위키낱말사전 (Wiktionary)', url: _enWiktionaryUrl),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: Space.md),
+            child: Divider(),
+          ),
+          // Each source's edition is in its credit line above.
+          _Fact('만든 날', edition.builtOn),
+        ],
+      ),
+    );
+  }
+}
+
+/// No Wiktionary fallback: a build without its asset (a debug build), or
+/// one whose asset did not open.
+class _NoWiktionary extends StatelessWidget {
+  const _NoWiktionary({this.problem});
+
+  final DictionaryProblem? problem;
+
+  @override
+  Widget build(BuildContext context) => _Card(
+    child: Text(
+      isNoticeable(problem)
+          ? '위키낱말사전 뜻 파일을 열지 못해 쓰지 않고 있어요. '
+                '한국어기초사전에 없는 낱말은 뜻 칸이 빈 채로 보여요. '
+                '앱을 업데이트하면 고쳐질 수 있어요.'
+          : '이 앱에는 위키낱말사전 뜻이 들어 있지 않아요. '
+                '한국어기초사전에 없는 낱말은 뜻 칸이 빈 채로 보여요.',
+      style: context.text.bodySmall,
+    ),
+  );
+}
+
 /// A link shown as text: selectable, with a copy button. The app opens no
 /// browser itself.
 class _Link extends StatelessWidget {
@@ -520,8 +606,8 @@ Creative Commons Attribution-ShareAlike 4.0 International licence (CC BY-SA 4.0)
 
 bool _glossaryLicenseRegistered = false;
 
-/// Adds the Basic Korean Dictionary to the licences page ([showLicensePage]).
-/// Call once at start.
+/// Adds the Basic Korean Dictionary and the Wiktionary fallback glossary to
+/// the licences page ([showLicensePage]). Call once at start.
 void registerGlossaryLicense() {
   if (_glossaryLicenseRegistered) return;
   _glossaryLicenseRegistered = true;
@@ -536,6 +622,27 @@ indexed backwards; the converted data is a changed copy of the dictionary.
 한국어기초사전: $_krdictUrl
 Licence: Creative Commons Attribution-ShareAlike 2.0 Korea (CC BY-SA 2.0 KR),
 https://creativecommons.org/licenses/by-sa/2.0/kr/
+
+The converted data is distributed under the same licence.''',
+      ),
+    ),
+  );
+  LicenseRegistry.addLicense(
+    () => Stream.value(
+      const LicenseEntryWithLineBreaks(
+        ['위키낱말사전'],
+        '''위키낱말사전 (Wiktionary): Korean meanings of Japanese words the Basic Korean
+Dictionary has none for, from the Korean Wiktionary's Japanese entries and,
+without one, the Korean terms of the English Wiktionary's translation tables
+(data extracted by wiktextract, kaikki.org). By the Wiktionary contributors;
+the converted data is a changed copy.
+
+한국어 위키낱말사전: $_koWiktionaryUrl
+
+English Wiktionary: $_enWiktionaryUrl
+
+Licence: Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA
+4.0), $_ccBySa40Url
 
 The converted data is distributed under the same licence.''',
       ),

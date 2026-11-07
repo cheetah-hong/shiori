@@ -1,0 +1,9 @@
+{"word": "雪森", "lang_code": "ja", "pos": "noun", "senses": [{"glosses": ["눈숲, 설삼."]}], "forms": [{"form": "雪森", "tags": ["canonical"], "ruby": [["雪", "ゆき"], ["森", "もり"]]}]}
+{"word": "雪森", "lang_code": "ja", "pos": "noun", "senses": [{"glosses": ["눈숲, 설삼."]}, {"glosses": ["(옛말) 겨울 숲."]}], "forms": [{"form": "雪森", "tags": ["canonical"], "ruby": [["雪", "ゆき"], ["森", "もり"]]}]}
+{"word": "雪森る", "lang_code": "ja", "pos": "verb", "senses": [{"glosses": ["눈으로 덮다."]}], "forms": [{"form": "雪森る", "tags": ["canonical"], "ruby": [["雪", "ゆき"], ["森", "もり"]]}, {"form": "ゆきもりふ", "tags": ["archaic"]}]}
+{"word": "風森だ", "lang_code": "ja", "pos": "adj", "senses": [{"glosses": ["바람차다."]}]}
+{"word": "ユキヤマ", "lang_code": "ja", "pos": "noun", "senses": [{"glosses": ["눈산."]}]}
+{"word": "静森", "lang_code": "ja", "pos": "noun", "senses": [{"glosses": ["고요숲."]}]}
+{"word": "しずもり", "lang_code": "ja", "pos": "noun", "senses": [{"glosses": ["고요숲."]}]}
+{"word": "霧", "lang_code": "ja", "pos": "character", "senses": [{"glosses": ["어간의 하나."]}, {"glosses": ["안개가 자욱하게 낀 숲을 이르는 말."]}]}
+{"word": "눈숲", "lang_code": "ko", "pos": "noun", "senses": [{"glosses": ["눈이 쌓인 숲."]}]}

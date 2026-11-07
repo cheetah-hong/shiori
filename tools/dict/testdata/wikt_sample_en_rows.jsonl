@@ -1,0 +1,5 @@
+{"dump": "2026-10-01", "kind": "enwikt-ja-ko-rows", "rows": 4, "source_bytes": 1234, "source_sha256": "1111111111111111111111111111111111111111111111111111111111111111", "source_url": "https://kaikki.org/dictionary/raw-wiktextract-data.jsonl.gz"}
+{"ja": [{"alt": "ゆきもり", "word": "雪森"}], "ko": [{"alt": null, "word": "눈 덮인 숲"}], "sense": "a wood under snow", "word": "snowwood"}
+{"ja": [{"alt": "つきみち", "word": "月道"}, {"alt": null, "word": "月路"}], "ko": [{"alt": null, "word": "달길"}, {"alt": "月路", "word": "월로(月路)"}], "sense": "a path in moonlight", "word": "moonpath"}
+{"ja": [{"alt": "つきみち", "word": "月道"}], "ko": [{"alt": null, "word": "달길"}, {"alt": null, "word": "월로"}], "sense": "a path in moonlight, again", "word": "moonway"}
+{"ja": [{"alt": null, "word": "星波"}], "ko": [{"alt": null, "word": "별물결"}], "sense": "a wave of stars", "word": "starwave"}

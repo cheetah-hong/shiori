@@ -21,6 +21,19 @@ const glossaryFileName = 'ko-glossary.sqlite';
 /// The edition file that was unpacked, kept next to the SQLite file.
 const glossaryMarkerName = 'ko-glossary.sqlite.edition';
 
+/// gzip of the Wiktionary fallback glossary (tools/dict/build_wikt_glossary.py):
+/// meanings of words the Basic Korean Dictionary has none for.
+const wiktGlossaryAsset = 'assets/dict/wikt-glossary.sqlite.gz';
+
+/// The fallback asset's edition file, written next to it by the same script.
+const wiktGlossaryEditionAsset = 'assets/dict/wikt-glossary.edition.json';
+
+/// Where the fallback asset is unpacked inside the app cache folder.
+const wiktGlossaryFileName = 'wikt-glossary.sqlite';
+
+/// The fallback edition file that was unpacked, kept next to its SQLite file.
+const wiktGlossaryMarkerName = 'wikt-glossary.sqlite.edition';
+
 /// The data inside the glossary asset (shown on the 정보 screen).
 final class GlossaryEdition {
   const GlossaryEdition({
@@ -75,18 +88,40 @@ GlossarySource _sourceNamed(String name) => GlossarySource.values.firstWhere(
 
 /// The Korean glossary the app runs with, or nothing and why.
 final class BundledGlossary {
-  const BundledGlossary.opened(KrdictGlossary this.krdict, this.edition)
-    : problem = null,
-      problemKind = null;
+  const BundledGlossary.opened(
+    KrdictGlossary this.krdict,
+    this.edition, {
+    this.wiktionary,
+    this.wiktionaryEdition,
+    this.wiktionaryProblem,
+    this.wiktionaryProblemKind,
+  }) : problem = null,
+       problemKind = null;
 
   const BundledGlossary.unavailable(
     String this.problem, {
     this.problemKind = DictionaryProblem.missing,
   }) : krdict = null,
-       edition = null;
+       edition = null,
+       wiktionary = null,
+       wiktionaryEdition = null,
+       wiktionaryProblem = null,
+       wiktionaryProblemKind = null;
 
   final KrdictGlossary? krdict;
   final GlossaryEdition? edition;
+
+  /// The Wiktionary fallback glossary (meanings the Basic Korean Dictionary
+  /// has none for), or null without its asset.
+  final KrdictGlossary? wiktionary;
+  final GlossaryEdition? wiktionaryEdition;
+
+  /// Why there is no fallback glossary (for the log).
+  final String? wiktionaryProblem;
+
+  /// What kind of problem [wiktionaryProblem] is (the 정보 screen tells a
+  /// build without the asset from a damaged one); null when it is open.
+  final DictionaryProblem? wiktionaryProblemKind;
 
   /// Why there is no glossary (for the log and the 정보 screen).
   final String? problem;
@@ -99,7 +134,10 @@ final class BundledGlossary {
   /// The block for the glossary slot.
   KoreanGlossary get glossary => krdict ?? const EmptyKoreanGlossary();
 
-  void close() => krdict?.close();
+  void close() {
+    krdict?.close();
+    wiktionary?.close();
+  }
 }
 
 /// Unpacks the bundled Korean glossary into [supportDirectory] when its
@@ -141,13 +179,80 @@ Future<BundledGlossary> openBundledGlossary({
         '${[for (final s in edition.sources) '${s.source.name} ${s.edition}'].join(', ')}',
       );
     }
-    return BundledGlossary.opened(opened.value, edition);
+    final fallback = await _openWiktionary(bundle, supportDirectory, log);
+    return BundledGlossary.opened(
+      opened.value,
+      edition,
+      wiktionary: fallback.glossary,
+      wiktionaryEdition: fallback.edition,
+      wiktionaryProblem: fallback.problem,
+      wiktionaryProblemKind: fallback.kind,
+    );
   } on Object catch (error, stack) {
     log('not available: $error\n$stack');
     return BundledGlossary.unavailable(
       '$error',
       problemKind: dictionaryProblemOf(error),
     );
+  }
+}
+
+/// The fallback glossary opened, or why not.
+typedef _Fallback = ({
+  KrdictGlossary? glossary,
+  GlossaryEdition? edition,
+  String? problem,
+  DictionaryProblem? kind,
+});
+
+/// The Wiktionary fallback glossary, unpacked and opened like the glossary;
+/// without it (a debug build may not have it, a release build always does:
+/// tools/dict/asset_check.py --release) one log line and no fallback.
+Future<_Fallback> _openWiktionary(
+  AssetBundle bundle,
+  Future<Directory> Function() supportDirectory,
+  void Function(String message) log,
+) async {
+  _Fallback without(Object error, DictionaryProblem kind) {
+    final problem = '$error'.split('\n').first;
+    log('wiktionary not available: $problem');
+    return (glossary: null, edition: null, problem: problem, kind: kind);
+  }
+
+  final String editionText;
+  try {
+    editionText = await bundle.loadString(
+      wiktGlossaryEditionAsset,
+      cache: false,
+    );
+  } on Object catch (error) {
+    return without(error, DictionaryProblem.missing);
+  }
+  try {
+    final edition = switch (jsonDecode(editionText)) {
+      final Map<String, Object?> json => GlossaryEdition.fromJson(json),
+      _ => throw const FormatException('wiktionary edition: not a JSON object'),
+    };
+    final opened = await openUnpackedAsset(
+      bundle: bundle,
+      gzipAsset: wiktGlossaryAsset,
+      editionText: editionText,
+      dir: await supportDirectory(),
+      fileName: wiktGlossaryFileName,
+      markerName: wiktGlossaryMarkerName,
+      expected: AssetDigest.fromEditionText(editionText),
+      open: (file) => KrdictGlossary.open(file.path),
+      log: log,
+    );
+    if (opened.unpacked) log('unpacked wiktionary ${edition.builtOn}');
+    return (
+      glossary: opened.value,
+      edition: edition,
+      problem: null,
+      kind: null,
+    );
+  } on Object catch (error) {
+    return without(error, dictionaryProblemOf(error));
   }
 }
 

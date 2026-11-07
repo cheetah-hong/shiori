@@ -27,6 +27,7 @@ sys.path.insert(0, str(HERE.parent / "voice"))
 import asset_check  # noqa: E402
 import build_app_asset  # noqa: E402
 import build_ko_glossary  # noqa: E402
+import build_wikt_glossary  # noqa: E402
 from test_build_accent_asset import build_fake_accent  # noqa: E402
 from test_build_app_asset import TINY_JMDICT  # noqa: E402
 from test_build_voice_asset import build_fake_voice  # noqa: E402
@@ -58,11 +59,14 @@ def tearDownModule() -> None:
 
 
 def build_both(out: Path, work: Path, *, built_on: str = "2026-11-05") -> None:
-    """Both assets in [out], built from the made-up sources."""
+    """Both assets in [out], built from the made-up sources, and the Wiktionary fallback
+    glossary cut against them (a release needs it too)."""
     source = work / "JMdict_e.gz"
     source.write_bytes(gzip.compress(TINY_JMDICT.encode("utf-8"), mtime=0))
     build_app_asset.build_asset(source, out, built_on=built_on)
     build_ko_glossary.build_asset(build_ko_glossary.SAMPLE, out, built_on=built_on)
+    build_wikt_glossary.build_asset(build_wikt_glossary.SAMPLE_KO, build_wikt_glossary.SAMPLE_EN, out, out,
+                                    built_on=built_on, kowikt_dump="2026-11-01")
 
 
 class AssetCheckTest(unittest.TestCase):

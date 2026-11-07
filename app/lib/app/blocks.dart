@@ -74,11 +74,18 @@ final bundledGlossaryProvider = FutureProvider<BundledGlossary>((ref) async {
 
 /// Korean meanings for meaning cells the page did not give: the glossary
 /// once it is open, `EmptyKoreanGlossary` until then or without data.
-/// Next: 위키낱말사전 in the same file, on-device translation.
 final koreanGlossaryProvider = Provider<KoreanGlossary>(
   (ref) =>
       ref.watch(bundledGlossaryProvider).value?.glossary ??
       const EmptyKoreanGlossary(),
+);
+
+/// Meanings of words the glossary has none for: the Wiktionary fallback
+/// glossary unpacked with it (docs/dictionary.md, 13), null until then or
+/// without its asset. Only the meaning of a dictionary word the page gives
+/// none is filled from it; pairing uses [koreanGlossaryProvider] alone.
+final wiktionaryGlossaryProvider = Provider<KoreanGlossary?>(
+  (ref) => ref.watch(bundledGlossaryProvider).value?.wiktionary,
 );
 
 /// Dictionary facts for the general word extractor (forms, readings, POS,
@@ -165,12 +172,14 @@ final highConfidenceApprovalProvider = Provider<bool>((ref) => true);
 // ---------------------------------------------------------------- composed from the blocks above
 
 /// The word extractor every page is read with: JMdict for the forms, the
-/// Korean glossary for pairing and for meanings the page does not give.
+/// Korean glossary for pairing and for meanings the page does not give, and
+/// the Wiktionary fallback for meanings the glossary has none for.
 final generalExtractorProvider = Provider<GeneralExtractor>((ref) {
   final glossary = ref.watch(koreanGlossaryProvider);
   return GeneralExtractor(
     lexicon: ref.watch(lexiconProvider),
     koreanGlossary: glossary is EmptyKoreanGlossary ? null : glossary,
+    meaningFallback: ref.watch(wiktionaryGlossaryProvider),
   );
 });
 

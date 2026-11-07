@@ -482,7 +482,7 @@ python3 tools/dict/build_jmdict_db.py --only tools/dict/test_forms.txt --glosses
 ## 11. 한국어 뜻 사전 (한국어기초사전 일본어 대역어 역색인, 2026-11-05)
 
 JMdict는 영어 뜻뿐이라, 사진에 한국어 뜻이 없거나 읽지 못했을 때 채울 데이터가 없습니다.
-한국어 뜻의 출처 순서는 ① 사진 속 한국어 → ② **한국어기초사전 역색인(이 절)** → ③ 한국어 위키낱말사전 → ④ 기기 번역입니다.
+한국어 뜻의 출처 순서는 ① 사진 속 한국어 → ② **한국어기초사전 역색인(이 절)** → ③ 위키낱말사전 보조 사전(13절, ②가 뜻을 하나도 못 줄 때만) → ④ 기기 번역(넣지 않음, 13.7절)입니다.
 지금은 ②만 넣었고, 가로줄 틀 흐름에서 **뜻 칸이 비었을 때만** 씁니다.
 
 ### 11.1 출처와 판
@@ -602,7 +602,7 @@ python3 -m unittest discover -s tools/dict -p 'test_*.py'
 1. **다의어·같은 뜻 안의 낱말 순서**: 가나 낱말과 뜻이 여럿인 한자 낱말, 같은 뜻의 낱말 여럿(되돌아가다/돌아오다 같은 꼴)은 문맥 없이는 가리지 못합니다.
    채운 뜻은 「추정」으로 보이고 다음 묶음 최대 4개가 검토 화면의 「뜻 후보」 칩입니다(2026-11-06). 74단어 표본에서 1순위를 놓친 20개 중 9개가 이 갈래이고 그중 7개는 칩 안에 있습니다.
 2. ~~등급 순위의 한계~~ → 품사 힌트(11.2·11.4절)와 한자음 일치(docs/extraction.md 4.5절)로 고쳤습니다(2026-11-06, 74단어 1순위 47 → 54). 등급은 그대로입니다.
-3. **빠지는 말**: 한국어에서 구로 옮기는 말(사전에 단어 항목이 없음), 숫자·조수사, 오쿠리가나가 다른 표기, 경어·호칭(사전에 다른 낱말로 올라 있음). 74단어 표본에서 1순위를 놓친 20개 중 9개가 이 갈래입니다(칩으로도 못 구함). 위키낱말사전(③)이 일부를 메웁니다.
+3. **빠지는 말**: 한국어에서 구로 옮기는 말(사전에 단어 항목이 없음), 숫자·조수사, 오쿠리가나가 다른 표기, 경어·호칭(사전에 다른 낱말로 올라 있음). 74단어 표본에서 1순위를 놓친 20개 중 9개가 이 갈래입니다(칩으로도 못 구함). 기초사전이 아예 비는 5개 중 3개를 위키낱말사전 보조 사전(13절)이 메웁니다.
 4. **갱신**: 기초사전은 판이 바뀌면 같은 명령으로 다시 빌드합니다. 갱신 의무 조항은 없지만 JMdict 갱신과 같이 `tools/dict/refresh.py`로 묶었습니다(12절).
 
 ## 12. 정기 갱신과 무결성 검사 (2026-11-06)
@@ -694,4 +694,79 @@ python3 tools/dict/build_ko_glossary.py --check    # 한국어 뜻 사전만
 | B | 로컬 예약(launchd, 월 1회, `--dry-run`)과 알림 | 잊지 않음 | 그 컴퓨터가 켜져 있어야 함, 채택은 사람이 |
 | C | 원격 CI 예약 | 사람·기계와 무관 | 로컬 기록 세트로 관문 불가, asset 배포 경로를 새로 정해야 함 |
 
+
+## 13. 위키낱말사전 보조 사전 (2026-11-07)
+
+기초사전 역색인(11절)이 **뜻을 하나도 주지 못하는** 낱말만, 위키낱말사전에서 한국어 뜻을 가져옵니다. 기초사전이 뜻을 주는 낱말은 결과가 그대로입니다.
+조사(원천 비교·라이선스·기기 번역)는 `research/meaning/README.md`, 측정은 `docs/verification.md` 31절에 있습니다.
+효과: 74단어 표본 1순위 54 → **56**, 5순위 안 63 → **65**. JLPT N5–N3 중 기초사전이 비는 252낱말에서 131개를 채우고, 눈으로 본 1순위 정확도는 122/131(93%)입니다.
+
+### 13.1 출처와 판
+
+| 원천 | 쓰는 것 | 받는 곳 | 판 (덤프) | 크기, sha256 |
+|---|---|---|---|---|
+| 한국어 위키낱말사전 | 일본어 항목의 한국어 뜻풀이 | https://kaikki.org/kowiktionary/raw-wiktextract-data.jsonl.gz (wiktextract) | 2026-11-01 | 28,335,452 bytes, `09d515e5f601058d0548c5cc712bf8c20b13ea6d68e5a075476ae43eb24de250` |
+| 영어 위키낱말사전 | 영어 뜻마다 번역표에 함께 있는 일본어·한국어 낱말 | https://kaikki.org/dictionary/raw-wiktextract-data.jsonl.gz (wiktextract) | 2026-10-01 | 3,082,476,978 bytes, `5ff2c072f8099f2d2ce484bd6957bf179f046d2ad37bc36555edf8bb84cb5291` |
+
+- 라이선스: 위키낱말사전 본문은 CC BY-SA 4.0과 GFDL 이중 라이선스이고 **CC BY-SA 4.0**을 고릅니다(위키미디어 이용 약관 7조 "Reusers may comply with either license or both"). wiktextract 코드는 MIT.
+  만든 DB는 CC BY-SA 4.0으로 배포합니다. 기초사전 DB(CC BY-SA 2.0 KR)와 **다른 파일**이라 두 라이선스가 한 DB에 섞이지 않습니다.
+- 앱 표기: 「위키낱말사전, 한국어 위키낱말사전 기여자, CC BY-SA 4.0, 2026-11-01판을 가공함」, 「위키낱말사전, 영어 위키낱말사전(Wiktionary) 기여자, CC BY-SA 4.0, 2026-10-01판을 가공함」(판 날짜는 판 정보 JSON에서 읽음).
+- 영어판 원자료는 약 3 GB라 저장소 밖에 두고, `tools/dict/wikt_en_rows.py`가 읽으면서 필요한 행만 남깁니다(행 파일 첫 줄에 원자료 sha256·크기·덤프 날짜).
+  빌드는 `--expect-en-sha256`으로 그 원자료 sha256을, `--expect-kowikt-sha256`으로 한국어판 파일을 확인합니다.
+
+### 13.2 색인 규칙 (`tools/dict/build_wikt_glossary.py`)
+
+- 한국어판 뜻풀이 → 낱말: 괄호 주석·끝 마침표를 떼고 쉼표로 나눕니다. 일본어가 섞인 조각, 설명(공백 3개 이상), 낱말 쓰임 설명(「어간의 하나」·「다음 단어를 만듦」)은 버립니다.
+  읽기: 가나 표기 칸(옛 표기 archaic·historical·obsolete 제외)과, 낱말 위 루비를 끼워 만든 전체 읽기(오쿠리가나 낱말 포함).
+- 영어판 행 → 그 행의 일본어 낱말마다 한국어 낱말(앞 괄호 주석 제거, 한글이 없거나 한자가 든 괄호 제거, 선택 괄호는 엶, 괄호 안의 `/`·`,`로는 나누지 않음, 일본어 글자가 남은 조각은 버림). 읽기: 가나 `alt`.
+- 키는 기초사전과 같은 규칙(11.2절 `keys_and_ending`). **키마다 한 원천**: 한국어판에 그 키가 있으면 한국어판 뜻만, 없을 때만 영어판.
+- **기초사전이 답하는 키는 뺍니다**: 기초사전 asset(판 정보와 맞는지 확인)의 키, 그리고 가나 키는 기초사전 한자 짝의 읽기. 판 정보에 그 기초사전 SQLite의 sha256(`krdict_sqlite_sha256`)을 적습니다.
+- 스키마는 기초사전과 같은 schema 2 lean이라 같은 블록(`KrdictGlossary`)이 엽니다. 뜻 묶음 하나 = 낱말마다 `sense` 행(낱말들은 `synonyms`), `sense.source` 1(위키낱말사전), `sense_no` = 그 키 안 묶음 순번, 등급·품사 없음.
+  순위는 맞은 방식(한자+읽기 / 읽기 없는 한자 / 가나) → 묶음 순번입니다.
+- 같은 입력과 같은 빌드 날이면 바이트가 같습니다.
+
+### 13.3 판본 크기
+
+| 파일 | SQLite | gzip | 키 · 뜻 행 |
+|---|---|---|---|
+| `wikt-glossary.sqlite.gz` | 4.1 MB (4,079,616) | 1.5 MB (1,461,627) | 23,463 (한국어판 2,998 · 영어판 20,465) · 35,755 |
+
+앱 asset 합계에 gzip 1.5 MB가 더해집니다(기초사전 3.7 MB, JMdict 11절 표).
+
+### 13.4 앱과 추출기
+
+- core `FallbackKoreanGlossary(primary, fallback)`: 주 사전 결과가 비지 않으면 그대로, 비면 보조 사전 결과. `sources`는 둘을 이어 붙임.
+- `GeneralExtractor(meaningFallback:)`: **사진에 뜻이 없는 사전 낱말을 채울 때만**, 그 낱말의 모든 표기(`(お)X` → `(お)X`·`おX`·`X`)가 기초사전에 없을 때 같은 표기 순서로 보조 사전에 묻습니다
+  (기초사전의 `おX`가 보조 사전의 `X`에 가려지지 않게). 짝짓기 근거·신뢰도 정리·못 읽은 표제어 되살리기·사진 뜻의 후보 칩은 기초사전만 씁니다.
+  채운 뜻은 지금처럼 신뢰도 중간(높음 아님)이고 검토 화면 근거에 `사전 뜻: 위키낱말사전`(기초사전은 `사전 뜻`)으로 보입니다. 순서 규칙(docs/extraction.md 4.5절)은 보조 사전 뜻에도 같게 씁니다.
+- 앱: `assets/dict/wikt-glossary.sqlite.gz`·`wikt-glossary.edition.json`. 기초사전과 함께 풀어 엽니다(`bundled_glossary.dart`, `BundledGlossary.wiktionary`).
+  없거나 못 열면 기초사전만으로 돌고 로그 한 줄(`wiktionary not available: …`)을 남깁니다. 정보 화면은 asset이 없는 빌드와 asset을 열지 못한 경우를 나눠 보여 줍니다. `wiktionaryGlossaryProvider` → `generalExtractorProvider`의 `meaningFallback`.
+- 정보 화면: 「한국어 뜻 사전」 아래 「위키낱말사전」 카드(출처 두 줄, CC BY-SA 4.0 링크, 한국어판·영어판 링크 글, 만든 날). 라이선스 페이지에 `위키낱말사전` 항목.
+
+### 13.5 release 검사
+
+- `tools/dict/asset_check.py --release`는 보조 사전도 봅니다: 없음·깨짐·판 정보 어긋남, 그리고 **곁의 기초사전 asset과 `krdict_sqlite_sha256`이 다르면** 실패하고 만드는 명령을 알려 줍니다. 나이 제한은 없습니다(고정 판).
+- 일반 실행(`asset_check.py`)은 보조 사전이 있으면 같이 보고, 없으면 「not built」 한 줄만 찍고 실패하지 않습니다(debug 빌드는 없이 돎).
+- 기초사전을 다시 빌드하면(`refresh.py`) 보조 사전도 다시 만들어야 합니다. release 검사가 이를 잡습니다. `refresh.py`는 보조 사전을 만들지 않습니다.
+
+### 13.6 다시 만드는 방법
+
+```bash
+# 영어판 행 (원자료는 저장소 밖, 받으면서 걸러도 됨)
+curl -s https://kaikki.org/dictionary/raw-wiktextract-data.jsonl.gz \
+    | python3 tools/dict/wikt_en_rows.py --dump 2026-10-01 --out <en-rows.jsonl> --expect-sha256 5ff2c072f8099f2d2ce484bd6957bf179f046d2ad37bc36555edf8bb84cb5291
+# 보조 사전 asset (기초사전 asset이 --krdict-dir에 있어야 함, 기본 app/assets/dict)
+python3 tools/dict/build_wikt_glossary.py --kowikt <kowiktionary raw-wiktextract-data.jsonl.gz> --kowikt-dump 2026-11-01 \
+    --expect-kowikt-sha256 09d515e5f601058d0548c5cc712bf8c20b13ea6d68e5a075476ae43eb24de250 \
+    --en-rows <en-rows.jsonl> --expect-en-sha256 5ff2c072f8099f2d2ce484bd6957bf179f046d2ad37bc36555edf8bb84cb5291 --built-on 2026-11-07
+python3 tools/dict/build_wikt_glossary.py --check
+# 테스트 DB (지어낸 견본 tools/dict/testdata/wikt_sample_*.jsonl → packages/krdict_block/test/fixtures/mini_wikt.sql)
+python3 tools/dict/build_wikt_glossary.py --sample-sql
+```
+
+### 13.7 넣지 않은 것
+
+- 기기 번역: iOS Translation은 iOS 18 이상(앱 최소 16.2)이고 시뮬레이터에서 돌지 않으며, Android ML Kit 번역은 앱이 모델을 직접 내려받아 「앱이 네트워크를 쓰지 않음」과 어긋납니다(`research/meaning/README.md` 4절).
+- 일본어 위키낱말사전 번역표·역색인: 정확도가 더 낮고(80~83%) 더 채우는 양이 적습니다.
+- 「칩 보조」(기초사전 뜻 뒤에 보조 사전 뜻을 후보로 덧붙임): 74단어에서 이득이 없어 넣지 않았습니다.
 
