@@ -104,6 +104,13 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  example_block:
+    dependency: "direct dev"
+    description:
+      path: "../example_block"
+      relative: true
+    source: path
+    version: "0.1.0"
   ffi:
     dependency: transitive
     description:

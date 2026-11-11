@@ -16,6 +16,9 @@ dependencies:
     path: ../core
 
 dev_dependencies:
+  # The local test of the filled examples reads the example sentences.
+  example_block:
+    path: ../example_block
   # The local test of the routed capture uses the Korean glossary too.
   krdict_block:
     path: ../krdict_block

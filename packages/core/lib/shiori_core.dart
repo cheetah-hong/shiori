@@ -18,6 +18,7 @@ export 'src/models/word_key.dart';
 
 // Ports: the slots blocks plug into
 export 'src/ports/clock.dart';
+export 'src/ports/example_sentences.dart';
 export 'src/ports/fallback_glossary.dart';
 export 'src/ports/hidden_word_repository.dart';
 export 'src/ports/lexicon.dart';
@@ -45,6 +46,7 @@ export 'src/extract/page_draft.dart';
 
 // Library and study use cases
 export 'src/library/library_service.dart';
+export 'src/study/card_example.dart';
 export 'src/study/choice_maker.dart';
 export 'src/study/leitner_four_step_scheduler.dart';
 export 'src/study/session_builder.dart';

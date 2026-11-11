@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shiori/adapters/bundled_dictionary.dart';
+import 'package:shiori/adapters/bundled_examples.dart';
 import 'package:shiori/adapters/bundled_glossary.dart';
 import 'package:shiori/adapters/dev_samples.dart';
 import 'package:shiori/app/app.dart';
@@ -49,6 +50,11 @@ final class TestBlocks {
     'no glossary in tests',
   );
 
+  /// No example sentences unless a test plugs them in before pumping.
+  BundledExamples examples = const BundledExamples.unavailable(
+    'no example sentences in tests',
+  );
+
   List<Override> get overrides => [
     clockProvider.overrideWith((ref) => clock),
     libraryRepositoryProvider.overrideWithValue(library),
@@ -58,6 +64,7 @@ final class TestBlocks {
     sampleRecognizerProvider.overrideWithValue(sampleRecognizer),
     bundledDictionaryProvider.overrideWith((ref) async => dictionary),
     bundledGlossaryProvider.overrideWith((ref) async => glossary),
+    bundledExamplesProvider.overrideWith((ref) async => examples),
   ];
 
   /// Adds the printed words of a sample page's answer sheet to playlist

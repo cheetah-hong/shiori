@@ -17,6 +17,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/adapters/accent_data.dart';
 import 'package:shiori/adapters/bundled_dictionary.dart';
+import 'package:shiori/adapters/bundled_examples.dart';
 import 'package:shiori/adapters/bundled_glossary.dart';
 import 'package:shiori/adapters/dev_samples.dart';
 import 'package:shiori/adapters/file_crash_log.dart';
@@ -86,6 +87,23 @@ final koreanGlossaryProvider = Provider<KoreanGlossary>(
 /// none is filled from it; pairing uses [koreanGlossaryProvider] alone.
 final wiktionaryGlossaryProvider = Provider<KoreanGlossary?>(
   (ref) => ref.watch(bundledGlossaryProvider).value?.wiktionary,
+);
+
+/// The Tatoeba example sentences unpacked from the app's assets, like the
+/// dictionaries. Never fails: without the asset (a debug build) it holds
+/// `BundledExamples.unavailable` and cards show page examples only.
+final bundledExamplesProvider = FutureProvider<BundledExamples>((ref) async {
+  final examples = await openAppExamples();
+  ref.onDispose(examples.close);
+  return examples;
+});
+
+/// Sentences for words whose page printed no example: Tatoeba once it is
+/// open, `EmptyExampleSentences` until then or without the asset.
+final exampleSentencesProvider = Provider<ExampleSentences>(
+  (ref) =>
+      ref.watch(bundledExamplesProvider).value?.sentences ??
+      const EmptyExampleSentences(),
 );
 
 /// Dictionary facts for the general word extractor (forms, readings, POS,
@@ -182,6 +200,19 @@ final generalExtractorProvider = Provider<GeneralExtractor>((ref) {
     meaningFallback: ref.watch(wiktionaryGlossaryProvider),
   );
 });
+
+/// The example a study card shows: the word's page example, else a Tatoeba
+/// sentence of its dictionary entry (looked up when the card is shown, so
+/// nothing is stored, and a card's answer goes when no card shows it), else
+/// null.
+final cardExampleProvider = FutureProvider.autoDispose
+    .family<CardExample?, Word>(
+      (ref, word) => cardExampleOf(
+        word,
+        lexicon: ref.watch(lexiconProvider),
+        examples: ref.watch(exampleSentencesProvider),
+      ),
+    );
 
 final libraryServiceProvider = Provider<LibraryService>(
   (ref) => LibraryService(

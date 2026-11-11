@@ -2238,3 +2238,60 @@ iPhone 17 시뮬레이터(실제 사전·발음 asset)에서 `save` → 앱 종�
 | `102_choice_wrong.png` | 틀리게 고른 뒤: 고른 보기 빨강, 정답 초록 「정답」, 「틀렸어요」 |
 | `103_playlist_mode_meters.png` | 재생목록: 같은 칩, 단어마다 막대 4개(뜻·일·듣·객) |
 | `104_listening_unavailable.png` | 발음 없는 상태에서 듣고 맞히기를 누른 알림 |
+
+## 34. Tatoeba 예문: 사진에 예문이 없던 낱말의 카드 예문 (2026-11-12)
+
+사진에 예문이 없던 낱말의 학습 카드에, 그 낱말의 JMdict 항목에 붙은 Tatoeba 문장 하나를 보여 주고 같은 예문 경로로 읽어 줍니다.
+번역은 한국어 직접 번역이 있으면 한국어, 없으면 영어입니다. 규칙·판·라이선스는 `docs/dictionary.md` 14절, 원천 조사는 `research/examples/README.md`입니다. 교재 쪽은 숫자만 적습니다.
+저장 스키마·추출기·사전 색인은 바꾸지 않았습니다(카드를 띄울 때 찾음).
+
+### 34.1 바꾼 것
+
+| 항목 | 위치 | 내용 |
+|---|---|---|
+| 예문 빌드 | `tools/dict/build_examples.py` (새) | Tatoeba 내보내기 7개 → 원형 색인으로 JMdict 항목에 잇기 → 거르기 → 항목·읽기마다 1문장(한국어 > `~` > 영어 > 쉬운 한자 > 길이). 입력 sha256 기록·`--expect-sha256`, `--sample-sql`·`--check` |
+| 검사 | `tools/dict/asset_check.py` | `examples`: release에 필수(없음·깨짐·판 어긋남 → 실패와 만드는 명령), 일반 실행은 있으면 검사·없으면 한 줄, 나이 제한 없음 |
+| core | `ports/example_sentences.dart` (새), `study/card_example.dart` (새) | 포트 `ExampleSentences`·`StoredExample`·`EmptyExampleSentences`, `CardExample`(사진/Tatoeba), `cardExampleOf`(사진 예문이면 조회 없음, 아니면 표제어 → 항목 → 예문, 카드 읽기 행 먼저), `kanaEntries` |
+| 블록 | `packages/example_block` (새) | `TatoebaExamples`(스키마 1 검사, 항목 번호 묶음 조회, 판·라이선스) |
+| 앱 | `bundled_examples.dart` (새), `blocks.dart`, `word_card.dart`, `word_speech.dart`, `study_screen.dart`, `about_parts.dart`·`examples_card.dart` (새), `about_screen.dart`, `main.dart` | asset 풀기·대조(없으면 로그 한 줄), `cardExampleProvider`, 카드의 예문 자리·번역(영어는 기울임)·「예문: Tatoeba」, 같은 `SentenceSpeech`, 정보 화면 「예문」 카드·라이선스 항목. 정보 화면의 공용 위젯(카드·링크·한 줄 사실)을 `about_parts.dart`로 옮김 |
+
+### 34.2 결과
+
+| 측정 | 값 |
+|---|---|
+| 예문 asset (2026-11-07 내보내기, JMdict 2026-11-06) | 28,060행 · 27,067항목, 한국어 1,231 · 영어 26,648 · 번역 없음 181 |
+| asset 크기 | gzip 1,671,255 B (SQLite 3,383,296 B) |
+| 로컬 교재 세트 10개에서 예문 없이 나온 낱말 | 82개 중 **73개 채움** (한국어 24 · 영어 49 · 없음 0) — 조사 때 73/82와 같음 |
+| 같은 세트의 사진 예문 | 413항목 모두 사진 예문 그대로(일본어·번역 바이트 같음) |
+
+- 사진 예문이 있는 낱말은 예문 asset을 묻지 않습니다(core 테스트가 호출 수로 확인).
+- 추출기·검토 초안 값은 바뀌지 않습니다(추출 코드를 건드리지 않음).
+- 채운 예문은 「뜻 맞히기」 카드에만 보입니다. 33절의 「일본어 떠올리기」·「객관식」·「듣고 맞히기」 카드는 지금처럼 사진 예문만 보여 줍니다.
+
+### 34.3 테스트
+
+| 파일 | 내용 |
+|---|---|
+| `tools/dict/test_build_examples.py` (새, 17) | X1: 지어낸 Tatoeba 문장·연결·색인 + JMdict 견본 → 항목마다 1문장, 원형 색인으로 활용형(汚して → 汚す), 읽기 행(七 しち/なな, 空 から), 민감 낱말·짧은 문장·태그 거르기, 한국어 > 영어 > 없음, 문장 번호, 판 정보, 같은 입력 같은 바이트, bz2·tar 내보내기도 같은 결과, sha256이 다르면·파일이 없으면·날짜가 틀리면 멈춤, `--sample-sql` 견본 = 고정 파일, `--check` |
+| `tools/dict/test_asset_check_examples.py` (새, 8) | X2: 맞으면 통과, release에서 없음·깨짐·판 어긋남·판 정보 칸 빠짐이면 실패와 만드는 명령, 일반 실행은 없어도 통과하고 한 줄, 나이 제한 없음 |
+| `packages/core/test/study/card_example_test.dart` (새, 12) | X3: 사진 예문이 먼저(조회 없음), 번역 없는 사진 예문, 항목 문장(한자 표기는 읽기로 좁힘), 영어, 활용형, 카드 읽기 행 먼저·다른 읽기만이면 없음, 가타카나 읽기, 가나 낱말의 항목 고르기, 사전에 없는 낱말·문장 없는 항목은 없음 |
+| `packages/example_block/test/tatoeba_examples_test.dart` (새, 11) | X4: 메모리 SQLite로 판·라이선스, 항목·읽기 행, 번역 칸, 문장 번호, 묻는 순서, 빈 조회, 2,500개 묶음, 다른 스키마·표 없음 거부, 파일 열기 |
+| `app/test/adapters/bundled_examples_test.dart` (새, 5) · `features/word_card_filled_example_test.dart` (새, 6) · `features/word_speech_filled_test.dart` (새, 3) · `features/about_examples_test.dart` (새, 4) · `features/study_filled_example_test.dart` (새, 1) | X5: asset 풀기·없음·깨짐(로그 한 줄), 카드의 한국어·기울인 영어·번역 없음·사진 예문 우선·버튼, 소리 요청이 사진 예문과 같은 `SentenceSpeech`, 정보 카드·없음·깨짐·라이선스 항목, 학습 화면에서 채운 예문 표시와 재생 |
+| `packages/jmdict_block/test/example_fill_local_test.dart` (새, 로컬, 1) | X6: 34.2절 채움 하한(65)과 사진 예문 바이트 비교 |
+| `app/test/features/word_card_filled_tap_test.dart` (새, 1) | 33절의 예문 눌러 듣기가 채운 예문에도 동작 |
+| 고친 것 | `tools/dict/test_asset_check.py`: 견본 asset을 만드는 함수가 예문 asset도 만듦(한 줄). `app/test/support/harness.dart`: 예문 없음을 기본으로 끼움. `app/test/app/no_network_test.dart`: 검사 목록에 `packages/example_block` |
+
+결과(33절 병합 뒤): core **725**(+12) · storage_drift **210** · example_block **11**(새) · krdict_block **100** · dict_jmdict **11** · voicevox_block **66** · jmdict_block **31**(+1, 로컬 포함) · app **326**(+20) · tools/dict **177**(+26) · research/examples **25** 통과, analyze 문제 없음,
+생성기 `--check` 3개 통과, `asset_check.py --release --engine ios` 모두 ok(이 체크아웃 asset).
+
+### 34.4 스크린샷 (iPhone 17 시뮬레이터, dev, 실제 asset, 테스트가 넣은 낱말 2개)
+
+`cd app && flutter drive -d <iPhone 17> --flavor dev --driver=test_driver/integration_test.dart --target=integration_test/examples_screenshots_test.dart`
+
+| 파일 | 화면 |
+|---|---|
+| `105_study_tatoeba_example.png` | 사진 예문이 없는 낱말 傘: Tatoeba 문장과 「예문: Tatoeba」, 번역 가림 |
+| `106_study_tatoeba_korean.png` | 뜻을 연 뒤: 한국어 직접 번역 (예문 재생 뒤, 실제 엔진) |
+| `107_study_tatoeba_english.png` | 毎朝: 한국어가 없어 기울인 영어, 「예문: Tatoeba · 영어 번역」 |
+| `108_about_examples.png` | 정보 → 예문: Tatoeba 카드(출처 줄, CC BY 2.0 FR, tatoeba.org, 내보낸 날·만든 날) |
+| `109_license_examples.png` | 라이선스 페이지의 Tatoeba 항목 |

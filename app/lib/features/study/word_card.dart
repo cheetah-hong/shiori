@@ -17,6 +17,7 @@ class WordCard extends StatefulWidget {
     this.onSpeakExample,
     this.pitch,
     this.estimatePitch,
+    this.filledExample,
   });
 
   final SessionItem item;
@@ -35,6 +36,10 @@ class WordCard extends StatefulWidget {
   /// Asked once, when the reading is first opened, for an estimated [pitch]
   /// without an accent yet.
   final Future<int?> Function()? estimatePitch;
+
+  /// A sentence of the word's dictionary entry, shown in the example's place
+  /// when the page printed no example (the page example always wins).
+  final CardExample? filledExample;
 
   @override
   State<WordCard> createState() => _WordCardState();
@@ -67,6 +72,12 @@ class _WordCardState extends State<WordCard> {
       if (mounted) setState(() => setLoading(false));
     }
   }
+
+  /// The page example, else the filled one.
+  CardExample? _example(Word w) => switch (w.example) {
+    final Example e => CardExample.fromPage(e),
+    null => widget.filledExample,
+  };
 
   void _tell(String message) {
     if (!mounted) return;
@@ -189,7 +200,7 @@ class _WordCardState extends State<WordCard> {
                         ],
                       ),
                     ),
-                    if (w.example case final ex?) ...[
+                    if (_example(w) case final ex?) ...[
                       const SizedBox(height: Space.xl),
                       Row(
                         mainAxisSize: MainAxisSize.min,
@@ -197,7 +208,7 @@ class _WordCardState extends State<WordCard> {
                           Flexible(
                             child: ExampleSentence(
                               sentence: ex.ja,
-                              focus: w.headword,
+                              focus: ex.surface ?? w.headword,
                               style: JpType.gothic(15, t.ink2, height: 1.75),
                               onSpeak: _exampleLoading
                                   ? null
@@ -222,16 +233,35 @@ class _WordCardState extends State<WordCard> {
                           ],
                         ],
                       ),
-                      const SizedBox(height: Space.xs),
-                      CoveredPart(
-                        visible: _showMeaning,
-                        label: '번역',
-                        child: Text(
-                          ex.ko,
-                          style: context.text.bodySmall?.copyWith(height: 1.5),
+                      if (ex.ko ?? ex.en case final translation?) ...[
+                        const SizedBox(height: Space.xs),
+                        CoveredPart(
+                          visible: _showMeaning,
+                          label: '번역',
+                          child: Text(
+                            translation,
+                            style: context.text.bodySmall?.copyWith(
+                              height: 1.5,
+                              fontStyle: ex.ko == null
+                                  ? FontStyle.italic
+                                  : null,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
+                      if (ex.isFilled) ...[
+                        const SizedBox(height: Space.xs),
+                        Text(
+                          ex.ko == null && ex.en != null
+                              ? '예문: Tatoeba · 영어 번역'
+                              : '예문: Tatoeba',
+                          style: context.text.labelSmall?.copyWith(
+                            color: t.ink3,
+                          ),
                           textAlign: TextAlign.center,
                         ),
-                      ),
+                      ],
                     ],
                   ],
                 ),

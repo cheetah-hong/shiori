@@ -26,6 +26,7 @@ nihongo-app/
 ├── packages/jmdict_block/  순수 Dart, 사전 블록: dict_jmdict를 core `Lexicon` 포트에 맞춘 어댑터.
 │                           tool/eval_extract_dict.dart (실제 JMdict·한국어 뜻 사전 점수표)
 ├── packages/krdict_block/  순수 Dart, 한국어 뜻 사전 블록 (한국어기초사전 역색인 SQLite)
+├── packages/example_block/ 순수 Dart, 예문 블록 (Tatoeba 문장, JMdict 항목별 SQLite)
 ├── app/                    Flutter (iOS·Android)
 │   ├── lib/app/blocks.dart 블록 지도: 끼우는 자리를 모두 이 파일 하나에
 │   ├── lib/app/theme.dart  디자인 토큰 (기획 페이지 팔레트)
@@ -66,6 +67,7 @@ nihongo-app/
 | `TextRecognizer` (샘플) | `FixtureTextRecognizer` + `assets/dev_samples/` (합성 페이지). dev flavor에서만 켜짐(5.1절) | `sampleRecognizerProvider` (켜짐: `devSamplesEnabledProvider`) | (개발용 전용) |
 | `Lexicon` (`lookup(forms)`: 표기 여러 개 → 읽기·품사·빈도) | `JmdictLexiconAdapter` (`packages/jmdict_block`, JMdict full-lean SQLite, CC BY-SA 4.0), 테스트·합성 세트는 `InMemoryLexicon`. 사전 asset이 없거나 열지 못하면 `EmptyLexicon`. 모든 쪽을 단어 추출기(+한국어 뜻 사전)로 읽음(`docs/extraction.md`; 가로줄 틀 경로는 2026-11-06에 걷어냄, 같은 문서 9절) | `lexiconProvider` (열기: `bundledDictionaryProvider`) → `generalExtractorProvider` | 데이터 정기 갱신 자동화 |
 | `KoreanGlossary` (`lookup(headword, readings:)` → 뜻 묶음 `KoreanSense`, `sources` 출처·판; 거꾸로 찾기 `KoreanReverseGlossary`) | `KrdictGlossary` (`packages/krdict_block`, 한국어기초사전 일본어 대역어 역색인 SQLite, CC BY-SA 2.0 KR, `app/assets/dict/ko-glossary.*`, docs/dictionary.md 11절). 추출기가 짝짓기 근거, 사진에 뜻이 없는 사전 낱말의 1순위 뜻("추정"), 못 읽은 표제어 되살리기에 씀. asset이 없으면 `EmptyKoreanGlossary` | `koreanGlossaryProvider` (열기: `bundledGlossaryProvider`). 기초사전에 없는 낱말의 뜻만 위키낱말사전 보조 사전(같은 블록, 다른 asset `wikt-glossary.*`, CC BY-SA 4.0, docs/dictionary.md 13절)을 `wiktionaryGlossaryProvider` → 추출기 `meaningFallback`으로 | 기기 번역 |
+| `ExampleSentences` (`lookup(entryIds)` → 항목·읽기별 문장 `StoredExample`) | `TatoebaExamples` (`packages/example_block`, Tatoeba 문장 SQLite, CC BY 2.0 FR, `app/assets/dict/examples.*`, docs/dictionary.md 14절). core `cardExampleOf`가 사진 예문이 없는 카드에 `Lexicon` 항목 번호로 찾음. asset이 없으면 `EmptyExampleSentences` | `exampleSentencesProvider` (열기: `bundledExamplesProvider`, 카드: `cardExampleProvider`) | — |
 | `ImageSource` | `ImagePickerSource` (카메라·앨범, 판독 뒤 임시 파일 `discard`) | `imageSourceProvider` | 문서 스캐너(cunning_document_scanner), 굽은 페이지 펴기 |
 | `LibraryRepository` (단어는 라이브러리에 한 번 `Word.key`, 재생목록이 가리킴) | `DriftLibraryRepository` (SQLite, `packages/storage_drift`). 테스트: `InMemoryLibraryRepository`. 홈 재생목록은 `playlistStats()`(목록별 단어 수·숨김 수·마지막 추가를 한 번에) | `libraryRepositoryProvider` (DB: `appDatabaseProvider`) | 백업·동기화 |
 | `HiddenWordRepository` (「이미 알아요」 숨기기·되살리기, `hiddenWords()`) | 서재 블록이 함께 구현(`words.hidden_at`). 숨김은 단어 단위라 모든 재생목록에서 숨겨짐. `words()`는 숨긴 단어도 돌려주고 `Word.isHidden`으로 구분, 학습 세션·오늘 학습 수에서 빠짐 (verification.md 16·21절) | (없음: `StudyService`·`LibraryService`가 서재 블록에서 꺼냄) | 백업·동기화 |

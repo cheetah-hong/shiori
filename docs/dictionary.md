@@ -770,3 +770,92 @@ python3 tools/dict/build_wikt_glossary.py --sample-sql
 - 일본어 위키낱말사전 번역표·역색인: 정확도가 더 낮고(80~83%) 더 채우는 양이 적습니다.
 - 「칩 보조」(기초사전 뜻 뒤에 보조 사전 뜻을 후보로 덧붙임): 74단어에서 이득이 없어 넣지 않았습니다.
 
+## 14. Tatoeba 예문 (2026-11-12)
+
+사진에 예문이 없던 낱말의 학습 카드에, 그 낱말의 JMdict 항목에 붙은 Tatoeba 문장 하나를 보여 줍니다. 사진 예문이 있으면 언제나 사진 예문이 먼저입니다.
+원천 조사(채움·번역·적합도·라이선스)는 `research/examples/README.md`, 측정과 테스트는 `docs/verification.md` 34절에 있습니다.
+
+### 14.1 출처와 판
+
+| 원천 | 쓰는 것 | 받는 곳 | 판 | 라이선스 |
+|---|---|---|---|---|
+| Tatoeba | 일본어 문장, 원형 낱말 색인(Tanaka 코퍼스 B줄), 그 문장의 한국어·영어 번역 연결, 문장 태그 | https://downloads.tatoeba.org/exports/ (주간 내보내기) | 2026-11-07 내보내기 | CC BY 2.0 FR |
+
+- Tatoeba는 최신판만 내려 줍니다. 그래서 받은 파일 7개의 sha256을 판 정보(`files`)에 적고, `--expect-sha256 이름=값`으로 다른 파일이면 빌드를 멈춥니다.
+- 이번 판 sha256:
+
+| 파일 | sha256 |
+|---|---|
+| `jpn_sentences_detailed.tsv.bz2` | `14e7b047fca3721291bc16c4e9a3b5f967ebdb9b34f704aff9a8b50d0d1d1501` |
+| `jpn_indices.tar.bz2` | `fa00e74f515c1564f0bea62f02ac9091e0cef34619edfe4cae26b08da7e181d1` |
+| `jpn-kor_links.tsv.bz2` | `52f4da341dcd2d6cb437f01f4c7ad93195392dbf94c26b44a452733dc42c51ec` |
+| `kor_sentences_detailed.tsv.bz2` | `9d8373a2edebacafb8b1a4ab484f9059f446e4ad60d90f2efb0041268d3af4d8` |
+| `jpn-eng_links.tsv.bz2` | `383e72a90aa9415b7e84844227878171500bf4b570c03f8288624166f52cd6e8` |
+| `eng_sentences.tsv.bz2` | `1a2d75ac07aa5d035bff4e2bf053139dfd3b1f1645f6fd3d76fc852cc9ef6020` |
+| `jpn_tags.tsv.bz2` | `a3994981faa946d81fdfa1ddc23ad5933cc4416a397d3fae626f61d778869919` |
+
+- 라이선스: CC BY 2.0 FR. 동일조건이 없어 다른 asset·앱 코드와 섞여도 조건이 번지지 않습니다.
+  Tatoeba FAQ가 요구하는 표기("write somewhere that some/all of your sentences are from Tatoeba, with a link to https://tatoeba.org, and mention that Tatoeba's data is released under CC-BY 2.0 FR")를 정보 화면과 라이선스 페이지에 둡니다.
+- 녹음(Tatoeba 오디오)은 라이선스가 제각각이라 쓰지 않습니다. 소리는 기기 안 VOICEVOX가 만듭니다.
+
+### 14.2 고르는 규칙 (`tools/dict/build_examples.py`)
+
+- 문장을 색인이 가리키는 **JMdict 항목마다** 붙입니다. 색인은 낱말을 원형으로 적으므로(`汚す{汚して}`) 활용형 문장도 항목으로 이어집니다.
+  색인이 읽기(`空(から)`)나 항목 번호(`が(#2028930)`)를 주면 그것으로 좁힙니다. 가나 낱말은 가나 항목 → 보통 가나로 쓰는 항목 → 상용 읽기 순으로 고릅니다(core `kanaEntries`와 같은 순서).
+  항목은 앱의 JMdict asset(판 정보와 맞는지 확인)에서 읽습니다.
+- 읽기가 둘 이상인 항목에서는 문장이 쓰는 읽기를 행에 적습니다(색인의 읽기, 없으면 가나 표기). 모르거나 읽기가 하나면 `''`.
+- 카드에 올리는 문장: 6~30자이고 가나가 있고, 한글·라틴 글자·나열 기호·주석 표시가 없음. Tatoeba 부적합 태그(`@needs native check`, 고어, 사투리 등)와 민감 낱말 목록(34개)에 걸리지 않음.
+- 항목·읽기마다 1문장, 순서:
+  1. 그 문장의 한국어 직접 번역이 있음(영어를 거친 한국어는 쓰지 않음)
+  2. 색인의 검증 표시 `~`
+  3. 영어 번역이 있음
+  4. 빈도 상위 낱말(nf 10 이하)에 없는 한자가 적음 — 조사에 쓴 JLPT 목록은 앱에 넣을 수 없어 대신 씀
+  5. 문장으로 끝남, 14자에 가까움, 문장 번호가 작음
+- 번역: 한국어가 있으면 한국어만, 없을 때만 영어. 둘 다 없을 수 있습니다.
+- 같은 입력과 같은 빌드 날이면 바이트가 같습니다(gzip mtime 0).
+
+### 14.3 판본 크기
+
+| 파일 | SQLite | gzip | 행 · 항목 | 번역 |
+|---|---|---|---|---|
+| `examples.sqlite.gz` | 3.4 MB (3,383,296) | 1.7 MB (1,671,255) | 28,060 · 27,067 | 한국어 1,231 · 영어 26,648 · 없음 181 |
+
+스키마 1(`PRAGMA user_version`): `example(entry, reading, sentence, ja, ko, en, surface)`, 기본 키 `(entry, reading)`, `meta`(판·라이선스·`jmdict_created`).
+
+### 14.4 앱
+
+- 조회: 카드를 띄울 때 `cardExampleOf`(core)가 표제어 → `Lexicon`(JMdict) → 항목 번호(한자 표기는 카드 읽기로 좁힘) → 예문 asset 순서로 찾습니다.
+  카드 읽기와 같은 행이 먼저, 다음은 `''` 행입니다. 다른 읽기의 행만 있으면 보여 주지 않습니다. **저장하지 않으므로 저장 스키마는 그대로**입니다.
+- 블록: `packages/example_block`의 `TatoebaExamples`(core 포트 `ExampleSentences`). 앱은 `assets/dict/examples.sqlite.gz`·`examples.edition.json`을 다른 사전처럼 캐시 폴더에 풀고 크기·sha256을 대조해 엽니다(`bundled_examples.dart`).
+  없거나 못 열면 로그 한 줄을 남기고 사진 예문만 보여 줍니다.
+- 카드: 예문 자리에 문장, 아래에 번역(한국어, 또는 기울인 영어 — 뜻을 열 때 보임), 그 아래 작은 글씨 「예문: Tatoeba」(영어면 「예문: Tatoeba · 영어 번역」). 색인의 표기(`汚して`)가 있으면 그 글자를 강조합니다.
+- 소리: 사진 예문과 같은 요청(`SentenceSpeech`, 엔진 추정 + 카드 낱말 악센트구 고정, `docs/pronunciation.md` 4절).
+- 정보 화면 「예문」 아래 Tatoeba 카드(출처 줄, CC BY 2.0 FR 링크, tatoeba.org, 내보낸 날·만든 날), 라이선스 페이지 `Tatoeba` 항목.
+
+### 14.5 release 검사
+
+- `asset_check.py --release`가 예문 asset도 봅니다: 없음·깨짐·판 정보 어긋남이면 실패하고 만드는 명령을 알려 줍니다. 나이 제한은 없습니다.
+- 일반 실행은 있으면 같이 보고, 없으면 「examples: not built」 한 줄만 찍습니다(debug 빌드는 없이 돎).
+- JMdict 항목 번호(`ent_seq`)는 판이 바뀌어도 유지되므로 JMdict를 갱신해도 예문 asset을 다시 만들 필요는 없습니다(판 정보에 만들 때의 `jmdict_created`만 적음).
+
+### 14.6 다시 만드는 방법
+
+```bash
+# Tatoeba 내보내기 (약 42 MB, 저장소 밖 폴더)
+cd <폴더>
+for f in per_language/jpn/jpn_sentences_detailed.tsv.bz2 jpn_indices.tar.bz2 per_language/jpn/jpn-kor_links.tsv.bz2 \
+         per_language/kor/kor_sentences_detailed.tsv.bz2 per_language/jpn/jpn-eng_links.tsv.bz2 \
+         per_language/eng/eng_sentences.tsv.bz2 per_language/jpn/jpn_tags.tsv.bz2; do
+  curl -O https://downloads.tatoeba.org/exports/$f; done
+# 예문 asset (JMdict asset이 --jmdict-dir에 있어야 함, 기본 app/assets/dict)
+python3 tools/dict/build_examples.py --tatoeba-dir <폴더> --tatoeba-export 2026-11-07 \
+    --expect-sha256 jpn_indices=fa00e74f515c1564f0bea62f02ac9091e0cef34619edfe4cae26b08da7e181d1
+python3 tools/dict/build_examples.py --check
+# 테스트 DB (지어낸 문장 tools/dict/testdata/tatoeba_sample/ → packages/example_block/test/fixtures/mini_examples.sql)
+python3 tools/dict/build_examples.py --sample-sql
+```
+
+### 14.7 넣지 않은 것
+
+- 위키낱말사전 예문(한국어판은 번역이 있지만 채움 24%·적합도 24/30), JMdict 예문판(Tatoeba의 일부), 영어를 거친 한국어 번역(30개 중 3개 틀림), 기기 번역.
+

@@ -1,0 +1,22 @@
+name: example_block
+description: >-
+  The example sentence block for Shiori: Tatoeba sentences filed under JMdict
+  entries, over the SQLite file built by tools/dict/build_examples.py.
+  Implements the core ExampleSentences port. Pure Dart.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  shiori_core:
+    path: ../core
+  # Same constraint as dict_jmdict, krdict_block and storage_drift. Below
+  # 3.6: sqlite3 3.6+ needs hooks 2.2 → meta 1.19, and Flutter 3.41 pins
+  # meta 1.17.
+  sqlite3: ">=3.4.0 <3.6.0"
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.30.0

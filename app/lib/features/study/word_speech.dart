@@ -24,15 +24,20 @@ WordSpeech wordSpeechFor(Word word, AccentTable table) {
   );
 }
 
-/// The example's speech request; null when the word has no example.
-SentenceSpeech? exampleSpeechFor(Word word, AccentTable table) =>
-    switch (word.example) {
-      final Example ex => SentenceSpeech(
-        text: ex.ja,
-        word: wordSpeechFor(word, table),
-      ),
-      null => null,
-    };
+/// The example's speech request: the page example, else [filled] (a
+/// sentence of the word's dictionary entry), the same request either way;
+/// null when there is neither.
+SentenceSpeech? exampleSpeechFor(
+  Word word,
+  AccentTable table, {
+  CardExample? filled,
+}) => switch (word.example?.ja ?? filled?.ja) {
+  final String text => SentenceSpeech(
+    text: text,
+    word: wordSpeechFor(word, table),
+  ),
+  null => null,
+};
 
 /// The pitch line of [speech]; null when its reading is not kana.
 PitchInfo? pitchInfoFor(WordSpeech speech) {

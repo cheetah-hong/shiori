@@ -48,6 +48,10 @@ dependencies:
   # assets/dict/ on first run.
   krdict_block:
     path: ../packages/krdict_block
+  # Example sentences for words whose page printed none: Tatoeba (SQLite),
+  # unpacked from assets/dict/ on first run.
+  example_block:
+    path: ../packages/example_block
   flutter_localizations:
     sdk: flutter
   # Checks the unpacked dictionary files against their edition files (sha256).

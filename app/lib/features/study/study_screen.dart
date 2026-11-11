@@ -365,6 +365,7 @@ class _Session extends ConsumerWidget {
     required String cardKey,
     required Future<void> Function()? onSpeakWord,
     required Future<void> Function()? onSpeakExample,
+    required CardExample? filledExample,
     required PitchInfo? pitch,
     required Future<int?> Function()? estimatePitch,
   }) {
@@ -409,6 +410,7 @@ class _Session extends ConsumerWidget {
         maxLevel: ref.watch(reviewSchedulerProvider).maxLevel,
         onSpeakWord: onSpeakWord,
         onSpeakExample: onSpeakExample,
+        filledExample: filledExample,
         pitch: pitch,
         estimatePitch: estimatePitch,
       ),
@@ -433,7 +435,15 @@ class _Session extends ConsumerWidget {
     final accentsNow =
         ref.watch(accentTableProvider).asData?.value ?? AccentTable.empty;
     final wordSpeech = wordSpeechFor(item.word, accentsNow);
-    final exampleSpeech = exampleSpeechFor(item.word, accentsNow);
+    // A word whose page printed no example shows a sentence of its entry.
+    final filled = item.word.example == null
+        ? ref.watch(cardExampleProvider(item.word)).value
+        : null;
+    final exampleSpeech = exampleSpeechFor(
+      item.word,
+      accentsNow,
+      filled: filled,
+    );
     Future<AccentTable> accents() async {
       try {
         return await ref.read(accentTableProvider.future);
@@ -523,10 +533,15 @@ class _Session extends ConsumerWidget {
                     : null,
                 onSpeakExample: speech.isAvailable && exampleSpeech != null
                     ? () async => speech.speak(
-                        exampleSpeechFor(item.word, await accents()) ??
+                        exampleSpeechFor(
+                              item.word,
+                              await accents(),
+                              filled: filled,
+                            ) ??
                             exampleSpeech,
                       )
                     : null,
+                filledExample: filled,
                 pitch: pitchInfoFor(wordSpeech),
                 estimatePitch: speech.isAvailable && estimator != null
                     ? () => estimator.estimateAccent(wordSpeech)

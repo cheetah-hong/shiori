@@ -10,6 +10,7 @@ const _packages = [
   '.',
   '../packages/core',
   '../packages/dict_jmdict',
+  '../packages/example_block',
   '../packages/jmdict_block',
   '../packages/krdict_block',
   '../packages/storage_drift',

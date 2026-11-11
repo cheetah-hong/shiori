@@ -1,13 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/adapters/bundled_dictionary.dart';
 import 'package:shiori/adapters/bundled_glossary.dart';
 import 'package:shiori/adapters/dictionary_problem.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/features/about/about_parts.dart';
 import 'package:shiori/features/about/crash_log_screen.dart';
+import 'package:shiori/features/about/examples_card.dart';
 import 'package:shiori/features/about/extract_licenses.dart';
 import 'package:shiori/features/about/voice_licenses.dart';
 import 'package:shiori/shared/dictionary_notice.dart';
@@ -85,6 +86,9 @@ class AboutScreen extends ConsumerWidget {
               _ => const _Preparing(),
             },
             const SizedBox(height: Space.section),
+            const SectionLabel('예문'),
+            const ExamplesSection(),
+            const SizedBox(height: Space.section),
             const SectionLabel('단어 추출 데이터'),
             const _ExtractorCard(),
             const SizedBox(height: Space.section),
@@ -92,7 +96,7 @@ class AboutScreen extends ConsumerWidget {
             const _VoiceCard(),
             const SizedBox(height: Space.section),
             const SectionLabel('오류 기록'),
-            _Card(
+            AboutCard(
               child: ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.bug_report_outlined),
@@ -108,7 +112,7 @@ class AboutScreen extends ConsumerWidget {
             ),
             const SizedBox(height: Space.section),
             const SectionLabel('오픈소스'),
-            _Card(
+            AboutCard(
               child: ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.description_outlined),
@@ -144,7 +148,7 @@ class _ExtractorCard extends StatelessWidget {
         ],
       ),
     );
-    return _Card(
+    return AboutCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -193,7 +197,7 @@ class _VoiceCard extends StatelessWidget {
         ],
       ),
     );
-    return _Card(
+    return AboutCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -238,7 +242,7 @@ class _DictionaryCard extends StatelessWidget {
     final t = context.tokens;
     final info = dictionary.info!;
     final edition = dictionary.edition!;
-    return _Card(
+    return AboutCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -268,19 +272,22 @@ class _DictionaryCard extends StatelessWidget {
             style: context.text.bodySmall?.copyWith(height: 1.5),
           ),
           const SizedBox(height: Space.lg),
-          _Link(label: 'JMdict 프로젝트', url: info.projectUrl),
-          _Link(label: '라이선스 (${info.license})', url: info.licenseUrl),
-          const _Link(label: '변환한 데이터의 라이선스 (CC BY-SA 4.0)', url: _ccBySa40Url),
+          AboutLink(label: 'JMdict 프로젝트', url: info.projectUrl),
+          AboutLink(label: '라이선스 (${info.license})', url: info.licenseUrl),
+          const AboutLink(
+            label: '변환한 데이터의 라이선스 (CC BY-SA 4.0)',
+            url: _ccBySa40Url,
+          ),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: Space.md),
             child: Divider(),
           ),
           Text('들어 있는 판', style: context.text.labelLarge),
           const SizedBox(height: Space.sm),
-          _Fact('JMdict 날짜', edition.jmdictCreated),
-          _Fact('만든 날', edition.builtOn),
-          _Fact('판본', '${edition.variant} · 항목 ${info.entryCount}'),
-          _Fact('원본 sha256', edition.sourceSha256, mono: true),
+          AboutFact('JMdict 날짜', edition.jmdictCreated),
+          AboutFact('만든 날', edition.builtOn),
+          AboutFact('판본', '${edition.variant} · 항목 ${info.entryCount}'),
+          AboutFact('원본 sha256', edition.sourceSha256, mono: true),
         ],
       ),
     );
@@ -297,7 +304,7 @@ class _GlossaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    return _Card(
+    return AboutCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -322,9 +329,12 @@ class _GlossaryCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: Space.lg),
-            _Link(label: '라이선스 (${source.license})', url: source.licenseUrl),
+            AboutLink(
+              label: '라이선스 (${source.license})',
+              url: source.licenseUrl,
+            ),
           ],
-          const _Link(label: '한국어기초사전', url: _krdictUrl),
+          const AboutLink(label: '한국어기초사전', url: _krdictUrl),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: Space.md),
             child: Divider(),
@@ -332,9 +342,9 @@ class _GlossaryCard extends StatelessWidget {
           Text('들어 있는 판', style: context.text.labelLarge),
           const SizedBox(height: Space.sm),
           for (final source in edition.sources)
-            _Fact('${source.source.label} 판', source.edition),
-          _Fact('만든 날', edition.builtOn),
-          _Fact('판본', edition.variant),
+            AboutFact('${source.source.label} 판', source.edition),
+          AboutFact('만든 날', edition.builtOn),
+          AboutFact('판본', edition.variant),
         ],
       ),
     );
@@ -353,7 +363,7 @@ class _WiktionaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final licenses = {for (final s in edition.sources) s.licenseUrl: s.license};
-    return _Card(
+    return AboutCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -380,15 +390,18 @@ class _WiktionaryCard extends StatelessWidget {
           ],
           const SizedBox(height: Space.lg),
           for (final MapEntry(key: url, value: name) in licenses.entries)
-            _Link(label: '라이선스 ($name)', url: url),
-          const _Link(label: '한국어 위키낱말사전', url: _koWiktionaryUrl),
-          const _Link(label: '영어 위키낱말사전 (Wiktionary)', url: _enWiktionaryUrl),
+            AboutLink(label: '라이선스 ($name)', url: url),
+          const AboutLink(label: '한국어 위키낱말사전', url: _koWiktionaryUrl),
+          const AboutLink(
+            label: '영어 위키낱말사전 (Wiktionary)',
+            url: _enWiktionaryUrl,
+          ),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: Space.md),
             child: Divider(),
           ),
           // Each source's edition is in its credit line above.
-          _Fact('만든 날', edition.builtOn),
+          AboutFact('만든 날', edition.builtOn),
         ],
       ),
     );
@@ -403,7 +416,7 @@ class _NoWiktionary extends StatelessWidget {
   final DictionaryProblem? problem;
 
   @override
-  Widget build(BuildContext context) => _Card(
+  Widget build(BuildContext context) => AboutCard(
     child: Text(
       isNoticeable(problem)
           ? '위키낱말사전 뜻 파일을 열지 못해 쓰지 않고 있어요. '
@@ -416,94 +429,13 @@ class _NoWiktionary extends StatelessWidget {
   );
 }
 
-/// A link shown as text: selectable, with a copy button. The app opens no
-/// browser itself.
-class _Link extends StatelessWidget {
-  const _Link({required this.label, required this.url});
-
-  final String label;
-  final String url;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: Space.sm),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: context.text.bodySmall),
-                Text(
-                  url,
-                  style: TextStyle(
-                    color: t.ink,
-                    fontWeight: FontWeight.w600,
-                    decoration: TextDecoration.underline,
-                    decorationColor: t.ink3,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            tooltip: '링크 복사',
-            icon: Icon(Icons.copy_rounded, size: 20, color: t.ink2),
-            onPressed: () async {
-              final messenger = ScaffoldMessenger.of(context);
-              await Clipboard.setData(ClipboardData(text: url));
-              messenger.showSnackBar(
-                const SnackBar(content: Text('링크를 복사했어요')),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Fact extends StatelessWidget {
-  const _Fact(this.label, this.value, {this.mono = false});
-
-  final String label;
-  final String value;
-  final bool mono;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: Space.xs),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(width: 92, child: Text(label, style: context.text.bodySmall)),
-        Expanded(
-          child: Text(
-            value,
-            style: mono
-                ? const TextStyle(
-                    fontFamily: 'Menlo',
-                    fontFamilyFallback: ['monospace'],
-                    fontSize: 12,
-                  )
-                : context.text.bodyMedium,
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
 class _NoDictionary extends StatelessWidget {
   const _NoDictionary();
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    return _Card(
+    return AboutCard(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -528,7 +460,7 @@ class _NoGlossary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    return _Card(
+    return AboutCard(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -551,7 +483,7 @@ class _Preparing extends StatelessWidget {
   const _Preparing();
 
   @override
-  Widget build(BuildContext context) => _Card(
+  Widget build(BuildContext context) => AboutCard(
     child: Row(
       children: [
         const SizedBox.square(
@@ -562,22 +494,6 @@ class _Preparing extends StatelessWidget {
         Text('사전을 준비하고 있어요', style: context.text.bodyMedium),
       ],
     ),
-  );
-}
-
-class _Card extends StatelessWidget {
-  const _Card({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(Space.lg),
-    decoration: BoxDecoration(
-      color: context.tokens.sheet,
-      borderRadius: BorderRadius.circular(Radii.card),
-    ),
-    child: child,
   );
 }
 
