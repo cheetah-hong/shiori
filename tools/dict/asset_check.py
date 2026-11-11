@@ -43,7 +43,11 @@ import speech_check  # noqa: E402
 from speech_check import (  # noqa: E402,F401  (the speech checks, under this module's name too)
     ACCENT_FILES,
     VOICE_DICTIONARY_FILES,
+    VOICE_CREDIT,
     VOICE_EDITION,
+    VOICE_MODEL_FILE,
+    VOICE_STYLE_ID,
+    VOICE_VARIANT,
     check_accent,
     check_voice,
 )

@@ -21,7 +21,8 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
-    expect(find.textContaining('VOICEVOX:四国めたん'), findsWidgets);
+    expect(find.textContaining('VOICEVOX Nemo'), findsWidgets);
+    expect(find.textContaining('四国めたん'), findsNothing);
     expect(find.textContaining('VOICEVOX core'), findsWidgets);
     expect(find.textContaining('ONNX Runtime'), findsWidgets);
     expect(find.textContaining('Open JTalk'), findsWidgets);

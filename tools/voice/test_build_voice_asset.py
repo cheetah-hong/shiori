@@ -145,9 +145,13 @@ class PinsTest(unittest.TestCase):
                 self.assertTrue(source.title and source.license)
 
     def test_the_model_and_dictionary_pins(self) -> None:
+        # VOICEVOX Nemo (n0.vvm) of the 0.17.1 release; 女声4 ノーマル is style 10003
+        self.assertEqual(bva.SOURCES["vvm"].name, "n0.vvm")
+        self.assertEqual(bva.SOURCES["vvm"].url,
+                         "https://github.com/VOICEVOX/voicevox_vvm/releases/download/0.17.1/n0.vvm")
         self.assertEqual(bva.SOURCES["vvm"].sha256,
-                         "ecd35374d4182cd883cba5040376f7f888cc6ba248b1c2f4cea07cdb34bb1318")
-        self.assertEqual(bva.SOURCES["vvm"].bytes, 59_308_488)
+                         "f9793559a0ecad1622c15e68674860d7d00ce2736cf02b3f46b083e989c74ec7")
+        self.assertEqual(bva.SOURCES["vvm"].bytes, 75_175_864)
         self.assertEqual(bva.SOURCES["dictionary"].sha256,
                          "fe6ba0e43542cef98339abdffd903e062008ea170b04e7e2a35da805902f382a")
 
@@ -158,22 +162,22 @@ class VoiceAssetTest(Tmp):
         edition = build_fake_voice(out, self.tmp)
         saved = json.loads((out / bva.EDITION_NAME).read_text(encoding="utf-8"))
         self.assertEqual(saved, edition)
-        self.assertEqual(edition["variant"], "voicevox-0.17.1-0vvm-style2")
+        self.assertEqual(edition["variant"], "voicevox-0.17.1-n0vvm-style10003")
         self.assertEqual(edition["built_on"], "2026-11-06")
         self.assertEqual(edition["core_version"], "0.17.1")
-        self.assertEqual(edition["model_file"], "0.vvm")
+        self.assertEqual(edition["model_file"], "n0.vvm")
         self.assertEqual(edition["dictionary_dir"], "open_jtalk_dic_utf_8-1.11")
-        self.assertEqual(edition["style_id"], 2)
-        self.assertEqual(edition["credit"], "VOICEVOX:四国めたん")
+        self.assertEqual(edition["style_id"], 10003)
+        self.assertEqual(edition["credit"], "VOICEVOX Nemo")
 
-        want = ["0.vvm"] + [f"{DICT_DIR}/{n}" for n in asset_check.VOICE_DICTIONARY_FILES]
+        want = ["n0.vvm"] + [f"{DICT_DIR}/{n}" for n in asset_check.VOICE_DICTIONARY_FILES]
         self.assertEqual([f["path"] for f in edition["files"]], want)
-        self.assertEqual(edition["files"][0]["gzip"], "0.vvm.gz")
+        self.assertEqual(edition["files"][0]["gzip"], "n0.vvm.gz")
         self.assertEqual(edition["files"][-1]["gzip"], "open_jtalk_dic.unk.dic.gz")
         contents = fake_contents()
         with tarfile.open(fileobj=io.BytesIO(contents["dictionary"])) as tar:
             originals = {m.name: tar.extractfile(m).read() for m in tar.getmembers()}
-        originals["0.vvm"] = contents["vvm"]
+        originals["n0.vvm"] = contents["vvm"]
         for entry in edition["files"]:
             with self.subTest(path=entry["path"]):
                 gz = out / entry["gzip"]
@@ -217,6 +221,17 @@ class VoiceAssetTest(Tmp):
         self.assertEqual(asset_check.check_voice(out), [])
         self.assertFalse([p for p in out.iterdir() if p.name.startswith(".")])
 
+    def test_a_rebuild_removes_gzip_files_the_new_edition_does_not_list(self) -> None:
+        # the app bundles the whole folder: an old model left there would ship too
+        out = self.tmp / "voice"
+        out.mkdir()
+        (out / "0.vvm.gz").write_bytes(b"old model")
+        (out / "notes.txt").write_text("kept")
+        build_fake_voice(out, self.tmp / "w")
+        self.assertFalse((out / "0.vvm.gz").exists())
+        self.assertTrue((out / "notes.txt").exists())
+        self.assertEqual(asset_check.check_voice(out), [])
+
     def test_a_bad_built_on_day_is_refused(self) -> None:
         sources, src = make_fake_sources(self.tmp)
         paths = bva.obtain_sources(bva.ASSET_SOURCES, sources, cache=self.tmp / "c", source_dirs=[src])
@@ -244,21 +259,21 @@ class ObtainTest(Tmp):
 
     def test_a_source_dir_file_is_checked_and_copied_into_the_cache(self) -> None:
         path = vs.obtain(self.vvm, cache=self.cache, source_dirs=[self.tmp / "empty", self.src])
-        self.assertEqual(path, self.cache / "0.vvm")
-        self.assertEqual(path.read_bytes(), (self.src / "0.vvm").read_bytes())
+        self.assertEqual(path, self.cache / "n0.vvm")
+        self.assertEqual(path.read_bytes(), (self.src / "n0.vvm").read_bytes())
         self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o644)
         # Then the cache alone is enough, even offline.
         self.assertEqual(vs.obtain(self.vvm, cache=self.cache, offline=True), path)
 
     def test_a_source_with_another_sha256_is_refused(self) -> None:
-        (self.src / "0.vvm").write_bytes(b"n" * self.vvm.bytes)  # same size, other content
+        (self.src / "n0.vvm").write_bytes(b"n" * self.vvm.bytes)  # same size, other content
         with self.assertRaises(vs.SourceError) as e:
             vs.obtain(self.vvm, cache=self.cache, source_dirs=[self.src])
         self.assertIn("sha256", str(e.exception))
-        self.assertFalse((self.cache / "0.vvm").exists())
+        self.assertFalse((self.cache / "n0.vvm").exists())
 
     def test_a_source_with_another_size_is_refused(self) -> None:
-        (self.src / "0.vvm").write_bytes(b"short")
+        (self.src / "n0.vvm").write_bytes(b"short")
         with self.assertRaises(vs.SourceError):
             vs.obtain(self.vvm, cache=self.cache, source_dirs=[self.src])
 
@@ -269,25 +284,25 @@ class ObtainTest(Tmp):
 
     def test_a_missing_file_is_downloaded_into_the_cache(self) -> None:
         path = vs.obtain(self.vvm, cache=self.cache)
-        self.assertEqual(path.read_bytes(), (self.src / "0.vvm").read_bytes())
+        self.assertEqual(path.read_bytes(), (self.src / "n0.vvm").read_bytes())
         self.assertFalse([p for p in self.cache.iterdir() if p.name.endswith(".part")])
 
     def test_a_good_cached_file_is_not_downloaded_again(self) -> None:
         vs.obtain(self.vvm, cache=self.cache)
-        (self.src / "0.vvm").unlink()  # the URL no longer answers
+        (self.src / "n0.vvm").unlink()  # the URL no longer answers
         self.assertTrue(vs.obtain(self.vvm, cache=self.cache).is_file())
 
     def test_a_damaged_cached_file_is_downloaded_again(self) -> None:
         vs.obtain(self.vvm, cache=self.cache)
-        (self.cache / "0.vvm").write_bytes(b"damaged")
+        (self.cache / "n0.vvm").write_bytes(b"damaged")
         path = vs.obtain(self.vvm, cache=self.cache)
         self.assertEqual(vs.sha256_file(path), self.vvm.sha256)
-        (self.cache / "0.vvm").write_bytes(b"damaged")
+        (self.cache / "n0.vvm").write_bytes(b"damaged")
         with self.assertRaises(vs.SourceError):
             vs.obtain(self.vvm, cache=self.cache, offline=True)
 
     def test_a_download_with_another_sha256_is_refused_and_not_kept(self) -> None:
-        (self.src / "0.vvm").write_bytes(b"x" * self.vvm.bytes)
+        (self.src / "n0.vvm").write_bytes(b"x" * self.vvm.bytes)
         with self.assertRaises(vs.SourceError):
             vs.obtain(self.vvm, cache=self.cache)
         self.assertEqual(list(self.cache.iterdir()) if self.cache.exists() else [], [])
@@ -465,7 +480,7 @@ class MainTest(Tmp):
 
     def test_main_stops_on_a_bad_source(self) -> None:
         sources, src = make_fake_sources(self.tmp)
-        (src / "0.vvm").write_bytes(b"not it")
+        (src / "n0.vvm").write_bytes(b"not it")
         argv = ["--cache", str(self.tmp / "cache"), "--source-dir", str(src),
                 "--out-dir", str(self.tmp / "voice"), "--offline"]
         with mock.patch.dict(bva.SOURCES, sources):

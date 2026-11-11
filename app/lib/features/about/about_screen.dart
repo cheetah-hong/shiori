@@ -202,9 +202,9 @@ class _VoiceCard extends StatelessWidget {
             style: context.text.bodySmall?.copyWith(color: t.ink2),
           ),
           source(
-            '음성 · VOICEVOX:四国めたん',
-            'VOICEVOX 음성 모델 이용규약과 四国めたん 음성 라이브러리 이용규약을 '
-                '따릅니다.',
+            '음성 · VOICEVOX Nemo',
+            'VOICEVOX 음성 모델 이용규약과 VOICEVOX Nemo 이용규약을 따릅니다. '
+                '캐릭터가 없는 읽기용 목소리(女声4)입니다.',
           ),
           source(
             'VOICEVOX core 0.17.1',
@@ -692,13 +692,15 @@ void registerVoiceLicenses() {
       const LicenseEntryWithLineBreaks(['VOICEVOX core'], voicevoxCoreLicense),
       const LicenseEntryWithLineBreaks(
         ['VOICEVOX ONNX Runtime', 'VOICEVOX voice model'],
-        '''VOICEVOX ONNX Runtime and the VOICEVOX voice model (0.vvm) are used under
+        '''VOICEVOX ONNX Runtime and the VOICEVOX voice model (n0.vvm) are used under
 their terms of use (VOICEVOX ONNX Runtime 利用規約, VOICEVOX 音声モデル 利用規約):
 use in commercial and non-commercial apps and redistribution inside an app
 are allowed; decompiling and reverse engineering are not; a credit showing
 that VOICEVOX is used is required.
 
-Voice: VOICEVOX:四国めたん (terms: https://zunko.jp/con_ongen_kiyaku.html).
+Voice: VOICEVOX Nemo, 女声4 (terms: https://voicevox.hiroshiba.jp/nemo/term/).
+The Nemo terms allow commercial and non-commercial use with the credit
+"VOICEVOX Nemo"; using the voice for machine learning is not allowed.
 
 VOICEVOX ONNX Runtime is built from Microsoft ONNX Runtime (MIT License).''',
       ),

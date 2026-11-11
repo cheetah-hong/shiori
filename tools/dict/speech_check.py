@@ -28,6 +28,14 @@ VOICE_DICTIONARY_FILES = ("char.bin", "COPYING", "left-id.def", "matrix.bin", "p
 VOICE_FIELDS = ("variant", "built_on", "core_version", "model_file", "dictionary_dir", "style_id",
                 "credit", "files", "sources")
 VOICE_FILE_FIELDS = ("path", "gzip", "gzip_bytes", "bytes", "sha256")
+# The voice this app ships: VOICEVOX Nemo 女声4 ノーマル of the 0.17.1 voice models.
+# build_voice_asset.py builds this edition; an asset of any other voice fails the check.
+VOICE_VARIANT = "voicevox-0.17.1-n0vvm-style10003"
+VOICE_MODEL_FILE = "n0.vvm"
+VOICE_STYLE_ID = 10003
+VOICE_CREDIT = "VOICEVOX Nemo"  # also on the 정보 screen and the licences page (about_screen.dart)
+SHIPPED_VOICE = {"variant": VOICE_VARIANT, "model_file": VOICE_MODEL_FILE, "style_id": VOICE_STYLE_ID,
+                 "credit": VOICE_CREDIT}
 VOICE_SOURCE_FIELDS = ("name", "url", "sha256", "license")
 ACCENT_FILES = ("kanjium-accents.tsv.gz", "kanjium-accents.edition.json")
 ACCENT_FIELDS = ("variant", "built_on", "gzip_bytes", "tsv_bytes", "tsv_sha256", "entries",
@@ -170,6 +178,20 @@ def _voice_field_problems(edition: dict) -> list[str]:
     return problems
 
 
+def _shipped_voice_problems(edition: dict) -> list[str]:
+    """The edition is of another voice than the one this app ships."""
+    return [f"voice: edition {field} is {edition[field]!r}, this app ships {want!r}"
+            for field, want in SHIPPED_VOICE.items()
+            if edition.get(field) is not None and edition[field] != want]
+
+
+def _unlisted_gzip_problems(directory: Path, files: list) -> list[str]:
+    """Gzip files the edition does not list: the app bundles the whole folder, so they would ship."""
+    listed = {entry.get("gzip") for entry in files if isinstance(entry, dict)}
+    return [f"voice: {gz.name} is not in the edition (it would ship in the app)"
+            for gz in sorted(directory.glob("*.gz")) if gz.name not in listed]
+
+
 def _voice_entry_problems(i: int, entry) -> list[str]:
     """Problems of files[i] on its own; any of them means its file is not opened."""
     if not isinstance(entry, dict):
@@ -195,7 +217,7 @@ def check_voice(directory: Path) -> list[str]:
     edition, problems = _load_edition("voice", directory / VOICE_EDITION)
     if edition is None:
         return problems
-    problems = _voice_field_problems(edition)
+    problems = _voice_field_problems(edition) + _shipped_voice_problems(edition)
     files = edition.get("files") if isinstance(edition.get("files"), list) else []
     paths: list[str] = []
     gzips: list[str] = []
@@ -215,7 +237,7 @@ def check_voice(directory: Path) -> list[str]:
     if isinstance(dictionary, str) and dictionary:
         wanted += [f"{dictionary}/{name}" for name in VOICE_DICTIONARY_FILES]
     problems += [f"voice: edition files has no {path}" for path in wanted if path not in paths]
-    return problems
+    return problems + _unlisted_gzip_problems(directory, files)
 
 
 def check_accent(directory: Path) -> list[str]:

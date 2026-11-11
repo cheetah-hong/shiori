@@ -5,7 +5,7 @@
                                            [--offline] [--out-dir app/assets/voice]
 
 Writes into app/assets/voice/ (not committed):
-  0.vvm.gz                           the VOICEVOX voice model 0.vvm (style 2 is used)
+  n0.vvm.gz                          the VOICEVOX Nemo voice model n0.vvm (style 10003, 女声4, is used)
   open_jtalk_dic.<file>.gz           each of the 9 Open JTalk dictionary files
   voice.edition.json                 path, gzip name, sizes and sha256 of every file, sources
 The gzip files have mtime 0, so the same sources and build day give the same bytes.
@@ -45,11 +45,12 @@ from voice_native import find_libcxx, install_native  # noqa: E402,F401
 from voice_sources import Source, SourceError, gzip_to, obtain  # noqa: E402
 
 CORE_VERSION = "0.17.1"
-VARIANT = f"voicevox-{CORE_VERSION}-0vvm-style2"
-MODEL_FILE = "0.vvm"
+# the voice the app ships is fixed in asset_check (speech_check.py), which refuses any other
+VARIANT = asset_check.VOICE_VARIANT
+MODEL_FILE = asset_check.VOICE_MODEL_FILE
 DICTIONARY_DIR = "open_jtalk_dic_utf_8-1.11"
-STYLE_ID = 2
-CREDIT = "VOICEVOX:四国めたん"
+STYLE_ID = asset_check.VOICE_STYLE_ID
+CREDIT = asset_check.VOICE_CREDIT
 EDITION_NAME = asset_check.VOICE_EDITION
 MODEL_GZIP = f"{MODEL_FILE}.gz"
 DICTIONARY_GZIP = "open_jtalk_dic.{}.gz"
@@ -68,9 +69,9 @@ _VVM_TERMS = "VOICEVOX 音声モデル 利用規約"
 _ORT_TERMS = "VOICEVOX ONNX Runtime 利用規約"
 SOURCES: dict[str, Source] = {
     "vvm": Source(
-        "0.vvm", f"{_VVM}/0.vvm", 59_308_488,
-        "ecd35374d4182cd883cba5040376f7f888cc6ba248b1c2f4cea07cdb34bb1318",
-        "VOICEVOX voice model 0.vvm", _VVM_TERMS),
+        "n0.vvm", f"{_VVM}/n0.vvm", 75_175_864,
+        "f9793559a0ecad1622c15e68674860d7d00ce2736cf02b3f46b083e989c74ec7",
+        "VOICEVOX Nemo voice model n0.vvm", _VVM_TERMS),
     "vvm_terms": Source(
         "TERMS.txt", f"{_VVM}/TERMS.txt", 15_990,
         "9c0caf98b31ef82e3686e8fca39d53c85965059d2206be3c83efc3751d32c83a",
@@ -165,6 +166,12 @@ def build_voice_asset(paths: Mapping[str, Path], out_dir: Path, *, built_on: str
             # goes first and the new one last, so a build cut short leaves no edition
             # (no voice) rather than an old edition next to new files.
             (out_dir / EDITION_NAME).unlink(missing_ok=True)
+            # the app bundles the whole folder: a gzip of an older edition (another
+            # model) would ship with it, so only the new edition's files stay
+            listed = {entry["gzip"] for entry in files}
+            for old in out_dir.glob("*.gz"):
+                if old.name not in listed:
+                    old.unlink()
             for entry in files:
                 os.replace(tmp / entry["gzip"], out_dir / entry["gzip"])
             os.replace(edition_part, out_dir / EDITION_NAME)

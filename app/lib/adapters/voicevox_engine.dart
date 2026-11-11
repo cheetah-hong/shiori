@@ -7,6 +7,12 @@ import 'package:shiori/adapters/voice_assets.dart';
 import 'package:shiori/adapters/voicevox_ffi.dart';
 import 'package:voicevox_block/voicevox_block.dart';
 
+/// The name the sound cache keeps this voice's sounds under: the edition, the
+/// style and the speed, so a sound of another voice or speed is never reused.
+String speechVoiceId(VoiceEdition edition, {double speed = speechSpeedScale}) =>
+    'voicevox-${edition.coreVersion}/${edition.variant}/style-${edition.styleId}'
+    '/speed-$speed';
+
 /// [VoicevoxOps] on a background isolate that owns the engine: the calls
 /// take a few hundred milliseconds and must not block the screen. Requests
 /// are answered in order. When the isolate ends, every waiting and later
@@ -30,12 +36,7 @@ final class IsolateVoicevoxEngine implements VoicevoxOps {
       onExit: link.replies.sendPort,
     );
     await link.ready.future;
-    final e = assets.edition;
-    return IsolateVoicevoxEngine._(
-      link,
-      'voicevox-${e.coreVersion}/${e.variant}/style-${e.styleId}'
-      '/speed-$speechSpeedScale',
-    );
+    return IsolateVoicevoxEngine._(link, speechVoiceId(assets.edition));
   }
 
   final _Link _link;

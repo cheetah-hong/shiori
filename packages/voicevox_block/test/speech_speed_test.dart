@@ -28,9 +28,8 @@ void main() {
     'kana': "ア'",
   });
 
-  test('the learning speed is slower than the engine default', () {
-    expect(speechSpeedScale, lessThan(1.0));
-    expect(speechSpeedScale, greaterThanOrEqualTo(0.5));
+  test('sounds are said at the engine default speed', () {
+    expect(speechSpeedScale, 1.0);
   });
 
   test('withSpeedScale sets only the speed of the audio query', () {

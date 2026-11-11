@@ -1,0 +1,37 @@
+id	engine	voice	style_id	model	app	license	added_mb	accent	note	shortlist
+vv-2	VOICEVOX 0.17.1	四国めたん ノーマル	2	0.vvm	가능	VOICEVOX 공통 규약 + zunko.jp 규약: 크레딧만(앱은 소개 화면 등에 표기), 크레딧 없는 상용은 유료	0	지정 28/28 · 최소쌍 대비 8/8 · 모라 판독 11/28 · 소리 대략 판독 11/28(끝 박 제외 14/28)·대비 8/8	조사 당시 앱 목소리(기준)	y
+vv-10003	VOICEVOX 0.17.1	女声4 ノーマル	10003	n0.vvm	가능	VOICEVOX Nemo 규약: 크레딧 「VOICEVOX Nemo」만으로 상용·비상용, 기계학습 이용 금지	15.9	지정 28/28 · 최소쌍 대비 8/8 · 모라 판독 16/28 · 소리 대략 판독 18/28(끝 박 제외 21/28)·대비 8/8	캐릭터 없는 낭독용 음성(Nemo)	y
+vv-10008	VOICEVOX 0.17.1	女声5 ノーマル	10008	n0.vvm	가능	VOICEVOX Nemo 규약: 크레딧 「VOICEVOX Nemo」만으로 상용·비상용, 기계학습 이용 금지	15.9	지정 28/28 · 최소쌍 대비 8/8 · 모라 판독 16/28 · 소리 대략 판독 15/28(끝 박 제외 20/28)·대비 8/8	캐릭터 없는 낭독용 음성(Nemo)	y
+vv-10002	VOICEVOX 0.17.1	男声3 ノーマル	10002	n0.vvm	가능	VOICEVOX Nemo 규약: 크레딧 「VOICEVOX Nemo」만으로 상용·비상용, 기계학습 이용 금지	15.9	지정 28/28 · 최소쌍 대비 8/8 · 모라 판독 13/28 · 소리 대략 판독 14/28(끝 박 제외 19/28)·대비 8/8	캐릭터 없는 낭독용 음성(Nemo)	y
+vv-30	VOICEVOX 0.17.1	No.7 アナウンス	30	6.vvm	조건부	No.7 규약: 비상용만 크레딧으로, 상용(유료·광고)은 유료 라이선스·사전 확인	0	지정 28/28 · 최소쌍 대비 8/8 · 모라 판독 15/28 · 소리 대략 판독 17/28(끝 박 제외 21/28)·대비 8/8		y
+vv-14	VOICEVOX 0.17.1	冥鳴ひまり ノーマル	14	1.vvm	가능	冥鳴ひまり 규약: 크레딧만, 개인·법인 신청 불필요	1.3	지정 28/28 · 최소쌍 대비 8/8 · 모라 판독 15/28 · 소리 대략 판독 15/28(끝 박 제외 18/28)·대비 8/8		y
+hts-tohoku-f01	Open JTalk HTS	tohoku-f01 neutral	-	tohoku-f01-neutral.htsvoice	가능	CC BY 4.0(크레딧), HTS·Open JTalk 수정 BSD	-57	라벨로 지정 가능 · 소리 대략 판독 7/28(끝 박 제외 13/28)·대비 8/8	옛 HMM 방식. 음성 2.2MB로 vvm 59MB를 대신하는 경우, HTS 엔진 C 라이브러리 추가	y
+supertonic3-f3	Supertonic 3 (sherpa-onnx int8)	F3 (공식 설명: announcer-style female)	-	supertonic-3 int8	조건부	코드 MIT, 모델 OpenRAIL-M: 사용 제한 조항 승계·기계 생성 고지	85	지정 불가(한자 그대로 입력) · 소리 대략 판독 16/28(끝 박 제외 18/28)·대비 3/8	모델 144MB(vvm 대체 기준 +85), sherpa-onnx 런타임 별도, 음 높이 선과 소리가 어긋날 수 있음	y
+vv-10000	VOICEVOX 0.17.1	男声2 ノーマル	10000	n0.vvm	가능	VOICEVOX Nemo 규약: 크레딧 「VOICEVOX Nemo」만으로 상용·비상용, 기계학습 이용 금지	15.9	지정 28/28 · 최소쌍 대비 8/8 · 모라 판독 13/28 · 소리 대략 판독 13/28(끝 박 제외 18/28)·대비 7/8	캐릭터 없는 낭독용 음성(Nemo)	
+vv-10001	VOICEVOX 0.17.1	男声1 ノーマル	10001	n0.vvm	가능	VOICEVOX Nemo 규약: 크레딧 「VOICEVOX Nemo」만으로 상용·비상용, 기계학습 이용 금지	15.9	지정 28/28 · 최소쌍 대비 8/8 · 모라 판독 15/28	캐릭터 없는 낭독용 음성(Nemo)	
+vv-10005	VOICEVOX 0.17.1	女声1 ノーマル	10005	n0.vvm	가능	VOICEVOX Nemo 규약: 크레딧 「VOICEVOX Nemo」만으로 상용·비상용, 기계학습 이용 금지	15.9	지정 28/28 · 최소쌍 대비 7/8 · 모라 판독 10/28	캐릭터 없는 낭독용 음성(Nemo)	
+vv-10004	VOICEVOX 0.17.1	女声3 ノーマル	10004	n0.vvm	가능	VOICEVOX Nemo 규약: 크레딧 「VOICEVOX Nemo」만으로 상용·비상용, 기계학습 이용 금지	15.9	지정 28/28 · 최소쌍 대비 2/8 · 모라 판독 19/28	캐릭터 없는 낭독용 음성(Nemo)	
+vv-10006	VOICEVOX 0.17.1	女声6 ノーマル	10006	n0.vvm	가능	VOICEVOX Nemo 규약: 크레딧 「VOICEVOX Nemo」만으로 상용·비상용, 기계학습 이용 금지	15.9	지정 28/28 · 최소쌍 대비 7/8 · 모라 판독 10/28	캐릭터 없는 낭독용 음성(Nemo)	
+vv-10007	VOICEVOX 0.17.1	女声2 ノーマル	10007	n0.vvm	가능	VOICEVOX Nemo 규약: 크레딧 「VOICEVOX Nemo」만으로 상용·비상용, 기계학습 이용 금지	15.9	지정 28/28 · 최소쌍 대비 3/8 · 모라 판독 18/28	캐릭터 없는 낭독용 음성(Nemo)	
+vv-31	VOICEVOX 0.17.1	No.7 読み聞かせ	31	6.vvm	조건부	No.7 규약: 비상용만 크레딧으로, 상용(유료·광고)은 유료 라이선스·사전 확인	0	지정 28/28 · 최소쌍 대비 8/8 · 모라 판독 15/28		
+vv-16	VOICEVOX 0.17.1	九州そら ノーマル	16	2.vvm	가능	VOICEVOX 공통 규약 + zunko.jp 규약: 크레딧만(앱은 소개 화면 등에 표기), 크레딧 없는 상용은 유료	0	지정 28/28 · 최소쌍 대비 8/8 · 모라 판독 9/28		
+vv-109	VOICEVOX 0.17.1	東北イタコ ノーマル	109	21.vvm	가능	VOICEVOX 공통 규약 + zunko.jp 규약: 크레딧만(앱은 소개 화면 등에 표기), 크레딧 없는 상용은 유료	3.9	지정 28/28 · 최소쌍 대비 8/8 · 모라 판독 14/28 · 소리 대략 판독 14/28(끝 박 제외 18/28)·대비 5/8		
+vv-107	VOICEVOX 0.17.1	東北ずん子 ノーマル	107	21.vvm	가능	VOICEVOX 공통 규약 + zunko.jp 규약: 크레딧만(앱은 소개 화면 등에 표기), 크레딧 없는 상용은 유료	3.9	지정 28/28 · 최소쌍 대비 8/8 · 모라 판독 13/28		
+vv-8	VOICEVOX 0.17.1	春日部つむぎ ノーマル	8	0.vvm	가능	tsumugi 규약: 크레딧만	0	지정 28/28 · 최소쌍 대비 8/8 · 모라 판독 9/28		
+vv-11	VOICEVOX 0.17.1	玄野武宏 ノーマル	11	4.vvm	가능	virvoxproject 공통 규약: 크레딧만(CV 표기 권장)	0	지정 28/28 · 최소쌍 대비 7/8 · 모라 판독 12/28		
+vv-67	VOICEVOX 0.17.1	栗田まろん ノーマル	67	14.vvm	가능	음성은 VOICEVOX 공통 규약(캐릭터 가이드라인은 아카이브로 확인)	7.0	지정 28/28 · 최소쌍 대비 7/8 · 모라 판독 13/28		
+vv-46	VOICEVOX 0.17.1	小夜/SAYO ノーマル	46	15.vvm	가능	小夜 규약: 크레딧만	8.0	지정 28/28 · 최소쌍 대비 7/8 · 모라 판독 9/28		
+vv-56	VOICEVOX 0.17.1	猫使アル おちつき	56	13.vvm	조건부	猫使 규약: 개인은 크레딧만, 법인 상용은 사전 문의	2.4	지정 28/28 · 최소쌍 대비 8/8 · 모라 판독 12/28		
+vv-13	VOICEVOX 0.17.1	青山龍星 ノーマル	13	15.vvm	조건부	virvox 규약: 개인은 크레딧만, 기업·개인사업자는 사전 신청	8.0	지정 28/28 · 최소쌍 대비 8/8 · 모라 판독 14/28		
+vv-84	VOICEVOX 0.17.1	青山龍星 しっとり	84	15.vvm	조건부	virvox 규약: 개인은 크레딧만, 기업·개인사업자는 사전 신청	8.0	지정 28/28 · 최소쌍 대비 6/8 · 모라 판독 8/28		
+vv-99	VOICEVOX 0.17.1	離途 ノーマル	99	19.vvm	가능	離途 규약: 음성은 크레딧만(캐릭터 그림의 법인 이용은 별도)	0.7	지정 28/28 · 최소쌍 대비 7/8 · 모라 판독 11/28		
+vv-101	VOICEVOX 0.17.1	離途 シリアス	101	19.vvm	가능	離途 규약: 음성은 크레딧만(캐릭터 그림의 법인 이용은 별도)	0.7	지정 28/28 · 최소쌍 대비 4/8 · 모라 판독 10/28		
+supertonic3-f1	Supertonic 3 (sherpa-onnx int8)	F1 (공식 설명: calm, slightly low)	-	supertonic-3 int8	조건부	코드 MIT, 모델 OpenRAIL-M	85	지정 불가		
+supertonic3-m2	Supertonic 3 (sherpa-onnx int8)	M2 (공식 설명: deep, calm, serious)	-	supertonic-3 int8	조건부	코드 MIT, 모델 OpenRAIL-M	85	지정 불가	w01 최대 진폭 1.0(잘림 가능)	
+hts-mei	Open JTalk HTS	mei normal	-	mei_normal.htsvoice	가능	CC BY 3.0(크레딧)	-57	라벨로 지정 가능 · 소리 대략 판독 11/28(끝 박 제외 18/28)·대비 7/8		
+piper-plus-css10	piper-plus (MIT)	CSS10 일본어(오디오북 낭독)	-	css10-ja-6lang-fp16.onnx	조건부	코드 MIT, CSS10 CC0, 베이스 학습 데이터 MOE-Speech(일본 저작권법 30조의4 범위) 위험	-19	A1/A2/A3로 지정 가능 · 소리 대략 판독 6/28(끝 박 제외 7/28)·대비 1/8	단어 단독 불안정(飴·今日 거의 무음), 라이브러리 언어 판별 결함	
+piper-plus-tsukuyomi	piper-plus (MIT)	つくよみちゃん	-	tsukuyomi.onnx	조건부	つくよみちゃん 코퍼스 규약: 상용 가능, 크레딧·금지사항을 앱 안에 게시	-19	A1/A2/A3로 지정 가능 · 소리 대략 판독 11/28(끝 박 제외 14/28)·대비 7/8	캐릭터 음성	
+kokoro-jf-alpha	Kokoro-82M v1.0	jf_alpha	-	kokoro-v1.0.onnx	조건부	Apache-2.0(코드·가중치)	33	지정 불가 · 소리 대략 판독 9/28(끝 박 제외 14/28)·대비 0/8	箸·橋·端이 같은 소리(바이트 동일). 크기는 int8 92MB 기준	
+kokoro-jm-kumo	Kokoro-82M v1.0	jm_kumo	-	kokoro-v1.0.onnx	조건부	Apache-2.0	33	지정 불가		
+kokoro-jf-gongitsune	Kokoro-82M v1.0	jf_gongitsune	-	kokoro-v1.0.onnx	조건부	Apache-2.0	33	지정 불가		
+apple-kyoko	macOS 기본 음성	Kyoko	-	시스템	참고만	시스템 음성(앱 내장 아님)	0	지정 불가(앞 실험 대략 판독 12/28)	소리 비교용 참고. Otoya·향상 음성은 이 Mac에 없음	

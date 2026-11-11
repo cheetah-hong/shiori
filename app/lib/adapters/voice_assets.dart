@@ -184,7 +184,9 @@ final class _Mismatch implements Exception {
 ///
 /// Same edition as the marker and every file of the size it gives: used as
 /// it is (the sha256 is checked when unpacking only). Otherwise the marker is
-/// removed first, every file unpacked again, and the marker written last.
+/// removed first, the files the edition does not list are removed (an older
+/// edition's model would otherwise stay on the device), every file unpacked
+/// again, and the marker written last.
 Future<VoiceAssetsResult> prepareVoiceAssets({
   required AssetBundle bundle,
   required Directory dir,
@@ -215,6 +217,7 @@ Future<VoiceAssetsResult> prepareVoiceAssets({
       return VoiceAssetsReady(dir: dir, edition: edition);
     }
     if (await marker.exists()) await marker.delete();
+    await _removeUnlisted(dir, edition);
     final timer = Stopwatch()..start();
     for (final f in edition.files) {
       await _unpack(bundle, dir, f);
@@ -318,6 +321,20 @@ String? _decodeCheckWrite(
   hasher.close();
   final got = digest.value.toString();
   return got == sha ? null : 'sha256 is $got, the edition says $sha';
+}
+
+/// Removes every file under [dir] that [edition] does not list ([dir] holds
+/// the voice data only). A file that cannot be removed is left for next time.
+Future<void> _removeUnlisted(Directory dir, VoiceEdition edition) async {
+  final listed = {for (final f in edition.files) '${dir.path}/${f.path}'};
+  await for (final entity in dir.list(recursive: true, followLinks: false)) {
+    if (entity is! File || listed.contains(entity.path)) continue;
+    try {
+      await entity.delete();
+    } on FileSystemException {
+      // Only space is lost; nothing reads a file the edition does not list.
+    }
+  }
 }
 
 Future<void> _removeFiles(Directory dir, VoiceEdition edition) async {

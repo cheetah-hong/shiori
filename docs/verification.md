@@ -2112,3 +2112,65 @@ iPhone 17 시뮬레이터(실제 사전·발음 asset)에서 `save` → 앱 종�
 | `91_license_wikt.png` | 라이선스 페이지의 위키낱말사전 항목 |
 | `92_review_wikt_meaning.png` | 검토: DAY 20 예문 낱말 大阪 → 오사카(사전·중간·추정) |
 | `93_evidence_wikt.png` | 근거 조각: 출처 사전 · 짝 신뢰도 중간 · 사전 뜻: 위키낱말사전 |
+
+## 32. 발음 목소리 바꾸기: VOICEVOX Nemo 女声4, 1.0배 (2026-11-11)
+
+예전 목소리(`0.vvm` 四国めたん ノーマル, 0.85배)가 캐릭터 성우처럼 들린다는 평이 있어, 캐릭터 없는 읽기용 음성 **VOICEVOX Nemo 女声4 ノーマル(`n0.vvm`, 스타일 10003)** 로 바꾸고 빠르기를 엔진 기본(1.0배)으로 했습니다.
+후보 조사·견본은 `research/tts/voices/README.md`입니다. 엔진·FFI·악센트 지정(Kanjium)·예문 처리·캐시 구조는 그대로입니다.
+
+### 32.1 바꾼 것
+
+| 어디 | 무엇 |
+|---|---|
+| `tools/dict/speech_check.py` | 앱이 싣는 목소리를 한 곳에 고정(`VOICE_VARIANT` `voicevox-0.17.1-n0vvm-style10003`, `VOICE_MODEL_FILE`, `VOICE_STYLE_ID`, `VOICE_CREDIT`). 다른 목소리의 판이면 실패하고 다시 만드는 명령을 알림. 판에 없는 gzip이 폴더에 있어도 실패(앱이 `assets/voice/`를 통째로 싣기 때문) |
+| `tools/voice/build_voice_asset.py` | `n0.vvm`(75,175,864바이트, sha256 고정), 스타일·판 이름은 위 상수, 크레딧 「VOICEVOX Nemo」. 다시 만들 때 판에 없는 gzip(예전 `0.vvm.gz`)을 지움 |
+| `packages/voicevox_block` | `speechSpeedScale` 0.85 → 1.0 |
+| `app/lib/adapters/voicevox_engine.dart` | 캐시 이름을 `speechVoiceId(edition)`으로 뺌(판·스타일·빠르기, 값은 그대로) |
+| `app/lib/adapters/voice_assets.dart` | 판이 바뀌어 다시 풀 때 새 판에 없는 풀린 파일을 지움. 예전 판을 쓰던 기기에 `0.vvm`(59.3MB)이 남지 않게 |
+| 정보 화면·라이선스 페이지 | 「음성 · VOICEVOX Nemo」, Nemo 규약 주소와 요점(크레딧 필요, 기계학습 이용 금지). 四国めたん 문구 없음 |
+
+### 32.2 확인
+
+| 확인 | 결과 |
+|---|---|
+| 예전 asset(main 체크아웃의 `0.vvm` 판)을 넣고 `asset_check.py --release` | 실패: `voice: edition variant is 'voicevox-0.17.1-0vvm-style2', this app ships 'voicevox-0.17.1-n0vvm-style10003'` 외 2줄 + 다시 만드는 명령 |
+| `build_voice_asset.py --native` 뒤 `asset_check.py --release --engine ios` / `--engine android` | 모두 ok, 예전 `0.vvm.gz`는 지워짐 |
+| 실제 엔진 통합 테스트(iPhone 17 Pro 시뮬레이터, `integration_test/speech_screenshots_test.dart`) | 2/2 통과, `unpacked voicevox-0.17.1-n0vvm-style10003 in 1363 ms`, 단어·예문·추정 단어 재생 |
+| 악센트 재측정(`research/tts/voices/remeasure.py`, 앞 실험과 같은 28단어·7문장) | 아래 표 |
+
+| 목소리 | 단어 엔진 값(가나 지정) | 최소쌍 대비 | 모라 판독 | 예문 악센트구: 기본 / 사용자 사전 |
+|---|---|---|---|---|
+| 예전 四国めたん (0.vvm, 2) | 28/28 | 8/8 | 11/28 | 16/19 / 17/19 |
+| **Nemo 女声4 (n0.vvm, 10003)** | **28/28** | **8/8** | **16/28** | **16/19 / 17/19** |
+
+- 예전 목소리 줄은 `research/tts/README.md`의 숫자(28/28, 16/19, 17/19)를 그대로 재현해 도구를 확인한 것입니다.
+- 악센트구 나눔과 악센트 값은 Open JTalk가 정해 목소리와 상관없이 같습니다. 목소리마다 다른 것은 높낮이 모양(대비·모라 판독)입니다.
+
+### 32.3 크기
+
+| 무엇 | 예전 | 지금 |
+|---|---|---|
+| 음성 모델 gzip / 풀린 크기 | 59.3MB / 59.3MB | 75.2MB / 75.2MB |
+| 발음 asset gzip 합계 | 82.8MB | 98.7MB (+15.9MB) |
+
+- 모델은 이미 압축된 파일이라 iOS 앱(zip)·APK 모두 약 +15.9MB, 기기의 풀린 사본도 +15.9MB로 계산됩니다(예전 판을 쓰던 기기는 처음 재생할 때 예전 모델을 지우고 새로 풂). release 빌드로 다시 재지는 않았습니다.
+- 새 asset 만들기: `python3 tools/voice/build_voice_asset.py --native` → `python3 tools/dict/asset_check.py --release --engine ios`(android도). 앞서 받은 공식 파일이 있으면 `--source-dir <폴더> --offline`.
+
+### 32.4 테스트
+
+| 파일 | 내용 |
+|---|---|
+| `tools/voice/test_build_voice_asset.py` | V1: `n0.vvm` 주소·크기·sha256, 판 정보의 스타일 10003·판 이름·크레딧, 다른 sha256이면 거부, 다시 만들 때 판에 없는 gzip 지움(새 1) |
+| `tools/dict/test_asset_check.py` | V2: 앱이 싣는 목소리 상수, 예전 목소리 판(판 이름·모델·스타일 각각)이면 실패와 다시 만드는 명령, 판에 없는 gzip이면 실패(새 3) |
+| `app/test/adapters/speech_voice_id_test.dart` (새, 3) · `packages/voicevox_block/test/speech_speed_test.dart` | V3: 빠르기 1.0, 캐시 이름에 판·스타일·빠르기, 하나만 달라도 다른 이름 |
+| `app/test/features/about_voice_credits_test.dart` | V4: 「VOICEVOX Nemo」가 보이고 「四国めたん」이 없음 |
+| `app/test/adapters/voice_assets_stale_test.dart` (새, 2) | 판이 바뀌면 옛 판에만 있던 풀린 파일(모델·사전 파일)이 지워지고 같은 판이면 그대로 |
+| `app/integration_test/speech_screenshots_test.dart` | V5: 실제 엔진, 크레딧 확인을 Nemo로, 스크린샷 94 |
+
+결과: tools/voice **48** · tools/dict **151** · voicevox_block **66** · app **280** · research/tts/voices **26** 통과, analyze 문제 없음.
+
+| 스크린샷 | 내용 |
+|---|---|
+| `94_about_voice_nemo.png` | 정보 → 발음: 「음성 · VOICEVOX Nemo」(캐릭터 없는 읽기용 목소리), core·ONNX Runtime·Open JTalk 사전·Kanjium |
+
+- `80`~`84`는 예전 목소리 때 찍은 그대로 둡니다(84의 크레딧은 예전 목소리).

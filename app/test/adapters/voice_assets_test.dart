@@ -33,8 +33,8 @@ import '../support/dictionary.dart' show MemoryAssetBundle;
     'core_version': '0.17.1',
     'model_file': 'model.vvm',
     'dictionary_dir': 'dic',
-    'style_id': 2,
-    'credit': 'VOICEVOX:四国めたん',
+    'style_id': 10003,
+    'credit': 'VOICEVOX Nemo',
     'files': entries,
     'sources': <Object?>[],
   };
@@ -78,8 +78,8 @@ void main() {
       final ready = result as VoiceAssetsReady;
       expect(ready.modelPath, '${ready.dir.path}/model.vvm');
       expect(ready.dictionaryPath, '${ready.dir.path}/dic');
-      expect(ready.edition.styleId, 2);
-      expect(ready.edition.credit, 'VOICEVOX:四国めたん');
+      expect(ready.edition.styleId, 10003);
+      expect(ready.edition.credit, 'VOICEVOX Nemo');
       for (final MapEntry(key: path, value: content) in files.entries) {
         expect(File('${ready.dir.path}/$path').readAsBytesSync(), content);
       }

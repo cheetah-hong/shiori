@@ -1,10 +1,9 @@
 import 'dart:convert';
 
-/// Speed of every sound the app makes. The engine default (1.0) is ordinary
-/// speaking speed, the same as the recorded audio of other learning apps, but
-/// it sounded too fast for a learner hearing a new word, so words and example
-/// sentences are said a little slower.
-const speechSpeedScale = 0.85;
+/// Speed of every sound the app makes: the engine default (1.0), ordinary
+/// speaking speed. The calm narration voice (VOICEVOX Nemo) is slow enough at
+/// it; the earlier character voice was said at 0.85.
+const speechSpeedScale = 1.0;
 
 /// [queryJson] (an audio query of the engine) with its speed set to [scale].
 /// Throws [FormatException] when it is not an object with a `speedScale`

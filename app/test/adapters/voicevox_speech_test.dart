@@ -104,8 +104,8 @@ void main() {
       'core_version': '0.17.1',
       'model_file': 'model.vvm',
       'dictionary_dir': 'dic',
-      'style_id': 2,
-      'credit': 'VOICEVOX:四国めたん',
+      'style_id': 10003,
+      'credit': 'VOICEVOX Nemo',
       'files': [
         {
           'path': 'model.vvm',

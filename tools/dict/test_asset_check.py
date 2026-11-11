@@ -390,9 +390,35 @@ class VoiceCheckTest(SpeechAssetCase):
         self.assertIn("voice: ok", out)
         self.assertIn("jmdict-full-lean: ok", out)
 
+    def test_the_shipped_voice_is_nemo_style_10003(self) -> None:
+        self.assertEqual(asset_check.VOICE_VARIANT, "voicevox-0.17.1-n0vvm-style10003")
+        self.assertEqual(asset_check.VOICE_MODEL_FILE, "n0.vvm")
+        self.assertEqual(asset_check.VOICE_STYLE_ID, 10003)
+
+    def test_an_asset_of_the_old_voice_fails_and_says_how_to_rebuild(self) -> None:
+        old = {"variant": "voicevox-0.17.1-0vvm-style2", "model_file": "0.vvm", "style_id": 2}
+        for field, value in old.items():
+            with self.subTest(field=field):
+                build_fake_voice(self.voice, self.tmp / f"again-{field}")
+                self.edit(self.voice / VOICE_EDITION, lambda e: e.update({field: value}))
+                self.assert_fails(asset_check.check_voice(self.voice), "voice", field, str(value))
+        self.edit(self.voice / VOICE_EDITION, lambda e: e.update(old))
+        code, out = self.run_main(["--release"])
+        self.assertEqual(code, 1, out)
+        self.assertIn("voicevox-0.17.1-n0vvm-style10003", out)
+        self.assertIn("python3 tools/voice/build_voice_asset.py", out)
+        self.assertIn("speech assets cannot ship", out)
+
+    def test_a_gzip_the_edition_does_not_list_fails(self) -> None:
+        # the app bundles the whole voice folder, so a left-over model would ship
+        (self.voice / "0.vvm.gz").write_bytes(b"old model")
+        self.assert_fails(asset_check.check_voice(self.voice), "voice", "0.vvm.gz")
+        code, out = self.run_main(["--release"])
+        self.assertEqual(code, 1, out)
+
     def test_a_different_gzip_size_fails(self) -> None:
         self.edit_file_entry(0, gzip_bytes=1)
-        self.assert_fails(asset_check.check_voice(self.voice), "voice", "gzip_bytes", "0.vvm")
+        self.assert_fails(asset_check.check_voice(self.voice), "voice", "gzip_bytes", "n0.vvm")
         code, out = self.run_main([])
         self.assertEqual(code, 1)
         self.assertIn("python3 tools/voice/build_voice_asset.py", out)
@@ -413,11 +439,11 @@ class VoiceCheckTest(SpeechAssetCase):
         self.assertEqual(code, 1)
 
     def test_a_gzip_cut_short_fails(self) -> None:
-        gz = self.voice / "0.vvm.gz"
+        gz = self.voice / "n0.vvm.gz"
         data = gz.read_bytes()
         gz.write_bytes(data[: len(data) // 2])
         self.edit_file_entry(0, gzip_bytes=len(data) // 2)
-        self.assert_fails(asset_check.check_voice(self.voice), "voice", "0.vvm.gz")
+        self.assert_fails(asset_check.check_voice(self.voice), "voice", "n0.vvm.gz")
 
     def test_an_unsafe_path_fails(self) -> None:
         for bad in ("../0.vvm", "open_jtalk_dic_utf_8-1.11/../../x", "/tmp/0.vvm", "a\\..\\b", "",

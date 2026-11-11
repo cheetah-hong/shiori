@@ -177,7 +177,8 @@ void main() {
       () => Scrollable.ensureVisible(tester.element(find.text('발음'))),
     );
     await tester.pumpAndSettle();
-    expect(find.textContaining('VOICEVOX:四国めたん'), findsWidgets);
-    await shot(tester, '84_about_voice_credits');
+    expect(find.textContaining('VOICEVOX Nemo'), findsWidgets);
+    expect(find.textContaining('四国めたん'), findsNothing);
+    await shot(tester, '94_about_voice_nemo');
   });
 }

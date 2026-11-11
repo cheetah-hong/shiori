@@ -1,0 +1,12 @@
+id	kind	text	reading	accent	memo
+w01	word	箸	はし	1	최소쌍
+w02	word	橋	はし	2	최소쌍
+w03	word	端	はし	0	최소쌍
+w04	word	雨	あめ	1	최소쌍
+w05	word	飴	あめ	0	최소쌍
+w06	word	今日	きょう	1	요음+장음
+w07	word	先生	せんせい	3	첫 음절이 무거움
+w08	word	図書館	としょかん	2
+s01	sentence	今日は午後から忙しいです。
+s02	sentence	先生は図書館にいます。
+s03	sentence	昨日、柿と鮭を買いました。

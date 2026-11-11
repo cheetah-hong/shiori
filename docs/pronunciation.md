@@ -3,6 +3,7 @@
 학습 카드에서 단어와 예문을 일본어 소리로 들려주고, 읽기 아래에 음 높이 선(도쿄 악센트)을 그립니다.
 소리는 기기 안에서 만듭니다. 앱은 네트워크를 쓰지 않습니다(`app/test/app/no_network_test.dart`).
 방식을 고른 측정은 `research/tts/README.md`(엔진·데이터 정확도)와 `docs/verification.md` 28절(앱에 넣은 결과)에 있습니다.
+목소리를 고른 조사는 `research/tts/voices/README.md`, 바꾼 결과는 `docs/verification.md` 32절입니다.
 
 ## 1. 무엇이 들어 있나
 
@@ -10,13 +11,14 @@
 |---|---|---|---|
 | VOICEVOX core (C API) | 0.17.1 | iOS `app/ios/voicevox/voicevox_core.xcframework`, Android `jniLibs/arm64-v8a/libvoicevox_core.so` | MIT |
 | VOICEVOX ONNX Runtime | iOS 1.17.3(core가 링크하는 판), Android 1.23.2(16KB 페이지 정렬) | 같은 폴더 | VOICEVOX ONNX Runtime 이용규약: 앱에 넣어 재배포 가능, 역컴파일 금지, VOICEVOX 크레딧 |
-| 음성 모델 `0.vvm` | voicevox_vvm 0.17.1 | `app/assets/voice/0.vvm.gz` | VOICEVOX 음성 모델 이용규약 + 캐릭터 규약. 쓰는 음성은 四国めたん ノーマル(스타일 2) 하나, 크레딧 「VOICEVOX:四国めたん」 |
+| 음성 모델 `n0.vvm` (VOICEVOX Nemo) | voicevox_vvm 0.17.1 | `app/assets/voice/n0.vvm.gz` | VOICEVOX 음성 모델 이용규약 + VOICEVOX Nemo 이용규약(https://voicevox.hiroshiba.jp/nemo/term/). 쓰는 음성은 캐릭터 없는 읽기용 女声4 ノーマル(스타일 10003) 하나, 크레딧 「VOICEVOX Nemo」. Nemo 규약은 기계학습 이용을 금지합니다 |
 | Open JTalk 사전 | 1.11 | `app/assets/voice/open_jtalk_dic.*.gz`(파일 9개) | 수정 BSD |
 | 악센트 데이터 Kanjium `accents.txt` | 원본 저장소의 고정 커밋 | `app/assets/accent/kanjium-accents.tsv.gz` | CC BY-SA 4.0, Kanjium이 요구하는 문구를 정보 화면에 표시. 변환한 표도 같은 라이선스 |
 
 - 큰 파일은 git에 넣지 않습니다(각 폴더의 `.gitignore`). 판·크기·sha256이 고정된 공식 릴리스에서 도구가 받아 만듭니다.
 - 정보 화면의 「발음」 카드와 오픈소스 라이선스 페이지(`registerVoiceLicenses`)에 위 표기를 모두 싣습니다.
-- `0.vvm`에 든 다른 음성 중 雨晴はう는 함께 받은 약관에 항목이 없어 쓰지 않습니다.
+- 앱이 싣는 목소리(판 이름·모델 파일·스타일)는 `tools/dict/speech_check.py`의 `VOICE_*` 한 곳에 고정돼 있습니다. 다른 목소리의 asset이나 판에 없는 gzip(예: 예전 `0.vvm.gz`)이 `app/assets/voice/`에 있으면 asset 검사가 실패합니다. 앱은 이 폴더를 통째로 싣기 때문입니다.
+- 예전 목소리는 `0.vvm`의 四国めたん ノーマル(스타일 2)였습니다. 캐릭터 성우처럼 들린다는 평이 있어 2026-11-11에 바꿨습니다.
 
 ## 2. 만들기와 검사
 
@@ -68,7 +70,8 @@ python3 tools/dict/asset_check.py --release         # 사전·발음 asset을 �
 - 한 단어만 소리 낼 때 평판(0)과 끝 박 뒤 하강(박 수와 같은 값)은 소리가 같습니다(조사가 있어야 갈림). 그래서 엔진 입력도 같습니다.
 - **추정 선.** Kanjium에 없는 단어는 읽기를 열 때 한 번 엔진에 「표기+が」를 읽혀(안 맞으면 「읽기+が」) 한 구로 읽힌 경우의 악센트를 선으로 그리고 「추정」을 붙입니다. 엔진을 쓸 수 없으면 「추정」만 보입니다.
 - 읽기가 여러 개면 Kanjium에 값이 있는 첫 읽기를 씁니다. 값이 여러 개면 첫 값을 씁니다.
-- **빠르기.** 모든 소리를 엔진 기본값의 0.85배(`speechSpeedScale`)로 냅니다. 기본값(1.0)은 보통 말 빠르기로, 다른 학습 앱의 녹음과 초당 박 수가 거의 같았지만(단어 1.01배·예문 1.02배, 소리 크기 봉우리로 어림) 처음 듣는 단어에는 빠르게 들렸습니다. 빠르기는 캐시 키에 들어가므로 값을 바꾸면 예전 소리를 다시 쓰지 않습니다.
+- **빠르기.** 모든 소리를 엔진 기본값(1.0, `speechSpeedScale`)으로 냅니다. 보통 말 빠르기로, 다른 학습 앱의 녹음과 초당 박 수가 거의 같습니다(단어 1.01배·예문 1.02배, 소리 크기 봉우리로 어림). 예전 목소리는 처음 듣는 단어에 빠르게 들려 0.85배였지만, 지금 목소리는 더 차분해 1.0배로 골랐습니다.
+- **캐시.** 소리 캐시 이름에 판·스타일·빠르기가 들어갑니다(`speechVoiceId`). 셋 중 하나만 바뀌어도 예전 소리를 다시 쓰지 않습니다. 발음 asset을 풀어 두는 폴더는 판이 바뀌면 새 판에 없는 파일(예전 모델)을 지우고 다시 풉니다.
 
 ## 5. 플랫폼
 
@@ -81,15 +84,15 @@ python3 tools/dict/asset_check.py --release         # 사전·발음 asset을 �
 
 | 무엇 | 크기 |
 |---|---|
-| 음성 모델 gzip / 풀린 크기 | 59.3MB / 59.3MB (압축되지 않음) |
+| 음성 모델 gzip / 풀린 크기 | 75.2MB / 75.2MB (압축되지 않음, 예전 `0.vvm`보다 +15.9MB) |
 | Open JTalk 사전 gzip 9개 / 풀린 크기 | 23.5MB / 약 107MB |
 | Kanjium 표 gzip / 풀린 크기 | 0.94MB / 3.2MB (124,137줄) |
 | 엔진 (release, 앱 크기 증가) | iOS zip +5.6MB, APK(arm64) +23MB |
 
-기기에는 앱 안의 gzip asset과 캐시 폴더의 풀린 파일이 둘 다 있습니다(약 250MB). 측정은 verification.md 28절.
+기기에는 앱 안의 gzip asset과 캐시 폴더의 풀린 파일이 둘 다 있습니다(약 280MB). 측정은 verification.md 28절.
 
 ## 7. 남은 일
 
 - 귀로 확인하지 않았습니다. 엔진이 지정한 악센트로 말하는 것은 기계 측정으로 확인했습니다(research/tts).
 - 실제 기기의 합성 속도·App Store 검증은 시뮬레이터·에뮬레이터 밖이라 확인하지 않았습니다.
-- iOS에서 asset을 앱 묶음에서 바로 열면 풀린 사본(약 165MB)이 필요 없습니다(다음 단계).
+- iOS에서 asset을 앱 묶음에서 바로 열면 풀린 사본(약 180MB)이 필요 없습니다(다음 단계).
