@@ -4,8 +4,8 @@ import 'package:shiori/app/data.dart';
 import 'package:shiori_core/shiori_core.dart';
 
 /// What a study screen studies: [scope] (전체 or one playlist), today's
-/// cards or, with [more], cards brought forward (더 학습하기).
-typedef StudyRequest = ({StudyScope scope, bool more});
+/// cards or, with [more], cards brought forward (더 학습하기), in [mode].
+typedef StudyRequest = ({StudyScope scope, bool more, StudyMode mode});
 
 /// Holds one study session for a [StudyRequest].
 final class StudyController extends AsyncNotifier<StudySession> {
@@ -20,21 +20,27 @@ final class StudyController extends AsyncNotifier<StudySession> {
   Future<StudySession> build() {
     final service = ref.read(studyServiceProvider);
     return request.more
-        ? service.startMoreSession(scope: request.scope)
-        : service.startSession(scope: request.scope);
+        ? service.startMoreSession(scope: request.scope, mode: request.mode)
+        : service.startSession(scope: request.scope, mode: request.mode);
   }
 
-  Future<void> answer(Answer answer) async {
+  /// A write (an answer, a hide, an undo) is on its way.
+  bool get isBusy => _busy;
+
+  /// Stores [answer] for the current card; true when it was stored (false
+  /// when ignored while another write is on its way, or when it failed).
+  Future<bool> answer(Answer answer) async {
     final session = state.value;
-    if (_busy || session == null || session.isFinished) return;
+    if (_busy || session == null || session.isFinished) return false;
     _busy = true;
     try {
       final next = await AsyncValue.guard(
         () => ref.read(studyServiceProvider).answer(session, answer),
       );
-      if (!ref.mounted) return;
+      if (!ref.mounted) return false;
       state = next;
       ref.read(dataRevisionProvider.notifier).bump();
+      return !next.hasError;
     } finally {
       _busy = false;
     }
@@ -75,6 +81,11 @@ final class StudyController extends AsyncNotifier<StudySession> {
       _busy = false;
     }
   }
+
+  /// The multiple-choice question of [session]'s current card (객관식,
+  /// 듣고 맞히기); null otherwise.
+  MultipleChoice? questionFor(StudySession session) =>
+      ref.read(studyServiceProvider).questionFor(session);
 
   /// Interval the 알고있음 button shows for [item].
   Duration previewKnown(SessionItem item) =>

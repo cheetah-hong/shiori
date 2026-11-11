@@ -9,6 +9,8 @@ import 'package:shiori/features/playlists/playlist_screen.dart';
 import 'package:shiori/features/playlists/playlists_screen.dart';
 import 'package:shiori/features/settings/settings_screen.dart';
 import 'package:shiori/features/study/restudy_labels.dart';
+import 'package:shiori/features/study/study_mode_chips.dart';
+import 'package:shiori/features/study/study_mode_labels.dart';
 import 'package:shiori/features/study/study_scope_sheet.dart';
 import 'package:shiori/features/study/study_screen.dart';
 import 'package:shiori/shared/format.dart';
@@ -61,11 +63,27 @@ class HomeScreen extends ConsumerWidget {
                       ),
                     ),
                     if (summary.value case final s? when s.knownToday > 0)
-                      Pill(
-                        '오늘 ${s.knownToday}개 외움',
-                        background: t.sheet,
-                        foreground: t.pen,
-                        icon: Icons.local_fire_department,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Pill(
+                            '오늘 ${s.knownToday}개 외움',
+                            background: t.sheet,
+                            foreground: t.pen,
+                            icon: Icons.local_fire_department,
+                          ),
+                          // Counted in the mode in use, named small below
+                          // once known (no guess while it loads).
+                          if (ref.watch(studyModeProvider).value
+                              case final mode?)
+                            Text(
+                              StudyModeLabels.name(mode),
+                              key: const ValueKey('known-today-mode'),
+                              style: context.text.bodySmall?.copyWith(
+                                fontSize: 11,
+                              ),
+                            ),
+                        ],
                       ),
                     IconButton(
                       tooltip: '설정',
@@ -222,6 +240,8 @@ class _TodayCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const StudyModeChips(onDark: true),
+          const SizedBox(height: Space.lg),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

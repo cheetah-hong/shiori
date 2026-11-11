@@ -1,5 +1,7 @@
-// Schema checks against the dumps in drift_schemas/. v4 (playlists) does not
-// carry older data over: a v1, v2 or v3 file is emptied and starts as v4.
+// Schema checks against the dumps in drift_schemas/. v4 (playlists) did not
+// carry older data over: a v1, v2 or v3 file is emptied and starts as the
+// current schema. v5 (study modes) keeps a v4 file's data: every card and
+// press becomes the first mode's (meaning).
 // When a version is added:
 //   1. change the tables, bump ShioriDatabase.schemaVersion
 //   2. dart run drift_dev make-migrations   (dump and steps file; delete the
@@ -13,7 +15,7 @@
 //      uses schemaVersion + 1.
 import 'dart:io';
 
-import 'package:drift/drift.dart' hide isNull;
+import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:drift_dev/api/migrations_native.dart';
 import 'package:shiori_core/shiori_core.dart';
@@ -24,6 +26,7 @@ import 'generated/schema.dart';
 import 'generated/schema_v1.dart' as v1;
 import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v3.dart' as v3;
+import 'generated/schema_v4.dart' as v4;
 
 /// The tables of v1 to v3.
 const _oldTables = [
@@ -34,8 +37,8 @@ const _oldTables = [
   'review_logs',
 ];
 
-/// The tables of v4.
-const _v4Tables = [
+/// The tables of v4 and v5.
+const _tables = [
   'playlist_words',
   'playlists',
   'review_cards',
@@ -295,55 +298,170 @@ Future<void> _fillV3(v3.DatabaseAtV3 old, int at) async {
   await old.customStatement('CREATE INDEX words_by_meaning ON words (meaning)');
 }
 
+/// What a learner's v4 file looks like: two playlists (one word in both),
+/// words with and without an example (one hidden), shared cards at every
+/// level, a card in a playlist scope, presses and both settings.
+Future<void> _fillV4(v4.DatabaseAtV4 old, int at) async {
+  Future<void> insert(String sql, List<Object?> args) =>
+      _insert(old, sql, args);
+  for (final (id, name, pos) in [('pl-a', '여행', 0), ('pl-b', '음식', 1)]) {
+    await insert(
+      'INSERT INTO playlists (id, name, created_at, position) '
+      'VALUES (?, ?, ?, ?)',
+      [id, name, at, pos],
+    );
+  }
+  for (var i = 0; i < 12; i++) {
+    await insert(
+      'INSERT INTO words (id, key, headword, readings, pos, meaning, '
+      'example_ja, example_ko, created_at, hidden_at) '
+      'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [
+        'w$i',
+        '語$i',
+        '語$i',
+        '["ご"]',
+        i.isEven ? 'noun' : null,
+        '말 $i',
+        i % 4 == 0 ? '例文$i。' : null,
+        i % 4 == 0 ? '예문 $i.' : null,
+        at + i,
+        i == 5 ? at + 50 : null,
+      ],
+    );
+    await insert(
+      'INSERT INTO playlist_words (playlist_id, word_id, position, added_at) '
+      'VALUES (?, ?, ?, ?)',
+      [i < 8 ? 'pl-a' : 'pl-b', 'w$i', i, at + i],
+    );
+  }
+  await insert(
+    'INSERT INTO playlist_words (playlist_id, word_id, position, added_at) '
+    'VALUES (?, ?, ?, ?)',
+    ['pl-b', 'w0', 99, at + 99],
+  );
+  for (var i = 0; i < 9; i++) {
+    await insert(
+      'INSERT INTO review_cards (scope, word_id, level, due_at, '
+      'last_reviewed_at, review_count, lapse_count) '
+      'VALUES (?, ?, ?, ?, ?, ?, ?)',
+      ['', 'w$i', 1 + i % 4, at + 1000 * i, at - i, i, i % 3],
+    );
+  }
+  await insert(
+    'INSERT INTO review_cards (scope, word_id, level, due_at, '
+    'last_reviewed_at, review_count, lapse_count) '
+    'VALUES (?, ?, ?, ?, ?, ?, ?)',
+    ['p:pl-a', 'w1', 2, at + 7, at, 1, 0],
+  );
+  for (var i = 0; i < 15; i++) {
+    await insert(
+      'INSERT INTO review_logs (scope, word_id, answer, at, level_before, '
+      'level_after, retries_in_session) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [
+        '',
+        'w${i % 9}',
+        i % 3 == 0 ? 'retry' : 'known',
+        at + i ~/ 2,
+        i % 4,
+        1 + i % 4,
+        i % 2,
+      ],
+    );
+  }
+  for (final (key, value) in [
+    ('study.record_mode', 'shared'),
+    ('study.scope_mode', 'all_or_playlist'),
+  ]) {
+    await insert('INSERT INTO settings (key, value) VALUES (?, ?)', [
+      key,
+      value,
+    ]);
+  }
+}
+
+/// Rows of [table] in a fixed order, as column → value.
+Future<List<Map<String, Object?>>> _ordered(
+  GeneratedDatabase db,
+  String table,
+  String orderBy,
+) async => [
+  for (final r
+      in await db.customSelect('SELECT * FROM $table ORDER BY $orderBy').get())
+    Map.of(r.data),
+];
+
+/// The order each table is compared in (stable in v4 and v5).
+const _orderOf = {
+  'words': 'id',
+  'playlists': 'id',
+  'playlist_words': 'playlist_id, word_id',
+  'review_cards': 'scope, word_id',
+  'review_logs': 'id',
+  'settings': 'key',
+};
+
+Future<Map<String, List<Map<String, Object?>>>> _allRows(
+  GeneratedDatabase db,
+) async => {
+  for (final MapEntry(:key, :value) in _orderOf.entries)
+    key: await _ordered(db, key, value),
+};
+
+/// [rows] as they read after v5: every row with `mode` = meaning.
+List<Map<String, Object?>> _withMeaning(List<Map<String, Object?>> rows) => [
+  for (final r in rows) {...r, 'mode': 'meaning'},
+];
+
 void main() {
   late SchemaVerifier verifier;
 
   setUpAll(() => verifier = SchemaVerifier(GeneratedHelper()));
 
-  test('the current schema matches the latest dump (v4)', () async {
+  test('the current schema matches the latest dump (v5)', () async {
     final db = ShioriDatabase.memory();
     addTearDown(db.close);
-    expect(db.schemaVersion, 4);
+    expect(db.schemaVersion, 5);
     await db.validateDatabaseSchema();
   });
 
   test(
-    'a new database is v4 with the playlist tables and no textbooks',
+    'a new database is v5 with the playlist tables and no textbooks',
     () async {
       final db = ShioriDatabase.memory();
       addTearDown(db.close);
-      expect(await _userVersion(db), 4);
+      expect(await _userVersion(db), 5);
       expect([
         for (final (type, name) in await _objects(db))
           if (type == 'table') name,
-      ], _v4Tables);
+      ], _tables);
     },
   );
 
-  test('a v4 file opens and validates as v4', () async {
-    final schema = await verifier.schemaAt(4);
+  test('a v5 file opens and validates as v5', () async {
+    final schema = await verifier.schemaAt(5);
     final db = ShioriDatabase(schema.newConnection());
     addTearDown(db.close);
-    await verifier.migrateAndValidate(db, 4);
+    await verifier.migrateAndValidate(db, 5);
   });
 
-  for (final from in [1, 2, 3]) {
-    test('an empty v$from file becomes v4 and validates', () async {
+  for (final from in [1, 2, 3, 4]) {
+    test('an empty v$from file becomes v5 and validates', () async {
       final schema = await verifier.schemaAt(from);
       final db = ShioriDatabase(schema.newConnection());
       addTearDown(db.close);
-      await verifier.migrateAndValidate(db, 4);
+      await verifier.migrateAndValidate(db, 5);
     });
   }
 
   group('an older file with data is emptied, not carried over', () {
-    Future<void> expectEmptyV4(GeneratedDatabase db) async {
+    Future<void> expectEmpty(GeneratedDatabase db) async {
       final fresh = ShioriDatabase.memory();
       addTearDown(fresh.close);
       await fresh.customSelect('SELECT 1').get();
-      expect(await _userVersion(db), 4);
+      expect(await _userVersion(db), 5);
       expect(await _objects(db), await _objects(fresh));
-      expect(await _counts(db, _v4Tables), {for (final t in _v4Tables) t: 0});
+      expect(await _counts(db, _tables), {for (final t in _tables) t: 0});
     }
 
     /// The blocks work on the emptied file: add a page, study it.
@@ -388,8 +506,8 @@ void main() {
 
       final db = ShioriDatabase(schema.newConnection());
       addTearDown(db.close);
-      await verifier.migrateAndValidate(db, 4);
-      await expectEmptyV4(db);
+      await verifier.migrateAndValidate(db, 5);
+      await expectEmpty(db);
       await expectWorking(db);
     });
 
@@ -402,8 +520,8 @@ void main() {
 
       final db = ShioriDatabase(schema.newConnection());
       addTearDown(db.close);
-      await verifier.migrateAndValidate(db, 4);
-      await expectEmptyV4(db);
+      await verifier.migrateAndValidate(db, 5);
+      await expectEmpty(db);
       await expectWorking(db);
     });
 
@@ -424,14 +542,14 @@ void main() {
       await old.close();
 
       final db = ShioriDatabase.file(file);
-      await expectEmptyV4(db);
+      await expectEmpty(db);
       await expectWorking(db);
       await db.close();
 
-      // Opened again, it is the v4 file with what was added after.
+      // Opened again, it is the v5 file with what was added after.
       final again = ShioriDatabase.file(file);
       addTearDown(again.close);
-      expect(await _userVersion(again), 4);
+      expect(await _userVersion(again), 5);
       expect(
         (await DriftLibraryRepository(again).words()).single.headword,
         '語0',
@@ -470,7 +588,158 @@ void main() {
       // The next try (a new connection) empties it.
       final retry = ShioriDatabase.file(file);
       addTearDown(retry.close);
-      await expectEmptyV4(retry);
+      await expectEmpty(retry);
     });
+  });
+
+  group('a v4 file keeps everything; cards and presses become meaning', () {
+    final at = DateTime(2026, 11, 11, 21).microsecondsSinceEpoch;
+
+    test('rows, validated schema, and the blocks reading them', () async {
+      final schema = await verifier.schemaAt(4);
+      final old = v4.DatabaseAtV4(schema.newConnection());
+      await _fillV4(old, at);
+      final before = await _allRows(old);
+      expect(before['review_cards'], hasLength(10));
+      expect(before['review_logs'], hasLength(15));
+      await old.close();
+
+      final db = ShioriDatabase(schema.newConnection());
+      addTearDown(db.close);
+      await verifier.migrateAndValidate(db, 5);
+      final after = await _allRows(db);
+      for (final t in ['words', 'playlists', 'playlist_words', 'settings']) {
+        expect(after[t], before[t], reason: t);
+      }
+      expect(after['review_cards'], _withMeaning(before['review_cards']!));
+      expect(after['review_logs'], _withMeaning(before['review_logs']!));
+
+      final reviews = DriftReviewRepository(db);
+      final meaning = await reviews.cards();
+      expect(meaning, hasLength(9));
+      expect(meaning['w3']!.level, 4);
+      expect(meaning['w3']!.mode, StudyMode.meaning);
+      expect(
+        await reviews.card('w1', scope: CardScope.playlist('pl-a')),
+        isNotNull,
+      );
+      for (final mode in [
+        StudyMode.recall,
+        StudyMode.listening,
+        StudyMode.choice,
+      ]) {
+        expect(await reviews.cards(mode: mode), isEmpty, reason: '$mode');
+      }
+      final logs = await reviews.logs();
+      expect(logs, hasLength(15));
+      expect(logs.map((l) => l.mode).toSet(), {StudyMode.meaning});
+      expect(await reviews.logs(mode: StudyMode.recall), isEmpty);
+      final library = DriftLibraryRepository(db);
+      expect(await library.hiddenWords(), hasLength(1));
+      expect(await library.words(playlistId: 'pl-b'), hasLength(5));
+      expect(
+        await DriftStudyPreferencesRepository(db).load(),
+        const StudyPreferences(),
+      );
+    });
+
+    test(
+      'a card a mode adds after the upgrade sits beside the old one',
+      () async {
+        final schema = await verifier.schemaAt(4);
+        final old = v4.DatabaseAtV4(schema.newConnection());
+        await _fillV4(old, at);
+        await old.close();
+
+        final db = ShioriDatabase(schema.newConnection());
+        addTearDown(db.close);
+        final reviews = DriftReviewRepository(db);
+        final kept = (await reviews.card('w2'))!;
+        final now = DateTime(2026, 11, 12, 9);
+        final study = StudyService(
+          library: DriftLibraryRepository(db),
+          reviews: reviews,
+          scheduler: const LeitnerFourStepScheduler(),
+          clock: FixedClock(now),
+        );
+        final w2 = (await DriftLibraryRepository(db).word('w2'))!;
+        await study.answer(
+          StudySession(
+            queue: [SessionItem(word: w2, before: null)],
+            total: 1,
+            startedAt: now,
+            mode: StudyMode.recall,
+          ),
+          Answer.known,
+        );
+        expect(await reviews.card('w2'), kept);
+        final recall = (await reviews.card('w2', mode: StudyMode.recall))!;
+        expect((recall.level, recall.mode), (4, StudyMode.recall));
+        expect((await reviews.logs()).last.mode, StudyMode.recall);
+      },
+    );
+
+    test('a v4 file on disk opens as v5 and stays v5', () async {
+      final dir = Directory.systemTemp.createTempSync('shiori_v4_');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final file = File('${dir.path}/shiori.sqlite');
+      final old = v4.DatabaseAtV4(NativeDatabase(file));
+      await _fillV4(old, at);
+      expect(await _userVersion(old), 4);
+      final before = await _allRows(old);
+      await old.close();
+
+      final db = ShioriDatabase.file(file);
+      expect(await _userVersion(db), 5);
+      expect(
+        (await _allRows(db))['review_cards'],
+        _withMeaning(before['review_cards']!),
+      );
+      await db.close();
+
+      final again = ShioriDatabase.file(file);
+      addTearDown(again.close);
+      expect(await _userVersion(again), 5);
+      expect(await DriftReviewRepository(again).cards(), hasLength(9));
+    });
+
+    test(
+      'a failure while carrying it over leaves the v4 file as it was',
+      () async {
+        final dir = Directory.systemTemp.createTempSync('shiori_v4_fail_');
+        addTearDown(() => dir.deleteSync(recursive: true));
+        final file = File('${dir.path}/shiori.sqlite');
+        final old = v4.DatabaseAtV4(NativeDatabase(file));
+        await _fillV4(old, at);
+        final before = await _allRows(old);
+        final objects = await _objects(old);
+        await old.close();
+
+        final failing = ShioriDatabase.file(
+          file,
+          onMigrate: () async => throw StateError('disk full'),
+        );
+        await expectLater(
+          failing.customSelect('SELECT 1').get(),
+          throwsA(predicate((e) => '$e'.contains('disk full'))),
+        );
+        await failing.close();
+
+        final raw = v4.DatabaseAtV4(NativeDatabase(file));
+        expect(await _userVersion(raw), 4);
+        expect(await _objects(raw), objects);
+        expect(await _allRows(raw), before);
+        await raw.close();
+
+        // The next try (a new connection) carries it over.
+        final retry = ShioriDatabase.file(file);
+        addTearDown(retry.close);
+        expect(await _userVersion(retry), 5);
+        expect(
+          (await _allRows(retry))['review_logs'],
+          _withMeaning(before['review_logs']!),
+        );
+      },
+    );
   });
 }

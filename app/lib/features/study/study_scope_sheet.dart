@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/app/data.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/features/study/study_mode_labels.dart';
 import 'package:shiori_core/shiori_core.dart';
 
 /// 「무엇을 학습할까요?」: 전체 or one playlist, each with what is due and new
@@ -33,6 +34,10 @@ class _ScopeSheet extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text('무엇을 학습할까요?', style: context.text.titleLarge),
+            Text(
+              '방식: ${StudyModeLabels.name(ref.watch(studyModeProvider).value ?? StudyMode.meaning)}',
+              style: context.text.bodySmall,
+            ),
             const SizedBox(height: Space.md),
             _ScopeRow(
               key: const ValueKey('scope-all'),

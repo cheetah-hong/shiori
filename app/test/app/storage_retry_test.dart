@@ -146,7 +146,7 @@ void main() {
       expect(find.text('페이지를 등록하고 재생목록에 단어를 모아 보세요'), findsOneWidget);
       expect(find.text('먼저 페이지를 등록해 주세요'), findsOneWidget);
       expect(find.text('JLPT 단어장'), findsNothing);
-      expect(_userVersion(file), 4);
+      expect(_userVersion(file), 5);
       expect(_count(file, 'words'), 0);
 
       await _addSample(tester);
@@ -204,7 +204,7 @@ void main() {
       expect(opens, 2, reason: 'a new connection, not the failed one');
       expect(find.textContaining('불러오지 못했어요'), findsNothing);
       expect(find.text('페이지를 등록하고 재생목록에 단어를 모아 보세요'), findsOneWidget);
-      expect(_userVersion(file), 4);
+      expect(_userVersion(file), 5);
       expect(_count(file, 'words'), 0);
     },
   );

@@ -15,12 +15,17 @@
 // 학습하기, one 다시 학습) and makes one word new again from the playlist;
 // terminate, then restudy-reopen reads both back.
 //
-// Upgrade check: run the save step with an older build (an older checkout,
-// schema v3), then, without uninstalling, the upgrade step with this build.
-// Playlists are new in schema v4, so the older file's words and learning
-// records cannot carry over to one: opening it upgrades to an empty v4
-// database instead (user_version 4, no playlists, no words) rather than
-// keeping anything from the old schema.
+// Study modes (its own empty start): the modes step stores four made-up
+// words, picks 객관식 on home and answers the first card right; terminate,
+// then modes-reopen reads the mode and the 객관식 card back.
+//
+// Upgrade checks, without uninstalling between the two runs:
+// - upgrade: the save step with a build of schema v3, then this build.
+//   Playlists came in schema v4, so that file's words and learning records
+//   cannot carry over: it opens as an empty database (no playlists, no
+//   words) rather than keeping anything from the old schema.
+// - upgrade-v5: the restudy step with a build of schema v4 (before study
+//   modes), then this build: the cards and the press stay, as 뜻 맞히기.
 //
 // Screenshots land in docs/screenshots/ (see test_driver/integration_test.dart).
 import 'package:flutter/material.dart';
@@ -252,7 +257,7 @@ void main() {
   );
 
   testWidgets(
-    'a file from the older schema opens as an empty v4 database',
+    'a file from before playlists opens as an empty database',
     (tester) async {
       final database = await pumpApp(tester);
       await waitFor(tester, find.text('먼저 페이지를 등록해 주세요'));
@@ -260,8 +265,8 @@ void main() {
       final version = await database
           .customSelect('PRAGMA user_version')
           .getSingle();
-      expect(version.read<int>('user_version'), 4);
-      expect(database.schemaVersion, 4);
+      expect(version.read<int>('user_version'), 5);
+      expect(database.schemaVersion, 5);
 
       final library = DriftLibraryRepository(database);
       expect(await library.playlists(), isEmpty);
@@ -274,7 +279,126 @@ void main() {
     },
     skip: _step != 'upgrade',
   );
+
+  testWidgets('study modes: 객관식 picked on home, one card answered', (
+    tester,
+  ) async {
+    final seeded = ShioriDatabase.file(await appDatabaseFile());
+    await LibraryService(
+      library: DriftLibraryRepository(seeded),
+      clock: const SystemClock(),
+    ).addDraft(
+      CaptureDraft(
+        entries: [
+          for (final (head, kana, meaning) in _modeWords)
+            CapturedEntry(
+              headword: head,
+              readings: [kana],
+              pos: null,
+              meaning: meaning,
+            ),
+        ],
+      ),
+      to: const NewPlaylist('내 단어장'),
+    );
+    await seeded.close();
+
+    final database = await pumpApp(tester);
+    final words = await playlistWords(database);
+    await waitFor(tester, find.text('객관식'));
+    await tapText(tester, '객관식');
+    await waitFor(tester, find.text('오늘 학습 시작 · 4장'));
+    await tapText(tester, '오늘 학습 시작 · 4장');
+    await waitFor(tester, find.byKey(ValueKey('option-${words[0].id}')));
+    await tester.tap(find.byKey(ValueKey('option-${words[0].id}')));
+    await tester.pumpAndSettle();
+    await waitFor(tester, find.text('맞았어요'));
+    await tapText(tester, '다음');
+    await tester.tap(find.byTooltip('학습 그만하기'));
+    await tester.pumpAndSettle();
+
+    final reviews = DriftReviewRepository(database);
+    final choice = await reviews.card(words[0].id, mode: StudyMode.choice);
+    expect(choice?.level, 4);
+    expect(await reviews.card(words[0].id), isNull);
+    expect(
+      (await DriftStudyPreferencesRepository(database).load()).mode,
+      StudyMode.choice,
+    );
+  }, skip: _step != 'modes');
+
+  testWidgets(
+    'after a restart the mode and its card are as left',
+    (tester) async {
+      final database = await pumpApp(tester);
+      await waitFor(tester, find.text('오늘 1개 외움'));
+      await waitFor(
+        tester,
+        find.byWidgetPredicate(
+          (w) =>
+              w is Text &&
+              w.key == const ValueKey('known-today-mode') &&
+              w.data == '객관식',
+        ),
+      );
+      await waitFor(tester, find.text('오늘 학습 시작 · 3장'));
+
+      final words = await playlistWords(database);
+      final reviews = DriftReviewRepository(database);
+      expect(
+        (await reviews.card(words[0].id, mode: StudyMode.choice))?.level,
+        4,
+      );
+      expect(await reviews.cards(), isEmpty, reason: '뜻 맞히기 untouched');
+      final logs = await reviews.logs();
+      expect(logs.map((l) => (l.answer, l.mode)), [
+        (Answer.known, StudyMode.choice),
+      ]);
+    },
+    skip: _step != 'modes-reopen',
+  );
+
+  testWidgets(
+    'a file from before study modes keeps its cards and press as 뜻 맞히기',
+    (tester) async {
+      final database = await pumpApp(tester);
+      await waitFor(tester, find.text('오늘 학습 시작 · 2장'));
+
+      final version = await database
+          .customSelect('PRAGMA user_version')
+          .getSingle();
+      expect(version.read<int>('user_version'), 5);
+      final words = await playlistWords(database);
+      final reviews = DriftReviewRepository(database);
+      final again = await reviews.card(words[0].id);
+      expect(
+        (again?.level, again?.lapseCount, again?.mode),
+        (1, 1, StudyMode.meaning),
+      );
+      expect(await reviews.card(words[1].id), isNull);
+      expect((await reviews.card(words[2].id))?.level, 3);
+      for (final mode in [
+        StudyMode.recall,
+        StudyMode.listening,
+        StudyMode.choice,
+      ]) {
+        expect(await reviews.cards(mode: mode), isEmpty, reason: '$mode');
+      }
+      final logs = await reviews.logs();
+      expect(logs.single.mode, StudyMode.meaning);
+    },
+    skip: _step != 'upgrade-v5',
+  );
 }
+
+/// Made-up words (headword, reading, meaning) for the modes steps: four
+/// meanings apart, so 객관식 can be picked.
+const _modeWords = [
+  ('試語甲', 'しごこう', '시험 낱말 갑'),
+  ('試語乙', 'しごおつ', '시험 낱말 을'),
+  ('試語丙', 'しごへい', '시험 낱말 병'),
+  ('試語丁', 'しごてい', '시험 낱말 정'),
+];
 
 /// Made-up words (headword, reading, meaning) for the restudy steps.
 const _madeUp = [

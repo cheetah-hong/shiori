@@ -150,13 +150,15 @@ final class _FailingLog implements ReviewRepository {
   Future<ReviewCard?> card(
     String wordId, {
     CardScope scope = CardScope.shared,
-  }) => _inner.card(wordId, scope: scope);
+    StudyMode mode = StudyMode.meaning,
+  }) => _inner.card(wordId, scope: scope, mode: mode);
 
   @override
   Future<Map<String, ReviewCard>> cards({
     Iterable<String>? wordIds,
     CardScope scope = CardScope.shared,
-  }) => _inner.cards(wordIds: wordIds, scope: scope);
+    StudyMode mode = StudyMode.meaning,
+  }) => _inner.cards(wordIds: wordIds, scope: scope, mode: mode);
 
   @override
   Future<void> saveCard(ReviewCard card) => _inner.saveCard(card);
@@ -168,15 +170,19 @@ final class _FailingLog implements ReviewRepository {
   Future<List<ReviewCard>> deleteCards(
     Iterable<String> wordIds, {
     CardScope scope = CardScope.shared,
-  }) => _inner.deleteCards(wordIds, scope: scope);
+    StudyMode mode = StudyMode.meaning,
+  }) => _inner.deleteCards(wordIds, scope: scope, mode: mode);
 
   @override
-  Future<int> deleteAllCards({CardScope? scope}) =>
-      _inner.deleteAllCards(scope: scope);
+  Future<int> deleteAllCards({CardScope? scope, StudyMode? mode}) =>
+      _inner.deleteAllCards(scope: scope, mode: mode);
 
   @override
-  Future<List<ReviewLog>> logs({DateTime? since, CardScope? scope}) =>
-      _inner.logs(since: since, scope: scope);
+  Future<List<ReviewLog>> logs({
+    DateTime? since,
+    CardScope? scope,
+    StudyMode? mode,
+  }) => _inner.logs(since: since, scope: scope, mode: mode);
 
   @override
   Future<T> transaction<T>(Future<T> Function() action) =>

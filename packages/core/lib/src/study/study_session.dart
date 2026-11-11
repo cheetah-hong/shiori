@@ -1,5 +1,6 @@
 import 'package:shiori_core/src/models/library.dart';
 import 'package:shiori_core/src/models/review.dart';
+import 'package:shiori_core/src/models/study_mode.dart';
 
 /// A card in a session.
 final class SessionItem {
@@ -35,11 +36,15 @@ final class SessionItem {
 /// One study session. Immutable: every answer returns a new session.
 ///
 /// 다시 학습 sends the card to the back; only 알고있음 counts toward progress.
+/// Every answer goes to the record of [cardScope] and [mode].
 final class StudySession {
   const StudySession({
     required this.queue,
     required this.total,
     required this.startedAt,
+    this.mode = StudyMode.meaning,
+    this.cardScope = CardScope.shared,
+    this.choicePool = const [],
     this.knownCount = 0,
     this.knownNewCount = 0,
     this.retryCount = 0,
@@ -50,6 +55,16 @@ final class StudySession {
   final List<SessionItem> queue;
   final int total;
   final DateTime startedAt;
+
+  /// The way the cards are studied; one mode per session.
+  final StudyMode mode;
+
+  /// Whose record the answers go to.
+  final CardScope cardScope;
+
+  /// The words the wrong options of a multiple-choice question come from
+  /// (every library word); empty in the other modes.
+  final List<Word> choicePool;
   final int knownCount;
 
   /// Of [knownCount], how many were new words.
@@ -135,6 +150,9 @@ final class StudySession {
     queue: List.unmodifiable(queue),
     total: total ?? this.total,
     startedAt: startedAt,
+    mode: mode,
+    cardScope: cardScope,
+    choicePool: choicePool,
     knownCount: knownCount,
     knownNewCount: knownNewCount,
     retryCount: retryCount,

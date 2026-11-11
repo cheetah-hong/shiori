@@ -69,8 +69,8 @@ nihongo-app/
 | `ImageSource` | `ImagePickerSource` (카메라·앨범, 판독 뒤 임시 파일 `discard`) | `imageSourceProvider` | 문서 스캐너(cunning_document_scanner), 굽은 페이지 펴기 |
 | `LibraryRepository` (단어는 라이브러리에 한 번 `Word.key`, 재생목록이 가리킴) | `DriftLibraryRepository` (SQLite, `packages/storage_drift`). 테스트: `InMemoryLibraryRepository`. 홈 재생목록은 `playlistStats()`(목록별 단어 수·숨김 수·마지막 추가를 한 번에) | `libraryRepositoryProvider` (DB: `appDatabaseProvider`) | 백업·동기화 |
 | `HiddenWordRepository` (「이미 알아요」 숨기기·되살리기, `hiddenWords()`) | 서재 블록이 함께 구현(`words.hidden_at`). 숨김은 단어 단위라 모든 재생목록에서 숨겨짐. `words()`는 숨긴 단어도 돌려주고 `Word.isHidden`으로 구분, 학습 세션·오늘 학습 수에서 빠짐 (verification.md 16·21절) | (없음: `StudyService`·`LibraryService`가 서재 블록에서 꺼냄) | 백업·동기화 |
-| `ReviewRepository` (카드·기록은 `CardScope`별: 지금은 공유 `''`만, 재생목록마다 따로 `p:<id>`는 칸만) | `DriftReviewRepository` (같은 DB 파일). 테스트: `InMemoryReviewRepository` | `reviewRepositoryProvider` | 백업·동기화 |
-| `StudyPreferencesRepository` (설정: 학습 기록 모드·학습 범위 모드) | `DriftStudyPreferencesRepository` (`settings` 키-값 표). 테스트: `InMemoryStudyPreferencesRepository` | `studyPreferencesRepositoryProvider` → `studyPreferencesProvider` | 백업·동기화 |
+| `ReviewRepository` (카드·기록은 `CardScope`와 `StudyMode`별: scope는 지금 공유 `''`만, 재생목록마다 따로 `p:<id>`는 칸만; 방식은 뜻 맞히기·일본어 떠올리기·듣고 맞히기·객관식) | `DriftReviewRepository` (같은 DB 파일). 테스트: `InMemoryReviewRepository` | `reviewRepositoryProvider` | 백업·동기화 |
+| `StudyPreferencesRepository` (설정: 학습 기록 모드·학습 범위 모드·마지막 고른 학습 방식) | `DriftStudyPreferencesRepository` (`settings` 키-값 표). 테스트: `InMemoryStudyPreferencesRepository` | `studyPreferencesRepositoryProvider` → `studyPreferencesProvider` | 백업·동기화 |
 | `ReviewScheduler` | `LeitnerFourStepScheduler` (30분·3일·7일·21일) | `reviewSchedulerProvider` | FSRS |
 | `Clock` | `SystemClock` (테스트: `FixedClock`) | `clockProvider` | |
 | `Speech` (선택, 요청 `WordSpeech`·`SentenceSpeech`) | `VoicevoxSpeech` (iOS·Android: 기기 안 VOICEVOX, `packages/voicevox_block` + `app/lib/adapters/voicevox_*.dart`, docs/pronunciation.md). 그 밖의 플랫폼·테스트는 버튼 없음(`isAvailable` 거짓), `SilentSpeech`는 발음을 끈 블록 | `speechProvider` | 다른 음성, 기기 내장 TTS |
@@ -121,7 +121,7 @@ runApp(ProviderScope(
 
 ### 재생목록과 설정 확장 지점
 
-- 저장 스키마 v4: `words`(`key` 유일), `playlists`, `playlist_words`(PK = 목록+단어, 목록 안 순서·추가한 때), `review_cards`·`review_logs`(`scope` 칸), `settings`(키-값). v3 이하 파일은 옮기지 않고 비운 뒤 v4로 시작합니다(트랜잭션 하나, 실패하면 옛 파일 그대로, 「다시 불러오기」가 새 연결로 다시 시도).
+- 저장 스키마 v5: `words`(`key` 유일), `playlists`, `playlist_words`(PK = 목록+단어, 목록 안 순서·추가한 때), `review_cards`(PK = scope+방식+단어)·`review_logs`(`scope`·`mode` 칸), `settings`(키-값). v4 파일은 카드·기록을 모두 뜻 맞히기로 옮기고(verification.md 33절), v3 이하 파일은 옮기지 않고 비운 뒤 시작합니다(둘 다 트랜잭션 하나, 실패하면 옛 파일 그대로, 「다시 불러오기」가 새 연결로 다시 시도).
 - 설정 화면은 `학습 기록`(재생목록끼리 공유 / 재생목록마다 따로 — 준비 중)과 `학습 범위`(전체 복습 + 재생목록 골라 학습 / 항상 재생목록 하나씩 — 준비 중)를 보입니다. 값은 둘 다 저장되지만 지금은 기본만 동작합니다.
 - 「재생목록마다 따로」를 만들 때 고칠 곳: `StudyService.cardScopeFor`(목록 범위면 `CardScope.playlist(id)`), `AllWords`의 단어 구성(목록·단어 쌍), 목록 삭제 때 그 scope 카드 지우기, 모드 전환 때 카드 복사·합치기. 「이미 알아요」 숨김은 단어 단위 그대로 둡니다.
 - 「항상 재생목록 하나씩」을 만들 때 고칠 곳: 홈의 학습 시작 버튼(`StudyPreferences.scopeMode`를 보고 전체 버튼 대신 범위 시트).
@@ -142,6 +142,16 @@ runApp(ProviderScope(
 
 간격(`StudySettings.intervals`), 하루 시작 시각(`dayStartHour`, 기본 04시), 세션 크기(`dailyGoal`, 기본 10)는 설정값입니다.
 
+학습 방식은 넷입니다(`StudyMode`, verification.md 33절): 뜻 맞히기, 일본어 떠올리기, 듣고 맞히기(소리를 듣고 뜻 4지선다), 객관식(일본어를 보고 뜻 4지선다). 기억 기록은 방식마다 따로이고 위 규칙을 방식마다 똑같이 씁니다.
+
+| 상황 | 결과 |
+|---|---|
+| 한 세션 | 한 방식. 홈·재생목록 칩에서 고르고 마지막 방식을 기억 |
+| 새 단어 | 방식마다 모든 단어가 새 단어(다른 방식의 기록과 무관). 일본어 떠올리기는 뜻이 빈 단어, 4지선다 방식은 보기 4개를 만들 수 없는 단어를 고르지 않음 |
+| 4지선다에서 고름 | 고른 순간 저장: 맞으면 알고있음, 틀리면 다시 학습과 같은 처리. 결과는 「다음」까지 화면에 |
+| 오늘 n개 외움, 홈·재생목록 숫자 | 고른 방식 것 |
+| 처음부터 다시 학습, 모든 단어 처음부터 | 모든 방식의 카드를 함께 지움 |
+
 학습한 단어를 다시 학습하는 길은 셋입니다(verification.md 29절). 위 간격 규칙은 바꾸지 않습니다.
 
 | 기능 | 고르는 것·결과 |
@@ -152,7 +162,7 @@ runApp(ProviderScope(
 | 처음부터 다시 학습 (`resetWords`, 단어 하나) | 그 단어의 카드를 지워 새 단어로. 누른 기록·숨김은 그대로. 되돌리기(`restoreCards`)는 그 사이 다시 학습하지 않은 단어만 원래 카드로 |
 | 모든 단어 처음부터 (`resetAll`, 설정) | 모든 scope의 카드를 지움. 누른 기록·숨김·재생목록·단어는 그대로 |
 
-저장소 포트 `ReviewRepository.deleteCards(wordIds, {scope})`(지운 카드를 돌려줌)와 `deleteAllCards({scope})`(null이면 모든 scope)가 카드 행만 지웁니다. 스키마는 v4 그대로입니다.
+저장소 포트 `ReviewRepository.deleteCards(wordIds, {scope, mode})`(지운 카드를 돌려줌)와 `deleteAllCards({scope, mode})`(null이면 모든 scope·방식)가 카드 행만 지웁니다.
 
 ## 5. 배포 준비 (flavor, 차단 검사, 충돌 기록, 서명)
 

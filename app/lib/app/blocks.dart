@@ -197,8 +197,16 @@ final studyServiceProvider = Provider<StudyService>(
     scheduler: ref.watch(reviewSchedulerProvider),
     clock: ref.watch(clockProvider),
     settings: ref.watch(studySettingsProvider),
-    // Until the options are read (or when they cannot be), the defaults.
-    preferences:
-        ref.watch(studyPreferencesProvider).value ?? const StudyPreferences(),
+    // Only the record mode shapes the service; until the options are read
+    // (or when they cannot be), the default. Watching the whole options
+    // would rebuild the service, and every summary with it, when the study
+    // mode is picked or first read.
+    preferences: StudyPreferences(
+      recordMode: ref.watch(
+        studyPreferencesProvider.select(
+          (p) => p.value?.recordMode ?? RecordMode.shared,
+        ),
+      ),
+    ),
   ),
 );

@@ -1,5 +1,6 @@
 import 'package:shiori_core/src/models/library.dart';
 import 'package:shiori_core/src/models/review.dart';
+import 'package:shiori_core/src/models/study_mode.dart';
 
 /// A word whose key is already in the library (`Word.key`): the library
 /// holds each word once. Nothing is written when it is thrown.
@@ -103,41 +104,53 @@ abstract interface class LibraryRepository {
 
 /// Block slot: learning state (cards) and the press log, kept apart from content.
 ///
-/// Every read and write names a [CardScope]; the app uses
-/// [CardScope.shared] only (one record per word).
+/// Every read and write names a [CardScope] and a [StudyMode]: a word has a
+/// record per scope and per mode. The app uses [CardScope.shared] only (one
+/// record per word and mode). Left out, the mode is [StudyMode.meaning].
 ///
 /// Blocks: `InMemoryReviewRepository` (tests), `DriftReviewRepository` (app).
 abstract interface class ReviewRepository {
-  Future<ReviewCard?> card(String wordId, {CardScope scope = CardScope.shared});
+  Future<ReviewCard?> card(
+    String wordId, {
+    CardScope scope = CardScope.shared,
+    StudyMode mode = StudyMode.meaning,
+  });
 
-  /// Cards of [scope] keyed by word id. All of that scope's cards when
+  /// Cards of [scope] and [mode] keyed by word id. All of them when
   /// [wordIds] is null.
   Future<Map<String, ReviewCard>> cards({
     Iterable<String>? wordIds,
     CardScope scope = CardScope.shared,
+    StudyMode mode = StudyMode.meaning,
   });
 
-  /// Stores [card] under its own scope (`ReviewCard.scope`).
+  /// Stores [card] under its own scope and mode (`ReviewCard.scope`,
+  /// `ReviewCard.mode`).
   Future<void> saveCard(ReviewCard card);
 
   Future<void> addLog(ReviewLog log);
 
-  /// Removes the cards of [wordIds] in [scope] and returns them (to put back
-  /// with [saveCard]). Ids without a card are skipped, an id listed twice is
-  /// removed once. The press log is kept.
+  /// Removes the cards of [wordIds] in [scope] and [mode] and returns them
+  /// (to put back with [saveCard]). Ids without a card are skipped, an id
+  /// listed twice is removed once. The press log is kept.
   Future<List<ReviewCard>> deleteCards(
     Iterable<String> wordIds, {
     CardScope scope = CardScope.shared,
+    StudyMode mode = StudyMode.meaning,
   });
 
-  /// Removes every card of [scope] (null: of every scope) and returns how
-  /// many. The press log is kept.
-  Future<int> deleteAllCards({CardScope? scope});
+  /// Removes every card of [scope] (null: of every scope) and [mode] (null:
+  /// of every mode) and returns how many. The press log is kept.
+  Future<int> deleteAllCards({CardScope? scope, StudyMode? mode});
 
   /// Oldest first (presses at the same instant in the order they were
-  /// added), optionally only presses at or after [since] and only of
-  /// [scope] (null: every scope).
-  Future<List<ReviewLog>> logs({DateTime? since, CardScope? scope});
+  /// added), optionally only presses at or after [since], only of [scope]
+  /// (null: every scope) and only of [mode] (null: every mode).
+  Future<List<ReviewLog>> logs({
+    DateTime? since,
+    CardScope? scope,
+    StudyMode? mode,
+  });
 
   /// Same meaning as [LibraryRepository.transaction].
   Future<T> transaction<T>(Future<T> Function() action);

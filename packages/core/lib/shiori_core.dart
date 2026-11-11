@@ -12,6 +12,7 @@ export 'src/models/ocr.dart';
 export 'src/models/page_image.dart';
 export 'src/models/part_of_speech.dart';
 export 'src/models/review.dart';
+export 'src/models/study_mode.dart';
 export 'src/models/study_preferences.dart';
 export 'src/models/word_key.dart';
 
@@ -44,6 +45,7 @@ export 'src/extract/page_draft.dart';
 
 // Library and study use cases
 export 'src/library/library_service.dart';
+export 'src/study/choice_maker.dart';
 export 'src/study/leitner_four_step_scheduler.dart';
 export 'src/study/session_builder.dart';
 export 'src/study/study_calendar.dart';

@@ -1273,6 +1273,16 @@ class $ReviewCardsTable extends ReviewCards
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  @override
+  late final GeneratedColumnWithTypeConverter<StudyMode, String> mode =
+      GeneratedColumn<String>(
+        'mode',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('meaning'),
+      ).withConverter<StudyMode>($ReviewCardsTable.$convertermode);
   static const VerificationMeta _wordIdMeta = const VerificationMeta('wordId');
   @override
   late final GeneratedColumn<String> wordId = GeneratedColumn<String>(
@@ -1337,6 +1347,7 @@ class $ReviewCardsTable extends ReviewCards
   @override
   List<GeneratedColumn> get $columns => [
     scope,
+    mode,
     wordId,
     level,
     dueAt,
@@ -1403,7 +1414,7 @@ class $ReviewCardsTable extends ReviewCards
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {scope, wordId};
+  Set<GeneratedColumn> get $primaryKey => {scope, mode, wordId};
   @override
   CardRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
@@ -1412,6 +1423,12 @@ class $ReviewCardsTable extends ReviewCards
         DriftSqlType.string,
         data['${effectivePrefix}scope'],
       )!,
+      mode: $ReviewCardsTable.$convertermode.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}mode'],
+        )!,
+      ),
       wordId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}word_id'],
@@ -1448,6 +1465,8 @@ class $ReviewCardsTable extends ReviewCards
     return $ReviewCardsTable(attachedDatabase, alias);
   }
 
+  static JsonTypeConverter2<StudyMode, String, String> $convertermode =
+      const EnumNameConverter<StudyMode>(StudyMode.values);
   static TypeConverter<DateTime, int> $converterdueAt =
       const UtcMicrosConverter();
   static TypeConverter<DateTime, int> $converterlastReviewedAt =
@@ -1456,6 +1475,10 @@ class $ReviewCardsTable extends ReviewCards
 
 class CardRow extends DataClass implements Insertable<CardRow> {
   final String scope;
+
+  /// Cards written before modes existed (schema v4) were all 뜻 맞히기; the
+  /// repository always names the mode.
+  final StudyMode mode;
   final String wordId;
   final int level;
   final DateTime dueAt;
@@ -1464,6 +1487,7 @@ class CardRow extends DataClass implements Insertable<CardRow> {
   final int lapseCount;
   const CardRow({
     required this.scope,
+    required this.mode,
     required this.wordId,
     required this.level,
     required this.dueAt,
@@ -1475,6 +1499,11 @@ class CardRow extends DataClass implements Insertable<CardRow> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['scope'] = Variable<String>(scope);
+    {
+      map['mode'] = Variable<String>(
+        $ReviewCardsTable.$convertermode.toSql(mode),
+      );
+    }
     map['word_id'] = Variable<String>(wordId);
     map['level'] = Variable<int>(level);
     {
@@ -1495,6 +1524,7 @@ class CardRow extends DataClass implements Insertable<CardRow> {
   ReviewCardsCompanion toCompanion(bool nullToAbsent) {
     return ReviewCardsCompanion(
       scope: Value(scope),
+      mode: Value(mode),
       wordId: Value(wordId),
       level: Value(level),
       dueAt: Value(dueAt),
@@ -1511,6 +1541,9 @@ class CardRow extends DataClass implements Insertable<CardRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return CardRow(
       scope: serializer.fromJson<String>(json['scope']),
+      mode: $ReviewCardsTable.$convertermode.fromJson(
+        serializer.fromJson<String>(json['mode']),
+      ),
       wordId: serializer.fromJson<String>(json['wordId']),
       level: serializer.fromJson<int>(json['level']),
       dueAt: serializer.fromJson<DateTime>(json['dueAt']),
@@ -1524,6 +1557,9 @@ class CardRow extends DataClass implements Insertable<CardRow> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'scope': serializer.toJson<String>(scope),
+      'mode': serializer.toJson<String>(
+        $ReviewCardsTable.$convertermode.toJson(mode),
+      ),
       'wordId': serializer.toJson<String>(wordId),
       'level': serializer.toJson<int>(level),
       'dueAt': serializer.toJson<DateTime>(dueAt),
@@ -1535,6 +1571,7 @@ class CardRow extends DataClass implements Insertable<CardRow> {
 
   CardRow copyWith({
     String? scope,
+    StudyMode? mode,
     String? wordId,
     int? level,
     DateTime? dueAt,
@@ -1543,6 +1580,7 @@ class CardRow extends DataClass implements Insertable<CardRow> {
     int? lapseCount,
   }) => CardRow(
     scope: scope ?? this.scope,
+    mode: mode ?? this.mode,
     wordId: wordId ?? this.wordId,
     level: level ?? this.level,
     dueAt: dueAt ?? this.dueAt,
@@ -1553,6 +1591,7 @@ class CardRow extends DataClass implements Insertable<CardRow> {
   CardRow copyWithCompanion(ReviewCardsCompanion data) {
     return CardRow(
       scope: data.scope.present ? data.scope.value : this.scope,
+      mode: data.mode.present ? data.mode.value : this.mode,
       wordId: data.wordId.present ? data.wordId.value : this.wordId,
       level: data.level.present ? data.level.value : this.level,
       dueAt: data.dueAt.present ? data.dueAt.value : this.dueAt,
@@ -1572,6 +1611,7 @@ class CardRow extends DataClass implements Insertable<CardRow> {
   String toString() {
     return (StringBuffer('CardRow(')
           ..write('scope: $scope, ')
+          ..write('mode: $mode, ')
           ..write('wordId: $wordId, ')
           ..write('level: $level, ')
           ..write('dueAt: $dueAt, ')
@@ -1585,6 +1625,7 @@ class CardRow extends DataClass implements Insertable<CardRow> {
   @override
   int get hashCode => Object.hash(
     scope,
+    mode,
     wordId,
     level,
     dueAt,
@@ -1597,6 +1638,7 @@ class CardRow extends DataClass implements Insertable<CardRow> {
       identical(this, other) ||
       (other is CardRow &&
           other.scope == this.scope &&
+          other.mode == this.mode &&
           other.wordId == this.wordId &&
           other.level == this.level &&
           other.dueAt == this.dueAt &&
@@ -1607,6 +1649,7 @@ class CardRow extends DataClass implements Insertable<CardRow> {
 
 class ReviewCardsCompanion extends UpdateCompanion<CardRow> {
   final Value<String> scope;
+  final Value<StudyMode> mode;
   final Value<String> wordId;
   final Value<int> level;
   final Value<DateTime> dueAt;
@@ -1616,6 +1659,7 @@ class ReviewCardsCompanion extends UpdateCompanion<CardRow> {
   final Value<int> rowid;
   const ReviewCardsCompanion({
     this.scope = const Value.absent(),
+    this.mode = const Value.absent(),
     this.wordId = const Value.absent(),
     this.level = const Value.absent(),
     this.dueAt = const Value.absent(),
@@ -1626,6 +1670,7 @@ class ReviewCardsCompanion extends UpdateCompanion<CardRow> {
   });
   ReviewCardsCompanion.insert({
     required String scope,
+    this.mode = const Value.absent(),
     required String wordId,
     required int level,
     required DateTime dueAt,
@@ -1642,6 +1687,7 @@ class ReviewCardsCompanion extends UpdateCompanion<CardRow> {
        lapseCount = Value(lapseCount);
   static Insertable<CardRow> custom({
     Expression<String>? scope,
+    Expression<String>? mode,
     Expression<String>? wordId,
     Expression<int>? level,
     Expression<int>? dueAt,
@@ -1652,6 +1698,7 @@ class ReviewCardsCompanion extends UpdateCompanion<CardRow> {
   }) {
     return RawValuesInsertable({
       if (scope != null) 'scope': scope,
+      if (mode != null) 'mode': mode,
       if (wordId != null) 'word_id': wordId,
       if (level != null) 'level': level,
       if (dueAt != null) 'due_at': dueAt,
@@ -1664,6 +1711,7 @@ class ReviewCardsCompanion extends UpdateCompanion<CardRow> {
 
   ReviewCardsCompanion copyWith({
     Value<String>? scope,
+    Value<StudyMode>? mode,
     Value<String>? wordId,
     Value<int>? level,
     Value<DateTime>? dueAt,
@@ -1674,6 +1722,7 @@ class ReviewCardsCompanion extends UpdateCompanion<CardRow> {
   }) {
     return ReviewCardsCompanion(
       scope: scope ?? this.scope,
+      mode: mode ?? this.mode,
       wordId: wordId ?? this.wordId,
       level: level ?? this.level,
       dueAt: dueAt ?? this.dueAt,
@@ -1689,6 +1738,11 @@ class ReviewCardsCompanion extends UpdateCompanion<CardRow> {
     final map = <String, Expression>{};
     if (scope.present) {
       map['scope'] = Variable<String>(scope.value);
+    }
+    if (mode.present) {
+      map['mode'] = Variable<String>(
+        $ReviewCardsTable.$convertermode.toSql(mode.value),
+      );
     }
     if (wordId.present) {
       map['word_id'] = Variable<String>(wordId.value);
@@ -1722,6 +1776,7 @@ class ReviewCardsCompanion extends UpdateCompanion<CardRow> {
   String toString() {
     return (StringBuffer('ReviewCardsCompanion(')
           ..write('scope: $scope, ')
+          ..write('mode: $mode, ')
           ..write('wordId: $wordId, ')
           ..write('level: $level, ')
           ..write('dueAt: $dueAt, ')
@@ -1762,6 +1817,16 @@ class $ReviewLogsTable extends ReviewLogs
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  @override
+  late final GeneratedColumnWithTypeConverter<StudyMode, String> mode =
+      GeneratedColumn<String>(
+        'mode',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('meaning'),
+      ).withConverter<StudyMode>($ReviewLogsTable.$convertermode);
   static const VerificationMeta _wordIdMeta = const VerificationMeta('wordId');
   @override
   late final GeneratedColumn<String> wordId = GeneratedColumn<String>(
@@ -1826,6 +1891,7 @@ class $ReviewLogsTable extends ReviewLogs
   List<GeneratedColumn> get $columns => [
     id,
     scope,
+    mode,
     wordId,
     answer,
     at,
@@ -1911,6 +1977,12 @@ class $ReviewLogsTable extends ReviewLogs
         DriftSqlType.string,
         data['${effectivePrefix}scope'],
       )!,
+      mode: $ReviewLogsTable.$convertermode.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}mode'],
+        )!,
+      ),
       wordId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}word_id'],
@@ -1947,6 +2019,8 @@ class $ReviewLogsTable extends ReviewLogs
     return $ReviewLogsTable(attachedDatabase, alias);
   }
 
+  static JsonTypeConverter2<StudyMode, String, String> $convertermode =
+      const EnumNameConverter<StudyMode>(StudyMode.values);
   static JsonTypeConverter2<Answer, String, String> $converteranswer =
       const EnumNameConverter<Answer>(Answer.values);
   static TypeConverter<DateTime, int> $converterat = const UtcMicrosConverter();
@@ -1955,6 +2029,9 @@ class $ReviewLogsTable extends ReviewLogs
 class LogRow extends DataClass implements Insertable<LogRow> {
   final int id;
   final String scope;
+
+  /// Presses logged before modes existed (schema v4) were all 뜻 맞히기.
+  final StudyMode mode;
   final String wordId;
   final Answer answer;
   final DateTime at;
@@ -1964,6 +2041,7 @@ class LogRow extends DataClass implements Insertable<LogRow> {
   const LogRow({
     required this.id,
     required this.scope,
+    required this.mode,
     required this.wordId,
     required this.answer,
     required this.at,
@@ -1976,6 +2054,11 @@ class LogRow extends DataClass implements Insertable<LogRow> {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['scope'] = Variable<String>(scope);
+    {
+      map['mode'] = Variable<String>(
+        $ReviewLogsTable.$convertermode.toSql(mode),
+      );
+    }
     map['word_id'] = Variable<String>(wordId);
     {
       map['answer'] = Variable<String>(
@@ -1995,6 +2078,7 @@ class LogRow extends DataClass implements Insertable<LogRow> {
     return ReviewLogsCompanion(
       id: Value(id),
       scope: Value(scope),
+      mode: Value(mode),
       wordId: Value(wordId),
       answer: Value(answer),
       at: Value(at),
@@ -2012,6 +2096,9 @@ class LogRow extends DataClass implements Insertable<LogRow> {
     return LogRow(
       id: serializer.fromJson<int>(json['id']),
       scope: serializer.fromJson<String>(json['scope']),
+      mode: $ReviewLogsTable.$convertermode.fromJson(
+        serializer.fromJson<String>(json['mode']),
+      ),
       wordId: serializer.fromJson<String>(json['wordId']),
       answer: $ReviewLogsTable.$converteranswer.fromJson(
         serializer.fromJson<String>(json['answer']),
@@ -2028,6 +2115,9 @@ class LogRow extends DataClass implements Insertable<LogRow> {
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'scope': serializer.toJson<String>(scope),
+      'mode': serializer.toJson<String>(
+        $ReviewLogsTable.$convertermode.toJson(mode),
+      ),
       'wordId': serializer.toJson<String>(wordId),
       'answer': serializer.toJson<String>(
         $ReviewLogsTable.$converteranswer.toJson(answer),
@@ -2042,6 +2132,7 @@ class LogRow extends DataClass implements Insertable<LogRow> {
   LogRow copyWith({
     int? id,
     String? scope,
+    StudyMode? mode,
     String? wordId,
     Answer? answer,
     DateTime? at,
@@ -2051,6 +2142,7 @@ class LogRow extends DataClass implements Insertable<LogRow> {
   }) => LogRow(
     id: id ?? this.id,
     scope: scope ?? this.scope,
+    mode: mode ?? this.mode,
     wordId: wordId ?? this.wordId,
     answer: answer ?? this.answer,
     at: at ?? this.at,
@@ -2062,6 +2154,7 @@ class LogRow extends DataClass implements Insertable<LogRow> {
     return LogRow(
       id: data.id.present ? data.id.value : this.id,
       scope: data.scope.present ? data.scope.value : this.scope,
+      mode: data.mode.present ? data.mode.value : this.mode,
       wordId: data.wordId.present ? data.wordId.value : this.wordId,
       answer: data.answer.present ? data.answer.value : this.answer,
       at: data.at.present ? data.at.value : this.at,
@@ -2082,6 +2175,7 @@ class LogRow extends DataClass implements Insertable<LogRow> {
     return (StringBuffer('LogRow(')
           ..write('id: $id, ')
           ..write('scope: $scope, ')
+          ..write('mode: $mode, ')
           ..write('wordId: $wordId, ')
           ..write('answer: $answer, ')
           ..write('at: $at, ')
@@ -2096,6 +2190,7 @@ class LogRow extends DataClass implements Insertable<LogRow> {
   int get hashCode => Object.hash(
     id,
     scope,
+    mode,
     wordId,
     answer,
     at,
@@ -2109,6 +2204,7 @@ class LogRow extends DataClass implements Insertable<LogRow> {
       (other is LogRow &&
           other.id == this.id &&
           other.scope == this.scope &&
+          other.mode == this.mode &&
           other.wordId == this.wordId &&
           other.answer == this.answer &&
           other.at == this.at &&
@@ -2120,6 +2216,7 @@ class LogRow extends DataClass implements Insertable<LogRow> {
 class ReviewLogsCompanion extends UpdateCompanion<LogRow> {
   final Value<int> id;
   final Value<String> scope;
+  final Value<StudyMode> mode;
   final Value<String> wordId;
   final Value<Answer> answer;
   final Value<DateTime> at;
@@ -2129,6 +2226,7 @@ class ReviewLogsCompanion extends UpdateCompanion<LogRow> {
   const ReviewLogsCompanion({
     this.id = const Value.absent(),
     this.scope = const Value.absent(),
+    this.mode = const Value.absent(),
     this.wordId = const Value.absent(),
     this.answer = const Value.absent(),
     this.at = const Value.absent(),
@@ -2139,6 +2237,7 @@ class ReviewLogsCompanion extends UpdateCompanion<LogRow> {
   ReviewLogsCompanion.insert({
     this.id = const Value.absent(),
     required String scope,
+    this.mode = const Value.absent(),
     required String wordId,
     required Answer answer,
     required DateTime at,
@@ -2155,6 +2254,7 @@ class ReviewLogsCompanion extends UpdateCompanion<LogRow> {
   static Insertable<LogRow> custom({
     Expression<int>? id,
     Expression<String>? scope,
+    Expression<String>? mode,
     Expression<String>? wordId,
     Expression<String>? answer,
     Expression<int>? at,
@@ -2165,6 +2265,7 @@ class ReviewLogsCompanion extends UpdateCompanion<LogRow> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (scope != null) 'scope': scope,
+      if (mode != null) 'mode': mode,
       if (wordId != null) 'word_id': wordId,
       if (answer != null) 'answer': answer,
       if (at != null) 'at': at,
@@ -2177,6 +2278,7 @@ class ReviewLogsCompanion extends UpdateCompanion<LogRow> {
   ReviewLogsCompanion copyWith({
     Value<int>? id,
     Value<String>? scope,
+    Value<StudyMode>? mode,
     Value<String>? wordId,
     Value<Answer>? answer,
     Value<DateTime>? at,
@@ -2187,6 +2289,7 @@ class ReviewLogsCompanion extends UpdateCompanion<LogRow> {
     return ReviewLogsCompanion(
       id: id ?? this.id,
       scope: scope ?? this.scope,
+      mode: mode ?? this.mode,
       wordId: wordId ?? this.wordId,
       answer: answer ?? this.answer,
       at: at ?? this.at,
@@ -2204,6 +2307,11 @@ class ReviewLogsCompanion extends UpdateCompanion<LogRow> {
     }
     if (scope.present) {
       map['scope'] = Variable<String>(scope.value);
+    }
+    if (mode.present) {
+      map['mode'] = Variable<String>(
+        $ReviewLogsTable.$convertermode.toSql(mode.value),
+      );
     }
     if (wordId.present) {
       map['word_id'] = Variable<String>(wordId.value);
@@ -2233,6 +2341,7 @@ class ReviewLogsCompanion extends UpdateCompanion<LogRow> {
     return (StringBuffer('ReviewLogsCompanion(')
           ..write('id: $id, ')
           ..write('scope: $scope, ')
+          ..write('mode: $mode, ')
           ..write('wordId: $wordId, ')
           ..write('answer: $answer, ')
           ..write('at: $at, ')
@@ -3683,6 +3792,7 @@ typedef $$PlaylistWordsTableProcessedTableManager =
 typedef $$ReviewCardsTableCreateCompanionBuilder =
     ReviewCardsCompanion Function({
       required String scope,
+      Value<StudyMode> mode,
       required String wordId,
       required int level,
       required DateTime dueAt,
@@ -3694,6 +3804,7 @@ typedef $$ReviewCardsTableCreateCompanionBuilder =
 typedef $$ReviewCardsTableUpdateCompanionBuilder =
     ReviewCardsCompanion Function({
       Value<String> scope,
+      Value<StudyMode> mode,
       Value<String> wordId,
       Value<int> level,
       Value<DateTime> dueAt,
@@ -3738,6 +3849,12 @@ class $$ReviewCardsTableFilterComposer
     column: $table.scope,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnWithTypeConverterFilters<StudyMode, StudyMode, String> get mode =>
+      $composableBuilder(
+        column: $table.mode,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
 
   ColumnFilters<int> get level => $composableBuilder(
     column: $table.level,
@@ -3804,6 +3921,11 @@ class $$ReviewCardsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get mode => $composableBuilder(
+    column: $table.mode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get level => $composableBuilder(
     column: $table.level,
     builder: (column) => ColumnOrderings(column),
@@ -3864,6 +3986,9 @@ class $$ReviewCardsTableAnnotationComposer
   });
   GeneratedColumn<String> get scope =>
       $composableBuilder(column: $table.scope, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<StudyMode, String> get mode =>
+      $composableBuilder(column: $table.mode, builder: (column) => column);
 
   GeneratedColumn<int> get level =>
       $composableBuilder(column: $table.level, builder: (column) => column);
@@ -3940,6 +4065,7 @@ class $$ReviewCardsTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> scope = const Value.absent(),
+                Value<StudyMode> mode = const Value.absent(),
                 Value<String> wordId = const Value.absent(),
                 Value<int> level = const Value.absent(),
                 Value<DateTime> dueAt = const Value.absent(),
@@ -3949,6 +4075,7 @@ class $$ReviewCardsTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => ReviewCardsCompanion(
                 scope: scope,
+                mode: mode,
                 wordId: wordId,
                 level: level,
                 dueAt: dueAt,
@@ -3960,6 +4087,7 @@ class $$ReviewCardsTableTableManager
           createCompanionCallback:
               ({
                 required String scope,
+                Value<StudyMode> mode = const Value.absent(),
                 required String wordId,
                 required int level,
                 required DateTime dueAt,
@@ -3969,6 +4097,7 @@ class $$ReviewCardsTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => ReviewCardsCompanion.insert(
                 scope: scope,
+                mode: mode,
                 wordId: wordId,
                 level: level,
                 dueAt: dueAt,
@@ -4048,6 +4177,7 @@ typedef $$ReviewLogsTableCreateCompanionBuilder =
     ReviewLogsCompanion Function({
       Value<int> id,
       required String scope,
+      Value<StudyMode> mode,
       required String wordId,
       required Answer answer,
       required DateTime at,
@@ -4059,6 +4189,7 @@ typedef $$ReviewLogsTableUpdateCompanionBuilder =
     ReviewLogsCompanion Function({
       Value<int> id,
       Value<String> scope,
+      Value<StudyMode> mode,
       Value<String> wordId,
       Value<Answer> answer,
       Value<DateTime> at,
@@ -4085,6 +4216,12 @@ class $$ReviewLogsTableFilterComposer
     column: $table.scope,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnWithTypeConverterFilters<StudyMode, StudyMode, String> get mode =>
+      $composableBuilder(
+        column: $table.mode,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
 
   ColumnFilters<String> get wordId => $composableBuilder(
     column: $table.wordId,
@@ -4138,6 +4275,11 @@ class $$ReviewLogsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get mode => $composableBuilder(
+    column: $table.mode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get wordId => $composableBuilder(
     column: $table.wordId,
     builder: (column) => ColumnOrderings(column),
@@ -4183,6 +4325,9 @@ class $$ReviewLogsTableAnnotationComposer
 
   GeneratedColumn<String> get scope =>
       $composableBuilder(column: $table.scope, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<StudyMode, String> get mode =>
+      $composableBuilder(column: $table.mode, builder: (column) => column);
 
   GeneratedColumn<String> get wordId =>
       $composableBuilder(column: $table.wordId, builder: (column) => column);
@@ -4239,6 +4384,7 @@ class $$ReviewLogsTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 Value<String> scope = const Value.absent(),
+                Value<StudyMode> mode = const Value.absent(),
                 Value<String> wordId = const Value.absent(),
                 Value<Answer> answer = const Value.absent(),
                 Value<DateTime> at = const Value.absent(),
@@ -4248,6 +4394,7 @@ class $$ReviewLogsTableTableManager
               }) => ReviewLogsCompanion(
                 id: id,
                 scope: scope,
+                mode: mode,
                 wordId: wordId,
                 answer: answer,
                 at: at,
@@ -4259,6 +4406,7 @@ class $$ReviewLogsTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 required String scope,
+                Value<StudyMode> mode = const Value.absent(),
                 required String wordId,
                 required Answer answer,
                 required DateTime at,
@@ -4268,6 +4416,7 @@ class $$ReviewLogsTableTableManager
               }) => ReviewLogsCompanion.insert(
                 id: id,
                 scope: scope,
+                mode: mode,
                 wordId: wordId,
                 answer: answer,
                 at: at,

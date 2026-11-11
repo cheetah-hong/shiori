@@ -2,7 +2,8 @@
 // are left out of test coverage.
 // coverage:ignore-file
 import 'package:drift/drift.dart';
-import 'package:shiori_core/shiori_core.dart' show Answer, PartOfSpeech;
+import 'package:shiori_core/shiori_core.dart'
+    show Answer, PartOfSpeech, StudyMode;
 import 'package:shiori_storage_drift/src/converters.dart';
 
 // ------------------------------------------------------------- content
@@ -75,12 +76,18 @@ class PlaylistWords extends Table {
 
 // ------------------------------------------------------------- learning state
 
-/// One card per word and scope: `''` is the record every playlist shares
-/// (the only scope used now), `p:<playlist id>` a word's record inside one
-/// playlist (`CardScope`). A card goes with its word.
+/// One card per word, scope and study mode: scope `''` is the record every
+/// playlist shares (the only scope used now), `p:<playlist id>` a word's
+/// record inside one playlist (`CardScope`); [mode] is the way of studying
+/// (`StudyMode`, stored by name). A card goes with its word.
 @DataClassName('CardRow')
 class ReviewCards extends Table {
   TextColumn get scope => text()();
+
+  /// Cards written before modes existed (schema v4) were all 뜻 맞히기; the
+  /// repository always names the mode.
+  TextColumn get mode =>
+      textEnum<StudyMode>().withDefault(const Constant('meaning'))();
   TextColumn get wordId =>
       text().references(Words, #id, onDelete: KeyAction.cascade)();
   IntColumn get level => integer()();
@@ -90,7 +97,7 @@ class ReviewCards extends Table {
   IntColumn get lapseCount => integer()();
 
   @override
-  Set<Column<Object>> get primaryKey => {scope, wordId};
+  Set<Column<Object>> get primaryKey => {scope, mode, wordId};
 }
 
 /// Every button press, in the order it was made (append only). History: no
@@ -100,6 +107,10 @@ class ReviewCards extends Table {
 class ReviewLogs extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get scope => text()();
+
+  /// Presses logged before modes existed (schema v4) were all 뜻 맞히기.
+  TextColumn get mode =>
+      textEnum<StudyMode>().withDefault(const Constant('meaning'))();
   TextColumn get wordId => text()();
   TextColumn get answer => textEnum<Answer>()();
   IntColumn get at => integer().map(const UtcMicrosConverter())();

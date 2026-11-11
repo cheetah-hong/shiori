@@ -1,3 +1,5 @@
+import 'package:shiori_core/src/models/study_mode.dart';
+
 /// How learning records relate to playlists.
 enum RecordMode {
   /// One record per word, shared by every playlist that holds it (default).
@@ -48,28 +50,35 @@ final class StudyPreferences {
   const StudyPreferences({
     this.recordMode = RecordMode.shared,
     this.scopeMode = StudyScopeMode.allOrPlaylist,
+    this.mode = StudyMode.meaning,
   });
 
   final RecordMode recordMode;
   final StudyScopeMode scopeMode;
 
+  /// The way of studying picked last (홈·재생목록 chips).
+  final StudyMode mode;
+
   StudyPreferences copyWith({
     RecordMode? recordMode,
     StudyScopeMode? scopeMode,
+    StudyMode? mode,
   }) => StudyPreferences(
     recordMode: recordMode ?? this.recordMode,
     scopeMode: scopeMode ?? this.scopeMode,
+    mode: mode ?? this.mode,
   );
 
   @override
   bool operator ==(Object other) =>
       other is StudyPreferences &&
       other.recordMode == recordMode &&
-      other.scopeMode == scopeMode;
+      other.scopeMode == scopeMode &&
+      other.mode == mode;
 
   @override
-  int get hashCode => Object.hash(recordMode, scopeMode);
+  int get hashCode => Object.hash(recordMode, scopeMode, mode);
 
   @override
-  String toString() => 'StudyPreferences($recordMode, $scopeMode)';
+  String toString() => 'StudyPreferences($recordMode, $scopeMode, $mode)';
 }

@@ -125,9 +125,9 @@ class _Choice extends StatelessWidget {
   }
 }
 
-/// 모든 단어 처음부터 다시 학습: after a confirmation, every card goes (every
-/// word is new again); the press log, hidden words and playlists stay. Off
-/// while no word has been studied.
+/// 모든 단어 처음부터 다시 학습: after a confirmation, every card of every
+/// mode goes (every word is new again); the press log, hidden words and
+/// playlists stay. Off while no word has been studied in any mode.
 class _ResetAll extends ConsumerWidget {
   const _ResetAll();
 
@@ -155,10 +155,11 @@ class _ResetAll extends ConsumerWidget {
     );
     if (sure != true) return;
     try {
-      final removed = await study.resetAll();
+      // Every mode's cards go; the message counts words, not cards.
+      await study.resetAll();
       revision.bump();
       messenger.showSnackBar(
-        SnackBar(content: Text(RestudyLabels.allReset(removed))),
+        SnackBar(content: Text(RestudyLabels.allReset(count))),
       );
     } on Exception catch (e, stack) {
       debugPrint('reset all failed: $e\n$stack');
@@ -170,7 +171,13 @@ class _ResetAll extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final count = ref.watch(cardsProvider).value?.length ?? 0;
+    // Words studied in any mode: each counts once.
+    final count = {
+      for (final cards
+          in ref.watch(cardsByModeProvider).value?.values ??
+              const <Map<String, ReviewCard>>[])
+        ...cards.keys,
+    }.length;
     final enabled = count > 0;
     return ListTile(
       contentPadding: EdgeInsets.zero,

@@ -1,3 +1,5 @@
+import 'package:shiori_core/src/models/study_mode.dart';
+
 /// Whose learning state a card or a press is: the word's one record shared
 /// by every playlist ([shared], the only one the app uses now), or a record
 /// of the word inside one playlist (for a later "per playlist" setting).
@@ -46,9 +48,10 @@ final class CardScope {
   String toString() => isShared ? 'CardScope.shared' : 'CardScope($key)';
 }
 
-/// Learning state of one word: memory level and next review.
+/// Learning state of one word in one [StudyMode]: memory level and next
+/// review.
 ///
-/// A word without a card is a new word.
+/// A word without a card (in a mode) is a new word (in that mode).
 final class ReviewCard {
   const ReviewCard({
     required this.wordId,
@@ -58,12 +61,16 @@ final class ReviewCard {
     this.reviewCount = 0,
     this.lapseCount = 0,
     this.scope = CardScope.shared,
+    this.mode = StudyMode.meaning,
   });
 
   final String wordId;
 
   /// Whose record this is ([CardScope.shared] unless per-playlist).
   final CardScope scope;
+
+  /// The way of studying this record belongs to.
+  final StudyMode mode;
 
   /// Memory level, 1 to the scheduler's maximum (4 = 장기 기억).
   final int level;
@@ -84,6 +91,8 @@ final class ReviewCard {
     DateTime? lastReviewedAt,
     int? reviewCount,
     int? lapseCount,
+    CardScope? scope,
+    StudyMode? mode,
   }) => ReviewCard(
     wordId: wordId,
     level: level ?? this.level,
@@ -91,7 +100,8 @@ final class ReviewCard {
     lastReviewedAt: lastReviewedAt ?? this.lastReviewedAt,
     reviewCount: reviewCount ?? this.reviewCount,
     lapseCount: lapseCount ?? this.lapseCount,
-    scope: scope,
+    scope: scope ?? this.scope,
+    mode: mode ?? this.mode,
   );
 
   @override
@@ -99,6 +109,7 @@ final class ReviewCard {
       other is ReviewCard &&
       other.wordId == wordId &&
       other.scope == scope &&
+      other.mode == mode &&
       other.level == level &&
       other.dueAt == dueAt &&
       other.lastReviewedAt == lastReviewedAt &&
@@ -109,6 +120,7 @@ final class ReviewCard {
   int get hashCode => Object.hash(
     wordId,
     scope,
+    mode,
     level,
     dueAt,
     lastReviewedAt,
@@ -117,7 +129,7 @@ final class ReviewCard {
   );
 
   @override
-  String toString() => 'ReviewCard($wordId L$level due $dueAt)';
+  String toString() => 'ReviewCard($wordId ${mode.name} L$level due $dueAt)';
 }
 
 /// The two study buttons.
@@ -139,12 +151,16 @@ final class ReviewLog {
     required this.levelAfter,
     required this.retriesInSession,
     this.scope = CardScope.shared,
+    this.mode = StudyMode.meaning,
   });
 
   final String wordId;
 
   /// The record the press went to (as `ReviewCard.scope`).
   final CardScope scope;
+
+  /// The way of studying the press was made in (as `ReviewCard.mode`).
+  final StudyMode mode;
   final Answer answer;
   final DateTime at;
 

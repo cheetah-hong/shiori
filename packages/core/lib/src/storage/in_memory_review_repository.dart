@@ -1,9 +1,13 @@
 import 'package:shiori_core/src/models/review.dart';
+import 'package:shiori_core/src/models/study_mode.dart';
 import 'package:shiori_core/src/ports/repositories.dart';
 import 'package:shiori_core/src/storage/in_memory_transactions.dart';
 
-/// Cards keyed by scope, then word id.
-typedef _Cards = Map<CardScope, Map<String, ReviewCard>>;
+/// Which record a card belongs to: its scope and its mode.
+typedef _Record = (CardScope, StudyMode);
+
+/// Cards keyed by record, then word id.
+typedef _Cards = Map<_Record, Map<String, ReviewCard>>;
 
 /// Keeps learning state in memory (lost when the app quits). Used by tests;
 /// the app stores it in SQLite (`packages/storage_drift`).
@@ -34,22 +38,27 @@ final class InMemoryReviewRepository implements ReviewRepository {
   Future<ReviewCard?> card(
     String wordId, {
     CardScope scope = CardScope.shared,
-  }) => _tx.run(() => _cards[scope]?[wordId]);
+    StudyMode mode = StudyMode.meaning,
+  }) => _tx.run(() => _cards[(scope, mode)]?[wordId]);
 
   @override
   Future<Map<String, ReviewCard>> cards({
     Iterable<String>? wordIds,
     CardScope scope = CardScope.shared,
+    StudyMode mode = StudyMode.meaning,
   }) => _tx.run(() {
-    final inScope = _cards[scope] ?? const <String, ReviewCard>{};
+    final inRecord = _cards[(scope, mode)] ?? const <String, ReviewCard>{};
     return Map<String, ReviewCard>.unmodifiable(
-      wordIds == null ? inScope : {for (final id in wordIds) id: ?inScope[id]},
+      wordIds == null
+          ? inRecord
+          : {for (final id in wordIds) id: ?inRecord[id]},
     );
   });
 
   @override
-  Future<void> saveCard(ReviewCard card) =>
-      _tx.run(() => (_cards[card.scope] ??= {})[card.wordId] = card);
+  Future<void> saveCard(ReviewCard card) => _tx.run(
+    () => (_cards[(card.scope, card.mode)] ??= {})[card.wordId] = card,
+  );
 
   @override
   Future<void> addLog(ReviewLog log) => _tx.run(() => _logs.add(log));
@@ -58,37 +67,50 @@ final class InMemoryReviewRepository implements ReviewRepository {
   Future<List<ReviewCard>> deleteCards(
     Iterable<String> wordIds, {
     CardScope scope = CardScope.shared,
+    StudyMode mode = StudyMode.meaning,
   }) => _tx.run(() {
-    final inScope = _cards[scope];
-    if (inScope == null) return const <ReviewCard>[];
+    final inRecord = _cards[(scope, mode)];
+    if (inRecord == null) return const <ReviewCard>[];
     return List<ReviewCard>.unmodifiable([
-      for (final id in wordIds.toSet()) ?inScope.remove(id),
+      for (final id in wordIds.toSet()) ?inRecord.remove(id),
     ]);
   });
 
   @override
-  Future<int> deleteAllCards({CardScope? scope}) => _tx.run(() {
-    if (scope != null) return _cards.remove(scope)?.length ?? 0;
-    final count = _cards.values.fold(0, (n, cards) => n + cards.length);
-    _cards.clear();
-    return count;
-  });
+  Future<int> deleteAllCards({CardScope? scope, StudyMode? mode}) =>
+      _tx.run(() {
+        final picked = [
+          for (final record in _cards.keys)
+            if ((scope == null || record.$1 == scope) &&
+                (mode == null || record.$2 == mode))
+              record,
+        ];
+        var count = 0;
+        for (final record in picked) {
+          count += _cards.remove(record)?.length ?? 0;
+        }
+        return count;
+      });
 
   @override
-  Future<List<ReviewLog>> logs({DateTime? since, CardScope? scope}) =>
-      _tx.run(() {
-        // Oldest first; presses at the same instant keep the order they
-        // were added.
-        final picked =
-            [
-              for (final (i, l) in _logs.indexed)
-                if ((since == null || !l.at.isBefore(since)) &&
-                    (scope == null || l.scope == scope))
-                  (i, l),
-            ]..sort((a, b) {
-              final byTime = a.$2.at.compareTo(b.$2.at);
-              return byTime != 0 ? byTime : a.$1.compareTo(b.$1);
-            });
-        return List<ReviewLog>.unmodifiable(picked.map((p) => p.$2));
-      });
+  Future<List<ReviewLog>> logs({
+    DateTime? since,
+    CardScope? scope,
+    StudyMode? mode,
+  }) => _tx.run(() {
+    // Oldest first; presses at the same instant keep the order they were
+    // added.
+    final picked =
+        [
+          for (final (i, l) in _logs.indexed)
+            if ((since == null || !l.at.isBefore(since)) &&
+                (scope == null || l.scope == scope) &&
+                (mode == null || l.mode == mode))
+              (i, l),
+        ]..sort((a, b) {
+          final byTime = a.$2.at.compareTo(b.$2.at);
+          return byTime != 0 ? byTime : a.$1.compareTo(b.$1);
+        });
+    return List<ReviewLog>.unmodifiable(picked.map((p) => p.$2));
+  });
 }

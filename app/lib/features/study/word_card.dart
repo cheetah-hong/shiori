@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/features/study/card_parts.dart';
 import 'package:shiori/features/study/pitch_line.dart';
 import 'package:shiori/shared/format.dart';
 import 'package:shiori/shared/widgets.dart';
@@ -137,7 +138,7 @@ class _WordCardState extends State<WordCard> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _Covered(
+                    CoveredPart(
                       visible: _showReading,
                       label: '읽기',
                       child: Column(
@@ -168,7 +169,7 @@ class _WordCardState extends State<WordCard> {
                       ),
                     ),
                     const SizedBox(height: Space.md),
-                    _Covered(
+                    CoveredPart(
                       visible: _showMeaning,
                       label: '뜻',
                       child: Row(
@@ -194,15 +195,24 @@ class _WordCardState extends State<WordCard> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Flexible(
-                            child: HighlightedSentence(
+                            child: ExampleSentence(
                               sentence: ex.ja,
                               focus: w.headword,
                               style: JpType.gothic(15, t.ink2, height: 1.75),
+                              onSpeak: _exampleLoading
+                                  ? null
+                                  : switch (widget.onSpeakExample) {
+                                      final play? => () => _speak(
+                                        play,
+                                        (on) => _exampleLoading = on,
+                                      ),
+                                      null => null,
+                                    },
                             ),
                           ),
                           if (widget.onSpeakExample case final play?) ...[
                             const SizedBox(width: Space.xs),
-                            _SpeakButton(
+                            SpeakButton(
                               tooltip: '예문 듣기',
                               loading: _exampleLoading,
                               small: true,
@@ -213,7 +223,7 @@ class _WordCardState extends State<WordCard> {
                         ],
                       ),
                       const SizedBox(height: Space.xs),
-                      _Covered(
+                      CoveredPart(
                         visible: _showMeaning,
                         label: '번역',
                         child: Text(
@@ -231,7 +241,7 @@ class _WordCardState extends State<WordCard> {
           Row(
             children: [
               Expanded(
-                child: _RevealButton(
+                child: RevealButton(
                   label: '뜻',
                   on: _showMeaning,
                   onTap: () => setState(() => _showMeaning = !_showMeaning),
@@ -239,7 +249,7 @@ class _WordCardState extends State<WordCard> {
               ),
               const SizedBox(width: Space.sm),
               Expanded(
-                child: _RevealButton(
+                child: RevealButton(
                   label: '읽기',
                   on: _showReading,
                   onTap: _toggleReading,
@@ -247,7 +257,7 @@ class _WordCardState extends State<WordCard> {
               ),
               if (widget.onSpeakWord case final play?) ...[
                 const SizedBox(width: Space.sm),
-                _SpeakButton(
+                SpeakButton(
                   tooltip: '발음 듣기',
                   loading: _wordLoading,
                   onPressed: () => _speak(play, (on) => _wordLoading = on),
@@ -265,138 +275,5 @@ class _WordCardState extends State<WordCard> {
     if (n <= 3) return 60;
     if (n <= 5) return 48;
     return 36;
-  }
-}
-
-/// Keeps the space while hidden (no layout jump) and fades the content in.
-class _Covered extends StatelessWidget {
-  const _Covered({
-    required this.visible,
-    required this.label,
-    required this.child,
-  });
-
-  final bool visible;
-  final String label;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        AnimatedOpacity(
-          opacity: visible ? 1 : 0,
-          duration: Motion.of(context, Motion.ui),
-          child: ExcludeSemantics(excluding: !visible, child: child),
-        ),
-        if (!visible)
-          ExcludeSemantics(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-              decoration: BoxDecoration(
-                color: t.paper2,
-                borderRadius: BorderRadius.circular(Radii.chip),
-              ),
-              child: Text(
-                '$label 가림',
-                style: TextStyle(
-                  color: t.ink3,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _RevealButton extends StatelessWidget {
-  const _RevealButton({
-    required this.label,
-    required this.on,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool on;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-    return Semantics(
-      button: true,
-      toggled: on,
-      label: on ? '$label 가리기' : '$label 보기',
-      child: ExcludeSemantics(
-        child: Material(
-          color: on ? t.paper3 : t.paper,
-          borderRadius: BorderRadius.circular(Radii.chip),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(Radii.chip),
-            onTap: onTap,
-            child: SizedBox(
-              height: 48,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    on
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                    size: 18,
-                    color: t.ink2,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    on ? '$label 가리기' : '$label 보기',
-                    style: TextStyle(color: t.ink, fontWeight: FontWeight.w700),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// A speaker button; while the sound is being made it shows progress, says
-/// 「불러오는 중」 and takes no taps.
-class _SpeakButton extends StatelessWidget {
-  const _SpeakButton({
-    required this.tooltip,
-    required this.loading,
-    required this.onPressed,
-    this.small = false,
-  });
-
-  final String tooltip;
-  final bool loading;
-  final VoidCallback onPressed;
-  final bool small;
-
-  @override
-  Widget build(BuildContext context) {
-    final icon = loading
-        ? SizedBox.square(
-            dimension: small ? 16 : 20,
-            child: const CircularProgressIndicator(strokeWidth: 2),
-          )
-        : Icon(Icons.volume_up_outlined, size: small ? 20 : null);
-    final pressed = loading ? null : onPressed;
-    final label = loading ? '불러오는 중' : tooltip;
-    return small
-        ? IconButton(tooltip: label, onPressed: pressed, icon: icon)
-        : IconButton.filledTonal(
-            tooltip: label,
-            onPressed: pressed,
-            icon: icon,
-          );
   }
 }

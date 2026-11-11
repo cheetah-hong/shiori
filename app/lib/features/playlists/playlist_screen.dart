@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/data.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/features/playlists/mode_meters.dart';
 import 'package:shiori/features/playlists/playlist_actions.dart';
 import 'package:shiori/features/playlists/playlist_picker.dart';
 import 'package:shiori/features/study/restudy_labels.dart';
+import 'package:shiori/features/study/study_mode_chips.dart';
 import 'package:shiori/features/study/study_screen.dart';
 import 'package:shiori/shared/format.dart';
 import 'package:shiori/shared/hide_labels.dart';
@@ -26,7 +28,8 @@ class PlaylistScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final view = ref.watch(playlistViewProvider(playlistId));
-    final cardsState = ref.watch(cardsProvider);
+    final cardsState = ref.watch(cardsByModeProvider);
+    final mode = ref.watch(studyModeProvider).value ?? StudyMode.meaning;
     final summary = ref.watch(playlistSummaryProvider(playlistId)).value;
 
     return Scaffold(
@@ -40,7 +43,8 @@ class PlaylistScreen extends ConsumerWidget {
         // the hidden words stay open.
         AsyncValue(:final value?, hasError: false) => _Body(
           view: value,
-          cards: cardsState.value ?? const <String, ReviewCard>{},
+          cardsByMode: cardsState.value ?? const {},
+          mode: mode,
           cardsFailed: cardsState.hasError,
           studyCards: summary == null ? 0 : summary.dueCount + summary.newCount,
           aheadCards: summary?.aheadCount ?? 0,
@@ -89,7 +93,8 @@ class _PlaylistMenu extends ConsumerWidget {
 class _Body extends ConsumerStatefulWidget {
   const _Body({
     required this.view,
-    required this.cards,
+    required this.cardsByMode,
+    required this.mode,
     required this.cardsFailed,
     required this.studyCards,
     required this.aheadCards,
@@ -97,7 +102,12 @@ class _Body extends ConsumerStatefulWidget {
   });
 
   final PlaylistView view;
-  final Map<String, ReviewCard> cards;
+
+  /// Every mode's cards (the four meters of a word).
+  final Map<StudyMode, Map<String, ReviewCard>> cardsByMode;
+
+  /// The way of studying in use: the counts and the study button follow it.
+  final StudyMode mode;
 
   /// Memory levels could not be loaded; the meters would all read "new".
   final bool cardsFailed;
@@ -174,7 +184,7 @@ class _BodyState extends ConsumerState<_Body> {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final view = widget.view;
-    final cards = widget.cards;
+    final cards = widget.cardsByMode[widget.mode] ?? const {};
     final maxLevel = widget.maxLevel;
     final words = view.shownWords;
     final hiddenWords = view.hiddenWords;
@@ -205,6 +215,8 @@ class _BodyState extends ConsumerState<_Body> {
                     ],
                   ),
                   const SizedBox(height: Space.lg),
+                  const StudyModeChips(),
+                  const SizedBox(height: Space.sm),
                   _StudyButton(
                     scope: PlaylistOnly(view.playlist.id),
                     studyCards: widget.studyCards,
@@ -251,7 +263,7 @@ class _BodyState extends ConsumerState<_Body> {
           ),
           _WordList(
             words: words,
-            cards: cards,
+            cardsByMode: widget.cardsByMode,
             maxLevel: maxLevel,
             onHide: (w) => _setHidden(w, hidden: true),
             onAction: _wordAction,
@@ -372,14 +384,14 @@ class _Stat extends StatelessWidget {
 class _WordList extends StatelessWidget {
   const _WordList({
     required this.words,
-    required this.cards,
+    required this.cardsByMode,
     required this.maxLevel,
     required this.onHide,
     required this.onAction,
   });
 
   final List<Word> words;
-  final Map<String, ReviewCard> cards;
+  final Map<StudyMode, Map<String, ReviewCard>> cardsByMode;
   final int maxLevel;
   final ValueChanged<Word> onHide;
   final Future<void> Function(Word, _WordAction) onAction;
@@ -442,7 +454,14 @@ class _WordList extends StatelessWidget {
                       ],
                     ),
                   ),
-                  MemoryMeter(level: cards[w.id]?.level ?? 0, max: maxLevel),
+                  ModeMeters(
+                    levels: {
+                      for (final MapEntry(key: mode, value: cards)
+                          in cardsByMode.entries)
+                        mode: cards[w.id]?.level ?? 0,
+                    },
+                    max: maxLevel,
+                  ),
                   IconButton(
                     tooltip: HideLabels.hideWord(w.headword),
                     color: t.ink3,
@@ -463,8 +482,9 @@ class _WordList extends StatelessWidget {
                         value: _WordAction.addElsewhere,
                         child: Text('다른 목록에 추가'),
                       ),
-                      // A new word has nothing to start again from.
-                      if (cards.containsKey(w.id))
+                      // A word new in every mode has nothing to start
+                      // again from.
+                      if (cardsByMode.values.any((c) => c.containsKey(w.id)))
                         const PopupMenuItem(
                           value: _WordAction.reset,
                           child: Text(RestudyLabels.resetWord),

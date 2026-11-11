@@ -1,10 +1,12 @@
 import 'package:shiori_core/src/models/library.dart';
 import 'package:shiori_core/src/models/review.dart';
+import 'package:shiori_core/src/models/study_mode.dart';
 import 'package:shiori_core/src/models/study_preferences.dart';
 import 'package:shiori_core/src/ports/clock.dart';
 import 'package:shiori_core/src/ports/hidden_word_repository.dart';
 import 'package:shiori_core/src/ports/repositories.dart';
 import 'package:shiori_core/src/ports/review_scheduler.dart';
+import 'package:shiori_core/src/study/choice_maker.dart';
 import 'package:shiori_core/src/study/session_builder.dart';
 import 'package:shiori_core/src/study/study_calendar.dart';
 import 'package:shiori_core/src/study/study_session.dart';
@@ -87,6 +89,7 @@ final class StudyService {
     this.settings = const StudySettings(),
     this.builder = const SessionBuilder(),
     this.preferences = const StudyPreferences(),
+    this.choiceMaker = const ChoiceMaker(),
     HiddenWordRepository? hidden,
   }) : calendar = StudyCalendar.checked(settings.dayStartHour),
        hidden =
@@ -105,6 +108,9 @@ final class StudyService {
   final Clock clock;
   final StudySettings settings;
   final SessionBuilder builder;
+
+  /// Picks the options of 객관식 and 듣고 맞히기.
+  final ChoiceMaker choiceMaker;
   final StudyCalendar calendar;
 
   /// The learner's options. [RecordMode.perPlaylist] is not built yet:
@@ -115,20 +121,30 @@ final class StudyService {
   /// would start: today every scope uses [CardScope.shared].
   CardScope cardScopeFor(StudyScope scope) => CardScope.shared;
 
-  Future<StudySummary> summary({StudyScope scope = const AllWords()}) async {
+  Future<StudySummary> summary({
+    StudyScope scope = const AllWords(),
+    StudyMode mode = StudyMode.meaning,
+  }) async {
     final now = clock.now();
     final cardScope = cardScopeFor(scope);
     final words = await _wordsOf(scope);
     final ids = {for (final w in words) w.id};
+    final asked = {for (final w in await _askedIn(mode, words)) w.id};
     final shown = {
       for (final w in words)
-        if (!w.isHidden) w.id,
+        if (!w.isHidden && asked.contains(w.id)) w.id,
     };
-    final cards = await reviews.cards(wordIds: ids, scope: cardScope);
+    final cards = await reviews.cards(
+      wordIds: ids,
+      scope: cardScope,
+      mode: mode,
+    );
     final todayLogs = await reviews.logs(
       since: calendar.startOfStudyDay(now),
       scope: cardScope,
+      mode: mode,
     );
+    final hiddenCount = words.where((w) => w.isHidden).length;
     return StudySummary(
       dueCount: cards.values
           .where((c) => shown.contains(c.wordId) && c.isDue(now))
@@ -142,7 +158,7 @@ final class StudyService {
           .where((l) => l.answer == Answer.known && ids.contains(l.wordId))
           .length,
       wordCount: words.length,
-      hiddenCount: words.length - shown.length,
+      hiddenCount: hiddenCount,
     );
   }
 
@@ -151,17 +167,82 @@ final class StudyService {
     PlaylistOnly(:final playlistId) => library.words(playlistId: playlistId),
   };
 
+  /// The words of [words] that [mode] can ask: every word for 뜻 맞히기, a
+  /// word with a meaning for 일본어 떠올리기, a word a four-option question
+  /// can be made for (out of the whole library) for 객관식 and 듣고 맞히기.
+  Future<List<Word>> _askedIn(StudyMode mode, List<Word> words) async =>
+      switch (mode) {
+        StudyMode.meaning => words,
+        StudyMode.recall => [
+          for (final w in words)
+            if (meaningGlosses(w.meaning).isNotEmpty) w,
+        ],
+        StudyMode.listening ||
+        StudyMode.choice => _askable(words, await library.words()),
+      };
+
+  List<Word> _askable(List<Word> words, List<Word> pool) {
+    final ids = choiceMaker.askable(words, pool);
+    return [
+      for (final w in words)
+        if (ids.contains(w.id)) w,
+    ];
+  }
+
   Future<StudySession> startSession({
     StudyScope scope = const AllWords(),
+    StudyMode mode = StudyMode.meaning,
     int? goal,
-  }) => _startWith(builder.build, scope, goal);
+  }) => _startWith(builder.build, scope, mode, goal);
 
   /// 더 학습하기: a session of cards whose review time has not come yet
   /// (`SessionBuilder.buildMore`).
   Future<StudySession> startMoreSession({
     StudyScope scope = const AllWords(),
+    StudyMode mode = StudyMode.meaning,
     int? goal,
-  }) => _startWith(builder.buildMore, scope, goal);
+  }) => _startWith(builder.buildMore, scope, mode, goal);
+
+  /// The modes that can be studied now: 뜻 맞히기 and 일본어 떠올리기 always,
+  /// 객관식 when the library holds four words whose meanings stand apart, and
+  /// 듣고 맞히기 when, besides, the words can be read aloud.
+  Future<Set<StudyMode>> availableModes({required bool speechAvailable}) async {
+    final canAsk = choiceMaker.canAsk(await library.words());
+    return {
+      StudyMode.meaning,
+      StudyMode.recall,
+      if (canAsk && speechAvailable) StudyMode.listening,
+      if (canAsk) StudyMode.choice,
+    };
+  }
+
+  /// The multiple-choice question of [session]'s current card; null in the
+  /// other modes, when the session is finished, or when no question can be
+  /// made. The same presentation always gets the same question.
+  MultipleChoice? questionFor(StudySession session) {
+    final item = session.current;
+    if (item == null || !session.mode.isMultipleChoice) return null;
+    return choiceMaker.make(
+      answer: item.word,
+      pool: session.choicePool,
+      seed: choiceSeed(
+        sessionStart: session.startedAt,
+        wordId: item.word.id,
+        retries: item.retries,
+      ),
+    );
+  }
+
+  /// Every mode's cards of [wordIds] (null: of every word), by mode.
+  Future<Map<StudyMode, Map<String, ReviewCard>>> cardsByMode({
+    Iterable<String>? wordIds,
+  }) async {
+    final ids = wordIds?.toList();
+    return Map.unmodifiable({
+      for (final mode in StudyMode.values)
+        mode: await reviews.cards(wordIds: ids, mode: mode),
+    });
+  }
 
   Future<StudySession> _startWith(
     StudySession Function({
@@ -172,24 +253,40 @@ final class StudyService {
     })
     build,
     StudyScope scope,
+    StudyMode mode,
     int? goal,
   ) async {
-    final words = await _wordsOf(scope);
+    final cardScope = cardScopeFor(scope);
+    final scoped = await _wordsOf(scope);
+    final pool = mode.isMultipleChoice ? await library.words() : <Word>[];
+    final words = switch (mode) {
+      StudyMode.listening || StudyMode.choice => _askable(scoped, pool),
+      _ => await _askedIn(mode, scoped),
+    };
     final cards = await reviews.cards(
       wordIds: words.map((w) => w.id),
-      scope: cardScopeFor(scope),
+      scope: cardScope,
+      mode: mode,
     );
-    return build(
+    final session = build(
       words: words,
       cards: cards,
       now: clock.now(),
       goal: goal ?? settings.dailyGoal,
     );
+    return StudySession(
+      queue: session.queue,
+      total: session.total,
+      startedAt: session.startedAt,
+      mode: mode,
+      cardScope: cardScope,
+      choicePool: List.unmodifiable(pool),
+    );
   }
 
-  /// 처음부터 다시 학습: removes the cards of [wordIds] so they are new words
-  /// again, and returns the removed cards (for [restoreCards]). Hidden words
-  /// stay hidden; the press log is kept.
+  /// 처음부터 다시 학습: removes the cards of [wordIds] in every mode so they
+  /// are new words again, and returns the removed cards (for
+  /// [restoreCards]). Hidden words stay hidden; the press log is kept.
   Future<List<ReviewCard>> resetWords(
     Iterable<String> wordIds, {
     StudyScope scope = const AllWords(),
@@ -197,7 +294,10 @@ final class StudyService {
     final ids = wordIds.toList();
     final cardScope = cardScopeFor(scope);
     return reviews.transaction(
-      () => reviews.deleteCards(ids, scope: cardScope),
+      () async => List.unmodifiable([
+        for (final mode in StudyMode.values)
+          ...await reviews.deleteCards(ids, scope: cardScope, mode: mode),
+      ]),
     );
   }
 
@@ -206,18 +306,24 @@ final class StudyService {
   Future<void> restoreCards(List<ReviewCard> cards) =>
       reviews.transaction(() async {
         for (final card in cards) {
-          if (await reviews.card(card.wordId, scope: card.scope) == null) {
+          final now = await reviews.card(
+            card.wordId,
+            scope: card.scope,
+            mode: card.mode,
+          );
+          if (now == null) {
             await reviews.saveCard(card);
           }
         }
       });
 
-  /// Removes every card (every scope): all words are new again. Hidden words,
+  /// Removes every card (every scope and mode): all words are new again. Hidden words,
   /// playlists and the press log stay. Returns how many cards were removed.
   Future<int> resetAll() => reviews.transaction(reviews.deleteAllCards);
 
   /// Applies [answer] to the current card, stores the new card and the log
-  /// in one transaction, and returns the next session state.
+  /// in one transaction, and returns the next session state. Both go to the
+  /// record of the session's scope and mode.
   Future<StudySession> answer(StudySession session, Answer answer) async {
     final item = session.current;
     if (item == null) throw StateError('the session is finished');
@@ -232,6 +338,12 @@ final class StudyService {
     DateTime now,
   ) async {
     final wordId = item.word.id;
+    final scope = session.cardScope;
+    final mode = session.mode;
+    // The scheduler knows levels and times only: the card is put in the
+    // session's record here.
+    ReviewCard inRecord(ReviewCard card) =>
+        card.copyWith(scope: scope, mode: mode);
     switch (answer) {
       case Answer.known:
         // A card brought forward and known at once keeps its level and its
@@ -239,11 +351,13 @@ final class StudyService {
         final kept = _keptOnKnown(item);
         final card =
             kept ??
-            scheduler.known(
-              wordId: wordId,
-              before: item.before,
-              retries: item.retries,
-              now: now,
+            inRecord(
+              scheduler.known(
+                wordId: wordId,
+                before: item.before,
+                retries: item.retries,
+                now: now,
+              ),
             );
         if (kept == null) await reviews.saveCard(card);
         await reviews.addLog(
@@ -254,14 +368,18 @@ final class StudyService {
             levelBefore: item.before?.level ?? 0,
             levelAfter: card.level,
             retriesInSession: item.retries,
+            scope: scope,
+            mode: mode,
           ),
         );
         return session.afterKnown(at: now);
       case Answer.retry:
-        final card = scheduler.retry(
-          wordId: wordId,
-          current: await reviews.card(wordId),
-          now: now,
+        final card = inRecord(
+          scheduler.retry(
+            wordId: wordId,
+            current: await reviews.card(wordId, scope: scope, mode: mode),
+            now: now,
+          ),
         );
         await reviews.saveCard(card);
         await reviews.addLog(
@@ -272,6 +390,8 @@ final class StudyService {
             levelBefore: item.before?.level ?? 0,
             levelAfter: card.level,
             retriesInSession: item.retries + 1,
+            scope: scope,
+            mode: mode,
           ),
         );
         return session.afterRetry();

@@ -124,10 +124,18 @@ class PosBadge extends StatelessWidget {
 
 /// Four-step memory meter. Empty outline = new word.
 class MemoryMeter extends StatelessWidget {
-  const MemoryMeter({super.key, required this.level, this.max = 4});
+  const MemoryMeter({
+    super.key,
+    required this.level,
+    this.max = 4,
+    this.compact = false,
+  });
 
   final int level;
   final int max;
+
+  /// Smaller bars, for several meters side by side.
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -141,9 +149,9 @@ class MemoryMeter extends StatelessWidget {
         children: [
           for (var i = 1; i <= max; i++)
             Container(
-              width: 7,
-              height: 14,
-              margin: const EdgeInsets.only(left: 2),
+              width: compact ? 4 : 7,
+              height: compact ? 10 : 14,
+              margin: EdgeInsets.only(left: compact ? 1 : 2),
               decoration: BoxDecoration(
                 color: i <= level
                     ? (level >= max ? t.ok : t.ink)
