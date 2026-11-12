@@ -27,7 +27,9 @@ void main() {
       ),
     );
 
-    await tester.pumpWidget(screen(blocks, PlaylistScreen(playlistId: list.id)));
+    await tester.pumpWidget(
+      screen(blocks, PlaylistScreen(playlistId: list.id)),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('JLPT 단어장'), findsOneWidget);
@@ -54,7 +56,7 @@ void main() {
       screen(blocks, PlaylistScreen(playlistId: travel.id)),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('이 목록 학습'));
+    await tester.tap(find.textContaining('이 목록 학습'));
     await tester.pumpAndSettle();
 
     expect(find.text(first.headword), findsWidgets);
@@ -69,7 +71,9 @@ void main() {
     final words = await blocks.library.words(playlistId: list.id);
     final second = words[1];
 
-    await tester.pumpWidget(screen(blocks, PlaylistScreen(playlistId: list.id)));
+    await tester.pumpWidget(
+      screen(blocks, PlaylistScreen(playlistId: list.id)),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('${second.headword} 메뉴'));
     await tester.pumpAndSettle();
@@ -85,10 +89,9 @@ void main() {
 
     await tester.tap(find.text('되돌리기'));
     await tester.pumpAndSettle();
-    expect(
-      (await blocks.library.words(playlistId: list.id)).map((w) => w.id),
-      [for (final w in words) w.id],
-    );
+    expect((await blocks.library.words(playlistId: list.id)).map((w) => w.id), [
+      for (final w in words) w.id,
+    ]);
   });
 
   testWidgets('adding a word to another playlist links the same word', (
@@ -100,7 +103,9 @@ void main() {
     final other = await blocks.seedPage('s140', name: '여행');
     final word = (await blocks.library.words(playlistId: list.id)).first;
 
-    await tester.pumpWidget(screen(blocks, PlaylistScreen(playlistId: list.id)));
+    await tester.pumpWidget(
+      screen(blocks, PlaylistScreen(playlistId: list.id)),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('${word.headword} 메뉴'));
     await tester.pumpAndSettle();
@@ -111,10 +116,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("'여행'에 단어 1개 추가"), findsOneWidget);
-    expect(
-      (await blocks.library.words(playlistId: other.id)).last.id,
-      word.id,
-    );
+    expect((await blocks.library.words(playlistId: other.id)).last.id, word.id);
     expect(await blocks.library.playlistsOf([word.id]), {
       word.id: {list.id, other.id},
     });
@@ -138,7 +140,9 @@ void main() {
     final list = await blocks.seedPage('s010', name: '자연');
     await blocks.seedPage('s140', name: '여행');
 
-    await tester.pumpWidget(screen(blocks, PlaylistScreen(playlistId: list.id)));
+    await tester.pumpWidget(
+      screen(blocks, PlaylistScreen(playlistId: list.id)),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('재생목록 메뉴'));
     await tester.pumpAndSettle();
@@ -150,7 +154,9 @@ void main() {
     await tester.pump();
     expect(find.text('같은 이름의 재생목록이 있어요'), findsOneWidget);
     expect(
-      tester.widget<TextButton>(find.widgetWithText(TextButton, '저장')).onPressed,
+      tester
+          .widget<TextButton>(find.widgetWithText(TextButton, '저장'))
+          .onPressed,
       isNull,
     );
     await tester.enterText(field, '자연·몸');
@@ -208,7 +214,9 @@ void main() {
     usePhoneSize(tester);
     final blocks = TestBlocks();
     final list = await blocks.seedPage('s010');
-    await tester.pumpWidget(screen(blocks, PlaylistScreen(playlistId: list.id)));
+    await tester.pumpWidget(
+      screen(blocks, PlaylistScreen(playlistId: list.id)),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('재생목록 메뉴'));
     await tester.pumpAndSettle();
@@ -226,7 +234,9 @@ void main() {
     await blocks.library.savePlaylist(
       Playlist(id: 'e', name: '빈 목록', createdAt: testNow, position: 0),
     );
-    await tester.pumpWidget(screen(blocks, const PlaylistScreen(playlistId: 'e')));
+    await tester.pumpWidget(
+      screen(blocks, const PlaylistScreen(playlistId: 'e')),
+    );
     await tester.pumpAndSettle();
     expect(find.text('이 목록에는 아직 단어가 없어요'), findsOneWidget);
   });

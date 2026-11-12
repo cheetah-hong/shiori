@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -26,12 +27,21 @@ final fixtureFileRecognizer = FixtureTextRecognizer(
 
 /// Fresh in-memory blocks per test, a fixed clock and file-backed samples.
 final class TestBlocks {
-  TestBlocks({LibraryRepository? library})
-    : library = library ?? InMemoryLibraryRepository();
+  TestBlocks({
+    LibraryRepository? library,
+    StudyPreferencesRepository? preferences,
+  }) : library = library ?? InMemoryLibraryRepository(),
+       preferences = preferences ?? InMemoryStudyPreferencesRepository();
 
   final LibraryRepository library;
   final reviews = InMemoryReviewRepository();
-  final preferences = InMemoryStudyPreferencesRepository();
+  final StudyPreferencesRepository preferences;
+
+  /// What a shuffled session is shuffled with. By default every card keeps
+  /// its place, so tests see cards in a known order even though 카드 순서
+  /// 섞기 is on; a test sets a seeded `Random` before pumping to see them
+  /// shuffled.
+  Random Function() sessionRandom = _KeepOrder.new;
   FixedClock clock = FixedClock(testNow);
 
   /// Block behind "샘플 페이지로 해 보기"; tests may swap it before pumping.
@@ -60,6 +70,7 @@ final class TestBlocks {
     libraryRepositoryProvider.overrideWithValue(library),
     reviewRepositoryProvider.overrideWithValue(reviews),
     studyPreferencesRepositoryProvider.overrideWithValue(preferences),
+    sessionRandomProvider.overrideWithValue(sessionRandom),
     devSamplesEnabledProvider.overrideWithValue(devSamples),
     sampleRecognizerProvider.overrideWithValue(sampleRecognizer),
     bundledDictionaryProvider.overrideWith((ref) async => dictionary),
@@ -133,4 +144,18 @@ void usePhoneSize(WidgetTester tester) {
   tester.view.physicalSize = const Size(1170, 2532);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
+}
+
+/// A `Random` that always picks the last place: in the session shuffle
+/// (each place from the last down swaps with a random place up to it) every
+/// card swaps with itself.
+final class _KeepOrder implements Random {
+  @override
+  int nextInt(int max) => max - 1;
+
+  @override
+  double nextDouble() => 0;
+
+  @override
+  bool nextBool() => false;
 }

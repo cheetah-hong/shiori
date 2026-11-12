@@ -121,6 +121,7 @@ void main() {
               scheduler: const LeitnerFourStepScheduler(),
               clock: blocks.clock,
               hidden: _FailingHide(),
+              random: blocks.sessionRandom,
             ),
           ),
         ],

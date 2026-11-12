@@ -7,10 +7,12 @@ import 'package:shiori/features/study/restudy_labels.dart';
 import 'package:shiori/shared/widgets.dart';
 import 'package:shiori_core/shiori_core.dart';
 
-/// 설정: the study options. Only the defaults are built (one shared record
-/// per word; 전체 + one playlist at a time); the other choices are listed as
-/// 준비 중 so the learner sees where the app is going, and cannot be picked.
-/// 학습 기록 also holds 모든 단어 처음부터 다시 학습 (asked first).
+/// 설정: the study options. 학습 세션 holds the daily goal (how many cards
+/// 홈 studies at a time) and 카드 순서 섞기. Of 학습 기록 and 학습 범위 only
+/// the defaults are built (one shared record per word; 전체 + one playlist
+/// at a time); the other choices are listed as 준비 중 so the learner sees
+/// where the app is going, and cannot be picked. 학습 기록 also holds 모든
+/// 단어 처음부터 다시 학습 (asked first).
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -40,6 +42,21 @@ class SettingsScreen extends ConsumerWidget {
         AsyncValue(:final value?, hasError: false) => ListView(
           padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
           children: [
+            const SectionLabel('학습 세션'),
+            _DailyGoalPicker(
+              goal: value.dailyGoal,
+              onPick: (goal) =>
+                  _save(context, ref, value.copyWith(dailyGoal: goal)),
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('카드 순서 섞기'),
+              subtitle: const Text('복습과 새 단어를 섞어서 보여요'),
+              value: value.shuffle,
+              onChanged: (on) =>
+                  _save(context, ref, value.copyWith(shuffle: on)),
+            ),
+            const Divider(),
             const SectionLabel('학습 기록'),
             _Choice(
               title: '재생목록끼리 공유',
@@ -81,6 +98,46 @@ class SettingsScreen extends ConsumerWidget {
       },
     );
   }
+}
+
+/// 하루 목표: 10 · 20 · 30 · 50 · 전부, one of them picked.
+class _DailyGoalPicker extends StatelessWidget {
+  const _DailyGoalPicker({required this.goal, required this.onPick});
+
+  final DailyGoal goal;
+  final ValueChanged<DailyGoal> onPick;
+
+  static String _label(DailyGoal goal) => switch (goal.cards) {
+    final n? => '$n',
+    null => '전부',
+  };
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: Space.sm),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('하루 목표', style: context.text.titleMedium),
+        const SizedBox(height: 2),
+        Text(
+          '홈 「오늘 학습」에서 한 번에 학습하는 카드 수예요. '
+          '재생목록에서 학습하면 그 목록을 모두 학습해요',
+          style: context.text.bodySmall,
+        ),
+        const SizedBox(height: Space.sm),
+        SegmentedButton<DailyGoal>(
+          showSelectedIcon: false,
+          segments: [
+            for (final g in DailyGoal.values)
+              ButtonSegment(value: g, label: Text(_label(g))),
+          ],
+          selected: {goal},
+          onSelectionChanged: (picked) => onPick(picked.single),
+        ),
+      ],
+    ),
+  );
 }
 
 /// One choice of a group, read as a radio button. Without [onTap] it is not

@@ -29,7 +29,14 @@ class HomeScreen extends ConsumerWidget {
     final now = ref.watch(clockProvider).now();
     final summary = ref.watch(homeSummaryProvider);
     final playlists = ref.watch(playlistsProvider);
-    final goal = ref.watch(studySettingsProvider).dailyGoal;
+    final preferences = ref.watch(studyPreferencesProvider).value;
+    // Not through the study service: the card shows a storage failure
+    // instead of failing to build.
+    final size = StudyService.sizeOf(
+      const AllWords(),
+      preferences?.dailyGoal ?? DailyGoal.ten,
+      ref.watch(studySettingsProvider),
+    );
 
     return Scaffold(
       body: SafeArea(
@@ -117,7 +124,10 @@ class HomeScreen extends ConsumerWidget {
                   ),
                   AsyncData(:final value) => _TodayCard(
                     summary: value,
-                    goal: goal,
+                    size: size,
+                    shuffle:
+                        preferences?.shuffle ??
+                        const StudyPreferences().shuffle,
                     canPick: playlists.value?.isNotEmpty ?? false,
                   ),
                   _ => const SizedBox(height: 168),
@@ -177,12 +187,18 @@ class HomeScreen extends ConsumerWidget {
 class _TodayCard extends StatelessWidget {
   const _TodayCard({
     required this.summary,
-    required this.goal,
+    required this.size,
+    required this.shuffle,
     required this.canPick,
   });
 
   final StudySummary? summary;
-  final int goal;
+
+  /// How many cards 오늘 학습 and 더 학습하기 take (the daily goal).
+  final SessionSize size;
+
+  /// 카드 순서 섞기 is on (said under the button).
+  final bool shuffle;
 
   /// There are playlists to study one of (재생목록 골라 학습).
   final bool canPick;
@@ -200,10 +216,11 @@ class _TodayCard extends StatelessWidget {
     final s = summary;
     final due = s?.dueCount ?? 0;
     final fresh = s?.newCount ?? 0;
-    final cards = (due + fresh) < goal ? due + fresh : goal;
+    final cards = size.of(due + fresh);
     final canStudy = cards > 0;
     // Nothing for today, but cards whose review time has not come: 더 학습하기.
-    final canStudyMore = !canStudy && (s?.aheadCount ?? 0) > 0;
+    final moreCards = size.of(s?.aheadCount ?? 0);
+    final canStudyMore = !canStudy && moreCards > 0;
     final numberStyle = TextStyle(
       color: t.sheet,
       fontSize: 40,
@@ -333,8 +350,14 @@ class _TodayCard extends StatelessWidget {
             const SizedBox(height: Space.sm),
             Text(
               canStudy
-                  ? '모든 재생목록에서 복습할 단어를 먼저, 남은 자리는 새 단어로 채워요'
-                  : RestudyLabels.moreHint,
+                  ? [
+                      switch (size) {
+                        AllCards() => '모든 재생목록의 복습할 단어와 새 단어를 모두 학습해요',
+                        UpTo() => '모든 재생목록에서 복습할 단어를 먼저, 남은 자리는 새 단어로 채워요',
+                      },
+                      if (shuffle) '순서는 섞어서 보여요',
+                    ].join('. ')
+                  : RestudyLabels.moreHint(moreCards),
               style: labelStyle.copyWith(fontSize: 12),
             ),
           ],

@@ -8,8 +8,10 @@ abstract final class RestudyLabels {
   /// session's header.
   static const String more = '더 학습하기';
 
-  /// Under the 더 학습하기 button where today's study button would be off.
-  static const String moreHint = '복습할 때가 된 단어는 없어요. 기억 단계가 낮은 단어부터 미리 학습해요';
+  /// Under the 더 학습하기 button where today's study button would be off;
+  /// [cards] is how many the session brings forward.
+  static String moreHint(int cards) =>
+      '복습할 때가 된 단어는 없어요. 기억 단계가 낮은 단어부터 $cards장 미리 학습해요';
 
   /// A word's menu item.
   static const String resetWord = '처음부터 다시 학습';

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/data.dart';
@@ -16,12 +17,38 @@ final class StudyController extends AsyncNotifier<StudySession> {
   /// A write is on its way; presses meanwhile are ignored.
   bool _busy = false;
 
+  /// The session holds as many cards as [StudyService.sessionSizeFor] says
+  /// for the request's scope and the stored daily goal, shuffled when 카드
+  /// 순서 섞기 is on. The order stays for the session's life.
   @override
-  Future<StudySession> build() {
+  Future<StudySession> build() async {
     final service = ref.read(studyServiceProvider);
+    final preferences = await _preferences();
+    final size = service.sessionSizeFor(request.scope, preferences.dailyGoal);
     return request.more
-        ? service.startMoreSession(scope: request.scope, mode: request.mode)
-        : service.startSession(scope: request.scope, mode: request.mode);
+        ? service.startMoreSession(
+            scope: request.scope,
+            mode: request.mode,
+            size: size,
+            shuffle: preferences.shuffle,
+          )
+        : service.startSession(
+            scope: request.scope,
+            mode: request.mode,
+            size: size,
+            shuffle: preferences.shuffle,
+          );
+  }
+
+  /// The stored options; their defaults when they cannot be read, so
+  /// studying never waits on the settings.
+  Future<StudyPreferences> _preferences() async {
+    try {
+      return await ref.read(studyPreferencesProvider.future);
+    } on Exception catch (e, stack) {
+      debugPrint('study options not read, defaults used: $e\n$stack');
+      return const StudyPreferences();
+    }
   }
 
   /// A write (an answer, a hide, an undo) is on its way.

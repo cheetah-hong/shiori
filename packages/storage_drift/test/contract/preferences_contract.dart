@@ -39,6 +39,24 @@ void preferencesContract(
       },
     );
 
+    test(
+      'every daily goal and both card orders are stored and read back',
+      () async {
+        for (final goal in DailyGoal.values) {
+          for (final shuffle in [true, false]) {
+            final p = StudyPreferences(dailyGoal: goal, shuffle: shuffle);
+            await prefs().save(p);
+            expect(await prefs().load(), p, reason: '$goal $shuffle');
+          }
+        }
+      },
+    );
+
+    test('nothing stored: daily goal 10, cards shuffled', () async {
+      final p = await prefs().load();
+      expect((p.dailyGoal, p.shuffle), (DailyGoal.ten, true));
+    });
+
     test('saving again replaces what was stored', () async {
       await prefs().save(
         const StudyPreferences(recordMode: RecordMode.perPlaylist),

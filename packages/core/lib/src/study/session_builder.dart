@@ -1,11 +1,14 @@
+import 'dart:math';
+
 import 'package:shiori_core/src/capture/text/py.dart';
 import 'package:shiori_core/src/models/library.dart';
 import 'package:shiori_core/src/models/review.dart';
 import 'package:shiori_core/src/study/study_session.dart';
 
-/// Fills a session up to [goal]: due reviews first (oldest due first),
-/// then new words in textbook order (for example 복습 4 + 새 단어 6).
-/// Hidden words (이미 알아요) are left out; their cards wait for them.
+/// Fills a session up to [goal] (null: every card): due reviews first
+/// (oldest due first), then new words in textbook order (for example 복습 4
+/// + 새 단어 6). Hidden words (이미 알아요) are left out; their cards wait
+/// for them.
 final class SessionBuilder {
   const SessionBuilder();
 
@@ -13,7 +16,7 @@ final class SessionBuilder {
     required List<Word> words,
     required Map<String, ReviewCard> cards,
     required DateTime now,
-    required int goal,
+    required int? goal,
   }) {
     final shown = [
       for (final w in words)
@@ -31,7 +34,7 @@ final class SessionBuilder {
       for (final w in shown)
         if (!cards.containsKey(w.id)) SessionItem(word: w, before: null),
     ];
-    final take = goal < 0 ? 0 : goal;
+    final take = _limit(goal, due.length + fresh.length);
     final picked = [
       ...due.take(take),
       ...fresh.take(take - due.take(take).length),
@@ -43,14 +46,15 @@ final class SessionBuilder {
     );
   }
 
-  /// 더 학습하기: up to [goal] cards whose review time has not come yet,
+  /// 더 학습하기: up to [goal] (null: every) cards whose review time has not
+  /// come yet,
   /// lowest level first, then the earliest review, then the words' order.
   /// Due reviews, new words and hidden words are left out.
   StudySession buildMore({
     required List<Word> words,
     required Map<String, ReviewCard> cards,
     required DateTime now,
-    required int goal,
+    required int? goal,
   }) {
     final waiting = stableSorted(
       [
@@ -64,7 +68,7 @@ final class SessionBuilder {
       },
     );
     final picked = [
-      for (final p in waiting.take(goal < 0 ? 0 : goal))
+      for (final p in waiting.take(_limit(goal, waiting.length)))
         SessionItem(word: p.word, before: p.card, ahead: true),
     ];
     return StudySession(
@@ -73,4 +77,28 @@ final class SessionBuilder {
       startedAt: now,
     );
   }
+
+  /// [session] with its cards in a random order (카드 순서 섞기): the same
+  /// cards, only the order changes. Each place from the last down swaps
+  /// with a place picked by [random] up to it (Fisher–Yates).
+  static StudySession shuffled(StudySession session, Random random) {
+    final cards = [...session.queue];
+    for (var i = cards.length - 1; i > 0; i--) {
+      final j = random.nextInt(i + 1);
+      final card = cards[i];
+      cards[i] = cards[j];
+      cards[j] = card;
+    }
+    return StudySession(
+      queue: List.unmodifiable(cards),
+      total: session.total,
+      startedAt: session.startedAt,
+    );
+  }
+
+  static int _limit(int? goal, int available) => switch (goal) {
+    null => available,
+    final n when n < 0 => 0,
+    final n => n,
+  };
 }

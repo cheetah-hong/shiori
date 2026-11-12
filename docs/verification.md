@@ -2402,3 +2402,71 @@ iPhone 17 시뮬레이터(실제 사전·발음 asset)에서 `save` → 앱 종�
 | `app/test/features/word_speech_printed_ending_test.dart` (새, 6) | E4 `X だ`·`X な`의 소리 요청 = X 단어의 요청(악센트 포함), 음 높이 선의 지정 악센트, 예문 소리 속 단어. E5 표에 꼬리 붙은 꼴이 있으면 그대로, 어느 쪽도 없으면 저장된 꼴·추정. E6 듣고 맞히기 자동 재생·다시 듣기가 X의 요청 |
 
 결과: core **752**(+8) · app **337**(+6) · jmdict_block **37**(로컬 포함, 그대로) 통과, analyze 문제 없음, 생성기 `--check` 3개 통과. 화면 모양은 바뀌지 않아 스크린샷은 없습니다.
+
+## 36. 한 번에 학습하는 장 수(재생목록은 전부, 홈은 하루 목표)와 카드 순서 섞기 (2026-11-12)
+
+지금까지는 어디서 시작해도 한 세션이 10장이었습니다. 이제 재생목록에서 학습하면 그 목록에서 지금 할 수 있는 카드 전부를, 홈에서 학습하면 설정의 하루 목표만큼을 학습합니다.
+설정에 「카드 순서 섞기」(기본 켬)를 더했습니다. 복습 간격·학습 방식·방식별 기록·「다시 학습」 카드가 세션 안에서 다시 나오는 규칙은 그대로입니다. 저장 스키마는 v5 그대로입니다.
+
+### 36.1 규칙
+
+| 진입 | 범위 | 장 수 |
+|---|---|---|
+| 홈 「오늘 학습 시작」·「더 학습하기」 | 전체(`AllWords`) | 하루 목표: 10 · 20 · 30 · 50 · 전부 (기본 10) |
+| 홈 「재생목록 골라 학습」 → 전체 | 전체 | 하루 목표 |
+| 홈 「재생목록 골라 학습」 → 목록 하나 | 목록(`PlaylistOnly`) | 전부 |
+| 재생목록 화면 「이 목록 학습」·「더 학습하기」 | 목록 | 전부 |
+
+- 장 수는 범위로 정합니다(`StudyService.sizeOf` / `sessionSizeFor`, `SessionSize` = `UpTo(n)` 또는 `AllCards()`). 기본 목표 10은 `StudySettings.dailyGoal` 값입니다.
+- 고르는 카드는 지금과 같습니다: 오늘 학습은 복습(때가 이른 것 먼저) → 새 단어(목록 순), 더 학습하기는 기억 단계 낮은 것 → 복습 날짜 이른 것. 장 수만큼 고른 **뒤에** 섞습니다.
+  그래서 섞기를 켜든 끄든 같은 카드를 고르고, 하루 목표가 있어도 복습 카드가 밀려나지 않습니다.
+- 섞기는 세션 전체(복습과 새 단어 함께)에 한 번, 세션을 만들 때만 합니다(Fisher–Yates, `SessionBuilder.shuffled`). 「다시 학습」을 누른 카드는 전처럼 큐 맨 뒤로 갑니다.
+  학습 화면이 열려 있는 동안 순서는 그대로이고, 다시 열면 새로 섞습니다.
+- 버튼: 홈 「오늘 학습 시작 · n장」(n = 하루 목표와 할 수 있는 카드 중 작은 쪽), 재생목록 「이 목록 학습 · n장」(할 수 있는 카드 전부).
+  「더 학습하기」 버튼 글자는 그대로이고, 아래 안내에 「… n장 미리 학습해요」로 장 수를 보입니다.
+
+### 36.2 바꾼 것
+
+| 항목 | 위치 | 내용 |
+|---|---|---|
+| 장 수 | `packages/core/lib/src/study/session_size.dart` (새) | `SessionSize`(`UpTo`·`AllCards`), `of(available)` = 버튼의 n |
+| 설정 값 | `packages/core/lib/src/models/study_preferences.dart` | `DailyGoal`(10·20·30·50·전부, 저장 이름 `10`·`20`·`30`·`50`·`all`), `StudyPreferences.dailyGoal`(기본 10)·`shuffle`(기본 켬) |
+| 세션 | `study/session_builder.dart`, `study/study_service.dart` | 빌더의 `goal`이 null이면 전부, `shuffled`. `startSession`·`startMoreSession`에 `size`·`shuffle`(기존 `goal` 인자 그대로), 생성자 `random`(테스트는 시드 고정) |
+| 저장 | `packages/storage_drift/lib/src/drift_study_preferences_repository.dart` | `settings` 표에 `study.daily_goal`(10이 아닐 때만)·`study.shuffle`(끔일 때만 `off`). 기본값이면 행을 두지 않아 이전 파일과 행이 같음. 모르는 값은 기본값으로 읽고 행은 다음 저장 전까지 그대로(`study.mode`와 같음: 다음에 설정을 저장하면 그때의 값으로 바뀜) |
+| 앱 | `app/lib/app/blocks.dart` (`sessionRandomProvider`), `features/study/study_controller.dart`, `features/home/home_screen.dart`, `features/playlists/playlist_screen.dart`, `features/settings/settings_screen.dart`, `features/study/restudy_labels.dart` | 세션을 열 때 설정을 읽어 장 수·섞기를 넘김(설정을 못 읽으면 기본값), 버튼 장 수, 설정 맨 위 「학습 세션」(하루 목표 고르기, 카드 순서 섞기 스위치) |
+
+### 36.3 큰 세션
+
+할 수 있는 카드를 고를 때는 지금도 범위의 모든 단어로 후보를 만든 뒤 자르므로, 「전부」라고 더 많이 만들지 않습니다. 답할 때마다 남은 큐를 새 목록으로 만듭니다(O(n)).
+메모리 저장소로 잰 값(Apple Silicon, `dart run`, 저장소 쓰기를 뺀 세션 전환만):
+
+| 카드 | 세션 만들기(섞기 포함) | 전부 알고있음 | 한 장당 |
+|---|---|---|---|
+| 300 | 4.4 ms | 1.8 ms | 6 µs |
+| 3,000 | 2.3 ms | 26.5 ms | 9 µs |
+
+진행 표시는 전처럼 「n / N」입니다. 「다시 학습」 카드는 맨 뒤로 가므로 300장 세션이면 남은 카드를 다 본 뒤에 다시 나옵니다(규칙 그대로).
+
+### 36.4 테스트
+
+| 파일 | 내용 |
+|---|---|
+| `packages/core/test/study/session_size_test.dart` (새, 19) | S1 목록 하나: 때가 된 7 + 새 단어 25 = 32장(하루 목표와 무관), 숨긴 단어·다른 목록 단어 제외, 일본어 떠올리기는 뜻 없는 단어 제외, 더 학습하기는 그 목록 전부. S2 전체: 10·20·30·50·전부 → 10·20·30·40·40, 7장뿐이면 모두 7, 크기를 안 주면 `StudySettings.dailyGoal`. S3 전체 더 학습하기는 하루 목표만큼. S4 시드에 따라 순서만 바뀜(카드 같음, 같은 시드 같은 순서), 끄면 지금 순서와 같음, 더 학습하기도 섞임, 하루 목표가 있어도 복습 카드 유지. S7 섞인 세션에서 다시 학습은 맨 뒤·진행도 그대로·기록은 세션 방식, 스케줄러 결과 같음, 미리 학습 카드의 알고있음은 카드 그대로. 3,000장 세션 |
+| `packages/storage_drift/test/session_preferences_test.dart` (새, 8) · `contract/preferences_contract.dart` (+2, 메모리·drift 각각) | S5 하루 목표 5개 × 섞기 켬/끔 저장·읽기(메모리·drift 공통), 기본값 10·켬, 파일을 닫고 다시 열어도 그대로, 기본값이면 새 행 없음, 모르는 값 4가지는 기본값으로 읽고 행 유지, `==`·`hashCode`·`copyWith` |
+| `app/test/features/session_size_settings_test.dart` (새, 5) | S6 설정: 기본 10·켬, 고르면 바로 저장, 스위치 끔·켬, 다른 설정 유지, 저장 실패 알림 |
+| `app/test/features/session_size_buttons_test.dart` (새, 14) | S6 홈 하루 목표 5개의 버튼 장 수와 「0 / n」, 「전부」 안내, 설정을 바꾸면 홈 숫자가 바뀜, 범위 시트의 목록 = 전부·전체 = 하루 목표, 재생목록 「이 목록 학습 · 32장」, 더 학습하기 안내의 장 수(홈 20·목록 25), 섞기 끔·켬의 첫 카드 |
+| 고친 것 | `app/test/support/harness.dart`: 섞기에 쓰는 무작위를 순서가 그대로인 것으로 끼움(테스트가 시드를 넣으면 섞임), 설정 저장소를 바꿔 끼울 수 있게 함. `playlist_screen_test.dart`·`restudy_playlist_test.dart`: 버튼 글자가 「이 목록 학습 · n장」이 되어 `textContaining`으로. `known_hide_study_test.dart`: 직접 만드는 학습 서비스에 같은 무작위 |
+
+결과: core **771**(+19) · storage_drift **222**(+12) · app **356**(+19) 통과, analyze 문제 없음.
+
+### 36.5 스크린샷 (iPhone 17 시뮬레이터, dev, 실제 asset, 테스트가 넣은 일상 낱말 40개)
+
+`cd app && flutter drive -d <iPhone 17> --flavor dev --driver=test_driver/integration_test.dart --target=integration_test/session_size_screenshots_test.dart`
+
+| 파일 | 화면 |
+|---|---|
+| `115_settings_study_session.png` | 설정 맨 위 「학습 세션」: 하루 목표 10·20·30·50·전부(20 선택), 카드 순서 섞기 켬 |
+| `116_home_daily_goal_20.png` | 홈: 복습 2 · 새 단어 38, 「오늘 학습 시작 · 20장」, 안내 「… 순서는 섞어서 보여요」 |
+| `117_home_daily_goal_all.png` | 하루 목표 「전부」: 「오늘 학습 시작 · 40장」, 「모든 재생목록의 복습할 단어와 새 단어를 모두 학습해요」 |
+| `118_playlist_study_all.png` | 재생목록(32단어): 「이 목록 학습 · 32장」(하루 목표와 무관) |
+| `119_playlist_session_shuffled.png` | 그 목록 학습 「0 / 32」, 섞여서 목록 첫 단어가 아닌 카드부터 |

@@ -17,14 +17,27 @@ final class DriftStudyPreferencesRepository
   /// from before modes.
   static const String modeKey = 'study.mode';
 
+  /// 하루 목표, kept only when it is not 10 (the default).
+  static const String dailyGoalKey = 'study.daily_goal';
+
+  /// 카드 순서 섞기, kept only when off (`off`); on is the default.
+  static const String shuffleKey = 'study.shuffle';
+  static const String _shuffleOff = 'off';
+
+  static const _keys = [
+    recordModeKey,
+    scopeModeKey,
+    modeKey,
+    dailyGoalKey,
+    shuffleKey,
+  ];
+
   /// A value this build does not know (a newer app wrote it) reads as the
   /// default and is left in the row.
   @override
   Future<StudyPreferences> load() async {
     final s = _db.settings;
-    final rows = await (_db.select(
-      s,
-    )..where((r) => r.key.isIn([recordModeKey, scopeModeKey, modeKey]))).get();
+    final rows = await (_db.select(s)..where((r) => r.key.isIn(_keys))).get();
     final stored = {for (final r in rows) r.key: r.value};
     const defaults = StudyPreferences();
     return StudyPreferences(
@@ -35,12 +48,28 @@ final class DriftStudyPreferencesRepository
           StudyScopeMode.fromStored(stored[scopeModeKey] ?? '') ??
           defaults.scopeMode,
       mode: StudyMode.values.asNameMap()[stored[modeKey]] ?? defaults.mode,
+      dailyGoal:
+          DailyGoal.fromStored(stored[dailyGoalKey] ?? '') ??
+          defaults.dailyGoal,
+      shuffle: switch (stored[shuffleKey]) {
+        _shuffleOff => false,
+        _ => defaults.shuffle,
+      },
     );
   }
 
   @override
   Future<void> save(StudyPreferences preferences) => _db.batch((b) {
-    final mode = preferences.mode;
+    const defaults = StudyPreferences();
+    // Options left at their default keep no row (a file from before they
+    // existed holds the same rows).
+    final optional = {
+      modeKey: preferences.mode == defaults.mode ? null : preferences.mode.name,
+      dailyGoalKey: preferences.dailyGoal == defaults.dailyGoal
+          ? null
+          : preferences.dailyGoal.storedAs,
+      shuffleKey: preferences.shuffle == defaults.shuffle ? null : _shuffleOff,
+    };
     b.insertAllOnConflictUpdate(_db.settings, [
       SettingsCompanion.insert(
         key: recordModeKey,
@@ -50,11 +79,15 @@ final class DriftStudyPreferencesRepository
         key: scopeModeKey,
         value: preferences.scopeMode.storedAs,
       ),
-      if (mode != StudyMode.meaning)
-        SettingsCompanion.insert(key: modeKey, value: mode.name),
+      for (final MapEntry(:key, :value) in optional.entries)
+        if (value != null) SettingsCompanion.insert(key: key, value: value),
     ]);
-    if (mode == StudyMode.meaning) {
-      b.deleteWhere(_db.settings, (r) => r.key.equals(modeKey));
+    final unset = [
+      for (final MapEntry(:key, :value) in optional.entries)
+        if (value == null) key,
+    ];
+    if (unset.isNotEmpty) {
+      b.deleteWhere(_db.settings, (r) => r.key.isIn(unset));
     }
   });
 }

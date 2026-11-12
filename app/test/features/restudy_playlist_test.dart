@@ -102,7 +102,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('지금은 학습할 카드가 없어요'), findsNothing);
-    expect(find.text('이 목록 학습'), findsNothing);
+    expect(find.textContaining('이 목록 학습'), findsNothing);
     await tester.tap(find.text('더 학습하기'));
     await tester.pumpAndSettle();
 

@@ -309,8 +309,9 @@ class _BodyState extends ConsumerState<_Body> {
 
 enum _WordAction { remove, addElsewhere, reset }
 
-/// 이 목록 학습; with nothing to study today, 더 학습하기 when some card can
-/// be brought forward, otherwise off.
+/// 이 목록 학습 (every card it can study, 「· n장」); with nothing to study
+/// today, 더 학습하기 (every card that can be brought forward) when some
+/// card can, otherwise off.
 class _StudyButton extends StatelessWidget {
   const _StudyButton({
     required this.scope,
@@ -337,7 +338,10 @@ class _StudyButton extends StatelessWidget {
             label: const Text(RestudyLabels.more),
           ),
           const SizedBox(height: Space.xs),
-          Text(RestudyLabels.moreHint, style: context.text.bodySmall),
+          Text(
+            RestudyLabels.moreHint(aheadCards),
+            style: context.text.bodySmall,
+          ),
         ],
       );
     }
@@ -348,7 +352,9 @@ class _StudyButton extends StatelessWidget {
             ? null
             : () => pushScreen<void>(context, StudyScreen(scope: scope)),
         icon: const Icon(Icons.play_arrow_rounded),
-        label: Text(studyCards == 0 ? '지금은 학습할 카드가 없어요' : '이 목록 학습'),
+        label: Text(
+          studyCards == 0 ? '지금은 학습할 카드가 없어요' : '이 목록 학습 · $studyCards장',
+        ),
       ),
     );
   }

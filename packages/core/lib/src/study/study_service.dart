@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:shiori_core/src/models/library.dart';
 import 'package:shiori_core/src/models/review.dart';
 import 'package:shiori_core/src/models/study_mode.dart';
@@ -8,6 +10,7 @@ import 'package:shiori_core/src/ports/repositories.dart';
 import 'package:shiori_core/src/ports/review_scheduler.dart';
 import 'package:shiori_core/src/study/choice_maker.dart';
 import 'package:shiori_core/src/study/session_builder.dart';
+import 'package:shiori_core/src/study/session_size.dart';
 import 'package:shiori_core/src/study/study_calendar.dart';
 import 'package:shiori_core/src/study/study_session.dart';
 import 'package:shiori_core/src/study/study_settings.dart';
@@ -91,7 +94,9 @@ final class StudyService {
     this.preferences = const StudyPreferences(),
     this.choiceMaker = const ChoiceMaker(),
     HiddenWordRepository? hidden,
-  }) : calendar = StudyCalendar.checked(settings.dayStartHour),
+    Random Function()? random,
+  }) : random = random ?? Random.new,
+       calendar = StudyCalendar.checked(settings.dayStartHour),
        hidden =
            hidden ??
            switch (library) {
@@ -112,6 +117,27 @@ final class StudyService {
   /// Picks the options of 객관식 and 듣고 맞히기.
   final ChoiceMaker choiceMaker;
   final StudyCalendar calendar;
+
+  /// What a shuffled session is shuffled with (a seeded one in tests).
+  final Random Function() random;
+
+  /// How many cards a session of [scope] takes ([sizeOf] with [settings]).
+  SessionSize sessionSizeFor(StudyScope scope, DailyGoal goal) =>
+      sizeOf(scope, goal, settings);
+
+  /// How many cards a session of [scope] takes: 전체 the daily [goal], one
+  /// playlist every card. The default goal (10) is [settings]' session size.
+  static SessionSize sizeOf(
+    StudyScope scope,
+    DailyGoal goal,
+    StudySettings settings,
+  ) => switch (scope) {
+    PlaylistOnly() => const AllCards(),
+    AllWords() when goal == const StudyPreferences().dailyGoal => UpTo(
+      settings.dailyGoal,
+    ),
+    AllWords() => goal.size,
+  };
 
   /// The learner's options. [RecordMode.perPlaylist] is not built yet:
   /// study keeps one shared record per word whatever is stored.
@@ -193,15 +219,35 @@ final class StudyService {
     StudyScope scope = const AllWords(),
     StudyMode mode = StudyMode.meaning,
     int? goal,
-  }) => _startWith(builder.build, scope, mode, goal);
+    SessionSize? size,
+    bool shuffle = false,
+  }) => _startWith(
+    builder.build,
+    scope,
+    mode,
+    size ?? UpTo(goal ?? settings.dailyGoal),
+    shuffle: shuffle,
+  );
 
   /// 더 학습하기: a session of cards whose review time has not come yet
   /// (`SessionBuilder.buildMore`).
+  ///
+  /// For both: [size] (else up to [goal], else `StudySettings.dailyGoal`)
+  /// cards, picked by the builder's order and then, with [shuffle], put in
+  /// a random order.
   Future<StudySession> startMoreSession({
     StudyScope scope = const AllWords(),
     StudyMode mode = StudyMode.meaning,
     int? goal,
-  }) => _startWith(builder.buildMore, scope, mode, goal);
+    SessionSize? size,
+    bool shuffle = false,
+  }) => _startWith(
+    builder.buildMore,
+    scope,
+    mode,
+    size ?? UpTo(goal ?? settings.dailyGoal),
+    shuffle: shuffle,
+  );
 
   /// The modes that can be studied now: 뜻 맞히기 and 일본어 떠올리기 always,
   /// 객관식 when the library holds four words whose meanings stand apart, and
@@ -249,13 +295,14 @@ final class StudyService {
       required List<Word> words,
       required Map<String, ReviewCard> cards,
       required DateTime now,
-      required int goal,
+      required int? goal,
     })
     build,
     StudyScope scope,
     StudyMode mode,
-    int? goal,
-  ) async {
+    SessionSize size, {
+    required bool shuffle,
+  }) async {
     final cardScope = cardScopeFor(scope);
     final scoped = await _wordsOf(scope);
     final pool = mode.isMultipleChoice ? await library.words() : <Word>[];
@@ -268,12 +315,16 @@ final class StudyService {
       scope: cardScope,
       mode: mode,
     );
-    final session = build(
+    final built = build(
       words: words,
       cards: cards,
       now: clock.now(),
-      goal: goal ?? settings.dailyGoal,
+      goal: switch (size) {
+        UpTo(:final cards) => cards,
+        AllCards() => null,
+      },
     );
+    final session = shuffle ? SessionBuilder.shuffled(built, random()) : built;
     return StudySession(
       queue: session.queue,
       total: session.total,

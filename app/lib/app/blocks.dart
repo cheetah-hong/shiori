@@ -13,6 +13,8 @@
 /// See docs/architecture.md for the full map and the next blocks.
 library;
 
+import 'dart:math';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/adapters/accent_data.dart';
@@ -154,6 +156,10 @@ final studySettingsProvider = Provider<StudySettings>(
   (ref) => const StudySettings(),
 );
 
+/// What a shuffled session (설정 › 카드 순서 섞기) is shuffled with. Tests
+/// plug in a seeded one.
+final sessionRandomProvider = Provider<Random Function()>((ref) => Random.new);
+
 /// Review timing: four Leitner steps. Next: FSRS.
 final reviewSchedulerProvider = Provider<ReviewScheduler>(
   (ref) => LeitnerFourStepScheduler.checked(
@@ -228,6 +234,7 @@ final studyServiceProvider = Provider<StudyService>(
     scheduler: ref.watch(reviewSchedulerProvider),
     clock: ref.watch(clockProvider),
     settings: ref.watch(studySettingsProvider),
+    random: ref.watch(sessionRandomProvider),
     // Only the record mode shapes the service; until the options are read
     // (or when they cannot be), the default. Watching the whole options
     // would rebuild the service, and every summary with it, when the study
