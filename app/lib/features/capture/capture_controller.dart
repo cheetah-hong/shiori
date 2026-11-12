@@ -42,9 +42,13 @@ final class CaptureReady extends CaptureState {
 }
 
 final class CaptureFailed extends CaptureState {
-  const CaptureFailed(this.message);
+  const CaptureFailed(this.message, {this.scan});
 
   final String message;
+
+  /// The OCR passes when the page was read but gave no review (no word, or
+  /// the extractor stopped): offered for export. Null when it was not read.
+  final OcrScan? scan;
 }
 
 /// Reads a page photo's bytes for the review screen's evidence view; null
@@ -131,8 +135,9 @@ final class CaptureController extends Notifier<CaptureState> {
     PhotoReader? keepPhoto,
   }) async {
     state = CaptureReading(image);
+    OcrScan? read;
     try {
-      final scan = await recognizer.recognize(image);
+      final scan = read = await recognizer.recognize(image);
       if (!ref.mounted) return;
       final photo = keepPhoto == null ? null : await keepPhoto(image);
       if (!ref.mounted) return;
@@ -147,8 +152,9 @@ final class CaptureController extends Notifier<CaptureState> {
       );
       if (!ref.mounted) return;
       state = draft.entries.isEmpty && draft.skippedKnown.isEmpty
-          ? const CaptureFailed(
+          ? CaptureFailed(
               '이 사진에서 단어를 찾지 못했어요. 페이지 전체가 똑바로 나오게 다시 찍어 주세요.',
+              scan: scan,
             )
           : CaptureReady(
               draft: draft,
@@ -160,20 +166,20 @@ final class CaptureController extends Notifier<CaptureState> {
     } on TextRecognitionException catch (e) {
       if (ref.mounted) state = CaptureFailed(e.message);
     } on Exception catch (e, stack) {
-      _unexpected(e, stack);
+      _unexpected(e, stack, read);
     } on Error catch (e, stack) {
       // A bug in a block. Report it like any uncaught
       // error, but do not leave the reading overlay on screen forever.
-      _unexpected(e, stack);
+      _unexpected(e, stack, read);
     }
   }
 
-  void _unexpected(Object error, StackTrace stack) {
+  void _unexpected(Object error, StackTrace stack, OcrScan? scan) {
     FlutterError.reportError(
       FlutterErrorDetails(exception: error, stack: stack, library: 'capture'),
     );
     if (ref.mounted) {
-      state = const CaptureFailed('단어를 정리하다가 문제가 생겼어요. 다시 시도해 주세요.');
+      state = CaptureFailed('단어를 정리하다가 문제가 생겼어요. 다시 시도해 주세요.', scan: scan);
     }
   }
 }

@@ -9,14 +9,17 @@
 ///    (on a tie, Japanese with kana in it).
 /// 3. Lines cut off at the photo's edge (the facing page) become noise.
 /// 4. Runs are cleaned (checkboxes, POS badges, stray marks) and classified;
-///    `漢字(かな)` gives a headword and its reading. Blank-cell dashes, box
-///    glyphs, legend and footer lines, and furigana over a sentence are noise.
+///    `漢字(かな)` gives a headword and its reading (with a prefix or an
+///    ending only as the dictionary reads it, [wrappedReading]). Blank-cell
+///    dashes, box glyphs, legend and footer lines, and furigana over a
+///    sentence are noise.
 /// 5. Korean lines that continue the line above and Japanese sentences that
 ///    wrap are joined.
 library;
 
 import 'package:shiori_core/src/capture/text/word_list_marks.dart';
 import 'package:shiori_core/src/extract/fragment.dart';
+import 'package:shiori_core/src/extract/paren_reading.dart';
 import 'package:shiori_core/src/extract/script_runs.dart';
 import 'package:shiori_core/src/extract/touching_boxes.dart';
 import 'package:shiori_core/src/models/ocr.dart';
@@ -45,25 +48,43 @@ const double furiganaSize = 0.8;
 
 /// Cuts every line of both passes into runs of one script, keeps Japanese
 /// from the Japanese pass and Korean from the Korean pass, drops what one
-/// pass read twice, and classifies the pieces.
-List<Fragment> collectFragments(OcrScan scan) {
+/// pass read twice, and classifies the pieces. [dictionary] (its forms
+/// looked up before, [fragmentProbes]) checks bracketed readings with a
+/// prefix or an ending, checkboxes glued to a word and bracketed lines read
+/// at the lowest confidence; without it those stay as OCR read them.
+List<Fragment> collectFragments(
+  OcrScan scan, {
+  FragmentDictionary? dictionary,
+}) {
   final runs = [
     ..._runsOf(scan.japanese.lines, OcrPass.japanese),
     ..._runsOf(joinTouchingKorean(scan.korean.lines), OcrPass.korean),
   ];
-  final kept = _resolve(runs);
+  final kept = _resolve(runs, dictionary);
   final pieces = <_Piece>[];
   final checkboxColumns = _checkboxColumns(kept);
   final lineHeight = _japaneseLineHeight(kept);
   for (final r in kept) {
     pieces.addAll(
-      _clean(r, checkboxColumns: checkboxColumns, lineHeight: lineHeight),
+      _clean(
+        r,
+        checkboxColumns: checkboxColumns,
+        lineHeight: lineHeight,
+        dictionary: dictionary,
+      ),
     );
   }
   final merged = _joinJapanese(_joinKorean(_markBands(_markFurigana(pieces))));
   merged.sort(_readingOrder);
   return _number(merged);
 }
+
+/// The printed forms [collectFragments] may ask its dictionary about for
+/// [scan] (the Japanese pass's runs).
+Set<String> fragmentProbes(OcrScan scan) => {
+  for (final r in _runsOf(scan.japanese.lines, OcrPass.japanese))
+    if (r.script == Script.japanese) ...fragmentProbeForms(r.text),
+};
 
 /// A run placed on the page.
 final class _Run {
@@ -268,7 +289,7 @@ int _letters(String s) =>
 
 /// Which runs survive: each script from the pass that reads it, one run per
 /// place.
-List<_Run> _resolve(List<_Run> runs) {
+List<_Run> _resolve(List<_Run> runs, FragmentDictionary? dictionary) {
   final ja = runs.where((r) => r.pass == OcrPass.japanese).toList();
   final ko = runs.where((r) => r.pass == OcrPass.korean).toList();
   final koKorean = ko.where((r) => r.script == Script.korean).toList();
@@ -291,6 +312,11 @@ List<_Run> _resolve(List<_Run> runs) {
   // A Japanese run and a Korean run on one place: keep one.
   final dropped = <_Run>{};
   for (final j in kept.where((r) => r.script == Script.japanese)) {
+    // A bracketed reading the dictionary confirms is no garbage, even at
+    // the lowest confidence (a red accent rule over the print): where it
+    // would lose, both stay and the pairing decides. Asked once per run.
+    late final confirmed =
+        dictionary != null && confirmsBracketedReading(j.text, dictionary);
     for (final k in kept.where((r) => r.script == Script.korean)) {
       if (j.pass == k.pass || !_overlaps(j, k)) continue;
       // The Korean pass kept this Japanese inside its Korean text.
@@ -316,7 +342,7 @@ List<_Run> _resolve(List<_Run> runs) {
       }
       // The Japanese pass's lowest confidence over Korean text: garbage.
       if (atLowestConfidence(j.conf) && k.conf > j.conf) {
-        dropped.add(j);
+        if (!confirmed) dropped.add(j);
         continue;
       }
       if (_mixedLine(j, k, runs)) {
@@ -330,6 +356,7 @@ List<_Run> _resolve(List<_Run> runs) {
           (j.conf == k.conf &&
               (_kanaCount(j.text) >= 1 && _letters(j.text) >= 2 ||
                   _letters(k.text) <= 1));
+      if (!japaneseWins && confirmed) continue;
       dropped.add(japaneseWins ? k : j);
     }
   }
@@ -437,8 +464,6 @@ final Set<int> _boxRowGlyphs = '□■☐☑☒口ロコー'.runes.toSet();
 
 /// Kanji OCR reads for a lone checkbox.
 const Set<String> _boxKanji = {'問', '目'};
-final RegExp _leadingCheckbox = RegExp('^(?:[□■☐☑☒|｜]+\\s*|ー+(?=[^ー\\s]))');
-final RegExp _leadingLookalikeBox = RegExp('^[口ロ](?:\\s+|(?=[^\\s]))');
 
 /// Where the checkbox columns are: three or more Japanese runs whose left
 /// edges line up (within a line height) start with a box glyph; each such
@@ -482,12 +507,6 @@ List<double> _checkboxColumns(List<_Run> runs) {
   close();
   return columns;
 }
-
-final RegExp _inlineReading = RegExp(
-  r'^([\p{Script=Han}々〆][\p{Script=Han}々〆\p{Script=Hiragana}\p{Script=Katakana}ー]*?)\s*'
-  r'[(（\[［【「]\s*([\p{Script=Hiragana}\p{Script=Katakana}ー\s/／・]+?)\s*[)）\]］】」]?\s*$',
-  unicode: true,
-);
 
 /// `学校がっこう］`: the opening bracket was not read.
 final RegExp _inlineReadingNoOpen = RegExp(
@@ -535,12 +554,14 @@ final RegExp _strayMarks = RegExp('^[\'‘’`´ˇ✓✔,.]+|[\'‘’`´ˇ✓�
 final RegExp _leadingNote = RegExp(r'^\(([^()]*)\)\s*');
 final RegExp _trailingNote = RegExp(r'\s*\(([^()]*)\)$');
 final RegExp _supplement = RegExp(r'\s+\*\s*(.+)$');
+final RegExp _loneEndMark = RegExp(r'\s+[!?！？]$');
 final RegExp _koreanSentenceEnd = RegExp(r'[.?!。？！][)"\x27’”]*$');
 
 List<_Piece> _clean(
   _Run r, {
   required List<double> checkboxColumns,
   double? lineHeight,
+  FragmentDictionary? dictionary,
 }) {
   final base = _Piece(
     text: r.text,
@@ -558,6 +579,7 @@ List<_Piece> _clean(
       base,
       checkboxColumns: checkboxColumns,
       lineHeight: lineHeight,
+      dictionary: dictionary,
     ),
     Script.korean when _vertical(base) => [base],
     Script.korean => [_cleanKorean(base)],
@@ -576,6 +598,7 @@ List<_Piece> _cleanJapanese(
   _Piece p, {
   required List<double> checkboxColumns,
   double? lineHeight,
+  FragmentDictionary? dictionary,
 }) {
   var text = p.text;
   var corrected = false;
@@ -586,7 +609,7 @@ List<_Piece> _cleanJapanese(
       p.height <= blankMarkHeight * lineHeight) {
     return [p.copy(kind: FragmentKind.noise, corrected: true)];
   }
-  final box = _leadingCheckbox.firstMatch(text);
+  final box = leadingCheckbox.firstMatch(text);
   if (box != null) {
     text = text.substring(box.end);
     corrected = true;
@@ -615,13 +638,17 @@ List<_Piece> _cleanJapanese(
   if (atColumn && _boxKanji.contains(bare)) {
     return [p.copy(kind: FragmentKind.noise, corrected: true)];
   }
-  // A 口 or ロ at the checkbox column's x (or set off by a space) is a box.
-  final lookalike = _leadingLookalikeBox.firstMatch(text);
+  // A 口 or ロ at the checkbox column's x (or set off by a space) is a box;
+  // glued to a word elsewhere (too few rows for a column) when only the
+  // rest is a dictionary word.
+  final lookalike = leadingLookalikeBox.firstMatch(text);
   String? droppedPrefix;
   if (lookalike != null &&
       text.length > 1 &&
       (atColumn ||
-          lookalike.group(0)!.trim().length < lookalike.group(0)!.length)) {
+          lookalike.group(0)!.trim().length < lookalike.group(0)!.length ||
+          (dictionary != null &&
+              isGluedBox(text, lookalike.end, dictionary)))) {
     droppedPrefix = lookalike.group(0)!.trim();
     text = text.substring(lookalike.end);
     corrected = true;
@@ -638,14 +665,20 @@ List<_Piece> _cleanJapanese(
     corrected: corrected,
     droppedPrefix: droppedPrefix,
   );
-  return _splitInlineReading(shifted);
+  return _splitInlineReading(shifted, dictionary);
 }
 
-List<_Piece> _splitInlineReading(_Piece p) {
+List<_Piece> _splitInlineReading(_Piece p, FragmentDictionary? dictionary) {
   final m =
-      _inlineReading.firstMatch(p.text) ??
+      inlineReading.firstMatch(p.text) ??
       _inlineReadingNoOpen.firstMatch(p.text);
-  if (m == null) return [p.copy(kind: _japaneseKind(p.text))];
+  if (m == null) {
+    final wrapped = dictionary == null
+        ? null
+        : wrappedReading(p.text, dictionary);
+    if (wrapped != null) return _splitWrapped(p, wrapped);
+    return [p.copy(kind: _japaneseKind(p.text))];
+  }
   final head = m.group(1)!;
   final reading = m.group(2)!.replaceAll(RegExp(r'\s'), '');
   if (reading.isEmpty) return [p.copy(kind: _japaneseKind(p.text))];
@@ -662,6 +695,26 @@ List<_Piece> _splitInlineReading(_Piece p) {
     x: p.x + perChar * readingStart,
     width: perChar * m.group(2)!.trim().length,
     corrected: p.corrected || reading != m.group(2),
+  )..readingOf = headPiece;
+  return [headPiece, readingPiece];
+}
+
+/// [p] split as [w] says: the headword over the prefix and kanji, the
+/// reading over the bracketed kana.
+List<_Piece> _splitWrapped(_Piece p, WrappedReading w) {
+  final perChar = p.width / p.text.length;
+  final headPiece = p.copy(
+    text: w.headword,
+    kind: FragmentKind.kanjiWord,
+    width: perChar * w.headEnd,
+    corrected: p.corrected || w.headword != p.text.substring(0, w.headEnd),
+  );
+  final readingPiece = p.copy(
+    text: w.reading,
+    kind: FragmentKind.kana,
+    x: p.x + perChar * w.readingStart,
+    width: perChar * (w.readingEnd - w.readingStart),
+    corrected: true,
   )..readingOf = headPiece;
   return [headPiece, readingPiece];
 }
@@ -704,6 +757,14 @@ _Piece _cleanKorean(_Piece p) {
     } else {
       glued = read;
     }
+  }
+  // A mark set apart at the end (` !`): show-through from the other side of
+  // the page, not the end of a sentence (a full stop set apart may end a
+  // printed translation: `…입니다 .`).
+  final lone = _loneEndMark.firstMatch(text);
+  if (lone != null && _hangulCount(text.substring(0, lone.start)) > 0) {
+    text = text.substring(0, lone.start);
+    corrected = true;
   }
   final stray = text.replaceAll(_strayMarks, '').trim();
   if (stray != text.trim()) corrected = true;

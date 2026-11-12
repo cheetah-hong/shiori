@@ -39,6 +39,13 @@ OCR noise: each pass reads the other language's lines as low-confidence garbage,
 read as ロ 口 ■ □ (glued or spaced), marks over the print (a stray ✓ or ' by a meaning, a space
 inside a reading), and the neighbouring page's text cut at the photo edge (x <= 0).
 
+Pages for the readings a word list prints around brackets (answers in ground_truth_paren.json):
+  g40 a word box with an ending after the bracketed reading (`親切(しんせつ)だ`, `新(あたら)しい`, `練習(れんしゅう)する`),
+      an honorific in front (`お茶(ちゃ)`), one row read at the engine's lowest confidence (a red accent rule
+      over it) with the Korean pass's garbage on the same place, a sentence with a bracketed reading inside
+  g41 two rows cut out of a word list: the checkboxes read as ロ glued to the words (too few rows for a
+      checkbox column), one row at the lowest confidence, a show-through `!` after a meaning
+
 Trap pages for the pairing confidence (answers in ground_truth_traps.json, not in the score tables):
   g21 two words read alike (橋, 箸) on tight rows with furigana, g22 the same far apart,
   g23 two neighbours with the same printed Korean meaning (橋, 脚: 다리).
@@ -741,10 +748,65 @@ ANDROID_NOTE = (NOTE + " Pages for the Android channel's slips (badges glued to 
                 "only, and a clean word list whose checkboxes OCR glued to the headwords; answers as in "
                 "ground_truth.json.")
 
+# ---------------------------------------------------------------- g40, g41: readings with a prefix or an ending
+# Answers in ground_truth_paren.json (kept out of ground_truth.json so the score tables stay as they are).
+
+G40_ROWS = [
+    # head as printed, the Korean pass's reading of the place (None: garbage), Japanese confidence,
+    # meaning, truth (headword, readings)
+    ("□ 親切(しんせつ)だ", None, 0.5, "친절하다", ("親切だ", ["しんせつ"])),
+    # a red accent rule over the word: the Japanese pass reads it at its lowest, the Korean pass reads
+    # Hangul garbage there at 0.5
+    ("□ 有名(ゆうめい)だ", "미바(Ah)", 0.3, "유명하다", ("有名だ", ["ゆうめい"])),
+    ("□ 新(あたら)しい", None, 0.5, "새롭다", ("新しい", ["あたらしい"])),
+    ("□ 練習(れんしゅう)する", None, 0.5, "연습하다", ("練習", ["れんしゅう"])),
+    ("□ お茶(ちゃ)", None, 0.5, "차", ("お茶", ["おちゃ"])),
+    ("□ ご飯(はん)", None, 1.0, "밥", ("ご飯", ["ごはん"])),
+    ("□ 走(はし)る", None, 0.5, "달리다", ("走る", ["はしる"])),
+    ("□ 学校(がっこう)", None, 1.0, "학교", ("学校", ["がっこう"])),
+]
+
+
+def page_g40() -> GPage:
+    """A word box whose bracketed readings have an ending after them or an honorific in front."""
+    p = GPage("g40", "paren-box", seed=140)
+    p.ko_line("단어", 0.16, 0.060, h=0.018, c=1.0)
+    for i, (head, ko, c, meaning, truth) in enumerate(G40_ROWS):
+        y = 0.110 + 0.045 * i + p.jitter(0.001)
+        p.ja_line(head, 0.15, y, per=mp.W_READ, c=c, ko=ko)
+        if ko is not None:
+            p.ko[-1]["c"] = 0.5
+        p.ko_line(meaning, 0.55 + p.jitter(0.002), y + 0.003)
+        p.word(truth[0], truth[1], meaning)
+    p.ja_line("朝、公園（こうえん）で弁当を作ります。", 0.15, 0.110 + 0.045 * len(G40_ROWS) + 0.020, c=1.0)
+    p.sentence(["朝", "公園", "弁当", "作る"])
+    p.ignore = ["단어", "□", "する"]
+    return p
+
+
+def page_g41() -> GPage:
+    """Two rows cut out of a word list, photographed close: big type, glued checkboxes."""
+    p = GPage("g41", "paren-crop", seed=141)
+    p.both("ロ親切（しんせつ）だ", "미x1t(Sht)", 0.082, 0.145, 0.284, 0.217, 0.5, 0.5)
+    p.both(None, "친절하다", 0.684, 0.171, 0.150, 0.192, c_ko=0.5)
+    p.word("親切だ", ["しんせつ"], "친절하다")
+    p.both("ロ有名（ゆうめい）だ", "0바오(~h)))te", 0.083, 0.563, 0.324, 0.213, 0.3, 0.5)
+    # the meaning with a mark from the other side of the page after it
+    p.both(None, "유명하다 !", 0.683, 0.585, 0.183, 0.189, c_ko=0.5)
+    p.word("有名だ", ["ゆうめい"], "유명하다")
+    p.ignore = ["ロ"]
+    return p
+
+
+PAREN_NOTE = (NOTE + " Pages whose bracketed readings have an ending after them or an honorific in front, one "
+              "row read at the engine's lowest confidence, and two rows cut out of a word list with glued "
+              "checkboxes and a show-through mark; answers as in ground_truth.json.")
+
 PageBuilder = Callable[[], GPage]
 PAGES: tuple[PageBuilder, ...] = (page_g01, page_g02, page_g03, page_g04, page_g05, page_g06,
                                    page_g10, page_g11)
 ANDROID_PAGES: tuple[PageBuilder, ...] = (page_g30, page_g31, page_g32, page_c01)
+PAREN_PAGES: tuple[PageBuilder, ...] = (page_g40, page_g41)
 
 
 # ---------------------------------------------------------------- g21-g23: traps for the pairing confidence
@@ -976,6 +1038,9 @@ LEXICON: tuple[tuple[int, list[str], list[str], str, int, int | None, bool], ...
     (1376310, ["星"], ["ほし"], "n", 5, 5, False),
     (1260490, ["鍵"], ["かぎ"], "n", 5, 18, False),
     (1585010, ["螺子"], ["ねじ", "ネジ"], "n", 0, None, True),
+    # g40, g41 (words the other pages do not have)
+    (1002430, ["お茶"], ["おちゃ"], "n vs vi", 5, 6, False),
+    (1270590, ["ご飯"], ["ごはん"], "n", 4, None, False),
 )
 
 # Words whose Korean meaning does not follow the Sino-Korean reading (about half of them).
@@ -1008,6 +1073,8 @@ KOREAN_GLOSSES: dict[str, list[str]] = {
     "名刺": ["명함"],
     "かぎ": ["열쇠"],
     "ねじ": ["나사"],
+    # g40
+    "ご飯": ["밥"],
 }
 
 
@@ -1052,6 +1119,13 @@ def render() -> dict[str, str]:
             files[name] = dump(data, 0)
     files["ground_truth_android.json"] = dump({"_note": ANDROID_NOTE, "format": "general-1",
                                                "pages": [p.general_answer() for p in android]}, 1)
+    paren = [make() for make in PAREN_PAGES]
+    check_lexicon(paren)
+    for p in paren:
+        for name, data in p.files().items():
+            files[name] = dump(data, 0)
+    files["ground_truth_paren.json"] = dump({"_note": PAREN_NOTE, "format": "general-1",
+                                             "pages": [p.general_answer() for p in paren]}, 1)
     traps = [make() for make in TRAP_PAGES]
     for p in traps:
         for name, data in p.files().items():

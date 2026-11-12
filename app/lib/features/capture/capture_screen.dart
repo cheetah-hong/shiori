@@ -6,6 +6,7 @@ import 'package:shiori/adapters/dev_samples.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/theme.dart';
 import 'package:shiori/features/capture/capture_controller.dart';
+import 'package:shiori/features/capture/ocr_export.dart';
 import 'package:shiori/features/capture/review_screen.dart';
 import 'package:shiori/shared/dictionary_notice.dart';
 import 'package:shiori/shared/widgets.dart';
@@ -93,7 +94,7 @@ class CaptureScreen extends ConsumerWidget {
                 const _DictionaryNoticeSlot(),
                 if (state is CaptureFailed) ...[
                   const SizedBox(height: Space.lg),
-                  _FailureNote(message: state.message),
+                  _FailureNote(message: state.message, scan: state.scan),
                 ],
                 if (showSamples) ...[
                   SectionLabel(
@@ -282,9 +283,12 @@ class _SampleTile extends StatelessWidget {
 }
 
 class _FailureNote extends StatelessWidget {
-  const _FailureNote({required this.message});
+  const _FailureNote({required this.message, this.scan});
 
   final String message;
+
+  /// The page's OCR passes, when it was read: the note offers their export.
+  final OcrScan? scan;
 
   @override
   Widget build(BuildContext context) {
@@ -303,13 +307,22 @@ class _FailureNote extends StatelessWidget {
             Icon(Icons.error_outline, color: t.risk, size: 20),
             const SizedBox(width: Space.md),
             Expanded(
-              child: Text(
-                message,
-                style: TextStyle(
-                  color: t.risk,
-                  fontWeight: FontWeight.w600,
-                  height: 1.45,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    message,
+                    style: TextStyle(
+                      color: t.risk,
+                      fontWeight: FontWeight.w600,
+                      height: 1.45,
+                    ),
+                  ),
+                  if (scan != null) ...[
+                    const SizedBox(height: Space.sm),
+                    OcrExportFailureButton(scan: scan),
+                  ],
+                ],
               ),
             ),
           ],

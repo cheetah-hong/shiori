@@ -2531,6 +2531,38 @@
    "pri": 0,
    "nf": null,
    "uk": true
+  },
+  {
+   "id": 1002430,
+   "kanji": [
+    "お茶"
+   ],
+   "readings": [
+    "おちゃ"
+   ],
+   "pos": [
+    "n",
+    "vs",
+    "vi"
+   ],
+   "pri": 5,
+   "nf": 6,
+   "uk": false
+  },
+  {
+   "id": 1270590,
+   "kanji": [
+    "ご飯"
+   ],
+   "readings": [
+    "ごはん"
+   ],
+   "pos": [
+    "n"
+   ],
+   "pri": 4,
+   "nf": null,
+   "uk": false
   }
  ]
 }

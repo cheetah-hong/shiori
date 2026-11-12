@@ -418,7 +418,7 @@ void main() {
   }, skip: skip);
 
   test(
-    'M6 the filled meanings with a printed answer: 12 of 15 right',
+    'M6 the filled meanings with a printed answer: 12 of 14 right',
     () async {
       var judged = 0, right = 0;
       for (final set in _sets) {
@@ -443,7 +443,7 @@ void main() {
         }
       }
       print('filled meanings with a printed answer: $right of $judged');
-      expect(judged, 15);
+      expect(judged, 14);
       expect(right, greaterThanOrEqualTo(12));
     },
     skip: skip,

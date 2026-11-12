@@ -24,6 +24,7 @@ import 'package:shiori_core/src/extract/lattice.dart';
 import 'package:shiori_core/src/extract/latin_debris.dart';
 import 'package:shiori_core/src/extract/meaning_marks.dart';
 import 'package:shiori_core/src/extract/meaning_senses.dart';
+import 'package:shiori_core/src/extract/paren_reading.dart';
 import 'package:shiori_core/src/extract/pairing.dart';
 import 'package:shiori_core/src/extract/read_back.dart';
 import 'package:shiori_core/src/extract/script_runs.dart';
@@ -109,12 +110,11 @@ final class GeneralExtractor {
     Set<String> knownHeadwords = const {},
   }) async {
     final watch = Stopwatch()..start();
-    final fragments = collectFragments(scan);
     final page = _Page(
-      fragments,
       _CachingLexicon(lexicon),
       hasLexicon: lexicon is! EmptyLexicon,
     );
+    await page.collect(scan);
     final senses = _SenseCache(koreanGlossary, fallback: meaningFallback);
     final glosses =
         _givenGlosses ?? (koreanGlossary == null ? null : senses.words);
@@ -226,6 +226,25 @@ final class GeneralExtractor {
       skippedKnown: List.unmodifiable(skipped),
     );
   }
+}
+
+/// The collector's questions, answered from the page's lexicon cache as the
+/// headword steps answer them.
+final class _PageDictionary implements FragmentDictionary {
+  _PageDictionary(this.page);
+
+  final _Page page;
+
+  @override
+  bool knows(String text) => page._lemmas(text).isNotEmpty;
+
+  @override
+  bool reads(String headword, String kana) => page._reads(headword, kana);
+
+  @override
+  bool takesSuru(String text) => page
+      ._lemmas(text)
+      .any((l) => l.entry.partsOfSpeech.any((p) => p.startsWith('vs')));
 }
 
 /// Korean senses per word, asked once; a glossary that fails gives none.
@@ -629,10 +648,11 @@ String _hiragana(String s) => String.fromCharCodes(
 );
 
 final class _Page {
-  _Page(this.fragments, this.lexicon, {required this.hasLexicon})
+  _Page(this.lexicon, {required this.hasLexicon})
     : segmenter = SentenceSegmenter(lexicon);
 
-  List<Fragment> fragments;
+  /// The page's fragments ([collect]), mended as the steps go.
+  List<Fragment> fragments = const [];
   final _CachingLexicon lexicon;
   final bool hasLexicon;
   final SentenceSegmenter segmenter;
@@ -663,6 +683,21 @@ final class _Page {
     (f) =>
         f.kind == FragmentKind.japaneseSentence || _asSentence.contains(f.id),
   );
+
+  /// The fragments of [scan]. With a lexicon, the forms the collector asks
+  /// about (bracketed readings with a prefix or an ending, glued checkboxes)
+  /// are looked up first.
+  Future<void> collect(OcrScan scan) async {
+    if (!hasLexicon) {
+      fragments = collectFragments(scan);
+      return;
+    }
+    await lexicon.lookup({
+      for (final t in fragmentProbes(scan))
+        for (final d in deconjugator.deconjugate(t)) d.base,
+    });
+    fragments = collectFragments(scan, dictionary: _PageDictionary(this));
+  }
 
   Future<void> prefetch() async {
     if (!hasLexicon) return;

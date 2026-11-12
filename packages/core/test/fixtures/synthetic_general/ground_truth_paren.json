@@ -1,0 +1,105 @@
+{
+ "_note": "Synthetic pages made by tools/synthetic/make_general_pages.py. Every word, meaning, sentence and translation is invented; no textbook content. Pages whose bracketed readings have an ending after them or an honorific in front, one row read at the engine's lowest confidence, and two rows cut out of a word list with glued checkboxes and a show-through mark; answers as in ground_truth.json.",
+ "format": "general-1",
+ "pages": [
+  {
+   "page": "g40",
+   "fixture": "g40",
+   "kind": "paren-box",
+   "vocab": [
+    {
+     "headword": "親切だ",
+     "readings": [
+      "しんせつ"
+     ],
+     "meaning": "친절하다"
+    },
+    {
+     "headword": "有名だ",
+     "readings": [
+      "ゆうめい"
+     ],
+     "meaning": "유명하다"
+    },
+    {
+     "headword": "新しい",
+     "readings": [
+      "あたらしい"
+     ],
+     "meaning": "새롭다"
+    },
+    {
+     "headword": "練習",
+     "readings": [
+      "れんしゅう"
+     ],
+     "meaning": "연습하다"
+    },
+    {
+     "headword": "お茶",
+     "readings": [
+      "おちゃ"
+     ],
+     "meaning": "차"
+    },
+    {
+     "headword": "ご飯",
+     "readings": [
+      "ごはん"
+     ],
+     "meaning": "밥"
+    },
+    {
+     "headword": "走る",
+     "readings": [
+      "はしる"
+     ],
+     "meaning": "달리다"
+    },
+    {
+     "headword": "学校",
+     "readings": [
+      "がっこう"
+     ],
+     "meaning": "학교"
+    }
+   ],
+   "sentence_words": [
+    "朝",
+    "公園",
+    "弁当",
+    "作る"
+   ],
+   "ignore": [
+    "단어",
+    "□",
+    "する"
+   ]
+  },
+  {
+   "page": "g41",
+   "fixture": "g41",
+   "kind": "paren-crop",
+   "vocab": [
+    {
+     "headword": "親切だ",
+     "readings": [
+      "しんせつ"
+     ],
+     "meaning": "친절하다"
+    },
+    {
+     "headword": "有名だ",
+     "readings": [
+      "ゆうめい"
+     ],
+     "meaning": "유명하다"
+    }
+   ],
+   "sentence_words": [],
+   "ignore": [
+    "ロ"
+   ]
+  }
+ ]
+}

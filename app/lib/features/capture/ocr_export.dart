@@ -1,7 +1,8 @@
 /// "판독 기록 내보내기": the page's two OCR passes in the recorded-fixture
 /// format, handed to the share sheet so a page read
-/// on a phone can be replayed on a desktop. Only in builds that are not
-/// release builds; the photo is never part of it.
+/// on a phone can be replayed on a desktop: from the review screen, and from
+/// the capture screen when a page read gave no review. Only in builds that
+/// are not release builds; the photo is never part of it.
 library;
 
 import 'dart:async';
@@ -73,6 +74,26 @@ String _stamp(DateTime t) {
       '${two(t.hour)}${two(t.minute)}${two(t.second)}';
 }
 
+/// The export's name on its buttons.
+const String ocrExportLabel = '판독 기록 내보내기';
+
+/// Hands [scan]'s files to the share sheet; says so when it fails.
+Future<void> shareOcrExport(
+  BuildContext context,
+  WidgetRef ref,
+  OcrScan scan,
+) async {
+  final export = ref.read(ocrExportProvider);
+  final files = ocrExportFiles(scan, at: ref.read(clockProvider).now());
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  try {
+    await export.share(files);
+  } on Exception catch (e) {
+    debugPrint('OCR export failed: $e');
+    messenger?.showSnackBar(const SnackBar(content: Text('판독 기록을 내보내지 못했습니다')));
+  }
+}
+
 /// The review screen's export button: shown only when the export is on and
 /// the page's OCR passes are at hand.
 class OcrExportButton extends ConsumerWidget {
@@ -82,36 +103,37 @@ class OcrExportButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final export = ref.watch(ocrExportProvider);
     final scan = this.scan;
-    if (!export.enabled || scan == null) return const SizedBox.shrink();
+    if (!ref.watch(ocrExportProvider).enabled || scan == null) {
+      return const SizedBox.shrink();
+    }
     return IconButton(
       key: const ValueKey('export-ocr'),
-      tooltip: '판독 기록 내보내기',
+      tooltip: ocrExportLabel,
       icon: const Icon(Icons.ios_share),
-      onPressed: () => unawaited(
-        _share(
-          context,
-          export,
-          ocrExportFiles(scan, at: ref.read(clockProvider).now()),
-        ),
-      ),
+      onPressed: () => unawaited(shareOcrExport(context, ref, scan)),
     );
   }
+}
 
-  Future<void> _share(
-    BuildContext context,
-    OcrExport export,
-    List<ExportFile> files,
-  ) async {
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    try {
-      await export.share(files);
-    } on Exception catch (e) {
-      debugPrint('OCR export failed: $e');
-      messenger?.showSnackBar(
-        const SnackBar(content: Text('판독 기록을 내보내지 못했습니다')),
-      );
+/// The capture screen's failure note's export button, under its message:
+/// shown only when the export is on and the page was read.
+class OcrExportFailureButton extends ConsumerWidget {
+  const OcrExportFailureButton({super.key, required this.scan});
+
+  final OcrScan? scan;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scan = this.scan;
+    if (!ref.watch(ocrExportProvider).enabled || scan == null) {
+      return const SizedBox.shrink();
     }
+    return OutlinedButton.icon(
+      key: const ValueKey('export-ocr-failed'),
+      icon: const Icon(Icons.ios_share, size: 18),
+      label: const Text(ocrExportLabel),
+      onPressed: () => unawaited(shareOcrExport(context, ref, scan)),
+    );
   }
 }
