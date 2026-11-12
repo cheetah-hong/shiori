@@ -100,6 +100,13 @@ final cardsByModeProvider =
       return ref.watch(studyServiceProvider).cardsByMode();
     });
 
+/// When the copy from before the last restore was kept (설정 › 복원 전으로
+/// 되돌리기); null when there is none.
+final backupKeptAtProvider = FutureProvider<DateTime?>((ref) {
+  ref.watch(dataRevisionProvider);
+  return ref.watch(backupServiceProvider).keptAt();
+});
+
 /// Tries storage again after a load error: a new database connection (an
 /// older file that failed to be emptied is tried again), then every read.
 void retryStorage(WidgetRef ref) {

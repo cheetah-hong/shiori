@@ -18,6 +18,7 @@ import 'dart:math';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/adapters/accent_data.dart';
+import 'package:shiori/adapters/backup_files.dart';
 import 'package:shiori/adapters/bundled_dictionary.dart';
 import 'package:shiori/adapters/bundled_examples.dart';
 import 'package:shiori/adapters/bundled_glossary.dart';
@@ -187,6 +188,32 @@ final accentDataProvider = FutureProvider<AccentData>(
 /// (docs/architecture.md, 5).
 final crashLogProvider = Provider<CrashLog>((ref) => FileCrashLog.appSupport());
 
+/// 설정 › 백업: every table read and replaced at once (SQLite).
+final backupStoreProvider = Provider<BackupStore>(
+  (ref) => DriftBackupStore(ref.watch(appDatabaseProvider)),
+);
+
+/// The copy kept before a restore: a file in the app support folder.
+final backupKeeperProvider = Provider<BackupKeeper>(
+  (ref) => FileBackupKeeper.appSupport(),
+);
+
+/// The app written into a backup file's header (version, build, schema).
+final backupAppProvider = Provider<Future<BackupApp> Function()>(
+  (ref) =>
+      () => installedApp(schema: ref.read(appDatabaseProvider).schemaVersion),
+);
+
+/// Where a large backup is encoded and checked: another isolate. Tests run
+/// it in place.
+final backupWorkProvider = Provider<BackupWork>((ref) => backupWorkElsewhere);
+
+/// The share sheet a new backup file goes to. Tests plug in a fake.
+final backupShareProvider = Provider<BackupShare>((ref) => shareBackupFile);
+
+/// The file picker a backup is restored from. Tests plug in a fake.
+final backupPickerProvider = Provider<BackupPicker>((ref) => pickBackupFile);
+
 /// "높음 전체 승인" on the review screen: confirms every entry whose
 /// pairings are all high. On because no measured set has a high entry that
 /// is wrong (docs/verification.md, 15 and 20); turn it off here if one
@@ -224,6 +251,16 @@ final libraryServiceProvider = Provider<LibraryService>(
   (ref) => LibraryService(
     library: ref.watch(libraryRepositoryProvider),
     clock: ref.watch(clockProvider),
+  ),
+);
+
+final backupServiceProvider = Provider<BackupService>(
+  (ref) => BackupService(
+    store: ref.watch(backupStoreProvider),
+    keeper: ref.watch(backupKeeperProvider),
+    clock: ref.watch(clockProvider),
+    app: ref.watch(backupAppProvider),
+    work: ref.watch(backupWorkProvider),
   ),
 );
 

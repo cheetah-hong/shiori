@@ -9,28 +9,22 @@ final class DriftStudyPreferencesRepository
 
   final ShioriDatabase _db;
 
-  static const String recordModeKey = 'study.record_mode';
-  static const String scopeModeKey = 'study.scope_mode';
+  static const String recordModeKey = StudySettingKeys.recordMode;
+  static const String scopeModeKey = StudySettingKeys.scopeMode;
 
   /// The study mode picked last. Kept only when it is not 뜻 맞히기 (the
   /// default), so a file that never left it holds the same two rows as one
   /// from before modes.
-  static const String modeKey = 'study.mode';
+  static const String modeKey = StudySettingKeys.mode;
 
   /// 하루 목표, kept only when it is not 10 (the default).
-  static const String dailyGoalKey = 'study.daily_goal';
+  static const String dailyGoalKey = StudySettingKeys.dailyGoal;
 
   /// 카드 순서 섞기, kept only when off (`off`); on is the default.
-  static const String shuffleKey = 'study.shuffle';
-  static const String _shuffleOff = 'off';
+  static const String shuffleKey = StudySettingKeys.shuffle;
+  static const String _shuffleOff = StudySettingKeys.shuffleOff;
 
-  static const _keys = [
-    recordModeKey,
-    scopeModeKey,
-    modeKey,
-    dailyGoalKey,
-    shuffleKey,
-  ];
+  static const _keys = StudySettingKeys.all;
 
   /// A value this build does not know (a newer app wrote it) reads as the
   /// default and is left in the row.

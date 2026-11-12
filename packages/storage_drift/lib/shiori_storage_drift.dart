@@ -3,6 +3,7 @@
 library;
 
 export 'src/database.dart' show ResetHook, ShioriDatabase;
+export 'src/drift_backup_store.dart';
 export 'src/drift_library_repository.dart';
 export 'src/drift_review_repository.dart';
 export 'src/drift_study_preferences_repository.dart';

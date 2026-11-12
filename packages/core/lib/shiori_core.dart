@@ -14,9 +14,12 @@ export 'src/models/part_of_speech.dart';
 export 'src/models/review.dart';
 export 'src/models/study_mode.dart';
 export 'src/models/study_preferences.dart';
+export 'src/models/study_setting_keys.dart';
 export 'src/models/word_key.dart';
 
 // Ports: the slots blocks plug into
+export 'src/ports/backup_keeper.dart';
+export 'src/ports/backup_store.dart';
 export 'src/ports/clock.dart';
 export 'src/ports/example_sentences.dart';
 export 'src/ports/fallback_glossary.dart';
@@ -43,6 +46,11 @@ export 'src/extract/latin_debris.dart'
     show latinDebrisRemovedNote, latinDebrisUnsureNote;
 export 'src/extract/meaning_senses.dart';
 export 'src/extract/page_draft.dart';
+
+// Backup files (설정 › 백업)
+export 'src/backup/backup_codec.dart';
+export 'src/backup/backup_data.dart';
+export 'src/backup/backup_service.dart';
 
 // Library and study use cases
 export 'src/library/library_service.dart';

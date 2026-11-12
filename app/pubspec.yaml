@@ -63,6 +63,10 @@ dependencies:
     path: ../packages/voicevox_block
   # Pronunciation: the VOICEVOX core C API through dart:ffi.
   ffi: ^2.1.4
+  # 설정 › 백업에서 복원: the system file picker (Files app on iOS).
+  file_selector: 1.1.0
+  # The app version written into a backup file and shown before a restore.
+  package_info_plus: 10.2.2
 
 dev_dependencies:
   flutter_test:

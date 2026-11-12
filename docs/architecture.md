@@ -73,6 +73,9 @@ nihongo-app/
 | `HiddenWordRepository` (「이미 알아요」 숨기기·되살리기, `hiddenWords()`) | 서재 블록이 함께 구현(`words.hidden_at`). 숨김은 단어 단위라 모든 재생목록에서 숨겨짐. `words()`는 숨긴 단어도 돌려주고 `Word.isHidden`으로 구분, 학습 세션·오늘 학습 수에서 빠짐 (verification.md 16·21절) | (없음: `StudyService`·`LibraryService`가 서재 블록에서 꺼냄) | 백업·동기화 |
 | `ReviewRepository` (카드·기록은 `CardScope`와 `StudyMode`별: scope는 지금 공유 `''`만, 재생목록마다 따로 `p:<id>`는 칸만; 방식은 뜻 맞히기·일본어 떠올리기·듣고 맞히기·객관식) | `DriftReviewRepository` (같은 DB 파일). 테스트: `InMemoryReviewRepository` | `reviewRepositoryProvider` | 백업·동기화 |
 | `StudyPreferencesRepository` (설정: 학습 기록 모드·학습 범위 모드·마지막 고른 학습 방식) | `DriftStudyPreferencesRepository` (`settings` 키-값 표). 테스트: `InMemoryStudyPreferencesRepository` | `studyPreferencesRepositoryProvider` → `studyPreferencesProvider` | 백업·동기화 |
+| `BackupStore` (`read()`·`replaceAll(data)`: 백업에 드는 여섯 표를 한 번에) | `DriftBackupStore` (같은 DB 파일, 읽기·바꾸기 각각 트랜잭션 하나) | `backupStoreProvider` → `backupServiceProvider` | 동기화 |
+| `BackupKeeper` (복원 직전 데이터 사본 하나) | `FileBackupKeeper` (앱 지원 폴더 `backup/before-restore.json`, 임시 파일에 쓰고 이름 바꾸기) | `backupKeeperProvider` | |
+| 백업 파일 공유·고르기 (앱) | 공유 시트 `share_plus`(`shareBackupFile`), 파일 고르기 `file_selector`(`pickBackupFile`, iOS 파일 앱), 앱 버전 `package_info_plus` | `backupShareProvider`·`backupPickerProvider`·`backupAppProvider` | |
 | `ReviewScheduler` | `LeitnerFourStepScheduler` (30분·3일·7일·21일) | `reviewSchedulerProvider` | FSRS |
 | `Clock` | `SystemClock` (테스트: `FixedClock`) | `clockProvider` | |
 | `Speech` (선택, 요청 `WordSpeech`·`SentenceSpeech`) | `VoicevoxSpeech` (iOS·Android: 기기 안 VOICEVOX, `packages/voicevox_block` + `app/lib/adapters/voicevox_*.dart`, docs/pronunciation.md). 그 밖의 플랫폼·테스트는 버튼 없음(`isAvailable` 거짓), `SilentSpeech`는 발음을 끈 블록 | `speechProvider` | 다른 음성, 기기 내장 TTS |
@@ -80,7 +83,7 @@ nihongo-app/
 | 설정값 | `StudySettings` (간격, 하루 시작 04시, 세션 10장, 상수) | `studySettingsProvider` | 설정 화면 |
 | `CrashReporter` / `CrashLog` (앱, `lib/app/crash_reporting.dart`) | `FileCrashLog` (앱 지원 폴더의 텍스트 파일, 64KiB, 전송 없음). `main.dart`의 `installCrashHandlers`가 전역 오류 처리기에 연결 | `crashLogProvider` | 충돌 보고 서비스(5.3절) |
 
-조립만 하는 provider(교체 대상 아님): `generalExtractorProvider`, `libraryServiceProvider`, `studyServiceProvider`.
+조립만 하는 provider(교체 대상 아님): `generalExtractorProvider`, `libraryServiceProvider`, `studyServiceProvider`, `backupServiceProvider`.
 
 ## 3. 블록 교체 예시 (한 줄)
 
@@ -125,9 +128,23 @@ runApp(ProviderScope(
 
 - 저장 스키마 v5: `words`(`key` 유일), `playlists`, `playlist_words`(PK = 목록+단어, 목록 안 순서·추가한 때), `review_cards`(PK = scope+방식+단어)·`review_logs`(`scope`·`mode` 칸), `settings`(키-값). v4 파일은 카드·기록을 모두 뜻 맞히기로 옮기고(verification.md 33절), v3 이하 파일은 옮기지 않고 비운 뒤 시작합니다(둘 다 트랜잭션 하나, 실패하면 옛 파일 그대로, 「다시 불러오기」가 새 연결로 다시 시도).
 - 설정 화면은 `학습 세션`(하루 목표 10·20·30·50·전부, 카드 순서 섞기), `학습 기록`(재생목록끼리 공유 / 재생목록마다 따로 — 준비 중), `학습 범위`(전체 복습 + 재생목록 골라 학습 / 항상 재생목록 하나씩 — 준비 중)를 보입니다. 학습 기록·학습 범위 값은 둘 다 저장되지만 지금은 기본만 동작합니다.
-- 설정은 `settings` 표에 키 하나에 값 하나로 둡니다(`study.record_mode`·`study.scope_mode`, 기본값이 아닐 때만 `study.mode`·`study.daily_goal`·`study.shuffle`). 새 설정은 스키마 버전 없이 키만 더합니다.
+- 설정은 `settings` 표에 키 하나에 값 하나로 둡니다(`study.record_mode`·`study.scope_mode`, 기본값이 아닐 때만 `study.mode`·`study.daily_goal`·`study.shuffle`). 키와 받는 값은 core `StudySettingKeys` 한 곳에 있습니다. 새 설정은 스키마 버전 없이 키만 더하지만, **백업 형식 판은 올립니다**(아래 「백업 파일」: 백업은 아는 키만 받음).
 - 「재생목록마다 따로」를 만들 때 고칠 곳: `StudyService.cardScopeFor`(목록 범위면 `CardScope.playlist(id)`), `AllWords`의 단어 구성(목록·단어 쌍), 목록 삭제 때 그 scope 카드 지우기, 모드 전환 때 카드 복사·합치기. 「이미 알아요」 숨김은 단어 단위 그대로 둡니다.
 - 「항상 재생목록 하나씩」을 만들 때 고칠 곳: 홈의 학습 시작 버튼(`StudyPreferences.scopeMode`를 보고 전체 버튼 대신 범위 시트).
+
+### 백업 파일 (설정 › 백업, verification.md 37절)
+
+앱에는 서버가 없어 모든 데이터가 기기 안 SQLite에만 있습니다. 학습자가 직접 파일 하나로 내보내고 그 파일로 되돌립니다. 앱은 네트워크를 쓰지 않습니다(파일이 어디로 가는지는 공유 시트에서 학습자가 고름).
+
+- **담는 것:** 단어(숨긴 때 포함), 재생목록, 재생목록 소속, 학습 카드(네 방식), 누름 기록, 설정. **담지 않는 것:** 사진·판독 기록·사전·목소리·악센트 데이터(앱에 같이 있거나 다시 만들 수 있음).
+- **파일:** UTF-8 JSON 평문, 이름 `shiori-backup-YYYYMMDD-HHMM.json`(기기 현지 시각). 머리 `format: "shiori-backup"`, `version`(형식 판), `createdAt`(ISO 8601, 시간대 포함), `app`(`version`·`build`·`schema`). 표 다섯(`words`·`playlists`·`playlistWords`·`reviewCards`·`reviewLogs`)은 `{"columns": [...], "rows": [[...]]}`로 열 이름을 한 번만 적고, `settings`는 키→값 객체입니다. 시각은 DB와 같은 UTC 마이크로초 정수라 왕복해도 행 단위로 같습니다. 단어 `key`도 넣습니다.
+- **형식 판(`version`)은 DB 스키마와 별개입니다.** 판 1 = 스키마 v5의 표 모양. 백업에 드는 표·열이 바뀌거나, 칸이 받는 값이 늘 때(**새 설정 키나 설정 값**, 학습 방식·답·품사 이름 — 판 1이 받는 이름은 `backup_rows.dart`의 `v1…` 상수로 고정) 판을 올리고, `backupUpgrades[옛 판]`에 옛 판 → 다음 판 변환(맵 → 맵)을 둡니다. 읽을 때는 변환을 먼저 하고 검사합니다. 앱보다 새 판은 거절합니다(「앱을 업데이트한 뒤」). `app.schema`는 진단용 기록일 뿐입니다.
+- **크기 상한 64 MiB.** 복원은 고른 파일의 길이부터 보고 넘으면 읽지 않습니다. 내보내기도 같은 상한을 넘으면 만들지 않고, 만든 파일을 복원과 같은 검사로 한 번 읽어 본 뒤 내줍니다(복원할 수 없는 백업을 만들지 않음). 실측(Mac): 단어 3,000·카드 12,000·기록 50,000이 약 10 MiB(객체 행 기준, 배열 행은 그보다 작음), 읽기 0.1초·넣기 0.5초. 인코딩·검사는 다른 isolate(`Isolate.run`)에서 돕니다.
+- **검사(신뢰하지 않는 입력):** 빈 파일, JSON 아님, 시오리 백업 아님, 판 없음·새 판, 모르는 최상위 키·열·설정 키, 열 순서, 타입(정수 자리의 실수 포함), 범위(시각 2000~2200년 전, 단계 0~4, 횟수 0 이상, 위치·누름 기록 id 2^40 이하, 글자 1만 자, id 256자, 빈 재생목록 이름, 예문 한쪽만, 모르는 방식·답·품사·scope), 중복 키, 없는 단어·재생목록을 가리키는 소속·카드. 누름 기록은 원래 외래 키가 없어(지운 단어의 기록도 남음) 가리키는 단어를 검사하지 않습니다. 첫 문제에서 멈추고 DB는 건드리지 않습니다.
+- **복원은 「전부 바꾸기」 하나입니다(합치기 없음).** 한 트랜잭션에서 여섯 표를 비우고 넣습니다(자식 → 부모 순으로 비우고 부모 → 자식 순으로 넣음, 누름 기록은 id 그대로, 다음 누름 id는 복원한 기록의 가장 큰 id 다음부터 — `sqlite_sequence`의 그 줄을 지움). 실패하면 원래 그대로입니다. 스키마는 바뀌지 않습니다(v5).
+- **복원 직전 사본 하나:** 지금 데이터(단어·재생목록·카드·기록 중 하나라도 있으면)를 같은 형식으로 앱 지원 폴더에 하나 써 둔 뒤에 바꿉니다. 사본을 쓰지 못하면 복원하지 않습니다. 사본이 있는 동안 설정에 「복원 전으로 되돌리기」가 보이고, 되돌리면 사본을 지웁니다(되돌리기는 새 사본을 만들지 않음). 다음 복원이 사본을 덮어씁니다.
+- **내보내기 파일:** 임시 폴더 `shiori-backup/`에 써서 공유 시트에 넘기고, 시트가 닫히면 지웁니다(다음 내보내기 전에도 폴더를 비움). iOS 파일 고르기가 앱 임시 폴더에 복사한 파일도 읽은 뒤 지웁니다. 공유 시트는 누른 줄 위치(`sharePositionOrigin`)를 받습니다(iPad 팝오버).
+- 다른 앱에서 「시오리로 열기」(문서 형식 등록)는 하지 않았습니다. 하려면 고유 확장자·UTI 등록·URL 처리가 필요합니다.
 
 ### 학습 규칙
 
@@ -276,11 +293,11 @@ runApp(ProviderScope(
 
 | 순서 | 블록 | 끼울 자리 | 메모 |
 |---|---|---|---|
-| 1 | ~~drift 저장소~~ (완료) | `LibraryRepository`, `ReviewRepository` | 앱을 꺼도 단어와 학습 상태가 남습니다. 포트에 트랜잭션 추가. 스키마 v2(★ 열 걷어냄)와 v1 → v2 마이그레이션(verification.md 7.2절). 남은 일: 백업(3단계) |
+| 1 | ~~drift 저장소~~ (완료) | `LibraryRepository`, `ReviewRepository` | 앱을 꺼도 단어와 학습 상태가 남습니다. 포트에 트랜잭션 추가. 스키마 v2(★ 열 걷어냄)와 v1 → v2 마이그레이션(verification.md 7.2절). 백업 파일(내보내기·복원)은 완료(4절 「백업 파일」) |
 | 2 | 기기 판독 고정 데이터 | 로컬 전용 회귀 세트 | 실제 iPhone·Android에서 같은 쪽을 판독해 `$SHIORI_PRIVATE_DIR/textbook/`의 회귀 세트에 추가 (verification.md 4절) |
 | 3 | 문서 스캐너 | `ImageSource` | 옆으로 누운 사진은 OCR 채널이 세웁니다(verification.md 6절). 추출기는 배치에 기대지 않으므로 스캐너가 자른 페이지도 읽음. 남은 일: 펼친 책에서 페이지 찾기(모서리 고치기 화면) |
 | 4 | ~~JMdict~~ (완료) | `Lexicon` | 표기·읽기·품사·빈도, 정보 화면의 출처 표기. 남은 일: 데이터 정기 갱신 자동화(라이선스 의무, `docs/dictionary.md` 8·9절) |
 | 5 | ~~발음~~ (완료) | `Speech` | 기기 안 VOICEVOX + Kanjium 음 높이 선(docs/pronunciation.md, verification.md 28절). 남은 일: 귀로 확인, iOS에서 asset을 풀지 않고 열기 |
 | 6 | FSRS | `ReviewScheduler` | 복습 기록이 쌓인 뒤 |
 | 7 | Claude (선택) | `TextRecognizer` | 비용 문제로 나중. 서버 함수 필요 |
-| - | 홈 화면 위젯, 백업 | 새 포트 | 3단계 |
+| - | 홈 화면 위젯, 동기화 | 새 포트 | 3단계 |

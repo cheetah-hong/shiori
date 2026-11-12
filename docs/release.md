@@ -12,6 +12,7 @@
 | 개인정보 매니페스트 | 추적 안 함·수집 없음·필수 이유 API 2범주 (6.2절) | `app/ios/Runner/PrivacyInfo.xcprivacy` (Runner 타깃 리소스) |
 | 홈 화면 이름 | prod 「시오리」, dev 「시오리 dev」 | iOS `app/ios/Flutter/*-{dev,prod}.xcconfig`의 `APP_DISPLAY_NAME`, Android flavor의 `manifestPlaceholders["appLabel"]` |
 | 기기 백업 | 학습 DB는 백업에 남김. 오류 기록 폴더는 뺌, 사전·발음 파일은 Caches(백업 안 됨) | `app/lib/adapters/file_crash_log.dart`, `backup_exclusion.dart`, `app/ios/Runner/BackupChannel.swift` |
+| 백업 파일(내보내기·복원) | 공유 시트로만, 네트워크 없음(앱 안 방침·`site/` 「백업 파일」 절) | `app/lib/adapters/backup_files.dart`, `app/lib/features/backup/` |
 | 개인정보처리방침 | 앱 안 전문(정보 → 개인정보), 웹 페이지 초안 `site/` | `app/lib/features/about/privacy_policy.dart`, `site/*.html` |
 | 번들 ID | `com.nihongoapp.shiori`(prod)·`com.nihongoapp.shiori.dev`(dev) — 늘리지 않음 | |
 

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/data.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/features/backup/backup_section.dart';
 import 'package:shiori/features/study/restudy_labels.dart';
 import 'package:shiori/shared/widgets.dart';
 import 'package:shiori_core/shiori_core.dart';
@@ -12,7 +13,8 @@ import 'package:shiori_core/shiori_core.dart';
 /// the defaults are built (one shared record per word; 전체 + one playlist
 /// at a time); the other choices are listed as 준비 중 so the learner sees
 /// where the app is going, and cannot be picked. 학습 기록 also holds 모든
-/// 단어 처음부터 다시 학습 (asked first).
+/// 단어 처음부터 다시 학습 (asked first). 백업, last, makes and restores
+/// backup files.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -89,6 +91,8 @@ class SettingsScreen extends ConsumerWidget {
               title: '항상 재생목록 하나씩',
               selected: value.scopeMode == StudyScopeMode.playlistOnly,
             ),
+            const Divider(),
+            const BackupSection(),
           ],
         ),
         AsyncError(:final error) => Center(
