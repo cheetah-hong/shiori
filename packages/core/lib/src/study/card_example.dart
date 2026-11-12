@@ -1,5 +1,6 @@
 import 'package:shiori_core/src/models/captured_entry.dart';
 import 'package:shiori_core/src/models/library.dart';
+import 'package:shiori_core/src/models/word_key.dart';
 import 'package:shiori_core/src/ports/example_sentences.dart';
 import 'package:shiori_core/src/ports/lexicon.dart';
 
@@ -77,13 +78,20 @@ Future<CardExample?> cardExampleOf(
 }) async {
   final printed = word.example;
   if (printed != null) return CardExample.fromPage(printed);
-  final found =
-      (await lexicon.lookup([word.headword]))[word.headword] ??
-      const <LexiconEntry>[];
-  final ids = _entryIds(word, found);
+  // A な-adjective printed with its ending (`便利だ`): the dictionary files
+  // it bare, so that is asked too and used when the printed form has none.
+  final bare = withoutPrintedEnding(word.headword, word.readings);
+  final looked = await lexicon.lookup([word.headword, ?bare?.headword]);
+  var found = looked[word.headword] ?? const <LexiconEntry>[];
+  var wordReadings = word.readings;
+  if (found.isEmpty && bare != null) {
+    found = looked[bare.headword] ?? const <LexiconEntry>[];
+    wordReadings = bare.readings;
+  }
+  final ids = _entryIds(wordReadings, found);
   if (ids.isEmpty) return null;
   final rows = await examples.lookup(ids);
-  final readings = {for (final r in word.readings) toHiraganaReading(r)};
+  final readings = {for (final r in wordReadings) toHiraganaReading(r)};
   final row =
       _first(
         rows,
@@ -115,7 +123,7 @@ StoredExample? _first(
   return null;
 }
 
-List<int> _entryIds(Word word, List<LexiconEntry> found) {
+List<int> _entryIds(List<String> wordReadings, List<LexiconEntry> found) {
   final written = [
     for (final e in found)
       if (!e.isKanaForm) e,
@@ -123,7 +131,7 @@ List<int> _entryIds(Word word, List<LexiconEntry> found) {
   if (written.isEmpty) {
     return _unique([for (final e in kanaEntries(found)) e.id]);
   }
-  final readings = {for (final r in word.readings) toHiraganaReading(r)};
+  final readings = {for (final r in wordReadings) toHiraganaReading(r)};
   final narrowed = [
     for (final e in written)
       if (e.readings.any((r) => readings.contains(toHiraganaReading(r)))) e,
