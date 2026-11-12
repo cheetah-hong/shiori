@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shiori/app/theme.dart';
 import 'package:shiori_core/shiori_core.dart';
 
-/// Small uppercase-free section label above a group ("내 교재").
+/// A section heading on the page, as 홈's 「재생목록」: bold ink, more room
+/// above it than below. [trailing] is a quiet action or a count.
 class SectionLabel extends StatelessWidget {
   const SectionLabel(this.text, {super.key, this.trailing});
 
@@ -13,12 +14,7 @@ class SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        Space.xs,
-        Space.section,
-        Space.xs,
-        Space.sm,
-      ),
+      padding: const EdgeInsets.only(top: Space.xl, bottom: Space.xs),
       child: Row(
         children: [
           Expanded(
@@ -26,9 +22,10 @@ class SectionLabel extends StatelessWidget {
               header: true,
               child: Text(
                 text,
-                style: context.text.labelLarge?.copyWith(
-                  color: t.ink3,
-                  letterSpacing: 0.2,
+                style: TextStyle(
+                  color: t.text,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ),
@@ -71,13 +68,15 @@ class Pill extends StatelessWidget {
               Icon(icon, size: 13, color: foreground),
               const SizedBox(width: 4),
             ],
-            Text(
-              label,
-              style: TextStyle(
-                color: foreground,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                height: 1.3,
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: foreground,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  height: 1.3,
+                ),
               ),
             ),
           ],
@@ -97,7 +96,8 @@ class PosBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final color = missing ? t.risk : t.ink2;
+    // Missing: a cell to check (the check color), not a wrong one.
+    final color = missing ? t.warn : t.text2;
     return Semantics(
       label: pos?.label ?? '품사 없음',
       child: ExcludeSemantics(
@@ -122,20 +122,14 @@ class PosBadge extends StatelessWidget {
   }
 }
 
-/// Four-step memory meter. Empty outline = new word.
+/// Four-step memory meter: square cells, ink for each level reached and an
+/// outline for the rest (all outlines = new word); the accent's green once
+/// in long-term memory.
 class MemoryMeter extends StatelessWidget {
-  const MemoryMeter({
-    super.key,
-    required this.level,
-    this.max = 4,
-    this.compact = false,
-  });
+  const MemoryMeter({super.key, required this.level, this.max = 4});
 
   final int level;
   final int max;
-
-  /// Smaller bars, for several meters side by side.
-  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -149,18 +143,16 @@ class MemoryMeter extends StatelessWidget {
         children: [
           for (var i = 1; i <= max; i++)
             Container(
-              width: compact ? 4 : 7,
-              height: compact ? 10 : 14,
-              margin: EdgeInsets.only(left: compact ? 1 : 2),
+              width: _cellWidth,
+              height: _cellHeight,
+              margin: const EdgeInsets.only(left: _cellGap),
               decoration: BoxDecoration(
                 color: i <= level
-                    ? (level >= max ? t.ok : t.ink)
+                    ? (level >= max ? t.ok : t.text)
                     : Colors.transparent,
-                border: Border.all(
-                  color: i <= level ? Colors.transparent : t.paper3,
-                  width: 1.2,
-                ),
-                borderRadius: BorderRadius.circular(2),
+                border: i <= level
+                    ? null
+                    : Border.all(color: t.outline, width: _cellEdge),
               ),
             ),
         ],
@@ -168,6 +160,11 @@ class MemoryMeter extends StatelessWidget {
     );
   }
 }
+
+const double _cellWidth = 7;
+const double _cellHeight = 14;
+const double _cellGap = 2;
+const double _cellEdge = 1.2;
 
 /// Shrinks slightly while pressed: a press state that moves only `transform`.
 class PressScale extends StatefulWidget {
@@ -212,11 +209,13 @@ class HighlightedSentence extends StatelessWidget {
     required this.sentence,
     required this.focus,
     required this.style,
+    this.textAlign = TextAlign.center,
   });
 
   final String sentence;
   final String focus;
   final TextStyle style;
+  final TextAlign textAlign;
 
   /// The kanji stem of a conjugating word (`揺れる` → `揺`). Kana-only words
   /// are returned whole: cutting them would mark any matching kana.
@@ -241,67 +240,82 @@ class HighlightedSentence extends StatelessWidget {
         : (sentence.contains(focus) ? focus : stemOf(focus));
     if (key.isNotEmpty && !sentence.contains(key)) key = '';
     if (key.isEmpty) {
-      return Text(sentence, style: style, textAlign: TextAlign.center);
+      return Text(sentence, style: style, textAlign: textAlign);
     }
 
     final start = sentence.indexOf(key);
     final mark = style.copyWith(
-      background: Paint()..color = t.marker.withValues(alpha: 0.75),
-      color: t.markerInk,
+      background: Paint()..color = t.accentTint,
+      color: t.text,
       fontWeight: FontWeight.w700,
     );
     return Text.rich(
       TextSpan(
         style: style,
+        locale: JpType.locale,
         children: [
           TextSpan(text: sentence.substring(0, start)),
           TextSpan(text: key, style: mark),
           TextSpan(text: sentence.substring(start + key.length)),
         ],
       ),
-      textAlign: TextAlign.center,
+      textAlign: textAlign,
     );
   }
 }
 
 /// Book spine used as a textbook "cover" in lists.
 class BookSpine extends StatelessWidget {
-  const BookSpine({super.key, required this.label, required this.index});
+  const BookSpine({super.key, required this.label});
 
   final String label;
-  final int index;
-
-  static const List<Color> _covers = [
-    Color(0xFF2D4A8A),
-    Color(0xFF1E6650),
-    Color(0xFF7A3B2E),
-    Color(0xFF4A3F7A),
-  ];
 
   @override
   Widget build(BuildContext context) {
+    final t = context.tokens;
     return Container(
       width: 38,
       height: 52,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: _covers[index % _covers.length],
+        color: t.accentTint,
         borderRadius: const BorderRadius.horizontal(
           left: Radius.circular(3),
           right: Radius.circular(6),
         ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x33000000),
-            blurRadius: 6,
-            offset: Offset(0, 3),
-          ),
-        ],
       ),
-      child: Text(
+      child: JpText(
         label,
-        style: JpType.print(15, Colors.white, weight: FontWeight.w800),
+        style: JpType.print(15, t.accentText, weight: FontWeight.w800),
       ),
     );
   }
+}
+
+/// Japanese text: [JpType] styles carry the `ja` locale for glyph forms,
+/// and this puts it on the text itself so VoiceOver reads it in Japanese.
+class JpText extends StatelessWidget {
+  const JpText(
+    this.data, {
+    super.key,
+    this.style,
+    this.textAlign,
+    this.overflow,
+    this.maxLines,
+  });
+
+  final String data;
+  final TextStyle? style;
+  final TextAlign? textAlign;
+  final TextOverflow? overflow;
+  final int? maxLines;
+
+  @override
+  Widget build(BuildContext context) => Text.rich(
+    TextSpan(text: data, locale: JpType.locale),
+    style: style,
+    textAlign: textAlign,
+    overflow: overflow,
+    maxLines: maxLines,
+  );
 }

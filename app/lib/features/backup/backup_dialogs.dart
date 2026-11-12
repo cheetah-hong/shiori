@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shiori/app/theme.dart';
 import 'package:shiori/features/backup/backup_labels.dart';
+import 'package:shiori/shared/adaptive_dialog.dart';
 import 'package:shiori_core/shiori_core.dart';
 
 /// Runs [work] behind a dialog that cannot be closed, showing [label].
@@ -47,9 +48,9 @@ Future<bool> askRestore(
   BackupSummary summary, {
   required bool keepsCurrent,
 }) async {
-  final sure = await showDialog<bool>(
+  final sure = await showAdaptiveDialog<bool>(
     context: context,
-    builder: (context) => AlertDialog(
+    builder: (context) => AlertDialog.adaptive(
       title: const Text(BackupLabels.restoreQuestion),
       content: Text(
         [
@@ -61,14 +62,16 @@ Future<bool> askRestore(
         ].join('\n'),
       ),
       actions: [
-        TextButton(
+        adaptiveDialogAction(
+          context,
+          label: BackupLabels.cancel,
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text(BackupLabels.cancel),
         ),
-        TextButton(
-          style: TextButton.styleFrom(foregroundColor: context.tokens.risk),
+        adaptiveDialogAction(
+          context,
+          label: BackupLabels.restoreConfirm,
+          destructive: true,
           onPressed: () => Navigator.of(context).pop(true),
-          child: const Text(BackupLabels.restoreConfirm),
         ),
       ],
     ),
@@ -78,20 +81,22 @@ Future<bool> askRestore(
 
 /// Asks before putting back the copy kept at [keptAt]. True for 되돌리기.
 Future<bool> askUndo(BuildContext context, DateTime keptAt) async {
-  final sure = await showDialog<bool>(
+  final sure = await showAdaptiveDialog<bool>(
     context: context,
-    builder: (context) => AlertDialog(
+    builder: (context) => AlertDialog.adaptive(
       title: const Text(BackupLabels.undoQuestion),
       content: Text(BackupLabels.undoDetail(keptAt)),
       actions: [
-        TextButton(
+        adaptiveDialogAction(
+          context,
+          label: BackupLabels.cancel,
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text(BackupLabels.cancel),
         ),
-        TextButton(
-          style: TextButton.styleFrom(foregroundColor: context.tokens.risk),
+        adaptiveDialogAction(
+          context,
+          label: BackupLabels.undoConfirm,
+          destructive: true,
           onPressed: () => Navigator.of(context).pop(true),
-          child: const Text(BackupLabels.undoConfirm),
         ),
       ],
     ),
@@ -104,15 +109,17 @@ Future<void> showBackupFailure(
   BuildContext context,
   String title,
   String message,
-) => showDialog<void>(
+) => showAdaptiveDialog<void>(
   context: context,
-  builder: (context) => AlertDialog(
+  builder: (context) => AlertDialog.adaptive(
     title: Text(title),
     content: Text('$message\n\n${BackupLabels.unchanged}'),
     actions: [
-      TextButton(
+      adaptiveDialogAction(
+        context,
+        label: BackupLabels.ok,
+        isDefault: true,
         onPressed: () => Navigator.of(context).pop(),
-        child: const Text(BackupLabels.ok),
       ),
     ],
   ),

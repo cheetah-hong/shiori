@@ -8,11 +8,13 @@ import 'package:shiori/features/capture/entry_editor_sheet.dart';
 import 'package:shiori/features/capture/evidence_tile.dart';
 import 'package:shiori/features/capture/evidence_view.dart';
 import 'package:shiori/features/capture/fragment_tray.dart';
+import 'package:shiori/features/capture/review_filter.dart';
 import 'package:shiori/features/capture/ocr_export.dart';
 import 'package:shiori/features/playlists/playlist_actions.dart';
 import 'package:shiori/features/playlists/playlist_picker.dart';
 import 'package:shiori/shared/dictionary_notice.dart';
-import 'package:shiori/shared/widgets.dart';
+import 'package:shiori/shared/large_text.dart';
+import 'package:shiori/shared/sheet.dart';
 import 'package:shiori_core/shiori_core.dart';
 
 /// Which of the draft's headwords the library has, and how many of them
@@ -235,22 +237,11 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
             sliver: SliverToBoxAdapter(
-              child: Row(
-                children: [
-                  ChoiceChip(
-                    label: Text('전체 ${entries.length}'),
-                    selected: !_onlyFlagged,
-                    onSelected: (_) => setState(() => _onlyFlagged = false),
-                  ),
-                  const SizedBox(width: Space.sm),
-                  ChoiceChip(
-                    label: Text('확인 필요 ${_draft.needsReviewCount}'),
-                    selected: _onlyFlagged,
-                    onSelected: _draft.needsReviewCount == 0
-                        ? null
-                        : (_) => setState(() => _onlyFlagged = true),
-                  ),
-                ],
+              child: ReviewFilter(
+                all: entries.length,
+                flagged: _draft.needsReviewCount,
+                onlyFlagged: _onlyFlagged,
+                onChanged: (only) => setState(() => _onlyFlagged = only),
               ),
             ),
           ),
@@ -261,9 +252,8 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
               Space.gutter,
               _draft.unpaired.isEmpty ? 120 : Space.xl,
             ),
-            sliver: SliverList.separated(
+            sliver: SliverList.builder(
               itemCount: visible.length,
-              separatorBuilder: (_, _) => const SizedBox(height: Space.sm),
               itemBuilder: (_, k) {
                 final i = visible[k];
                 return EvidenceEntryTile(
@@ -306,8 +296,8 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
             Space.md,
           ),
           decoration: BoxDecoration(
-            color: t.paper,
-            border: Border(top: BorderSide(color: t.paper2)),
+            color: t.bg,
+            border: Border(top: BorderSide(color: t.line)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -334,7 +324,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                           height: 18,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: t.sheet,
+                            color: t.text3,
                           ),
                         )
                       : const Icon(Icons.playlist_add),
@@ -349,6 +339,9 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   }
 }
 
+/// The page's head, as a calendar sheet's: how many words (big), where
+/// they came from, then two memo rows (ready to add, to check) and the
+/// rest in small words.
 class _Summary extends StatelessWidget {
   const _Summary({
     required this.draft,
@@ -370,80 +363,117 @@ class _Summary extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     final ms = draft.recognitionTime.inMilliseconds;
-    return Container(
-      padding: const EdgeInsets.all(Space.lg),
-      decoration: BoxDecoration(
-        color: t.sheet,
-        borderRadius: BorderRadius.circular(Radii.card),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '단어 ${draft.entries.length}개',
-            key: const ValueKey('review-heading'),
-            style: context.text.titleLarge,
-          ),
+    final flagged = draft.needsReviewCount;
+    final small = TextStyle(color: t.text2, fontSize: 13);
+    final approve = onApproveHigh == null
+        ? null
+        : TextButton.icon(
+            onPressed: highConfidenceCount(draft) == 0 ? null : onApproveHigh,
+            icon: const Icon(Icons.done_all),
+            label: const Text('높음 전체 승인'),
+          );
+    // Beside the ready count, or under the rows when the text is large.
+    final large = isLargeText(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _Count(count: draft.entries.length),
+        Text(
+          [
+            ?sourceLabel,
+            if (ms > 0) '판독 ${(ms / 1000).toStringAsFixed(1)}초',
+          ].join(' · '),
+          key: const ValueKey('review-source'),
+          style: context.text.bodySmall,
+        ),
+        const SizedBox(height: Space.sm),
+        SheetMemoList(
+          rows: [
+            SheetMemoRow(
+              label: '바로 넣을 단어',
+              value: '${draft.entries.length - flagged}',
+              unit: '개',
+              trailing: large ? null : approve,
+            ),
+            SheetMemoRow(
+              label: '확인할 단어',
+              value: '$flagged',
+              unit: '개',
+              valueColor: flagged > 0 ? t.warn : null,
+              last: true,
+            ),
+          ],
+        ),
+        Wrap(
+          spacing: Space.md,
+          runSpacing: Space.xs,
+          children: [
+            if (draft.entries.any((e) => e.evidence != null))
+              Text(
+                '높음 ${draft.entries.where((e) => e.evidence?.isHigh ?? false).length}',
+                key: const ValueKey('high-count'),
+                style: small,
+              ),
+            if (draft.correctedCount > 0)
+              Text('자동 보정 ${draft.correctedCount}', style: small),
+            if (draft.skippedKnown.isNotEmpty)
+              Tooltip(
+                message: draft.skippedKnown.join(', '),
+                child: Text(
+                  '숨긴 단어 ${draft.skippedKnown.length}개는 뺐어요',
+                  style: small,
+                ),
+              ),
+          ],
+        ),
+        if (large && approve != null)
+          Align(alignment: AlignmentDirectional.centerEnd, child: approve),
+        if (inLibraryCount > 0) ...[
           const SizedBox(height: Space.xs),
           Text(
-            [
-              ?sourceLabel,
-              if (ms > 0) '판독 ${(ms / 1000).toStringAsFixed(1)}초',
-            ].join(' · '),
-            key: const ValueKey('review-source'),
-            style: context.text.bodySmall,
+            '이미 있는 단어 $inLibraryCount개는 저장된 뜻을 그대로 써요',
+            style: context.text.bodySmall?.copyWith(color: t.text2),
           ),
-          const SizedBox(height: Space.md),
-          Wrap(
-            spacing: Space.sm,
-            runSpacing: Space.xs,
-            children: [
-              if (draft.entries.any((e) => e.evidence != null))
-                Pill(
-                  '높음 ${draft.entries.where((e) => e.evidence?.isHigh ?? false).length}',
-                  key: const ValueKey('high-count'),
-                  background: t.okBg,
-                  foreground: t.ok,
-                ),
-              if (draft.needsReviewCount > 0)
-                Pill(
-                  '확인 필요 ${draft.needsReviewCount}',
-                  background: t.riskBg,
-                  foreground: t.risk,
-                ),
-              if (draft.correctedCount > 0)
-                Pill(
-                  '자동 보정 ${draft.correctedCount}',
-                  background: t.okBg,
-                  foreground: t.ok,
-                ),
-              if (draft.skippedKnown.isNotEmpty)
-                Tooltip(
-                  message: draft.skippedKnown.join(', '),
-                  child: Pill(
-                    '숨긴 단어 ${draft.skippedKnown.length}개는 뺐어요',
-                    background: t.paper2,
-                    foreground: t.ink2,
-                  ),
-                ),
-            ],
-          ),
-          if (onApproveHigh != null) ...[
-            const SizedBox(height: Space.md),
-            OutlinedButton.icon(
-              onPressed: highConfidenceCount(draft) == 0 ? null : onApproveHigh,
-              icon: const Icon(Icons.done_all),
-              label: const Text('높음 전체 승인'),
-            ),
-          ],
-          if (inLibraryCount > 0) ...[
-            const SizedBox(height: Space.md),
-            Text(
-              '이미 있는 단어 $inLibraryCount개는 저장된 뜻을 그대로 써요',
-              style: context.text.bodySmall?.copyWith(color: t.ink2),
-            ),
-          ],
         ],
+      ],
+    );
+  }
+}
+
+/// 「단어 12개」 with the number big and tabular, as a calendar's day.
+class _Count extends StatelessWidget {
+  const _Count({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final word = TextStyle(
+      color: t.text2,
+      fontSize: 17,
+      fontWeight: FontWeight.w600,
+    );
+    return Semantics(
+      header: true,
+      child: Text.rich(
+        key: const ValueKey('review-heading'),
+        TextSpan(
+          children: [
+            TextSpan(text: '단어 ', style: word),
+            TextSpan(
+              text: '$count',
+              style: TextStyle(
+                color: t.text,
+                fontSize: 40,
+                height: 1.1,
+                fontWeight: FontWeight.w800,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+            TextSpan(text: '개', style: word),
+          ],
+        ),
       ),
     );
   }

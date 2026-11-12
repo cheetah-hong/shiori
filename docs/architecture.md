@@ -14,7 +14,7 @@ nihongo-app/
 │   ├── lib/src/ports/      포트 11개 (아래 블록 지도)
 │   ├── lib/src/extract/    단어 추출기(배치에 기대지 않음, docs/extraction.md)와 검토 초안 만들기(page_draft.dart)
 │   ├── lib/src/capture/    검토 화면의 편집(후보 고르기, 조각 붙이기, 고치기), 녹화 판독 블록, 문자 분류
-│   ├── lib/src/study/      라이트너 4단계 스케줄러, 세션 빌더, 세션, 학습 일 경계, StudyService
+│   ├── lib/src/study/      라이트너 4단계 스케줄러, 세션 빌더, 세션, 학습 일 경계, StudyService, 홈 이번 주 줄(study_week.dart, 순수 함수)
 │   ├── lib/src/library/    LibraryService (재생목록 만들기·이름·순서·삭제, 검토 초안을 재생목록에 추가, 빼기·되돌리기)
 │   ├── lib/src/storage/    InMemory 저장소 (테스트용 블록, 트랜잭션 포함)
 │   ├── lib/src/eval/       채점기 (lib/eval.dart로만 공개, 앱은 쓰지 않음)
@@ -29,10 +29,14 @@ nihongo-app/
 ├── packages/example_block/ 순수 Dart, 예문 블록 (Tatoeba 문장, JMdict 항목별 SQLite)
 ├── app/                    Flutter (iOS·Android)
 │   ├── lib/app/blocks.dart 블록 지도: 끼우는 자리를 모두 이 파일 하나에
-│   ├── lib/app/theme.dart  디자인 토큰 (기획 페이지 팔레트)
+│   ├── lib/app/theme.dart  디자인 토큰: 역할 이름 색(라이트·다크 값은 여기에만), 간격·모서리·동작·일본어 글꼴 (4절 「화면 구성과 디자인 토큰」)
 │   ├── lib/app/data.dart   화면이 같이 쓰는 읽기 모델 (저장·답변 뒤 새로고침)
-│   ├── lib/adapters/       기기 블록: OCR 채널, image_picker, 개발용 샘플, 사전 asset 풀기(bundled_dictionary.dart)
+│   ├── lib/adapters/       기기 블록: OCR 채널, image_picker, 개발용 샘플, 사전 asset 풀기(bundled_dictionary.dart), 첫 실행 안내 표시 파일(file_onboarding_store.dart)
 │   ├── lib/features/       home · capture(등록·검토) · playlists(재생목록 고르기·화면·편집) · study(학습·범위 고르기) · settings(설정) · about(정보: 사전 출처·라이선스)
+│   ├── lib/features/onboarding/  첫 실행 안내 세 장, 보일지 정하는 OnboardingGate, 본 표시 포트 OnboardingStore
+│   ├── lib/features/opening/     콜드 스타트 오프닝 1.2초 (시간표 opening_timeline.dart, 그림 opening_painter.dart)
+│   ├── lib/shared/         화면 공용 부품: sheet.dart(일력 장·절취선·메모 줄), bottom_action_bar.dart(아래 고정 바), ruled.dart(괘선 행),
+│   │                       states.dart(빈 상태·불러오기 실패·불러오는 중), large_text.dart(큰 글자 문턱), widgets.dart(JpText 등), shi_stroke.dart(「し」 획)
 │   ├── ios/Runner/OcrChannel.swift                         Apple Vision 채널 (회전 판별)
 │   ├── android/app/src/main/kotlin/.../OcrChannel.kt       ML Kit 채널 (조각 단위, 회전),
 │   │                                                       OcrGeometry.kt (순수 로직)
@@ -42,6 +46,8 @@ nihongo-app/
 ├── tools/ocr/              사진 → Apple Vision 두 패스 판독 기록 (make_fixture.py, vision_ocr.swift)
 ├── tools/synthetic/        합성 페이지 생성기 (make_pages.py 단어장 쪽, make_general_pages.py 배치가 다른 쪽)
 ├── tools/dict/             JMdict → SQLite (build_jmdict_db.py), 앱 asset (build_app_asset.py), 효과 측정
+├── tools/design/           앱 아이콘·시작 화면 생성기 (make_icons.py: iOS·Android 파일과 SVG를 모두 씀, --check는 비교만)
+├── design/icon/            아이콘 그림 SVG (shiori.svg·shiori-dev.svg, 생성기 출력)
 └── docs/                   이 문서, verification.md, dictionary.md, screenshots/
 ```
 
@@ -81,6 +87,7 @@ nihongo-app/
 | `Speech` (선택, 요청 `WordSpeech`·`SentenceSpeech`) | `VoicevoxSpeech` (iOS·Android: 기기 안 VOICEVOX, `packages/voicevox_block` + `app/lib/adapters/voicevox_*.dart`, docs/pronunciation.md). 그 밖의 플랫폼·테스트는 버튼 없음(`isAvailable` 거짓), `SilentSpeech`는 발음을 끈 블록 | `speechProvider` | 다른 음성, 기기 내장 TTS |
 | 악센트 데이터 (앱) | Kanjium 표(`AccentTable`, `app/assets/accent/`), 없으면 빈 표 | `accentTableProvider` (열기: `accentDataProvider`) | |
 | 설정값 | `StudySettings` (간격, 하루 시작 04시, 세션 10장, 상수) | `studySettingsProvider` | 설정 화면 |
+| `OnboardingStore` (앱, `lib/features/onboarding/onboarding_store.dart`: 첫 실행 안내를 봤는지) | `FileOnboardingStore` (앱 지원 폴더 파일 `onboarding_seen`, 내용 = 안내 판 번호). 테스트: `InMemoryOnboardingStore` | `onboardingStoreProvider` (같은 파일) | |
 | `CrashReporter` / `CrashLog` (앱, `lib/app/crash_reporting.dart`) | `FileCrashLog` (앱 지원 폴더의 텍스트 파일, 64KiB, 전송 없음). `main.dart`의 `installCrashHandlers`가 전역 오류 처리기에 연결 | `crashLogProvider` | 충돌 보고 서비스(5.3절) |
 
 조립만 하는 provider(교체 대상 아님): `generalExtractorProvider`, `libraryServiceProvider`, `studyServiceProvider`, `backupServiceProvider`.
@@ -137,6 +144,7 @@ runApp(ProviderScope(
 앱에는 서버가 없어 모든 데이터가 기기 안 SQLite에만 있습니다. 학습자가 직접 파일 하나로 내보내고 그 파일로 되돌립니다. 앱은 네트워크를 쓰지 않습니다(파일이 어디로 가는지는 공유 시트에서 학습자가 고름).
 
 - **담는 것:** 단어(숨긴 때 포함), 재생목록, 재생목록 소속, 학습 카드(네 방식), 누름 기록, 설정. **담지 않는 것:** 사진·판독 기록·사전·목소리·악센트 데이터(앱에 같이 있거나 다시 만들 수 있음).
+- 첫 실행 안내를 봤다는 표시는 DB·백업 밖(앱 지원 폴더 파일 `onboarding_seen`)입니다. 복원으로 안내가 다시 뜨지 않고, `settings` 키가 늘지 않아 백업 형식 판도 그대로입니다. 단어가 있는 서재로 복원하면 안내는 보이지 않습니다(아래 「화면 구성과 디자인 토큰」).
 - **파일:** UTF-8 JSON 평문, 이름 `shiori-backup-YYYYMMDD-HHMM.json`(기기 현지 시각). 머리 `format: "shiori-backup"`, `version`(형식 판), `createdAt`(ISO 8601, 시간대 포함), `app`(`version`·`build`·`schema`). 표 다섯(`words`·`playlists`·`playlistWords`·`reviewCards`·`reviewLogs`)은 `{"columns": [...], "rows": [[...]]}`로 열 이름을 한 번만 적고, `settings`는 키→값 객체입니다. 시각은 DB와 같은 UTC 마이크로초 정수라 왕복해도 행 단위로 같습니다. 단어 `key`도 넣습니다.
 - **형식 판(`version`)은 DB 스키마와 별개입니다.** 판 1 = 스키마 v5의 표 모양. 백업에 드는 표·열이 바뀌거나, 칸이 받는 값이 늘 때(**새 설정 키나 설정 값**, 학습 방식·답·품사 이름 — 판 1이 받는 이름은 `backup_rows.dart`의 `v1…` 상수로 고정) 판을 올리고, `backupUpgrades[옛 판]`에 옛 판 → 다음 판 변환(맵 → 맵)을 둡니다. 읽을 때는 변환을 먼저 하고 검사합니다. 앱보다 새 판은 거절합니다(「앱을 업데이트한 뒤」). `app.schema`는 진단용 기록일 뿐입니다.
 - **크기 상한 64 MiB.** 복원은 고른 파일의 길이부터 보고 넘으면 읽지 않습니다. 내보내기도 같은 상한을 넘으면 만들지 않고, 만든 파일을 복원과 같은 검사로 한 번 읽어 본 뒤 내줍니다(복원할 수 없는 백업을 만들지 않음). 실측(Mac): 단어 3,000·카드 12,000·기록 50,000이 약 10 MiB(객체 행 기준, 배열 행은 그보다 작음), 읽기 0.1초·넣기 0.5초. 인코딩·검사는 다른 isolate(`Isolate.run`)에서 돕니다.
@@ -194,6 +202,35 @@ runApp(ProviderScope(
 
 저장소 포트 `ReviewRepository.deleteCards(wordIds, {scope, mode})`(지운 카드를 돌려줌)와 `deleteAllCards({scope, mode})`(null이면 모든 scope·방식)가 카드 행만 지웁니다.
 
+### 화면 구성과 디자인 토큰 (verification.md 39절)
+
+화면은 「일력 한 장」 은유 하나로 그립니다: 바탕 위 괘선 행, 한 화면에 일력 장 하나, 주 행동은 아래 고정 바, 그림자 없음. 규칙 10개와 값·대비 수치는 verification.md 39.1절에 있습니다.
+
+- **토큰은 `app/lib/app/theme.dart` 한 곳입니다.** `ShioriTokens`(ThemeExtension)의 역할 이름: 바탕 `bg`·`surface`·`surfaceStrong`·`line`, 글자 `text`·`text2`·`text3`·`outline`, 포인트 `accent`·`accentTint`·`accentText`·`onAccent`, 기능 `ok`/`okBg`·`warn`/`warnBg`·`risk`/`riskBg`/`onRisk`, `shadow`.
+  값은 `ShioriTokens.light`·`ShioriTokens.dark` 두 묶음에만 있습니다. 같은 파일에 `Space`·`Radii`(버튼 모서리 14 하나)·`Motion`·`JpType`(명조·고딕, `ja-JP`)과, Material 테마를 토큰으로 칠하는 `buildTheme`가 있습니다.
+- **위젯은 토큰만 읽습니다**(`context.tokens`). `app/lib/features`·`app/lib/shared`에 `Color(0x…)`나 `Colors.*`(`Colors.transparent` 빼고)가 들어가면 `app/test/design/touch_targets_test.dart`가 실패하고, 글자 4.5:1·경계 3:1·톤 3개 이하는 `token_contrast_test.dart`가 봅니다.
+  팔레트를 바꾸는 일은 두 값 묶음을 바꾸는 것이고, 아이콘·시작 화면 색은 생성기 `tools/design/make_icons.py`의 `LIGHT`·`DARK`를 같이 고친 뒤 다시 돌립니다.
+- **공용 부품** (`app/lib/shared/`):
+
+| 부품 | 파일 | 하는 일 |
+|---|---|---|
+| `SheetFrame` | `sheet.dart` | 일력 장: 위 4px 먹 띠·옆 hairline·모서리 0·그림자 없음·아래 절취선. 한 화면에 한 장(홈 일력 장, 학습 카드, 「오늘 학습 끝」) |
+| `TearLine` | `sheet.dart` | 점선 절취선: 장의 아래 끝(먹색), 목록의 끝(`line` 색) |
+| `SheetMemoList` · `SheetMemoRow` | `sheet.dart` | 메모 줄: 왼쪽 라벨, 오른쪽 굵은 tabular 숫자 + 작은 단위(「12개」), 한 줄로 읽힘 |
+| `BottomActionBar` (`BarAction`·`BarPrimaryButton`) | `bottom_action_bar.dart` | 아래 고정 바: 위 hairline, 54pt, 오른쪽 채운 주 버튼, 왼쪽 옅은 보조, 큰 글자에서 세로로 |
+| `RuledRow` | `ruled.dart` | 괘선 행(최소 56pt, 아래 hairline, 상자 없음) |
+| `EmptyNote` · `LoadFailure` · `Loading` | `states.dart` | 빈 상태(문장 + 설명 줄), 불러오기 실패(「다시 불러오기」, 예외 글은 기록으로), 「불러오는 중」으로 읽히는 스피너 |
+| `isLargeText` | `large_text.dart` | 큰 글자 문턱 하나(약 AX1). 넘으면 나란한 것을 세로로 |
+| `JpText` | `widgets.dart` | 일본어 글에 `ja-JP` locale을 붙여 VoiceOver가 일본어로 읽게 함 |
+| `adaptiveDialogAction` | `adaptive_dialog.dart` | `AlertDialog.adaptive`의 버튼(iOS 경고창 동작, 파괴는 `risk` 색) |
+
+- **첫 화면 분기:** `ShioriApp(firstLaunch:)`(`app/lib/app/app.dart`). `main.dart`만 `firstLaunch: true`로 `Opening` → `OnboardingGate` → `HomeScreen`을 쌓습니다.
+  `Opening`은 홈을 첫 프레임부터 아래에 만들고 그 위에 1.2초 층을 그립니다(탭하면 끝, 동작 줄이기면 없음, 한 실행에 한 번). `OnboardingGate`는 본 표시(`OnboardingStore`, 2절)와 서재를 보고 안내 또는 홈을 보입니다(서재가 비었을 때만 안내).
+  테스트·미리보기는 `firstLaunch` 없이 바로 홈이라 다른 테스트에 오프닝·안내가 끼지 않습니다.
+- **동작 줄이기:** iOS 「동작 줄이기」는 플랫폼의 `reduceMotion`만 켜므로 `MaterialApp.builder: Motion.follow`가 이를 앱 MediaQuery의 `disableAnimations`로 옮깁니다. 화면의 애니메이션은 `Motion.of(context, 길이)`(줄이면 0)나 `Motion.reduced(context)`를 거칩니다(오프닝, 세션 끝 찢김, 안내 페이지 넘김). 새 애니메이션도 이 둘을 씁니다.
+- **주간 줄:** core `studyWeekOf(answeredAt, now:, calendar:)`(`packages/core/lib/src/study/study_week.dart`)는 순수 함수입니다. 앱 `studyWeekProvider`(`app/lib/features/home/home_week.dart`)가 최근 400일의 누름 기록 시각을 `ReviewRepository.logs(since:)`로 읽어 넘기고, 학습 일 경계는 `StudyCalendar`(하루 시작 04시)를 따릅니다. 저장하는 것은 없고 스키마도 그대로입니다.
+- 홈 일력 장의 오늘 몫(`TodayPlan`, `app/lib/features/home/today_plan.dart`)은 표시만 합니다. 세션은 같은 `SessionSize`로 `StudyService`가 만듭니다.
+
 ## 5. 배포 준비 (flavor, 차단 검사, 충돌 기록, 서명)
 
 교재 본문(판독 기록, 정답, 사진)은 저장소에 넣지 않습니다. 로컬 전용 폴더 `$SHIORI_PRIVATE_DIR/textbook/`
@@ -212,6 +249,7 @@ runApp(ProviderScope(
 | "샘플 페이지로 해 보기"·샘플 판독기 | 켜짐 | 꺼짐 |
 | release 빌드 | **항상 실패** | 사전 asset·서명 키가 있으면 성공 |
 
+- 앱 아이콘: iOS dev 세 구성은 `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon-dev`(아래 갈색 띠에 「DEV」), prod 세 구성은 `AppIcon`. Android는 dev flavor 소스셋 `app/android/app/src/dev/res/`가 아이콘을 덮습니다(적응형 아이콘은 바탕색만 갈색). 모두 `tools/design/make_icons.py`가 만듭니다(verification.md 39절).
 - pubspec `default-flavor: dev`라서 `--flavor` 없는 명령(`flutter run`, `flutter test`, `flutter build apk --debug`, `flutter drive`)은 dev로 돕니다.
   `--flavor` 없는 release 빌드도 dev라서 실패합니다. 배포 빌드는 언제나 `--flavor prod`를 붙입니다.
 - 샘플 켜짐은 build mode가 아니라 flavor로 정합니다: `devSamplesEnabledFor(appFlavor)`(`lib/adapters/dev_samples.dart`)는 `dev`일 때만 참이고,

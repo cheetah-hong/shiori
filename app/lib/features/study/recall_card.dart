@@ -37,100 +37,38 @@ class _RecallCardState extends State<RecallCard> with CardSpeech {
   bool _wordLoading = false;
   bool _exampleLoading = false;
 
+  void _toggle() => setState(() => _shown = !_shown);
+
   @override
   Widget build(BuildContext context) {
-    final t = context.tokens;
     final w = widget.item.word;
-    final example = w.example;
-    final playExample = widget.onSpeakExample;
     final playWord = widget.onSpeakWord;
     return CardFrame(
       item: widget.item,
       children: [
+        // The question heads the sheet, where 홈 has the day's number.
         Expanded(
-          child: Center(
-            child: SingleChildScrollView(
+          child: LayoutBuilder(
+            builder: (context, box) => SingleChildScrollView(
+              padding: EdgeInsets.only(top: box.maxHeight * _questionTop),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (w.pos != null) ...[
-                        PosBadge(w.pos),
-                        const SizedBox(width: Space.sm),
-                      ],
-                      Flexible(
-                        child: Text(
-                          w.meaning,
-                          style: context.text.headlineSmall,
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ],
-                  ),
+                  if (w.pos != null) ...[
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: PosBadge(w.pos),
+                    ),
+                    const SizedBox(height: Space.sm),
+                  ],
+                  _Question(meaning: w.meaning),
                   const SizedBox(height: Space.lg),
                   if (!_shown)
-                    const HiddenPart(label: '일본어')
-                  else ...[
-                    Text(
-                      readingsLabel(w.readings),
-                      style: JpType.gothic(17, t.ink3, height: 1.3),
-                    ),
-                    if (widget.pitch case final pitch?) ...[
-                      const SizedBox(height: Space.xs),
-                      PitchLine(info: pitch),
-                    ],
-                    Text(
-                      w.headword,
-                      style: JpType.print(
-                        headwordSize(w.headword),
-                        t.ink,
-                        weight: FontWeight.w700,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                  if (example != null) ...[
-                    const SizedBox(height: Space.xl),
-                    if (_shown)
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: ExampleSentence(
-                              sentence: example.ja,
-                              focus: w.headword,
-                              style: JpType.gothic(15, t.ink2, height: 1.75),
-                              onSpeak: playExample == null || _exampleLoading
-                                  ? null
-                                  : () => speakWith(
-                                      playExample,
-                                      (on) => _exampleLoading = on,
-                                    ),
-                            ),
-                          ),
-                          if (playExample != null) ...[
-                            const SizedBox(width: Space.xs),
-                            SpeakButton(
-                              tooltip: '예문 듣기',
-                              loading: _exampleLoading,
-                              small: true,
-                              onPressed: () => speakWith(
-                                playExample,
-                                (on) => _exampleLoading = on,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    const SizedBox(height: Space.xs),
-                    Text(
-                      example.ko,
-                      style: context.text.bodySmall?.copyWith(height: 1.5),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+                    HiddenPart(label: '일본어', onReveal: _toggle)
+                  else
+                    _Answer(word: w, pitch: widget.pitch),
+                  if (w.example case final example?)
+                    _example(example, w.headword),
                 ],
               ),
             ),
@@ -139,11 +77,7 @@ class _RecallCardState extends State<RecallCard> with CardSpeech {
         Row(
           children: [
             Expanded(
-              child: RevealButton(
-                label: '일본어',
-                on: _shown,
-                onTap: () => setState(() => _shown = !_shown),
-              ),
+              child: RevealButton(label: '일본어', on: _shown, onTap: _toggle),
             ),
             if (_shown && playWord != null) ...[
               const SizedBox(width: Space.sm),
@@ -154,6 +88,112 @@ class _RecallCardState extends State<RecallCard> with CardSpeech {
               ),
             ],
           ],
+        ),
+      ],
+    );
+  }
+
+  /// The example: its translation always, the Japanese once shown.
+  Widget _example(Example example, String headword) {
+    final t = context.tokens;
+    final play = widget.onSpeakExample;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: Space.xl),
+        if (_shown)
+          Row(
+            children: [
+              Flexible(
+                child: ExampleSentence(
+                  sentence: example.ja,
+                  focus: headword,
+                  style: JpType.gothic(15, t.text2, height: 1.75),
+                  textAlign: TextAlign.start,
+                  onSpeak: play == null || _exampleLoading
+                      ? null
+                      : () => speakWith(play, (on) => _exampleLoading = on),
+                ),
+              ),
+              if (play != null) ...[
+                const SizedBox(width: Space.xs),
+                SpeakButton(
+                  tooltip: '예문 듣기',
+                  loading: _exampleLoading,
+                  small: true,
+                  onPressed: () =>
+                      speakWith(play, (on) => _exampleLoading = on),
+                ),
+              ],
+            ],
+          ),
+        const SizedBox(height: Space.xs),
+        Text(example.ko, style: context.text.bodySmall?.copyWith(height: 1.5)),
+      ],
+    );
+  }
+}
+
+/// Where the question starts, as a share of the sheet's height: in its
+/// top third.
+const double _questionTop = 0.08;
+
+/// The meaning to recall the word from, big and heavy at the sheet's head.
+/// It grows with the text size only so far (it is large already).
+class _Question extends StatelessWidget {
+  const _Question({required this.meaning});
+
+  final String meaning;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return MediaQuery.withClampedTextScaling(
+      maxScaleFactor: _questionMaxScale,
+      child: Text(
+        meaning,
+        style: TextStyle(
+          color: t.text,
+          fontSize: meaning.runes.length <= _shortQuestion ? 48 : 40,
+          height: 1.15,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+const double _questionMaxScale = 1.4;
+const int _shortQuestion = 6;
+
+/// The word once shown: reading, pitch and the printed headword.
+class _Answer extends StatelessWidget {
+  const _Answer({required this.word, this.pitch});
+
+  final Word word;
+  final PitchInfo? pitch;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        JpText(
+          readingsLabel(word.readings),
+          style: JpType.gothic(17, t.text3, height: 1.3),
+        ),
+        if (pitch case final p?) ...[
+          const SizedBox(height: Space.xs),
+          PitchLine(info: p),
+        ],
+        JpText(
+          word.headword,
+          style: JpType.print(
+            headwordSize(word.headword),
+            t.text,
+            weight: FontWeight.w700,
+          ),
         ),
       ],
     );

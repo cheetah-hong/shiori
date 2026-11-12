@@ -11,7 +11,8 @@ import 'package:shiori_core/shiori_core.dart';
 
 import '../support/harness.dart';
 
-const String _noWords = '이 사진에서 단어를 찾지 못했어요. 페이지 전체가 똑바로 나오게 다시 찍어 주세요.';
+const String _noWords =
+    '이 사진에서 단어를 찾지 못했어요. 페이지 전체가 화면에 들어오게, 밝은 곳에서 똑바로 찍어 주세요.';
 const String _extractorFailed = '단어를 정리하다가 문제가 생겼어요. 다시 시도해 주세요.';
 const String _export = '판독 기록 내보내기';
 

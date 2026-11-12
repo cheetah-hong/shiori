@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/shared/widgets.dart';
 import 'package:shiori_core/shiori_core.dart';
 
 /// Korean name of a cell, for labels and screen readers.
@@ -94,9 +95,9 @@ class EvidenceScreen extends StatelessWidget {
             style: context.text.titleLarge,
           ),
           const SizedBox(height: Space.xs),
-          Text(
+          JpText(
             _value.isEmpty ? '(비어 있음)' : _value,
-            style: JpType.print(22, t.ink),
+            style: JpType.print(22, t.text),
           ),
           const SizedBox(height: Space.sm),
           Text(
@@ -229,7 +230,7 @@ class _EvidenceCropState extends State<EvidenceCrop> {
         borderRadius: BorderRadius.circular(Radii.tile),
         child: AspectRatio(
           aspectRatio: aspect.isFinite && aspect > 0 ? aspect : 4,
-          child: ColoredBox(color: t.sheet, child: child),
+          child: ColoredBox(color: t.surface, child: child),
         ),
       ),
     );
@@ -243,8 +244,8 @@ class _EvidenceCropState extends State<EvidenceCrop> {
             scan: widget.page.scan,
             region: region,
             box: widget.box.clamped(),
-            ink: t.ink,
-            mark: t.pen,
+            textColor: t.text,
+            mark: t.accent,
           ),
         ),
         aspect,
@@ -274,7 +275,7 @@ class _EvidenceCropState extends State<EvidenceCrop> {
               turned: turned,
               region: region,
               box: widget.box.clamped(),
-              mark: t.pen,
+              mark: t.accent,
             ),
           ),
           region.width * w / math.max(region.height * h, 1e-6),
@@ -352,14 +353,14 @@ class _DrawnPagePainter extends CustomPainter {
     required this.scan,
     required this.region,
     required this.box,
-    required this.ink,
+    required this.textColor,
     required this.mark,
   });
 
   final OcrScan? scan;
   final Rect region;
   final PhotoBox box;
-  final Color ink;
+  final Color textColor;
   final Color mark;
 
   @override
@@ -398,7 +399,10 @@ class _DrawnPagePainter extends CustomPainter {
     final painter = TextPainter(
       text: TextSpan(
         text: l.text,
-        style: TextStyle(color: ink, fontSize: math.max(r.height * 0.85, 4)),
+        style: TextStyle(
+          color: textColor,
+          fontSize: math.max(r.height * 0.85, 4),
+        ),
       ),
       textDirection: TextDirection.ltr,
       maxLines: 1,

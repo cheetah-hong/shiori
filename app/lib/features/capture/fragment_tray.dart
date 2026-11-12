@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shiori/app/theme.dart';
 import 'package:shiori/features/capture/evidence_view.dart';
+import 'package:shiori/shared/widgets.dart';
 import 'package:shiori_core/shiori_core.dart';
 
 /// What the learner does with an unpaired fragment.
@@ -35,7 +36,7 @@ class FragmentTray extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(Space.lg),
       decoration: BoxDecoration(
-        color: t.paper2,
+        color: t.surface,
         borderRadius: BorderRadius.circular(Radii.card),
       ),
       child: Column(
@@ -62,11 +63,11 @@ class FragmentTray extends StatelessWidget {
                   key: ValueKey('fragment-${f.id}'),
                   label: Text(
                     f.text,
-                    style: f.isJapanese ? JpType.gothic(15, t.ink) : null,
+                    style: f.isJapanese ? JpType.gothic(15, t.text) : null,
                   ),
                   tooltip: '${f.text} 쓰기',
-                  backgroundColor: t.sheet,
-                  side: BorderSide(color: t.paper3),
+                  backgroundColor: t.bg,
+                  side: BorderSide(color: t.outline),
                   onPressed: () => onTap(f),
                 ),
             ],
@@ -116,11 +117,12 @@ class _FragmentSheetState extends State<_FragmentSheet> {
       maxChildSize: 0.95,
       builder: (context, scroll) => ListView(
         controller: scroll,
-        padding: const EdgeInsets.fromLTRB(
+        padding: EdgeInsets.fromLTRB(
           Space.gutter,
           0,
           Space.gutter,
-          Space.xl,
+          // Clear of the home indicator.
+          Space.xl + MediaQuery.viewPaddingOf(context).bottom,
         ),
         children: [
           Text('「${f.text}」 쓰기', style: context.text.titleLarge),
@@ -156,9 +158,9 @@ class _FragmentSheetState extends State<_FragmentSheet> {
             ListTile(
               key: ValueKey('attach-entry-$i'),
               contentPadding: EdgeInsets.zero,
-              title: Text(
+              title: JpText(
                 e.headword.isEmpty ? '(표제어 없음)' : e.headword,
-                style: JpType.gothic(16, t.ink),
+                style: JpType.gothic(16, t.text),
               ),
               subtitle: Text(
                 [

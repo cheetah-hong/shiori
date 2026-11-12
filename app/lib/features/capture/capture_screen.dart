@@ -8,7 +8,9 @@ import 'package:shiori/app/theme.dart';
 import 'package:shiori/features/capture/capture_controller.dart';
 import 'package:shiori/features/capture/ocr_export.dart';
 import 'package:shiori/features/capture/review_screen.dart';
+import 'package:shiori/shared/bottom_action_bar.dart';
 import 'package:shiori/shared/dictionary_notice.dart';
+import 'package:shiori/shared/ruled.dart';
 import 'package:shiori/shared/widgets.dart';
 import 'package:shiori_core/shiori_core.dart';
 
@@ -56,61 +58,38 @@ class CaptureScreen extends ConsumerWidget {
                 Text(
                   '교재 한 쪽을 위에서 똑바로 찍어 주세요.\n사진 속 일본어 단어와 읽기·뜻을 내용으로 짝지어 모읍니다.',
                   style: context.text.bodyMedium?.copyWith(
-                    color: t.ink2,
+                    color: t.text2,
                     height: 1.55,
                   ),
-                ),
-                const SizedBox(height: Space.xl),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _SourceTile(
-                        icon: Icons.photo_camera_outlined,
-                        title: '카메라로 찍기',
-                        subtitle: '지금 펼친 쪽',
-                        primary: true,
-                        onTap: busy
-                            ? null
-                            : () => unawaited(
-                                controller.pick(ImageOrigin.camera),
-                              ),
-                      ),
-                    ),
-                    const SizedBox(width: Space.md),
-                    Expanded(
-                      child: _SourceTile(
-                        icon: Icons.photo_library_outlined,
-                        title: '앨범에서 고르기',
-                        subtitle: '찍어 둔 사진',
-                        onTap: busy
-                            ? null
-                            : () => unawaited(
-                                controller.pick(ImageOrigin.gallery),
-                              ),
-                      ),
-                    ),
-                  ],
                 ),
                 const _DictionaryNoticeSlot(),
                 if (state is CaptureFailed) ...[
                   const SizedBox(height: Space.lg),
-                  _FailureNote(message: state.message, scan: state.scan),
+                  _FailureNote(
+                    message: state.message,
+                    scan: state.scan,
+                    onRetake: state.retake && !busy
+                        ? () => unawaited(controller.pick(ImageOrigin.camera))
+                        : null,
+                  ),
                 ],
                 if (showSamples) ...[
                   SectionLabel(
                     '샘플 페이지로 해 보기',
-                    trailing: Pill(
+                    trailing: Text(
                       '개발용',
-                      background: t.warnBg,
-                      foreground: t.warn,
-                      icon: Icons.science_outlined,
+                      style: TextStyle(
+                        color: t.warn,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                   Text(
                     '미리 판독해 둔 교재 쪽으로 등록 흐름을 끝까지 볼 수 있어요. 배포판에는 들어가지 않습니다.',
                     style: context.text.bodySmall?.copyWith(height: 1.5),
                   ),
-                  const SizedBox(height: Space.md),
+                  const SizedBox(height: Space.sm),
                   for (final s in [...devSamples, ...generalDevSamples])
                     _SampleTile(
                       sample: s,
@@ -124,6 +103,23 @@ class CaptureScreen extends ConsumerWidget {
             if (state is CaptureReading)
               _ReadingOverlay(label: state.image.label ?? '사진'),
           ],
+        ),
+      ),
+      // Both ways in thumb reach: the camera is the main one.
+      bottomNavigationBar: BottomActionBar(
+        secondary: BarAction(
+          label: '앨범에서 고르기',
+          icon: Icons.photo_library_outlined,
+          onPressed: busy
+              ? null
+              : () => unawaited(controller.pick(ImageOrigin.gallery)),
+        ),
+        primary: BarPrimaryButton(
+          label: '카메라로 찍기',
+          icon: Icons.photo_camera_outlined,
+          onPressed: busy
+              ? null
+              : () => unawaited(controller.pick(ImageOrigin.camera)),
         ),
       ),
     );
@@ -147,81 +143,8 @@ class _DictionaryNoticeSlot extends ConsumerWidget {
   }
 }
 
-class _SourceTile extends StatelessWidget {
-  const _SourceTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-    this.primary = false,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback? onTap;
-  final bool primary;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-    final bg = primary ? t.ink : t.sheet;
-    final fg = primary ? t.sheet : t.ink;
-    return PressScale(
-      enabled: onTap != null,
-      child: Material(
-        color: bg,
-        borderRadius: BorderRadius.circular(Radii.card),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(Radii.card),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              Space.lg,
-              Space.lg,
-              Space.lg,
-              Space.xl,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: primary ? t.marker : t.paper2,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    icon,
-                    size: 22,
-                    color: primary ? t.markerInk : t.ink,
-                  ),
-                ),
-                const SizedBox(height: Space.xl),
-                Text(
-                  title,
-                  style: context.text.titleMedium?.copyWith(
-                    color: fg,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: context.text.bodySmall?.copyWith(
-                    color: primary ? t.sheet.withValues(alpha: 0.75) : t.ink3,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
+/// A development sample as a ruled row: its page number big, like a
+/// calendar day, then what it is.
 class _SampleTile extends StatelessWidget {
   const _SampleTile({required this.sample, required this.onTap});
 
@@ -231,61 +154,55 @@ class _SampleTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: Space.sm),
-      child: Material(
-        color: t.sheet,
-        borderRadius: BorderRadius.circular(Radii.tile),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(Radii.tile),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: Space.lg,
-              vertical: Space.md,
+    return RuledRow(
+      onTap: onTap,
+      child: Row(
+        children: [
+          SizedBox(
+            width: _pageNumberWidth,
+            child: Text(
+              '${sample.page}',
+              style: TextStyle(
+                color: t.text,
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
             ),
-            child: Row(
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(
-                  width: 52,
-                  child: Text(
-                    '${sample.page}',
-                    style: context.text.headlineSmall?.copyWith(
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
+                Text(
+                  sample.detail,
+                  style: context.text.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        sample.detail,
-                        style: context.text.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      Text(
-                        '${sample.page}쪽 · ${sample.layout}',
-                        style: context.text.bodySmall,
-                      ),
-                    ],
-                  ),
+                Text(
+                  '${sample.page}쪽 · ${sample.layout}',
+                  style: context.text.bodySmall,
                 ),
-                Icon(Icons.chevron_right, color: t.ink3),
               ],
             ),
           ),
-        ),
+          Icon(Icons.chevron_right, color: t.text3),
+        ],
       ),
     );
   }
 }
 
+const double _pageNumberWidth = 64;
+
 class _FailureNote extends StatelessWidget {
-  const _FailureNote({required this.message, this.scan});
+  const _FailureNote({required this.message, this.scan, this.onRetake});
 
   final String message;
+
+  /// 다시 찍기 (the photo held no word).
+  final VoidCallback? onRetake;
 
   /// The page's OCR passes, when it was read: the note offers their export.
   final OcrScan? scan;
@@ -318,6 +235,14 @@ class _FailureNote extends StatelessWidget {
                       height: 1.45,
                     ),
                   ),
+                  if (onRetake case final retake?) ...[
+                    const SizedBox(height: Space.md),
+                    OutlinedButton.icon(
+                      onPressed: retake,
+                      icon: const Icon(Icons.photo_camera_outlined),
+                      label: const Text('다시 찍기'),
+                    ),
+                  ],
                   if (scan != null) ...[
                     const SizedBox(height: Space.sm),
                     OcrExportFailureButton(scan: scan),
@@ -342,7 +267,7 @@ class _ReadingOverlay extends StatelessWidget {
     final t = context.tokens;
     return Positioned.fill(
       child: ColoredBox(
-        color: t.paper.withValues(alpha: 0.86),
+        color: t.bg.withValues(alpha: 0.86),
         child: Center(
           child: Semantics(
             liveRegion: true,
@@ -351,45 +276,37 @@ class _ReadingOverlay extends StatelessWidget {
               width: 260,
               padding: const EdgeInsets.all(Space.xl),
               decoration: BoxDecoration(
-                color: t.ink,
-                borderRadius: BorderRadius.circular(Radii.card),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x40000000),
-                    blurRadius: 28,
-                    offset: Offset(0, 14),
-                  ),
-                ],
+                color: t.bg,
+                border: Border(
+                  top: BorderSide(color: t.text, width: 4),
+                  left: BorderSide(color: t.line),
+                  right: BorderSide(color: t.line),
+                  bottom: BorderSide(color: t.line),
+                ),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.highlight_outlined, color: t.marker),
+                  Icon(Icons.highlight_outlined, color: t.accentText),
                   const SizedBox(height: Space.md),
                   Text(
                     '글자를 읽는 중',
                     style: context.text.titleMedium?.copyWith(
-                      color: t.sheet,
+                      color: t.text,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     '일본어와 한국어로 두 번 읽고 표를 정리해요',
-                    style: TextStyle(
-                      color: t.sheet.withValues(alpha: 0.75),
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(color: t.text2, fontSize: 13),
                   ),
                   const SizedBox(height: Space.lg),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(Radii.chip),
-                    child: LinearProgressIndicator(
-                      color: t.marker,
-                      backgroundColor: t.sheet.withValues(alpha: 0.15),
-                      minHeight: 6,
-                    ),
+                  LinearProgressIndicator(
+                    color: t.accent,
+                    backgroundColor: t.surfaceStrong,
+                    minHeight: 2,
                   ),
                 ],
               ),

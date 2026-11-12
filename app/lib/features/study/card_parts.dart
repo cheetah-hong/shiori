@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/shared/sheet.dart';
 import 'package:shiori/shared/widgets.dart';
 import 'package:shiori_core/shiori_core.dart';
 
@@ -14,11 +15,13 @@ class ExampleSentence extends StatelessWidget {
     required this.focus,
     required this.style,
     this.onSpeak,
+    this.textAlign = TextAlign.center,
   });
 
   final String sentence;
   final String focus;
   final TextStyle style;
+  final TextAlign textAlign;
 
   /// Reads the sentence; null: the text takes no taps.
   final VoidCallback? onSpeak;
@@ -29,6 +32,7 @@ class ExampleSentence extends StatelessWidget {
       sentence: sentence,
       focus: focus,
       style: style,
+      textAlign: textAlign,
     );
     final speak = onSpeak;
     if (speak == null) return text;
@@ -45,48 +49,86 @@ class ExampleSentence extends StatelessWidget {
 }
 
 /// Keeps the space while hidden (no layout jump) and fades the content in.
+/// Hidden, the space is an empty ruled line with a small 「[label] 가림」, a
+/// blank in a notebook; tapping it does what the reveal button does (which
+/// alone is read and counted as a button, so the line is not).
 class CoveredPart extends StatelessWidget {
   const CoveredPart({
     super.key,
     required this.visible,
     required this.label,
     required this.child,
+    this.onReveal,
   });
 
   final bool visible;
   final String label;
   final Widget child;
 
+  /// The reveal button's action; null: the line takes no taps.
+  final VoidCallback? onReveal;
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      // The line runs across the sheet, open or not, so nothing moves.
+      constraints: const BoxConstraints(minWidth: double.infinity),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          AnimatedOpacity(
+            opacity: visible ? 1 : 0,
+            duration: Motion.of(context, Motion.ui),
+            child: ExcludeSemantics(
+              excluding: !visible,
+              // Opened by a reveal button: VoiceOver reads what appeared.
+              child: Semantics(liveRegion: visible, child: child),
+            ),
+          ),
+          if (!visible)
+            Positioned.fill(
+              child: _BlankLine(label: label, onTap: onReveal),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The hairline-ruled blank of a covered part, its label small at the left.
+class _BlankLine extends StatelessWidget {
+  const _BlankLine({required this.label, this.onTap});
+
+  final String label;
+  final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        AnimatedOpacity(
-          opacity: visible ? 1 : 0,
-          duration: Motion.of(context, Motion.ui),
-          child: ExcludeSemantics(excluding: !visible, child: child),
-        ),
-        if (!visible)
-          ExcludeSemantics(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-              decoration: BoxDecoration(
-                color: t.paper2,
-                borderRadius: BorderRadius.circular(Radii.chip),
-              ),
+    return ExcludeSemantics(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(color: t.line)),
+          ),
+          child: Align(
+            alignment: Alignment.bottomLeft,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 2),
               child: Text(
                 '$label 가림',
                 style: TextStyle(
-                  color: t.ink3,
+                  color: t.text3,
                   fontSize: 12,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
           ),
-      ],
+        ),
+      ),
     );
   }
 }
@@ -108,33 +150,45 @@ class RevealButton extends StatelessWidget {
     final t = context.tokens;
     return Semantics(
       button: true,
-      toggled: on,
       label: on ? '$label 가리기' : '$label 보기',
       child: ExcludeSemantics(
         child: Material(
-          color: on ? t.paper3 : t.paper,
-          borderRadius: BorderRadius.circular(Radii.chip),
+          // A light fill: the sheet under it is bg.
+          color: on ? t.surfaceStrong : t.surface,
+          borderRadius: BorderRadius.circular(Radii.button),
           child: InkWell(
-            borderRadius: BorderRadius.circular(Radii.chip),
+            borderRadius: BorderRadius.circular(Radii.button),
             onTap: onTap,
-            child: SizedBox(
-              height: 48,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    on
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                    size: 18,
-                    color: t.ink2,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    on ? '$label 가리기' : '$label 보기',
-                    style: TextStyle(color: t.ink, fontWeight: FontWeight.w700),
-                  ),
-                ],
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 48),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: Space.sm,
+                  vertical: Space.xs,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      on
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      size: 18,
+                      color: t.text2,
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        on ? '$label 가리기' : '$label 보기',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: t.text,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -180,8 +234,9 @@ class SpeakButton extends StatelessWidget {
   }
 }
 
-/// The sheet every study card sits on, with the card's badge (새 단어,
-/// 복습 · n단계, 다시 n) at the top.
+/// The sheet every study card sits on: a page of the tear-off calendar, as
+/// on 홈 ([SheetFrame]), with the card's tag (새 단어, 복습 · n단계, 다시 n)
+/// as a small line under the binding strip.
 class CardFrame extends StatelessWidget {
   const CardFrame({super.key, required this.item, required this.children});
 
@@ -191,37 +246,31 @@ class CardFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final (badge, badgeBg, badgeFg) = switch (item) {
-      SessionItem(retries: > 0) => ('다시 ${item.retries}', t.paper3, t.ink),
-      SessionItem(isNew: true) => ('새 단어', t.marker, t.markerInk),
-      _ => ('복습 · ${item.before?.level ?? 0}단계', t.paper2, t.ink),
+    final (tag, tagColor) = switch (item) {
+      SessionItem(retries: > 0) => ('다시 ${item.retries}', t.text),
+      SessionItem(isNew: true) => ('새 단어', t.accentText),
+      _ => ('복습 · ${item.before?.level ?? 0}단계', t.text2),
     };
-    return Container(
-      decoration: BoxDecoration(
-        color: t.sheet,
-        borderRadius: BorderRadius.circular(Radii.wordCard),
-        boxShadow: [
-          BoxShadow(
-            color: t.ink.withValues(alpha: 0.10),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-            spreadRadius: -8,
-          ),
-        ],
-      ),
+    return SheetFrame(
+      fill: true,
       padding: const EdgeInsets.fromLTRB(
         Space.lg,
-        Space.lg,
+        Space.sm,
         Space.lg,
         Space.md,
       ),
       child: Column(
         children: [
-          Row(
-            children: [
-              Pill(badge, background: badgeBg, foreground: badgeFg),
-              const Spacer(),
-            ],
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(
+              tag,
+              style: TextStyle(
+                color: tagColor,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
           ...children,
         ],
@@ -233,19 +282,25 @@ class CardFrame extends StatelessWidget {
 /// A space that holds [label] 가림 until the learner opens it (the content
 /// is not built at all, so nothing of it can be read early).
 class HiddenPart extends StatelessWidget {
-  const HiddenPart({super.key, required this.label});
+  const HiddenPart({super.key, required this.label, this.onReveal});
 
   final String label;
+
+  /// The reveal button's action, for a tap on the blank line.
+  final VoidCallback? onReveal;
 
   @override
   Widget build(BuildContext context) => CoveredPart(
     visible: false,
     label: label,
-    child: const SizedBox(height: 24, width: 96),
+    onReveal: onReveal,
+    child: const SizedBox(height: _blankHeight),
   );
 }
 
-/// Headword size by length, as on the 뜻 맞히기 card.
+const double _blankHeight = 28;
+
+/// Headword size by length: one size for the printed word in every mode.
 double headwordSize(String headword) {
   final n = headword.runes.length;
   if (n <= 3) return 60;

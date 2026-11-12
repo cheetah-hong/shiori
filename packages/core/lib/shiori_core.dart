@@ -63,6 +63,7 @@ export 'src/study/study_calendar.dart';
 export 'src/study/study_service.dart';
 export 'src/study/study_session.dart';
 export 'src/study/study_settings.dart';
+export 'src/study/study_week.dart';
 
 // First storage blocks
 export 'src/storage/in_memory_library_repository.dart';

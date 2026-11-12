@@ -12,6 +12,7 @@ import 'package:shiori/features/about/examples_card.dart';
 import 'package:shiori/features/about/extract_licenses.dart';
 import 'package:shiori/features/about/privacy_policy.dart';
 import 'package:shiori/features/about/voice_licenses.dart';
+import 'package:shiori/features/onboarding/onboarding_screen.dart';
 import 'package:shiori/shared/dictionary_notice.dart';
 import 'package:shiori/shared/widgets.dart';
 
@@ -57,6 +58,24 @@ class AboutScreen extends ConsumerWidget {
             Space.section,
           ),
           children: [
+            const SectionLabel('사용 안내'),
+            AboutCard(
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.menu_book_outlined),
+                title: const Text('사용 안내 다시 보기'),
+                subtitle: const Text('처음 켰을 때 본 세 장의 안내'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (route) => OnboardingScreen(
+                      onDone: () => Navigator.of(route).pop(),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: Space.section),
             const SectionLabel('사전 데이터'),
             switch (dictionary) {
               AsyncData(:final value) when value.isAvailable => _DictionaryCard(
@@ -157,7 +176,7 @@ class _ExtractorCard extends StatelessWidget {
         children: [
           Text(
             '배치가 다른 쪽에서 단어를 뽑을 때 아래 데이터를 씁니다.',
-            style: context.text.bodySmall?.copyWith(color: t.ink2),
+            style: context.text.bodySmall?.copyWith(color: t.text2),
           ),
           source(
             'JL 활용 되돌리기 규칙 · $_jlUrl',
@@ -206,7 +225,7 @@ class _VoiceCard extends StatelessWidget {
         children: [
           Text(
             '단어와 예문 소리는 기기 안에서 만들어요. 인터넷을 쓰지 않아요.',
-            style: context.text.bodySmall?.copyWith(color: t.ink2),
+            style: context.text.bodySmall?.copyWith(color: t.text2),
           ),
           source(
             '음성 · VOICEVOX Nemo',
@@ -242,7 +261,6 @@ class _DictionaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.tokens;
     final info = dictionary.info!;
     final edition = dictionary.edition!;
     return AboutCard(
@@ -257,17 +275,7 @@ class _DictionaryCard extends StatelessWidget {
             style: context.text.bodySmall,
           ),
           const SizedBox(height: Space.md),
-          Container(
-            padding: const EdgeInsets.all(Space.md),
-            decoration: BoxDecoration(
-              color: t.paper,
-              borderRadius: BorderRadius.circular(Radii.tile),
-            ),
-            child: Text(
-              info.attribution,
-              style: context.text.bodyMedium?.copyWith(height: 1.5),
-            ),
-          ),
+          AboutQuote(info.attribution),
           const SizedBox(height: Space.md),
           Text(
             'EDRDG의 JMdict 파일을 이 앱의 사전 형식으로 변환(가공)한 사본입니다. '
@@ -306,7 +314,6 @@ class _GlossaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.tokens;
     return AboutCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -320,17 +327,7 @@ class _GlossaryCard extends StatelessWidget {
           ),
           for (final source in edition.sources) ...[
             const SizedBox(height: Space.md),
-            Container(
-              padding: const EdgeInsets.all(Space.md),
-              decoration: BoxDecoration(
-                color: t.paper,
-                borderRadius: BorderRadius.circular(Radii.tile),
-              ),
-              child: Text(
-                source.attribution,
-                style: context.text.bodyMedium?.copyWith(height: 1.5),
-              ),
-            ),
+            AboutQuote(source.attribution),
             const SizedBox(height: Space.lg),
             AboutLink(
               label: '라이선스 (${source.license})',
@@ -364,7 +361,6 @@ class _WiktionaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.tokens;
     final licenses = {for (final s in edition.sources) s.licenseUrl: s.license};
     return AboutCard(
       child: Column(
@@ -379,17 +375,7 @@ class _WiktionaryCard extends StatelessWidget {
           ),
           for (final source in edition.sources) ...[
             const SizedBox(height: Space.md),
-            Container(
-              padding: const EdgeInsets.all(Space.md),
-              decoration: BoxDecoration(
-                color: t.paper,
-                borderRadius: BorderRadius.circular(Radii.tile),
-              ),
-              child: Text(
-                source.attribution,
-                style: context.text.bodyMedium?.copyWith(height: 1.5),
-              ),
-            ),
+            AboutQuote(source.attribution),
           ],
           const SizedBox(height: Space.lg),
           for (final MapEntry(key: url, value: name) in licenses.entries)

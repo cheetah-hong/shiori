@@ -1,21 +1,29 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/adapters/voicevox_speech.dart';
 import 'package:shiori/app/blocks.dart';
-import 'package:shiori/app/theme.dart';
-import 'package:shiori/features/study/restudy_labels.dart';
-import 'package:shiori/features/study/pitch_line.dart';
 import 'package:shiori/app/data.dart';
-import 'package:shiori/features/study/study_mode_labels.dart';
-import 'package:shiori/features/study/recall_card.dart';
+import 'package:shiori/app/theme.dart';
+import 'package:shiori/features/study/answer_buttons.dart';
+import 'package:shiori/features/study/choice_answers.dart';
 import 'package:shiori/features/study/choice_card.dart';
+import 'package:shiori/features/study/pitch_line.dart';
+import 'package:shiori/features/study/recall_card.dart';
+import 'package:shiori/features/study/restudy_labels.dart';
+import 'package:shiori/features/study/session_done.dart';
+import 'package:shiori/features/study/session_tear.dart';
 import 'package:shiori/features/study/study_controller.dart';
+import 'package:shiori/features/study/study_mode_labels.dart';
+import 'package:shiori/features/study/study_stand_ins.dart';
 import 'package:shiori/features/study/word_card.dart';
 import 'package:shiori/features/study/word_speech.dart';
 import 'package:shiori/shared/format.dart';
 import 'package:shiori/shared/hide_labels.dart';
+import 'package:shiori/shared/large_text.dart';
+import 'package:shiori/shared/states.dart';
 import 'package:shiori_core/shiori_core.dart';
 import 'package:voicevox_block/voicevox_block.dart';
 
@@ -197,10 +205,61 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
     setState(() => _picked = null);
   }
 
+  /// The session, 오늘 학습 끝 (the last card torn off on the way), or
+  /// what stands in for them.
+  Widget _body(
+    AsyncValue<StudySession> state,
+    _Picked? picked,
+    VoidCallback? onMore,
+  ) {
+    final request = _request;
+    final body = switch (state) {
+      // The last pick's result shows before 오늘 학습 끝.
+      AsyncData(value: final s) when picked != null => _Session(
+        session: s,
+        request: request,
+        onAnswer: _answer,
+        onHide: _hide,
+        picked: picked,
+        onPick: _pick,
+        onNext: _writing ? null : _next,
+      ),
+      AsyncData(value: final s) when s.total == 0 => NothingToStudy(
+        onMore: onMore,
+      ),
+      AsyncData(value: final s) when s.isFinished => SessionDone(
+        session: s,
+        onMore: onMore,
+      ),
+      AsyncData(value: final s) => _Session(
+        session: s,
+        request: request,
+        onAnswer: _answer,
+        onHide: _hide,
+        onPick: _pick,
+        onNext: _next,
+      ),
+      AsyncError(:final error) => StudyFailure(
+        message: '$error',
+        onRetry: () {
+          // A pick that failed is not shown on the new session.
+          setState(() => _picked = null);
+          ref.invalidate(studyControllerProvider(request));
+        },
+      ),
+      _ => const Loading(),
+    };
+    return SessionTear(
+      live: body is _Session,
+      done: body is SessionDone,
+      child: body,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_mode == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Loading());
     }
     final scope = widget.scope;
     final request = _request;
@@ -222,44 +281,7 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
                 message: HideLabels.hidden(hidden.word.headword),
                 onUndo: () => _undo(hidden),
               ),
-            Expanded(
-              child: switch (state) {
-                // The last pick's result shows before 오늘 학습 끝.
-                AsyncData(value: final s) when picked != null => _Session(
-                  session: s,
-                  request: request,
-                  onAnswer: _answer,
-                  onHide: _hide,
-                  picked: picked,
-                  onPick: _pick,
-                  onNext: _writing ? null : _next,
-                ),
-                AsyncData(value: final s) when s.total == 0 => _NothingToStudy(
-                  onMore: onMore,
-                ),
-                AsyncData(value: final s) when s.isFinished => _SessionDone(
-                  session: s,
-                  onMore: onMore,
-                ),
-                AsyncData(value: final s) => _Session(
-                  session: s,
-                  request: request,
-                  onAnswer: _answer,
-                  onHide: _hide,
-                  onPick: _pick,
-                  onNext: _next,
-                ),
-                AsyncError(:final error) => _Failure(
-                  message: '$error',
-                  onRetry: () {
-                    // A pick that failed is not shown on the new session.
-                    setState(() => _picked = null);
-                    ref.invalidate(studyControllerProvider(request));
-                  },
-                ),
-                _ => const Center(child: CircularProgressIndicator()),
-              },
-            ),
+            Expanded(child: _body(state, picked, onMore)),
           ],
         ),
       ),
@@ -295,7 +317,7 @@ class _Notice extends StatelessWidget {
           constraints: const BoxConstraints(minHeight: 48),
           padding: const EdgeInsets.only(left: Space.md, right: Space.xs),
           decoration: BoxDecoration(
-            color: t.paper2,
+            color: t.surface,
             borderRadius: BorderRadius.circular(Radii.tile),
           ),
           child: Row(
@@ -303,14 +325,14 @@ class _Notice extends StatelessWidget {
               Icon(
                 failed ? Icons.error_outline : Icons.visibility_off_outlined,
                 size: 18,
-                color: failed ? t.risk : t.ink2,
+                color: failed ? t.risk : t.text2,
               ),
               const SizedBox(width: Space.sm),
               Expanded(
                 child: Text(
                   message,
                   style: context.text.bodyMedium?.copyWith(
-                    color: failed ? t.risk : t.ink,
+                    color: failed ? t.risk : t.text,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -362,6 +384,7 @@ class _Session extends ConsumerWidget {
     WidgetRef ref, {
     required SessionItem item,
     required StudyMode mode,
+    required MultipleChoice? question,
     required String cardKey,
     required Future<void> Function()? onSpeakWord,
     required Future<void> Function()? onSpeakExample,
@@ -370,12 +393,6 @@ class _Session extends ConsumerWidget {
     required Future<int?> Function()? estimatePitch,
   }) {
     final key = ValueKey(cardKey);
-    final question = mode.isMultipleChoice
-        ? picked?.question ??
-              ref
-                  .read(studyControllerProvider(request).notifier)
-                  .questionFor(session)
-        : null;
     return switch (mode) {
       StudyMode.recall => RecallCard(
         key: key,
@@ -388,16 +405,8 @@ class _Session extends ConsumerWidget {
       StudyMode.listening when question != null => ChoiceCard(
         key: key,
         item: item,
-        question: question,
         listening: mode == StudyMode.listening,
         picked: picked?.option.id,
-        onPick: (option) => onPick((
-          item: item,
-          question: question,
-          option: option,
-          cardKey: cardKey,
-        )),
-        onNext: onNext,
         onPlayWord: onSpeakWord,
         onSpeakExample: onSpeakExample,
         pitch: pitch,
@@ -428,6 +437,10 @@ class _Session extends ConsumerWidget {
         picked?.cardKey ??
         '${item.word.id}#${session.knownCount}#${session.retryCount}';
     final controller = ref.read(studyControllerProvider(request).notifier);
+    // 객관식 and 듣고 맞히기: the card asks, the rows under it answer.
+    final question = mode.isMultipleChoice
+        ? picked?.question ?? controller.questionFor(session)
+        : null;
     final speech = ref.watch(speechProvider);
     // Until the accent table has loaded the card shows it without data; a
     // button pressed meanwhile waits for the table, so the sound keeps the
@@ -458,8 +471,13 @@ class _Session extends ConsumerWidget {
     };
     final preview = intervalLabel(controller.previewKnown(item));
     final duration = Motion.of(context, Motion.card);
+    // From about the AX1 text size the parts around the card would leave it
+    // no room: the screen scrolls and the card keeps a height of its own
+    // (it scrolls inside).
+    final large = isLargeText(context);
 
-    return Column(
+    return _StudyLayout(
+      large: large,
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(
@@ -476,7 +494,15 @@ class _Session extends ConsumerWidget {
                 onPressed: () => Navigator.of(context).maybePop(),
               ),
               Expanded(
-                child: Text(_title(request), style: context.text.titleMedium),
+                child: large
+                    ? const SizedBox.shrink()
+                    : Semantics(
+                        header: true,
+                        child: Text(
+                          _title(request),
+                          style: context.text.titleMedium,
+                        ),
+                      ),
               ),
               Semantics(
                 label: '${session.total}장 중 ${session.knownCount}장 완료',
@@ -492,6 +518,14 @@ class _Session extends ConsumerWidget {
             ],
           ),
         ),
+        if (large)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
+            child: Semantics(
+              header: true,
+              child: Text(_title(request), style: context.text.titleMedium),
+            ),
+          ),
         Padding(
           padding: const EdgeInsets.symmetric(
             horizontal: Space.gutter,
@@ -499,7 +533,7 @@ class _Session extends ConsumerWidget {
           ),
           child: _ProgressBar(value: session.progress),
         ),
-        Expanded(
+        _CardSlot(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(
               Space.gutter,
@@ -525,6 +559,7 @@ class _Session extends ConsumerWidget {
                 ref,
                 item: item,
                 mode: mode,
+                question: question,
                 cardKey: cardKey,
                 onSpeakWord: speech.isAvailable
                     ? () async => speech.speak(
@@ -565,7 +600,7 @@ class _Session extends ConsumerWidget {
               alignment: Alignment.centerRight,
               child: TextButton.icon(
                 style: TextButton.styleFrom(
-                  foregroundColor: t.ink2,
+                  foregroundColor: t.text2,
                   minimumSize: const Size(48, 48),
                 ),
                 onPressed: onHide,
@@ -577,73 +612,92 @@ class _Session extends ConsumerWidget {
               ),
             ),
           ),
-        if (mode.isMultipleChoice)
-          const SizedBox(height: Space.lg)
-        else
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              Space.gutter,
-              Space.sm,
-              Space.gutter,
-              Space.lg,
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 5,
-                  child: SizedBox(
-                    height: 60,
-                    child: FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: t.paper2,
-                        foregroundColor: t.ink,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                      onPressed: () => onAnswer(Answer.retry),
-                      icon: const Icon(Icons.undo_rounded, size: 20),
-                      label: const Text('다시 학습'),
-                    ),
-                  ),
+        // The answers' fixed place at the bottom, in every mode.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            Space.gutter,
+            Space.sm,
+            Space.gutter,
+            Space.lg,
+          ),
+          child: question != null
+              ? ChoiceAnswers(
+                  key: ValueKey('answers-$cardKey'),
+                  question: question,
+                  large: large,
+                  picked: picked?.option.id,
+                  onPick: (option) => onPick((
+                    item: item,
+                    question: question,
+                    option: option,
+                    cardKey: cardKey,
+                  )),
+                  onNext: onNext,
+                )
+              : AnswerButtons(
+                  large: large,
+                  preview: preview,
+                  onAnswer: onAnswer,
                 ),
-                const SizedBox(width: Space.md),
-                Expanded(
-                  flex: 6,
-                  child: SizedBox(
-                    height: 60,
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                      onPressed: () => onAnswer(Answer.known),
-                      child: Semantics(
-                        label: '알고있음, 다음 복습 $preview',
-                        child: ExcludeSemantics(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Text('알고있음'),
-                              Text(
-                                preview,
-                                style: TextStyle(
-                                  color: t.marker,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+        ),
+      ],
+    );
+  }
+}
+
+/// The card's place: the rest of the screen, or (large text) a fixed share
+/// of it in a scrolling screen.
+class _CardSlot extends StatelessWidget {
+  const _CardSlot({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => child;
+}
+
+/// A column whose card slot takes the remaining height, or with [large]
+/// text a fixed first row (close, count) over a scrolling rest whose card
+/// slot is most of the screen.
+class _StudyLayout extends StatelessWidget {
+  const _StudyLayout({required this.large, required this.children});
+
+  final bool large;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!large) {
+      return Column(
+        children: [
+          for (final c in children)
+            c is _CardSlot
+                ? Expanded(child: TearCard(child: c))
+                : TearFade(child: c),
+        ],
+      );
+    }
+    // The first row (close, count) stays; the rest scrolls.
+    return Column(
+      children: [
+        TearFade(child: children.first),
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, box) => SingleChildScrollView(
+              child: Column(
+                children: [
+                  for (final c in children.skip(1))
+                    c is _CardSlot
+                        ? SizedBox(
+                            height: math.max(box.maxHeight * 0.8, 320),
+                            child: TearCard(child: c),
+                          )
+                        : TearFade(child: c),
+                ],
+              ),
             ),
           ),
+        ),
       ],
     );
   }
@@ -657,6 +711,8 @@ String _title(StudyRequest request) {
       : StudyModeLabels.header(what, request.mode);
 }
 
+/// How far the session is: a square-ended 2 pt ink line on a hairline,
+/// as a ruled calendar page.
 class _ProgressBar extends StatelessWidget {
   const _ProgressBar({required this.value});
 
@@ -665,21 +721,18 @@ class _ProgressBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(Radii.chip),
-      child: SizedBox(
-        height: 6,
-        child: ColoredBox(
-          color: t.paper2,
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(end: value),
-            duration: Motion.of(context, const Duration(milliseconds: 600)),
-            curve: Motion.easeOut,
-            builder: (_, v, _) => Transform.scale(
-              scaleX: v,
-              alignment: Alignment.centerLeft,
-              child: ColoredBox(color: t.ink, child: const SizedBox.expand()),
-            ),
+    return SizedBox(
+      height: _progressHeight,
+      child: ColoredBox(
+        color: t.line,
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(end: value),
+          duration: Motion.of(context, const Duration(milliseconds: 600)),
+          curve: Motion.easeOut,
+          builder: (_, v, _) => Transform.scale(
+            scaleX: v,
+            alignment: Alignment.centerLeft,
+            child: ColoredBox(color: t.text, child: const SizedBox.expand()),
           ),
         ),
       ),
@@ -687,180 +740,4 @@ class _ProgressBar extends StatelessWidget {
   }
 }
 
-class _SessionDone extends ConsumerWidget {
-  const _SessionDone({required this.session, this.onMore});
-
-  final StudySession session;
-
-  /// 더 학습하기; null when no card can be brought forward.
-  final VoidCallback? onMore;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.tokens;
-    final elapsed =
-        session.elapsed ??
-        ref.read(clockProvider).now().difference(session.startedAt);
-    return Padding(
-      padding: const EdgeInsets.all(Space.gutter),
-      child: Column(
-        children: [
-          const Spacer(),
-          Container(
-            width: 84,
-            height: 84,
-            decoration: BoxDecoration(color: t.marker, shape: BoxShape.circle),
-            child: Icon(Icons.check_rounded, size: 44, color: t.markerInk),
-          ),
-          const SizedBox(height: Space.lg),
-          Semantics(
-            header: true,
-            child: Text('오늘 학습 끝', style: context.text.headlineSmall),
-          ),
-          const SizedBox(height: Space.xl),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: Space.sm,
-            crossAxisSpacing: Space.sm,
-            childAspectRatio: 2.3,
-            children: [
-              _DoneStat(value: elapsedLabel(elapsed), label: '소요 시간'),
-              _DoneStat(value: '${session.knownNewCount}개', label: '새로 외운 단어'),
-              _DoneStat(value: '${session.knownReviewCount}개', label: '복습한 단어'),
-              _DoneStat(
-                value: '${session.retryCount}번',
-                label: '다시 학습',
-                color: t.pen,
-              ),
-            ],
-          ),
-          const Spacer(flex: 2),
-          if (onMore case final more?) ...[
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: more,
-                icon: const Icon(Icons.replay_rounded),
-                label: const Text(RestudyLabels.more),
-              ),
-            ),
-            const SizedBox(height: Space.sm),
-          ],
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('확인'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DoneStat extends StatelessWidget {
-  const _DoneStat({required this.value, required this.label, this.color});
-
-  final String value;
-  final String label;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: Space.lg,
-        vertical: Space.md,
-      ),
-      decoration: BoxDecoration(
-        color: t.sheet,
-        borderRadius: BorderRadius.circular(Radii.tile),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            value,
-            style: context.text.titleLarge?.copyWith(
-              color: color,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
-          Text(label, style: context.text.bodySmall),
-        ],
-      ),
-    );
-  }
-}
-
-class _NothingToStudy extends StatelessWidget {
-  const _NothingToStudy({this.onMore});
-
-  /// 더 학습하기; null when no card can be brought forward.
-  final VoidCallback? onMore;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(Space.gutter),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text('지금 학습할 카드가 없어요', style: context.text.titleLarge),
-          const SizedBox(height: Space.sm),
-          Text('복습할 때가 되면 홈에 숫자가 올라와요', style: context.text.bodyMedium),
-          const SizedBox(height: Space.xl),
-          if (onMore case final more?) ...[
-            FilledButton.icon(
-              onPressed: more,
-              icon: const Icon(Icons.replay_rounded),
-              label: const Text(RestudyLabels.more),
-            ),
-            const SizedBox(height: Space.sm),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('돌아가기'),
-            ),
-          ] else
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('돌아가기'),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Failure extends StatelessWidget {
-  const _Failure({required this.message, required this.onRetry});
-
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(Space.gutter),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text('학습을 이어 가지 못했어요', style: context.text.titleLarge),
-          const SizedBox(height: Space.sm),
-          Text(
-            message,
-            style: context.text.bodySmall,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: Space.xl),
-          FilledButton(onPressed: onRetry, child: const Text('다시 시작')),
-        ],
-      ),
-    );
-  }
-}
+const double _progressHeight = 2;

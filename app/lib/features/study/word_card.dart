@@ -3,6 +3,7 @@ import 'package:shiori/app/theme.dart';
 import 'package:shiori/features/study/card_parts.dart';
 import 'package:shiori/features/study/pitch_line.dart';
 import 'package:shiori/shared/format.dart';
+import 'package:shiori/shared/large_text.dart';
 import 'package:shiori/shared/widgets.dart';
 import 'package:shiori_core/shiori_core.dart';
 
@@ -98,6 +99,9 @@ class _WordCardState extends State<WordCard> {
     }, onError: (Object _) {});
   }
 
+  /// A tap on a covered line opens it, as 뜻 보기 does.
+  void _openMeaning() => setState(() => _showMeaning = true);
+
   PitchInfo? get _pitch => switch (widget.pitch) {
     final PitchInfo p when p.accent == null && _estimated != null =>
       p.withAccent(_estimated),
@@ -110,200 +114,191 @@ class _WordCardState extends State<WordCard> {
     final item = widget.item;
     final w = item.word;
 
-    final (badge, badgeBg, badgeFg) = switch (item) {
-      SessionItem(retries: > 0) => ('다시 ${item.retries}', t.paper3, t.ink),
-      SessionItem(isNew: true) => ('새 단어', t.marker, t.markerInk),
-      _ => ('복습 · ${item.before?.level ?? 0}단계', t.paper2, t.ink),
-    };
-
-    return Container(
-      decoration: BoxDecoration(
-        color: t.sheet,
-        borderRadius: BorderRadius.circular(Radii.wordCard),
-        boxShadow: [
-          BoxShadow(
-            color: t.ink.withValues(alpha: 0.10),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-            spreadRadius: -8,
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.fromLTRB(
-        Space.lg,
-        Space.lg,
-        Space.lg,
-        Space.md,
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Pill(badge, background: badgeBg, foreground: badgeFg),
-              const Spacer(),
-            ],
-          ),
-          Expanded(
-            child: Center(
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CoveredPart(
-                      visible: _showReading,
-                      label: '읽기',
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            readingsLabel(w.readings),
-                            style: JpType.gothic(17, t.ink3, height: 1.3),
-                          ),
-                          if (_pitch case final pitch?) ...[
-                            const SizedBox(height: Space.xs),
-                            PitchLine(info: pitch),
-                          ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: Space.xs),
-                    Semantics(
-                      label: w.headword,
-                      child: Text(
-                        w.headword,
-                        style: JpType.print(
-                          _headSize(w.headword),
-                          t.ink,
-                          weight: FontWeight.w700,
+    return CardFrame(
+      item: item,
+      children: [
+        Expanded(
+          child: Center(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CoveredPart(
+                    visible: _showReading,
+                    label: '읽기',
+                    onReveal: _toggleReading,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        JpText(
+                          readingsLabel(w.readings),
+                          style: JpType.gothic(17, t.text3, height: 1.3),
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    const SizedBox(height: Space.md),
-                    CoveredPart(
-                      visible: _showMeaning,
-                      label: '뜻',
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (w.pos != null) ...[
-                            PosBadge(w.pos),
-                            const SizedBox(width: Space.sm),
-                          ],
-                          Flexible(
-                            child: Text(
-                              w.meaning,
-                              style: context.text.titleLarge,
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
+                        if (_pitch case final pitch?) ...[
+                          const SizedBox(height: Space.xs),
+                          PitchLine(info: pitch),
                         ],
-                      ),
+                      ],
                     ),
-                    if (_example(w) case final ex?) ...[
-                      const SizedBox(height: Space.xl),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: ExampleSentence(
-                              sentence: ex.ja,
-                              focus: ex.surface ?? w.headword,
-                              style: JpType.gothic(15, t.ink2, height: 1.75),
-                              onSpeak: _exampleLoading
-                                  ? null
-                                  : switch (widget.onSpeakExample) {
-                                      final play? => () => _speak(
-                                        play,
-                                        (on) => _exampleLoading = on,
-                                      ),
-                                      null => null,
-                                    },
-                            ),
-                          ),
-                          if (widget.onSpeakExample case final play?) ...[
-                            const SizedBox(width: Space.xs),
-                            SpeakButton(
-                              tooltip: '예문 듣기',
-                              loading: _exampleLoading,
-                              small: true,
-                              onPressed: () =>
-                                  _speak(play, (on) => _exampleLoading = on),
-                            ),
-                          ],
+                  ),
+                  const SizedBox(height: Space.xs),
+                  JpText(
+                    w.headword,
+                    style: JpType.print(
+                      headwordSize(w.headword),
+                      t.text,
+                      weight: FontWeight.w700,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: Space.md),
+                  CoveredPart(
+                    visible: _showMeaning,
+                    label: '뜻',
+                    onReveal: _openMeaning,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (w.pos != null) ...[
+                          PosBadge(w.pos),
+                          const SizedBox(width: Space.sm),
                         ],
-                      ),
-                      if (ex.ko ?? ex.en case final translation?) ...[
-                        const SizedBox(height: Space.xs),
-                        CoveredPart(
-                          visible: _showMeaning,
-                          label: '번역',
+                        Flexible(
                           child: Text(
-                            translation,
-                            style: context.text.bodySmall?.copyWith(
-                              height: 1.5,
-                              fontStyle: ex.ko == null
-                                  ? FontStyle.italic
-                                  : null,
-                            ),
+                            w.meaning,
+                            style: context.text.titleLarge,
                             textAlign: TextAlign.center,
                           ),
                         ),
                       ],
-                      if (ex.isFilled) ...[
-                        const SizedBox(height: Space.xs),
-                        Text(
-                          ex.ko == null && ex.en != null
-                              ? '예문: Tatoeba · 영어 번역'
-                              : '예문: Tatoeba',
-                          style: context.text.labelSmall?.copyWith(
-                            color: t.ink3,
+                    ),
+                  ),
+                  if (_example(w) case final ex?) ...[
+                    const SizedBox(height: Space.xl),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: ExampleSentence(
+                            sentence: ex.ja,
+                            focus: ex.surface ?? w.headword,
+                            style: JpType.gothic(15, t.text2, height: 1.75),
+                            onSpeak: _exampleLoading
+                                ? null
+                                : switch (widget.onSpeakExample) {
+                                    final play? => () => _speak(
+                                      play,
+                                      (on) => _exampleLoading = on,
+                                    ),
+                                    null => null,
+                                  },
+                          ),
+                        ),
+                        if (widget.onSpeakExample case final play?) ...[
+                          const SizedBox(width: Space.xs),
+                          SpeakButton(
+                            tooltip: '예문 듣기',
+                            loading: _exampleLoading,
+                            small: true,
+                            onPressed: () =>
+                                _speak(play, (on) => _exampleLoading = on),
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (ex.ko ?? ex.en case final translation?) ...[
+                      const SizedBox(height: Space.xs),
+                      CoveredPart(
+                        visible: _showMeaning,
+                        label: '번역',
+                        onReveal: _openMeaning,
+                        child: Text(
+                          translation,
+                          style: context.text.bodySmall?.copyWith(
+                            height: 1.5,
+                            fontStyle: ex.ko == null ? FontStyle.italic : null,
                           ),
                           textAlign: TextAlign.center,
                         ),
-                      ],
+                      ),
+                    ],
+                    if (ex.isFilled) ...[
+                      const SizedBox(height: Space.xs),
+                      Text(
+                        ex.ko == null && ex.en != null
+                            ? '예문: Tatoeba · 영어 번역'
+                            : '예문: Tatoeba',
+                        style: context.text.labelSmall?.copyWith(
+                          color: t.text3,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                     ],
                   ],
-                ),
+                ],
               ),
             ),
           ),
+        ),
+        _RevealRow(
+          meaning: RevealButton(
+            label: '뜻',
+            on: _showMeaning,
+            onTap: () => setState(() => _showMeaning = !_showMeaning),
+          ),
+          reading: RevealButton(
+            label: '읽기',
+            on: _showReading,
+            onTap: _toggleReading,
+          ),
+          speak: switch (widget.onSpeakWord) {
+            final play? => SpeakButton(
+              tooltip: '발음 듣기',
+              loading: _wordLoading,
+              onPressed: () => _speak(play, (on) => _wordLoading = on),
+            ),
+            null => null,
+          },
+        ),
+      ],
+    );
+  }
+}
+
+/// 뜻 보기 and 읽기 보기 side by side with the speaker; at large text sizes
+/// one above the other, so neither label breaks inside a word.
+class _RevealRow extends StatelessWidget {
+  const _RevealRow({required this.meaning, required this.reading, this.speak});
+
+  final Widget meaning;
+  final Widget reading;
+  final Widget? speak;
+
+  @override
+  Widget build(BuildContext context) {
+    final sound = speak;
+    if (isLargeText(context)) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          meaning,
+          const SizedBox(height: Space.sm),
           Row(
             children: [
-              Expanded(
-                child: RevealButton(
-                  label: '뜻',
-                  on: _showMeaning,
-                  onTap: () => setState(() => _showMeaning = !_showMeaning),
-                ),
-              ),
-              const SizedBox(width: Space.sm),
-              Expanded(
-                child: RevealButton(
-                  label: '읽기',
-                  on: _showReading,
-                  onTap: _toggleReading,
-                ),
-              ),
-              if (widget.onSpeakWord case final play?) ...[
-                const SizedBox(width: Space.sm),
-                SpeakButton(
-                  tooltip: '발음 듣기',
-                  loading: _wordLoading,
-                  onPressed: () => _speak(play, (on) => _wordLoading = on),
-                ),
-              ],
+              Expanded(child: reading),
+              if (sound != null) ...[const SizedBox(width: Space.sm), sound],
             ],
           ),
         ],
-      ),
+      );
+    }
+    return Row(
+      children: [
+        Expanded(child: meaning),
+        const SizedBox(width: Space.sm),
+        Expanded(child: reading),
+        if (sound != null) ...[const SizedBox(width: Space.sm), sound],
+      ],
     );
-  }
-
-  static double _headSize(String headword) {
-    final n = headword.runes.length;
-    if (n <= 3) return 60;
-    if (n <= 5) return 48;
-    return 36;
   }
 }

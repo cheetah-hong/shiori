@@ -36,7 +36,7 @@ Future<void> main() async {
         glossary,
         crashLogProvider.overrideWithValue(crashLog),
       ],
-      child: const ShioriApp(),
+      child: const ShioriApp(firstLaunch: true),
     ),
   );
 }

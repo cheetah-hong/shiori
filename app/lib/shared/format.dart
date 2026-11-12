@@ -1,8 +1,13 @@
 const List<String> _weekdays = ['월', '화', '수', '목', '금', '토', '일'];
 
 /// `11월 5일 수요일`
-String dateHeading(DateTime d) =>
-    '${d.month}월 ${d.day}일 ${_weekdays[d.weekday - 1]}요일';
+String dateHeading(DateTime d) => '${d.month}월 ${d.day}일 ${weekdayName(d)}';
+
+/// `수요일`
+String weekdayName(DateTime d) => '${weekdayLetter(d)}요일';
+
+/// `수` (the week strip's column head)
+String weekdayLetter(DateTime d) => _weekdays[d.weekday - 1];
 
 /// Label for the 알고있음 button: `30분 후`, `3일 후`.
 String intervalLabel(Duration d) {

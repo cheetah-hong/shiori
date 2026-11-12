@@ -1,5 +1,6 @@
 // 설정 › 학습 세션: the daily goal (10 · 20 · 30 · 50 · 전부) and the card
 // order switch, stored as soon as they are picked.
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shiori/features/settings/settings_screen.dart';
@@ -21,11 +22,13 @@ final class _SaveFailure implements Exception {
 }
 
 void main() {
-  Set<DailyGoal> selectedGoal(WidgetTester tester) => tester
-      .widget<SegmentedButton<DailyGoal>>(
-        find.byType(SegmentedButton<DailyGoal>),
-      )
-      .selected;
+  Set<DailyGoal> selectedGoal(WidgetTester tester) => {
+    ?tester
+        .widget<CupertinoSlidingSegmentedControl<DailyGoal>>(
+          find.byType(CupertinoSlidingSegmentedControl<DailyGoal>),
+        )
+        .groupValue,
+  };
 
   bool shuffleOn(WidgetTester tester) => tester
       .widget<SwitchListTile>(find.widgetWithText(SwitchListTile, '카드 순서 섞기'))

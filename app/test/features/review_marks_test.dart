@@ -133,7 +133,8 @@ void main() {
     await tester.pumpWidget(screen(TestBlocks(), ReviewScreen(draft: _draft)));
     await tester.pumpAndSettle();
     expect(_mark(EntryField.headword, FieldStatus.suspect), findsOneWidget);
-    await tester.tap(find.widgetWithText(ChoiceChip, '확인 필요 3'));
+    // The filter's 확인 필요 segment.
+    await tester.tap(find.text('확인 필요 3'));
     await tester.pumpAndSettle();
     expect(find.text('雨傘具'), findsOneWidget);
     expect(find.text('切符'), findsNothing, reason: 'a guess is not a problem');
@@ -185,10 +186,7 @@ void main() {
 
     expect(_mark(EntryField.meaning, FieldStatus.suspect), findsNothing);
     expect(find.text('도착,'), findsOneWidget, reason: 'the value is kept');
-    await tester.scrollUntilVisible(
-      find.widgetWithText(ChoiceChip, '확인 필요 1'),
-      -200,
-    );
+    await tester.scrollUntilVisible(find.text('확인 필요 1'), -200);
     expect(find.text('확인 필요 1'), findsWidgets);
   });
 

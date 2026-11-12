@@ -22,11 +22,12 @@ class _ScopeSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final lists = ref.watch(playlistsProvider).value ?? const [];
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
+      padding: EdgeInsets.fromLTRB(
         Space.gutter,
         0,
         Space.gutter,
-        Space.xl,
+        // Clear of the home indicator.
+        Space.xl + MediaQuery.viewPaddingOf(context).bottom,
       ),
       child: SingleChildScrollView(
         child: Column(

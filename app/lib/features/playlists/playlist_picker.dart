@@ -86,7 +86,9 @@ class _PickerState extends ConsumerState<_Picker> {
         Space.gutter,
         0,
         Space.gutter,
-        Space.xl + MediaQuery.viewInsetsOf(context).bottom,
+        Space.xl +
+            MediaQuery.viewInsetsOf(context).bottom +
+            MediaQuery.viewPaddingOf(context).bottom,
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -113,7 +115,7 @@ class _PickerState extends ConsumerState<_Picker> {
             else ...[
               Text(
                 '새 재생목록',
-                style: context.text.labelLarge?.copyWith(color: t.ink3),
+                style: context.text.labelLarge?.copyWith(color: t.text3),
               ),
               const SizedBox(height: Space.sm),
               TextField(
@@ -139,11 +141,10 @@ class _PickerState extends ConsumerState<_Picker> {
               ),
               const SizedBox(height: Space.md),
             ],
-            for (final (i, s) in lists.indexed)
+            for (final s in lists)
               _Row(
                 key: ValueKey('pick-${s.playlist.id}'),
                 stats: s,
-                index: i,
                 alreadyIn: widget.preview?.alreadyInFor(s.playlist.id) ?? 0,
               ),
           ],
@@ -154,15 +155,9 @@ class _PickerState extends ConsumerState<_Picker> {
 }
 
 class _Row extends StatelessWidget {
-  const _Row({
-    super.key,
-    required this.stats,
-    required this.index,
-    required this.alreadyIn,
-  });
+  const _Row({super.key, required this.stats, required this.alreadyIn});
 
   final PlaylistStats stats;
-  final int index;
   final int alreadyIn;
 
   @override
@@ -170,10 +165,7 @@ class _Row extends StatelessWidget {
     final name = stats.playlist.name;
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: BookSpine(
-        label: name.characters.firstOrNull ?? '?',
-        index: index,
-      ),
+      leading: BookSpine(label: name.characters.firstOrNull ?? '?'),
       title: Text(name, style: const TextStyle(fontWeight: FontWeight.w700)),
       subtitle: Text(
         [

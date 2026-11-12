@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shiori/app/blocks.dart';
+import 'package:shiori/features/capture/review_filter.dart';
 import 'package:shiori_core/shiori_core.dart';
 
 import '../support/forwarding_library.dart';
@@ -104,10 +105,12 @@ void main() {
       expect(find.text('단어 11개 추가'), findsOneWidget);
 
       // くち (its kanji was not read) is fixed in the editor.
-      final reviewBefore = tester
-          .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, '전체 11'))
-          .selected;
-      expect(reviewBefore, isTrue);
+      // The filter shows 전체 11 (every word), not only the flagged ones.
+      expect(find.text('전체 11'), findsOneWidget);
+      expect(
+        tester.widget<ReviewFilter>(find.byType(ReviewFilter)).onlyFlagged,
+        isFalse,
+      );
       await tester.scrollUntilVisible(find.text('くち'), 200);
       await tester.tap(
         find.descendant(
@@ -146,9 +149,9 @@ void main() {
       expect(find.text('검토'), findsNothing, reason: 'back on the home screen');
       expect(find.text('내 단어장'), findsOneWidget);
       expect(
-        find.text('11'),
+        find.text('10개 · 11개 중'),
         findsOneWidget,
-        reason: '11 new words on the today card',
+        reason: '11 new words on the day sheet, 10 of them today',
       );
       final playlist = (await blocks.library.playlists()).single;
       expect(playlist.name, '내 단어장');

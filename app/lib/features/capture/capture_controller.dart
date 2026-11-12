@@ -42,9 +42,12 @@ final class CaptureReady extends CaptureState {
 }
 
 final class CaptureFailed extends CaptureState {
-  const CaptureFailed(this.message, {this.scan});
+  const CaptureFailed(this.message, {this.scan, this.retake = false});
 
   final String message;
+
+  /// The photo was read but held no word: the note offers 다시 찍기.
+  final bool retake;
 
   /// The OCR passes when the page was read but gave no review (no word, or
   /// the extractor stopped): offered for export. Null when it was not read.
@@ -153,8 +156,10 @@ final class CaptureController extends Notifier<CaptureState> {
       if (!ref.mounted) return;
       state = draft.entries.isEmpty && draft.skippedKnown.isEmpty
           ? CaptureFailed(
-              '이 사진에서 단어를 찾지 못했어요. 페이지 전체가 똑바로 나오게 다시 찍어 주세요.',
+              '이 사진에서 단어를 찾지 못했어요. '
+              '페이지 전체가 화면에 들어오게, 밝은 곳에서 똑바로 찍어 주세요.',
               scan: scan,
+              retake: true,
             )
           : CaptureReady(
               draft: draft,

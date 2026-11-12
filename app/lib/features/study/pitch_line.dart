@@ -43,9 +43,11 @@ class PitchLine extends StatelessWidget {
     final highs = info.highs;
     final label = [
       '음 높이',
+      // Each mora with its pitch: 「は 낮음 な 높음」.
       if (highs != null)
         [
-          for (final h in highs.take(info.morae.length)) h ? '높음' : '낮음',
+          for (final (i, h) in highs.take(info.morae.length).indexed)
+            '${info.morae[i]} ${h ? '높음' : '낮음'}',
         ].join(' '),
       if (info.estimated) '추정',
     ].join(', ');
@@ -58,20 +60,24 @@ class PitchLine extends StatelessWidget {
             if (highs != null)
               CustomPaint(
                 size: Size(_moraWidth * highs.length, _lineHeight),
-                painter: _PitchPainter(highs, line: t.ink2, particle: t.ink3),
+                painter: _PitchPainter(
+                  highs,
+                  line: t.accent,
+                  particle: t.text3,
+                ),
               ),
             if (info.estimated) ...[
               if (highs != null) const SizedBox(width: Space.xs),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: t.paper2,
+                  color: t.surfaceStrong,
                   borderRadius: BorderRadius.circular(Radii.chip),
                 ),
                 child: Text(
                   '추정',
                   style: TextStyle(
-                    color: t.ink3,
+                    color: t.text3,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),

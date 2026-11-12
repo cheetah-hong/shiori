@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/app/blocks.dart';
@@ -5,18 +6,30 @@ import 'package:shiori/app/data.dart';
 import 'package:shiori/app/theme.dart';
 import 'package:shiori/features/backup/backup_section.dart';
 import 'package:shiori/features/study/restudy_labels.dart';
+import 'package:shiori/shared/adaptive_dialog.dart';
+import 'package:shiori/shared/large_text.dart';
+import 'package:shiori/shared/states.dart';
 import 'package:shiori/shared/widgets.dart';
 import 'package:shiori_core/shiori_core.dart';
 
 /// 설정: the study options. 학습 세션 holds the daily goal (how many cards
 /// 홈 studies at a time) and 카드 순서 섞기. Of 학습 기록 and 학습 범위 only
 /// the defaults are built (one shared record per word; 전체 + one playlist
-/// at a time); the other choices are listed as 준비 중 so the learner sees
-/// where the app is going, and cannot be picked. 학습 기록 also holds 모든
+/// at a time); the other choices are one quiet line at the end of their
+/// section (준비 중), so the learner sees where the app is going without a
+/// row that cannot be picked. 학습 기록 also holds 모든
 /// 단어 처음부터 다시 학습 (asked first). 백업, last, makes and restores
 /// backup files.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
+
+  Widget _failed(WidgetRef ref, Object error) {
+    debugPrint('settings failed to load: $error');
+    return LoadFailure(
+      message: '설정을 불러오지 못했어요',
+      onRetry: () => retryStorage(ref),
+    );
+  }
 
   Future<void> _save(
     BuildContext context,
@@ -50,7 +63,7 @@ class SettingsScreen extends ConsumerWidget {
               onPick: (goal) =>
                   _save(context, ref, value.copyWith(dailyGoal: goal)),
             ),
-            SwitchListTile(
+            SwitchListTile.adaptive(
               contentPadding: EdgeInsets.zero,
               title: const Text('카드 순서 섞기'),
               subtitle: const Text('복습과 새 단어를 섞어서 보여요'),
@@ -70,10 +83,11 @@ class SettingsScreen extends ConsumerWidget {
                 value.copyWith(recordMode: RecordMode.shared),
               ),
             ),
-            _Choice(
-              title: '재생목록마다 따로',
-              selected: value.recordMode == RecordMode.perPlaylist,
-            ),
+            // Not built yet: a row only if it is somehow the stored value
+            // (so the screen still shows what is on).
+            if (value.recordMode == RecordMode.perPlaylist)
+              const _Choice(title: '재생목록마다 따로', selected: true),
+            const _Upcoming('재생목록마다 따로 기록하기는 준비 중이에요.'),
             const Divider(),
             const _ResetAll(),
             const SectionLabel('학습 범위'),
@@ -87,18 +101,15 @@ class SettingsScreen extends ConsumerWidget {
                 value.copyWith(scopeMode: StudyScopeMode.allOrPlaylist),
               ),
             ),
-            _Choice(
-              title: '항상 재생목록 하나씩',
-              selected: value.scopeMode == StudyScopeMode.playlistOnly,
-            ),
+            if (value.scopeMode == StudyScopeMode.playlistOnly)
+              const _Choice(title: '항상 재생목록 하나씩', selected: true),
+            const _Upcoming('항상 재생목록 하나씩 학습하기는 준비 중이에요.'),
             const Divider(),
             const BackupSection(),
           ],
         ),
-        AsyncError(:final error) => Center(
-          child: Text('설정을 불러오지 못했어요: $error'),
-        ),
-        _ => const Center(child: CircularProgressIndicator()),
+        AsyncError(:final error) => _failed(ref, error),
+        _ => const Loading(),
       },
     );
   }
@@ -130,21 +141,75 @@ class _DailyGoalPicker extends StatelessWidget {
           style: context.text.bodySmall,
         ),
         const SizedBox(height: Space.sm),
-        SegmentedButton<DailyGoal>(
-          showSelectedIcon: false,
-          segments: [
-            for (final g in DailyGoal.values)
-              ButtonSegment(value: g, label: Text(_label(g))),
-          ],
-          selected: {goal},
-          onSelectionChanged: (picked) => onPick(picked.single),
-        ),
+        // From about the AX1 text size five segments in a row break their
+        // labels apart: separate chips that wrap instead.
+        if (isLargeText(context))
+          Wrap(
+            spacing: Space.sm,
+            runSpacing: Space.sm,
+            children: [
+              for (final g in DailyGoal.values)
+                ChoiceChip(
+                  label: Text(_label(g)),
+                  selected: g == goal,
+                  onSelected: (_) => onPick(g),
+                ),
+            ],
+          )
+        else
+          CupertinoSlidingSegmentedControl<DailyGoal>(
+            groupValue: goal,
+            backgroundColor: context.tokens.surfaceStrong,
+            thumbColor: context.tokens.bg,
+            onValueChanged: (picked) {
+              if (picked != null) onPick(picked);
+            },
+            children: {
+              for (final g in DailyGoal.values)
+                g: ConstrainedBox(
+                  // 44 pt to press.
+                  constraints: const BoxConstraints(minHeight: _segmentHeight),
+                  child: Center(
+                    child: Text(
+                      _label(g),
+                      style: TextStyle(
+                        color: context.tokens.text,
+                        fontSize: 15,
+                        fontWeight: g == goal
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+            },
+          ),
       ],
     ),
   );
 }
 
-/// One choice of a group, read as a radio button. Without [onTap] it is not
+const double _segmentHeight = 44;
+
+/// A choice not built yet, folded into one small line at the end of its
+/// section.
+class _Upcoming extends StatelessWidget {
+  const _Upcoming(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: Space.xs, bottom: Space.md),
+    child: Text(
+      text,
+      style: TextStyle(color: context.tokens.text3, fontSize: 13),
+    ),
+  );
+}
+
+/// One choice of a group as an iOS check row (the chosen one has an accent
+/// check on the right), read as a radio button. Without [onTap] it is not
 /// built yet: shown as 준비 중 and disabled.
 class _Choice extends StatelessWidget {
   const _Choice({
@@ -171,14 +236,11 @@ class _Choice extends StatelessWidget {
         child: ListTile(
           contentPadding: EdgeInsets.zero,
           enabled: enabled,
-          leading: Icon(
-            selected
-                ? Icons.radio_button_checked
-                : Icons.radio_button_unchecked,
-            color: enabled ? t.ink : t.ink3,
-          ),
           title: Text(title),
           subtitle: Text(enabled ? subtitle ?? '' : '준비 중'),
+          trailing: selected
+              ? Icon(Icons.check, color: enabled ? t.accentText : t.text3)
+              : null,
           onTap: onTap,
         ),
       ),
@@ -196,20 +258,22 @@ class _ResetAll extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     final study = ref.read(studyServiceProvider);
     final revision = ref.read(dataRevisionProvider.notifier);
-    final sure = await showDialog<bool>(
+    final sure = await showAdaptiveDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => AlertDialog.adaptive(
         title: const Text(RestudyLabels.resetAllQuestion),
         content: Text(RestudyLabels.resetAllDetail(count)),
         actions: [
-          TextButton(
+          adaptiveDialogAction(
+            context,
+            label: '취소',
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('취소'),
           ),
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: context.tokens.risk),
+          adaptiveDialogAction(
+            context,
+            label: RestudyLabels.resetAllConfirm,
+            destructive: true,
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text(RestudyLabels.resetAllConfirm),
           ),
         ],
       ),

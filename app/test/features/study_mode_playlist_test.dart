@@ -12,7 +12,7 @@ import '../support/harness.dart';
 import '../support/study_modes.dart';
 
 void main() {
-  /// The meters of [word]'s row, left to right.
+  /// The meter on [word]'s row: the mode in use only.
   List<int> levels(WidgetTester tester, Word word) => [
     for (final m in tester.widgetList<MemoryMeter>(
       find.descendant(
@@ -23,6 +23,22 @@ void main() {
       m.level,
   ];
 
+  /// Every mode's meter of [word], 뜻·일·듣·객, from the sheet its row opens.
+  Future<List<int>> allLevels(WidgetTester tester, Word word) async {
+    await tester.tap(find.byKey(ValueKey('word-${word.id}')));
+    await tester.pumpAndSettle();
+    final sheet = find.byType(BottomSheet);
+    final found = [
+      for (final m in tester.widgetList<MemoryMeter>(
+        find.descendant(of: sheet, matching: find.byType(MemoryMeter)),
+      ))
+        m.level,
+    ];
+    Navigator.of(tester.element(sheet)).pop();
+    await tester.pumpAndSettle();
+    return found;
+  }
+
   Future<(TestBlocks, List<Word>, String)> seeded() async {
     final blocks = TestBlocks();
     final words = await seedModeWords(blocks);
@@ -30,7 +46,10 @@ void main() {
     return (blocks, words, listId);
   }
 
-  testWidgets('four meters per word: 뜻, 일, 듣, 객', (tester) async {
+  testWidgets('a word row shows the mode in use, its sheet all four', (
+    tester,
+  ) async {
+    final handle = tester.ensureSemantics();
     usePhoneSize(tester);
     final (blocks, words, listId) = await seeded();
     await blocks.reviews.saveCard(
@@ -45,19 +64,19 @@ void main() {
     await tester.pumpWidget(screen(blocks, PlaylistScreen(playlistId: listId)));
     await tester.pumpAndSettle();
 
-    expect(levels(tester, words[0]), [2, 0, 0, 4]);
-    expect(levels(tester, words[1]), [0, 0, 1, 0]);
-    expect(levels(tester, words[2]), [0, 0, 0, 0]);
+    // The row: 뜻 맞히기 (the mode in use) only.
+    expect(levels(tester, words[0]), [2]);
+    expect(levels(tester, words[1]), [0]);
+    expect(levels(tester, words[2]), [0]);
     expect(
-      find.descendant(
-        of: find.byKey(ValueKey('word-${words[0].id}')),
-        matching: find.bySemanticsLabel(
-          '기억 단계: 뜻 맞히기 2단계, 일본어 떠올리기 새 단어, '
-          '듣고 맞히기 새 단어, 객관식 4단계',
-        ),
-      ),
+      find.bySemanticsLabel(RegExp('^${words[0].headword}, 뜻 맞히기 2단계')),
       findsOneWidget,
     );
+    // The sheet: every mode, 뜻·일·듣·객.
+    expect(await allLevels(tester, words[0]), [2, 0, 0, 4]);
+    expect(await allLevels(tester, words[1]), [0, 0, 1, 0]);
+    expect(await allLevels(tester, words[2]), [0, 0, 0, 0]);
+    handle.dispose();
   });
 
   testWidgets('처음부터 다시 학습 is offered for a word studied in any '
@@ -78,11 +97,11 @@ void main() {
     for (final mode in StudyMode.values) {
       expect(await blocks.reviews.card(w.id, mode: mode), isNull);
     }
-    expect(levels(tester, w), [0, 0, 0, 0]);
+    expect(await allLevels(tester, w), [0, 0, 0, 0]);
 
     await tester.tap(find.text('되돌리기'));
     await tester.pumpAndSettle();
-    expect(levels(tester, w), [0, 3, 0, 2]);
+    expect(await allLevels(tester, w), [0, 3, 0, 2]);
   });
 
   testWidgets('a word new in every mode has no 처음부터 item', (tester) async {

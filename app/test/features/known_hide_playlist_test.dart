@@ -31,6 +31,8 @@ void main() {
 
     final toggle = find.text(HideLabels.showHidden(1));
     await tester.scrollUntilVisible(toggle, 300);
+    // Let the last scroll settle before tapping near the bottom bar.
+    await tester.pumpAndSettle();
     await tester.tap(toggle);
     await tester.pumpAndSettle();
     expect(find.text(target.headword), findsOneWidget);

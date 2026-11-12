@@ -64,7 +64,9 @@ class CrashLogScreen extends ConsumerWidget {
                   const Center(
                     child: Padding(
                       padding: EdgeInsets.all(Space.xl),
-                      child: CircularProgressIndicator(),
+                      child: CircularProgressIndicator(
+                        semanticsLabel: '불러오는 중',
+                      ),
                     ),
                   ),
                 ],
@@ -134,19 +136,18 @@ class _ReportCard extends StatelessWidget {
       CrashSource.flutter => '화면',
       CrashSource.platform => '비동기',
     };
+    // One report per ruled row, on the page.
     return Container(
-      margin: const EdgeInsets.only(bottom: Space.md),
-      padding: const EdgeInsets.all(Space.lg),
+      padding: const EdgeInsets.symmetric(vertical: Space.md),
       decoration: BoxDecoration(
-        color: t.sheet,
-        borderRadius: BorderRadius.circular(Radii.tile),
+        border: Border(bottom: BorderSide(color: t.line)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             '${_stamp(report.time)} · $source',
-            style: context.text.labelMedium?.copyWith(color: t.ink3),
+            style: context.text.labelMedium?.copyWith(color: t.text3),
           ),
           const SizedBox(height: Space.xs),
           Text(report.error, style: context.text.bodyMedium),
@@ -162,7 +163,7 @@ class _ReportCard extends StatelessWidget {
                 fontFamily: 'Menlo',
                 fontFamilyFallback: const ['monospace'],
                 fontSize: 11,
-                color: t.ink2,
+                color: t.text2,
               ),
             ),
           ],

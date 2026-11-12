@@ -9,6 +9,7 @@ import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/data.dart';
 import 'package:shiori/features/playlists/playlist_names.dart';
 import 'package:shiori/features/study/restudy_labels.dart';
+import 'package:shiori/shared/adaptive_dialog.dart';
 import 'package:shiori/shared/hide_labels.dart';
 import 'package:shiori_core/shiori_core.dart';
 
@@ -19,7 +20,14 @@ void _say(
 }) => messenger
   ..removeCurrentSnackBar()
   ..showSnackBar(
-    SnackBar(content: Text(message), action: action, persist: false),
+    SnackBar(
+      content: Text(message),
+      action: action,
+      // While VoiceOver is on, 되돌리기 stays until it is pressed or closed
+      // (it takes longer than four seconds to reach it).
+      persist:
+          MediaQuery.maybeAccessibleNavigationOf(messenger.context) ?? false,
+    ),
   );
 
 /// Runs [write]; on failure says [failure] and returns false. A storage
@@ -231,19 +239,22 @@ Future<bool> deletePlaylist(
   final messenger = ScaffoldMessenger.of(context);
   final library = ref.read(libraryServiceProvider);
   final revision = ref.read(dataRevisionProvider.notifier);
-  final sure = await showDialog<bool>(
+  final sure = await showAdaptiveDialog<bool>(
     context: context,
-    builder: (context) => AlertDialog(
+    builder: (context) => AlertDialog.adaptive(
       title: const Text('재생목록을 삭제할까요?'),
       content: Text('단어 $wordCount개가 이 목록에서 빠져요. 단어와 학습 기록은 남아요.'),
       actions: [
-        TextButton(
+        adaptiveDialogAction(
+          context,
+          label: '취소',
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('취소'),
         ),
-        TextButton(
+        adaptiveDialogAction(
+          context,
+          label: '삭제',
+          destructive: true,
           onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('삭제'),
         ),
       ],
     ),

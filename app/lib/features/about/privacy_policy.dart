@@ -89,7 +89,7 @@ class PrivacySection extends StatelessWidget {
                 '시오리는 개인정보를 수집하지 않아요. 단어·학습 기록·사진은 이 기기 안에서만 다루고, '
                 '인터넷에 연결하지 않아요.',
                 style: context.text.bodySmall?.copyWith(
-                  color: t.ink2,
+                  color: t.text2,
                   height: 1.5,
                 ),
               ),

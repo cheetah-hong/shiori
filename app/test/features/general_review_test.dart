@@ -148,11 +148,15 @@ Future<void> _pump(WidgetTester tester, {bool approval = false}) async {
 }
 
 Future<void> _show(WidgetTester tester, Finder f) async {
-  await tester.scrollUntilVisible(
-    f,
-    200,
-    scrollable: find.byType(Scrollable).first,
-  );
+  final list = find
+      .byWidgetPredicate(
+        (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
+      )
+      .first;
+  // From the top, so an entry above the place the list was left at is found.
+  await tester.drag(list, const Offset(0, 10000));
+  await tester.pumpAndSettle();
+  await tester.scrollUntilVisible(f, 200, scrollable: list);
   await tester.pumpAndSettle();
 }
 

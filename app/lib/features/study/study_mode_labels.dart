@@ -11,14 +11,6 @@ abstract final class StudyModeLabels {
     StudyMode.choice => '객관식',
   };
 
-  /// One letter for the small memory meters of a word (뜻·일·듣·객).
-  static String letter(StudyMode mode) => switch (mode) {
-    StudyMode.meaning => '뜻',
-    StudyMode.recall => '일',
-    StudyMode.listening => '듣',
-    StudyMode.choice => '객',
-  };
-
   /// Why [mode] cannot be picked now: no speech, or too few words.
   static String unavailable(StudyMode mode, {required bool speechAvailable}) =>
       mode == StudyMode.listening && !speechAvailable ? noSpeech : tooFewWords;
@@ -34,5 +26,8 @@ abstract final class StudyModeLabels {
   static const String right = '맞았어요';
   static const String wrong = '틀렸어요';
   static const String answerMark = '정답';
+
+  /// A wrong pick, said in words and not only in red.
+  static const String pickMark = '내 선택';
   static const String next = '다음';
 }

@@ -1,5 +1,6 @@
 // 설정: the study options. Only the shared record and 전체 + 재생목록 are
-// built; the other choices show as 준비 중 and cannot be picked.
+// built; the other choices are not offered, only said to be 준비 중 at the
+// end of their section.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shiori/features/settings/settings_screen.dart';
@@ -11,13 +12,11 @@ void main() {
   Finder row(String title) =>
       find.ancestor(of: find.text(title), matching: find.byType(ListTile));
 
-  ListTile tile(WidgetTester tester, String title) =>
-      tester.widget<ListTile>(row(title));
-
   bool isSelected(WidgetTester tester, String title) => tester.any(
     find.descendant(
       of: row(title),
-      matching: find.byIcon(Icons.radio_button_checked),
+      // The chosen row carries a check on its right.
+      matching: find.byIcon(Icons.check),
     ),
   );
 
@@ -36,7 +35,8 @@ void main() {
     expect(isSelected(tester, '재생목록마다 따로'), isFalse);
     expect(isSelected(tester, '전체 복습 + 재생목록 골라 학습'), isTrue);
     expect(isSelected(tester, '항상 재생목록 하나씩'), isFalse);
-    expect(find.text('준비 중'), findsNWidgets(2));
+    expect(find.text('재생목록마다 따로 기록하기는 준비 중이에요.'), findsOneWidget);
+    expect(find.text('항상 재생목록 하나씩 학습하기는 준비 중이에요.'), findsOneWidget);
   });
 
   testWidgets('screen readers hear which choice is on', (tester) async {
@@ -50,13 +50,8 @@ void main() {
       isSemantics(hasCheckedState: true, isChecked: true),
     );
     expect(
-      tester.getSemantics(row('재생목록마다 따로')),
-      isSemantics(
-        hasCheckedState: true,
-        isChecked: false,
-        hasEnabledState: true,
-        isEnabled: false,
-      ),
+      tester.getSemantics(row('전체 복습 + 재생목록 골라 학습')),
+      isSemantics(hasCheckedState: true, isChecked: true),
     );
     semantics.dispose();
   });
@@ -67,9 +62,10 @@ void main() {
     await tester.pumpWidget(screen(blocks, const SettingsScreen()));
     await tester.pumpAndSettle();
 
-    expect(tile(tester, '재생목록마다 따로').enabled, isFalse);
-    expect(tile(tester, '항상 재생목록 하나씩').enabled, isFalse);
-    await tester.tap(find.text('재생목록마다 따로'));
+    // Not offered as rows: only a line says they are coming.
+    expect(row('재생목록마다 따로'), findsNothing);
+    expect(row('항상 재생목록 하나씩'), findsNothing);
+    await tester.tap(find.text('재생목록마다 따로 기록하기는 준비 중이에요.'));
     await tester.pumpAndSettle();
     expect(await blocks.preferences.load(), const StudyPreferences());
   });
@@ -96,10 +92,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('재생목록끼리 공유'));
     await tester.pumpAndSettle();
-    expect(
-      (await blocks.preferences.load()).recordMode,
-      RecordMode.shared,
-    );
+    expect((await blocks.preferences.load()).recordMode, RecordMode.shared);
     expect(isSelected(tester, '재생목록끼리 공유'), isTrue);
   });
 }

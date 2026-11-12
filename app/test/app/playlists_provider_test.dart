@@ -1,5 +1,6 @@
 // The home playlists read every playlist's word and hidden counts in one
 // call, not one word list per playlist. Synthetic sample pages only.
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shiori/app/data.dart';
@@ -131,15 +132,26 @@ void main() {
     await tester.pumpWidget(app(blocks));
     await tester.pumpAndSettle();
 
-    expect(find.text('JLPT 단어장'), findsOneWidget);
-    expect(
-      find.text('단어 ${fullCount - 2}개 · ${HideLabels.hiddenCount(2)}'),
-      findsOneWidget,
-    );
-    expect(find.text('여행 단어'), findsOneWidget);
-    expect(find.text('단어 $travelCount개'), findsOneWidget);
-    expect(find.text('빈 목록'), findsOneWidget);
-    expect(find.text('단어 0개'), findsOneWidget);
+    // The playlists sit below the day sheet: scroll down to each.
+    Future<void> seen(String text) async {
+      await tester.scrollUntilVisible(
+        find.text(text),
+        200,
+        scrollable: find
+            .byWidgetPredicate(
+              (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
+            )
+            .first,
+      );
+      expect(find.text(text), findsOneWidget);
+    }
+
+    await seen('JLPT 단어장');
+    await seen('단어 ${fullCount - 2}개 · ${HideLabels.hiddenCount(2)}');
+    await seen('여행 단어');
+    await seen('단어 $travelCount개');
+    await seen('빈 목록');
+    await seen('단어 0개');
     expect(library.statsCalls, greaterThan(0));
   });
 }

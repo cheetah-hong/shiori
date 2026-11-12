@@ -35,7 +35,6 @@ class _ExamplesCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.tokens;
     return AboutCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -48,17 +47,7 @@ class _ExamplesCard extends StatelessWidget {
             style: context.text.bodySmall,
           ),
           const SizedBox(height: Space.md),
-          Container(
-            padding: const EdgeInsets.all(Space.md),
-            decoration: BoxDecoration(
-              color: t.paper,
-              borderRadius: BorderRadius.circular(Radii.tile),
-            ),
-            child: Text(
-              edition.attribution,
-              style: context.text.bodyMedium?.copyWith(height: 1.5),
-            ),
-          ),
+          AboutQuote(edition.attribution),
           const SizedBox(height: Space.lg),
           AboutLink(
             label: '라이선스 (${edition.license})',

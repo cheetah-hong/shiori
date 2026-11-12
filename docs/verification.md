@@ -2598,3 +2598,231 @@ iPhone 17 시뮬레이터(실제 사전·발음 asset)에서 `save` → 앱 종�
 | `127_home_icon_dev.png` | 홈 화면: dev 앱 「시오리 dev」 |
 | `128_home_icons_dev_prod.png` | 홈 화면: 「시오리 dev」와 「시오리」가 나란히 (한 기기에 두 앱) |
 | `129_about_privacy.png` | 정보 → 「개인정보」: 수집하지 않는다는 요약과 「개인정보처리방침」 (`integration_test/privacy_screenshots_test.dart`) |
+
+## 39. 화면 다시 그리기: 일력 홈·말차 색·첫 실행 안내·오프닝·아이콘·접근성 (2026-11-13)
+
+화면 전체를 「일력 한 장」 은유와 말차 색 하나로 다시 그렸습니다. 홈은 오늘 날짜가 머리인 일력 장(오늘 할 몫을 메모 줄로)과 이번 주 줄, 학습 방식 한 줄, 재생목록 괘선 행이고, 주 행동은 늘 화면 아래 고정 바에 있습니다.
+학습 카드·찍기·검토·재생목록·설정·정보도 같은 부품과 규칙으로 맞췄고, 색은 `app/lib/app/theme.dart`의 역할 이름 토큰 한 곳에서만 옵니다.
+처음 켠 사람에게는 세 장짜리 안내를, 콜드 스타트 때는 1.2초 오프닝을 보이고, 앱 아이콘·시작 화면은 생성기 하나로 만듭니다(dev는 아이콘으로도 구분). 큰 글자·VoiceOver·터치 크기·대비·동작 줄이기는 테스트로 고정했습니다.
+학습 규칙·저장 스키마(v5)·백업 형식(판 1)은 그대로입니다. 새로 저장하는 것은 첫 실행 안내를 봤다는 작은 파일 하나뿐입니다.
+
+### 39.1 규칙과 결정
+
+**색 토큰** (`ShioriTokens`, 위젯은 `context.tokens`로만 읽음)
+
+| 톤 | 토큰 | 라이트 | 다크 | 쓰는 곳 |
+|---|---|---|---|---|
+| 바탕 | `bg` | `#FFFFFF` | `#111612` | 화면 바탕, 일력 장 |
+| | `surface` | `#F5F8F2` | `#1B231D` | 바탕 위의 면(시트·칸) |
+| | `surfaceStrong` | `#E9EFE4` | `#243028` | 누른·고른 면, 진행 선의 바탕, 꺼진 면 |
+| | `line` | `#DFE6D8` | `#2A352D` | 괘선·장 옆선·목록 끝 절취선 (장식 전용, 누르는 것의 경계에 쓰지 않음) |
+| 글자 | `text` | `#1F2A22` | `#E7EFE8` | 본문·제목·일력 먹 띠 |
+| | `text2` | `#4B5A4E` | `#B7C4B9` | 보조 글 |
+| | `text3` | `#5F6E62` | `#9AAA9D` | 가장 흐린 글(설명·라벨) |
+| | `outline` | `#76857A` | `#778879` | 누르는 것의 테두리(입력 칸·체크 상자·스위치) |
+| 포인트 | `accent` | `#287A4E` | `#6CC593` | 주 버튼, 고른 것, 음 높이 선 |
+| | `accentTint` | `#E3F2E8` | `#1C3526` | 보조 버튼 면, 예문 속 표제어 강조 |
+| | `accentText` | `#247349` | `#6CC593` | 포인트 글자, 내비 바 아이콘 |
+| | `onAccent` | `#FFFFFF` | `#0B1F12` | 주 버튼 글자 |
+| 기능 | `ok` / `okBg` | `#287A4E` / `#E3F2E8` | `#6CC593` / `#1C3526` | 맞음·높음·자동 보정 (포인트와 같은 값) |
+| | `warn` / `warnBg` | `#8F5300` / `#FCF0D9` | `#F2BC62` / `#3A2B0E` | 중간 신뢰도, 「확인 필요」, 개발용 |
+| | `risk` / `riskBg` / `onRisk` | `#B02525` / `#FDE8E8` / `#FFFFFF` | `#FF8078` / `#3E1719` / `#2A0A0A` | 틀린 답, 삭제처럼 되돌릴 수 없는 것, 오류만 |
+| | `shadow` | 검정 10% | 검정 40% | Material 기본 그림자 값. 앱이 직접 그리는 그림자는 없음 |
+
+대비(WCAG 2.x 상대 휘도, `test/design/token_contrast_test.dart`와 같은 식):
+
+| 짝 | 라이트 | 다크 | 기준 |
+|---|---|---|---|
+| `text` / `bg` | 14.87 | 15.61 | 4.5 |
+| `text2` / `bg` | 7.31 | 10.12 | 4.5 |
+| `text3` / `bg` | 5.39 | 7.51 | 4.5 |
+| `text3` / `surface` | 5.03 | 6.60 | 4.5 |
+| `text3` / `surfaceStrong` (가장 낮은 글자 짝) | 4.61 | 5.63 | 4.5 |
+| `accentText` / `bg` | 5.80 | 8.76 | 4.5 |
+| `accentText` / `accentTint` | 5.00 | 6.33 | 4.5 |
+| `onAccent` / `accent` (주 버튼) | 5.27 | 8.24 | 4.5 |
+| `ok` / `okBg` | 4.55 | 6.33 | 4.5 |
+| `warn` / `warnBg` | 5.46 | 7.93 | 4.5 |
+| `risk` / `riskBg` | 5.70 | 6.42 | 4.5 |
+| `onRisk` / `risk` | 6.69 | 7.51 | 4.5 |
+| `bg` / `text` (알림 막대) | 14.87 | 15.61 | 4.5 |
+| `outline` / `bg` · `surface` | 3.88 · 3.62 | 4.87 · 4.28 | 3 (누르는 것의 경계) |
+| `accent` / `bg` | 5.27 | 8.76 | 3 |
+| `line` / `bg` | 1.28 | 1.43 | 없음 (장식 구분선 전용) |
+
+- **3톤 원칙:** 바탕(`bg`·`surface`·`surfaceStrong`·`line`), 글자(`text`·`text2`·`text3`·`outline`), 포인트(`accent`·`accentTint`·`accentText`·`onAccent`) 세 톤에 명도 단계만 두고, 기능 색(ok·warn·risk)은 따로 셉니다. 테스트가 톤 수를 3 이하로 지킵니다(채도 낮은 색은 밝은 중립·어두운 중립 하나씩, 유채색은 색상 20° 안을 한 톤으로 셈).
+- 포인트는 누르는 것·고른 것에만 씁니다. 「맞음」은 포인트 초록을 같이 써 기능 색을 하나 줄였습니다. 예전 형광 노랑·빨간 펜 색은 없앴습니다(예문 강조 → `accentTint` 바탕, 찍기 버튼 → 포인트).
+- **「확인 필요」는 빨강이 아니라 `warn`입니다.** 빨강은 틀림·파괴·오류에만 씁니다. 상태는 늘 글자로도 말합니다(색만으로 말하지 않음).
+
+**일력 언어 규칙** (휴리스틱 점검에서 정한 공통 규칙 10개 요약)
+
+| # | 규칙 | 부품·위치 |
+|---|---|---|
+| 1 | push 화면 제목은 iOS 인라인 내비 바 가운데(17pt), 내비 바 아이콘은 포인트 글자색. 화면 안 섹션 제목은 한 꼴(홈 「재생목록」 꼴, 위 여백 > 아래 여백) | `AppBarTheme(centerTitle: true)`, `SectionLabel` |
+| 2 | 둥근 상자 대신 바탕 위 괘선 행(최소 56pt, 아래 1px `line`, 좌우 16). 상자가 꼭 필요하면 일력 장 프레임 하나(위 4px 먹 띠·옆 hairline·모서리 0·아래 절취선), 한 화면에 한 장. 그림자 없음 | `RuledRow`, `SheetFrame`, `TearLine` |
+| 3 | 화면의 주 행동은 아래 고정 바(엄지 닿는 곳) | `BottomActionBar` |
+| 4 | 버튼 모양 하나: 모서리 14 사각. 보조 버튼은 테두리 없이 옅은 포인트 면 + 포인트 글자 | `Radii.button`, `buttonShape`, 버튼 테마 |
+| 5 | 개수는 굵은 tabular 숫자 + 작은 단위를 줄 오른쪽에(「10장」「12개」). 학습 단위는 「장」, 단어는 「개」. 날짜는 큰 일 + 「11월 / 목요일」(연도 없음). 「큰 숫자 + 작은 라벨」 타일을 나란히 두지 않음 | `SheetMemoList`, `SheetMemoRow` |
+| 6 | 상태는 줄 끝 작은 글자로, 기능 색은 문제가 있는 그 글자에만. 1px 넘는 색 왼쪽 띠 없음, 알약 배지 대신 글자 | 검토 행(`evidence_tile.dart`) |
+| 7 | 하나 고르기 2~3개는 iOS 세그먼트, 그보다 많으면 팝업 버튼 행. 켜고 끄기는 `SwitchListTile.adaptive`, 확인 창은 `showAdaptiveDialog`. 재생목록 화면의 학습 방식 칩과 검토의 뜻 후보 칩은 칩 그대로(모서리 14) | `ReviewFilter`, `StudyModeRow`, `adaptiveDialogAction` |
+| 8 | 빈 상태는 그 자리의 괘선 행 하나 + 한 문장 + 한 줄 설명, 행동은 아래 바가 맡음(안쪽에 같은 버튼을 또 두지 않음). 목록 끝은 `line` 색 절취선 | `EmptyNote`, `TearLine` |
+| 9 | 학습 카드는 일력 메모지 한 장, 답은 네 방식 모두 아래 같은 자리, 찢김은 세션 끝 한 번 | 아래 「학습 카드」 |
+| 10 | 큰 글자 문턱은 앱 전체에 하나(약 AX1: 16pt가 25.6pt 이상). 넘으면 나란한 버튼·값을 세로로 쌓아 어절 안에서 끊기지 않게 | `isLargeText` |
+
+**홈** (`app/lib/features/home/`)
+
+| 위에서 아래로 | 내용 |
+|---|---|
+| 내비 바 | 가운데 「오늘」, 오른쪽 설정·정보 |
+| 일력 장 (`DaySheet`) | 머리는 큰 일 + 「11월 / 목요일」(한 덩이로 「11월 13일 목요일, 오늘」이라 읽힘). 메모 줄 「복습할 단어 n개」「새 단어 n개」(하루 목표에 다 못 들면 「· m개 중」)와 합 한 줄 「복습 n장을 먼저, 남은 m장은 새 단어로 — 오늘 k장.」(섞기를 켜면 「순서는 섞어서 보여요.」). 오늘 외운 수가 있으면 「오늘 n개 외움」과 그 방식. 오늘 할 것이 없으면 「지금은 복습할 단어가 없어요」, 단어가 0개면 「먼저 페이지를 등록해 주세요」, 불러오기에 실패하면 0 대신 실패 줄 |
+| 이번 주 줄 (`WeekStrip`) | 월~일, 학습한 날 아래 짧은 먹 선, 오늘은 먹 원, 「이번 주 n일 학습 · 연속 n일」. 첫 페이지 전에는 0뿐인 요약을 숨기고, 읽지 못하면 줄째 숨김(장의 보조 정보이므로) |
+| 학습 방식 (`StudyOptions`) | 「학습 방식 · 뜻 맞히기」 한 줄을 누르면 네 방식 메뉴. 지금 고를 수 없는 방식은 메뉴 안에 까닭을 쓰고, 골라도 바뀌지 않음. 재생목록이 있으면 「재생목록 골라 학습」 줄 |
+| 재생목록 (`HomePlaylists`) | 제목 + 편집, 목록마다 괘선 행(이름·단어 수·›) |
+| 아래 고정 바 (`HomeBar`) | 왼쪽 「페이지 등록」, 오른쪽 「오늘 학습 시작 · n장」(오늘 몫이 없고 미리 할 카드가 있으면 「더 학습하기」). 첫 페이지 전에는 「첫 페이지 등록하기」 하나가 주 버튼, 단어는 있는데 할 것이 없으면 「페이지 등록」 하나 |
+
+**학습 카드** (`app/lib/features/study/`)
+
+- 카드는 `SheetFrame`(먹 띠·옆 hairline·모서리 0·그림자 없음)이고, 띠 아래 작은 꼬리표 「새 단어」「복습 · n단계」「다시 n」을 둡니다.
+- 큰 자리는 문제입니다: 표제어(명조, 길이에 따라 정한 한 크기, 네 방식 공통), 일본어 떠올리기는 한국어 뜻을 장 위 1/3에.
+- 가린 칸은 빈 괘선 한 줄과 작은 「… 가림」 라벨입니다. 그 줄을 눌러도 「뜻 보기」와 같고, 버튼으로 읽히고 세어지는 것은 보기 버튼 하나입니다.
+- **답은 네 방식 모두 아래 같은 자리**입니다. 뜻 맞히기·일본어 떠올리기는 「다시 학습 | 알고있음」(다음 복습 때를 같이, `AnswerButtons`), 객관식·듣고 맞히기는 뜻 넷의 괘선 행(`ChoiceAnswers`). 고른 뒤에는 「정답」「내 선택」을 글자로 붙이고, 그 아래 「맞았어요/틀렸어요」와 「다음」.
+- 진행은 hairline 위 2pt 먹 선과 「n / N」입니다.
+- **세션 끝:** 마지막 카드만 절취선을 따라 위로 찢겨 나가고(0.45초, 조금 돌며 흐려짐) 그 아래 「오늘 학습 끝」 장(메모 줄: 소요 시간·새로 외운 단어·복습한 단어·다시 학습)과 더 학습하기·확인이 드러납니다(`SessionTear`, `SessionDone`). 중간 카드는 찢지 않습니다. 동작 줄이기면 끝 장을 바로 보입니다.
+
+**아래 고정 바** (`app/lib/shared/bottom_action_bar.dart`): 위 hairline, 버튼 높이 54pt, 오른쪽 채운 포인트 주 버튼, 왼쪽 폭 112의 옅은 포인트 보조 버튼(좁으면 아이콘 위에 글자). 큰 글자에서는 주 버튼을 먼저 세로로 쌓습니다. 보조만 있으면 주 버튼 모양이 되고, `top` 자리에 안내 한 줄이나 페이지 점을 둡니다.
+
+| 화면 | 보조 | 주 |
+|---|---|---|
+| 홈 | 페이지 등록 | 오늘 학습 시작 · n장 / 더 학습하기 / 첫 페이지 등록하기 |
+| 페이지 등록(찍기) | 앨범에서 고르기 | 카메라로 찍기 |
+| 재생목록 | — | 이 목록 학습 · n장 / 더 학습하기(위에 장 수 안내) / 할 것이 없으면 「지금은 학습할 카드가 없어요」 글(버튼 아님) / 빈 목록이면 페이지 등록 |
+| 첫 실행 안내 | — (위에 페이지 점) | 다음 / 시작하기 |
+| 검토 | — | 단어 n개 추가 (전부터 아래 고정) |
+
+**빈 상태 문구**
+
+| 자리 | 문장 | 설명 줄 · 다음 행동 |
+|---|---|---|
+| 홈 일력 장, 단어 0개 | 먼저 페이지를 등록해 주세요 | 아래 바 「첫 페이지 등록하기」 |
+| 홈 재생목록, 목록 0개 | 페이지를 등록하고 재생목록에 단어를 모아 보세요 | 사진 속 일본어 단어와 읽기·품사·뜻, 예문을 모아요. 확인이 필요한 칸은 따로 표시해 드려요. |
+| 홈 일력 장, 오늘 할 것 없음 | 지금은 복습할 단어가 없어요 | 복습할 때가 되면 숫자가 올라와요 (흐린 버튼을 두지 않음) |
+| 찍기, 사진에 단어 없음 | 이 사진에서 단어를 찾지 못했어요. 페이지 전체가 화면에 들어오게, 밝은 곳에서 똑바로 찍어 주세요. | 「다시 찍기」(카메라를 다시 엶) |
+| 재생목록, 단어 0개 | 이 목록에는 아직 단어가 없어요 | 페이지를 등록할 때 이 재생목록을 고르면 단어가 들어와요. · 아래 바 「페이지 등록」 |
+| 재생목록, 학습할 카드 없음 | 지금은 학습할 카드가 없어요 | 아래 바에 글로 |
+| 재생목록 편집, 목록 0개 | 재생목록이 없어요 | 페이지를 등록하면서 만들거나, 여기서 먼저 만들 수 있어요. · 「새 재생목록」 |
+| 학습 화면, 카드 없음 | 지금 학습할 카드가 없어요 | 복습할 때가 되면 홈에 숫자가 올라와요 · 돌아가기(미리 할 카드가 있으면 더 학습하기) |
+| 불러오기 실패(설정·재생목록·재생목록 편집) | 설정을 / 재생목록을 불러오지 못했어요 | 「다시 불러오기」. 예외 글은 화면에 내지 않고 기록으로 |
+
+**첫 실행 안내** (`app/lib/features/onboarding/`)
+
+- 세 장: 「교재 한 쪽을 찍으면 단어장이 돼요」 → 「재생목록에 담아 원하는 만큼 묶어요」 → 「네 가지 방식으로 매일 조금씩」. 그림은 위젯으로 그려 팔레트·다크 모드를 따르고 VoiceOver에서는 뺍니다.
+  위 오른쪽 「건너뛰기」, 아래 고정 바에 페이지 점(「3장 중 1장」으로 읽힘)과 「다음」 → 「시작하기」. 밀어서도 넘깁니다. 권한은 묻지 않습니다(카메라는 처음 찍을 때).
+- **보이는 조건:** 안내를 본 표시가 없고, 서재가 비어 있을 때(재생목록·단어 모두 0)만입니다. 단어가 이미 있으면(앱 업데이트, 백업 복원) 바로 홈으로 가고 본 표시를 남깁니다.
+  표시를 읽지 못하면 안 본 것으로 치되 단어가 있으면 보이지 않고, 표시를 쓰지 못해도 기록만 남기고 안내는 닫힙니다.
+- **저장 위치:** 앱 지원 폴더의 파일 `onboarding_seen` 하나, 내용은 안내 판 번호(지금 1)입니다. 안내를 크게 바꿔 판 번호를 올리면 한 번 더 보입니다. 숫자가 아니면 안 본 것으로 읽습니다.
+- **DB·백업 파일에 넣지 않은 이유:** 백업 파일은 서재와 학습 설정을 옮기는 것이라 복원 때문에 안내가 다시 뜨거나 하면 안 됩니다. 또 백업 판 1은 아는 설정 키만 받으므로, `settings` 표에 키를 더하면 형식 판을 올려야 하고 옛 앱은 그 백업을 「더 새 버전」으로 거절합니다(architecture.md 4절 「백업 파일」). 그래서 스키마(v5)와 백업 형식(판 1)을 건드리지 않는 파일로 두었습니다.
+- 다시 보기: 정보 › 「사용 안내」 › 「사용 안내 다시 보기」(건너뛰기·시작하기를 누르면 정보로 돌아감).
+
+**오프닝** (`app/lib/features/opening/`, 전체 1.2초 = `openingLength`)
+
+| 시각 | 그림 |
+|---|---|
+| 0 ~ 0.3초 | 쪽 한 장과 책갈피 끈(시작 화면과 같은 그림이라 이어서 보임) |
+| 0.3 ~ 0.62초 | 카메라 모서리가 1.7배에서 좁혀 옴 |
+| 약 0.53초 | 짧은 플래시(라이트는 `bg` 85%, 다크는 `text` 톤 45%), 쪽이 한 번 눌렸다가 흐려짐 |
+| 0.65 ~ 0.94초 | 「し」 한 획이 써지고 한 번 굵어졌다 돌아옴 |
+| 1.03 ~ 1.20초 | 층이 흐려지며 1.04배로 들리고 홈이 드러남 |
+
+- 홈은 첫 프레임부터 오프닝 아래에서 만들어지므로 오프닝이 홈을 늦추지 않습니다. 탭하면 바로 끝납니다. 동작 줄이기면 아예 없습니다.
+- **콜드 스타트에만:** 한 번의 실행에서 한 번이고, 백그라운드에서 돌아와도 다시 나오지 않습니다. VoiceOver는 오프닝에 멈추지 않습니다(`ExcludeSemantics`).
+- `ShioriApp(firstLaunch: true)`(`main.dart`)일 때만 오프닝 → 첫 실행 안내 → 홈 순서입니다. 테스트·미리보기는 `firstLaunch` 없이 바로 홈입니다.
+- 「し」 획은 `app/lib/shared/shi_stroke.dart`와 생성기의 `SHI`가 같은 SVG 경로입니다(아이콘 획을 바꾸면 둘을 같이 바꿈).
+
+**아이콘·시작 화면** (`tools/design/make_icons.py`)
+
+- 생성기 하나(Pillow, 글꼴 없이 도형만, 1024 캔버스)가 모든 파일을 씁니다: `design/icon/shiori.svg`·`shiori-dev.svg`(사람이 보는 그림), iOS `AppIcon.appiconset`·`AppIcon-dev.appiconset`(알파 없음)·`LaunchImage.imageset`(라이트·다크)·`LaunchBackground.colorset`,
+  Android `src/main/res`(mipmap 다섯 밀도, 적응형 아이콘, 시작 화면 그림·색)와 `src/dev/res`. `--check`는 쓰지 않고 비교만 해서 하나라도 다르면 그 파일 목록을 찍고 종료 1입니다.
+- 아이콘: 포인트 초록 바탕에 흰 카메라 모서리와 흰 쪽, 쪽 위에서 내려온 책갈피 끈이 먹색 「し」로 말립니다.
+- **dev 구분:** iOS dev 세 구성(`Debug-dev`·`Profile-dev`·`Release-dev`)은 `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon-dev`(아래쪽 갈색 띠에 획으로 그린 「DEV」), prod 세 구성은 `AppIcon`.
+  Android는 dev flavor 소스셋 `src/dev/res`가 레거시 아이콘을 dev 그림으로, 적응형 아이콘은 같은 전경에 바탕색만 갈색으로 덮습니다. 홈 화면 이름(「시오리 dev」, 38절)과 함께 두 겹으로 구분합니다.
+- **시작 화면:** 바탕은 `bg`(라이트 흰색, 다크 `#111612`), 가운데에 오프닝 첫 장면(쪽과 끈)을 화면 폭의 72%로 둡니다. iOS는 `LaunchScreen.storyboard`(이름 붙은 색 `LaunchBackground`, 다크 그림 따로),
+  Android는 `drawable/launch_background.xml`(색 + `launch_page.png`, 밤 모드 그림·색 따로). Android 12 이상은 시스템 시작 화면이라 `values-v31`·`values-night-v31`에서 바탕색만 정합니다(아이콘은 시스템이 그림).
+
+**접근성**
+
+| 항목 | 규칙 | 지키는 테스트 |
+|---|---|---|
+| 큰 글자 | 주요 12화면(홈 빈·단어 있음, 찍기, 검토, 학습 네 방식, 재생목록, 재생목록 편집, 설정, 정보)을 글자 ×1.0·×2.0·×3.1과 다크로 열어 넘침·레이아웃 오류 0. 학습 카드는 가린 칸을 열거나 답한 뒤까지, 「오늘 학습 끝」과 홈 머리 「외움」도. 큰 글자에서는 나란한 것을 세로로(아래 바 버튼, 보기 버튼, 값과 라벨), 검토 필터는 두 행, 하루 목표 세그먼트는 칩으로 | `large_text_test.dart`, `onboarding_test.dart` |
+| VoiceOver | 누를 수 있는 것은 모두 이름이 있음. 일본어는 `JpText`가 `ja-JP` locale을 글자에 붙여 일본어로 읽음(카드·재생목록 표제어 등). 학습 카드는 표제어를 한 번만 읽고 「뜻 보기」가 연 뜻을 알림(live region). 고를 수 없는 방식은 까닭을 읽음. VoiceOver가 켜져 있으면 「되돌리기」 알림이 저절로 사라지지 않음. 일력 장은 「11월 13일 목요일, 오늘」, 주간 줄의 날은 「오늘, 학습함」처럼 읽음. 안내 그림·오프닝은 읽지 않음 | `semantics_test.dart`, `opening_test.dart` |
+| 터치 크기 | 12화면에서 누르는 것 모두 44 × 44pt 이상(검토 칸 포함), 안내 화면 버튼도 | `touch_targets_test.dart`, `onboarding_test.dart` |
+| 대비 | 글자 4.5:1, 누르는 것의 경계 3:1 (위 표) | `token_contrast_test.dart` |
+| 동작 줄이기 | iOS 「동작 줄이기」는 플랫폼의 `reduceMotion`만 켜고 Flutter `disableAnimations`는 켜지 않습니다. `MaterialApp.builder: Motion.follow`가 이를 앱 MediaQuery로 옮겨 `Motion.of`가 0을 돌려주고 프레임워크 전환도 따릅니다. 오프닝 없음, 세션 끝 찢김 대신 바로, 안내 페이지 넘김 즉시 | `semantics_test.dart`, `opening_test.dart` |
+| 색은 토큰으로만 | `app/lib/features`·`app/lib/shared`에 `Color(0x…)`·`Colors.*`(`Colors.transparent` 빼고) 없음 | `touch_targets_test.dart` |
+
+### 39.2 바꾼 것
+
+| 항목 | 위치 | 내용 |
+|---|---|---|
+| 색·모양 토큰 | `app/lib/app/theme.dart` | `ShioriTokens`를 역할 이름 20개로 다시 짬(옛 `paper`·`sheet`·`ink`·`marker`·`pen` 이름 없앰), 말차 라이트·다크 값, `Radii.button` 14와 `buttonShape`, 가운데 제목 `AppBarTheme`, 테두리 없는 보조 버튼, `Motion.reduced`·`Motion.follow`, `JpType` |
+| 공용 부품 | `app/lib/shared/sheet.dart`·`bottom_action_bar.dart`·`ruled.dart`·`states.dart`·`large_text.dart`·`adaptive_dialog.dart`·`shi_stroke.dart`·`svg_path.dart` (새), `widgets.dart`, `format.dart` | `SheetFrame`·`TearLine`·`SheetMemoList`·`SheetMemoRow`, `BottomActionBar`·`BarAction`·`BarPrimaryButton`, `RuledRow`, `EmptyNote`·`LoadFailure`·`Loading`, `isLargeText`, `adaptiveDialogAction`, 「し」 획·SVG 경로 읽기, `JpText`(새)·`SectionLabel` 꼴·`MemoryMeter`, `weekdayName`·`weekdayLetter` |
+| 앱 시작 | `app/lib/app/app.dart`, `app/lib/main.dart` | `ShioriApp(firstLaunch:)` → `Opening` → `OnboardingGate` → `HomeScreen`, `builder: Motion.follow`. `main.dart`만 `firstLaunch: true` |
+| 홈 | `app/lib/features/home/home_screen.dart`(다시 씀), `day_sheet.dart`·`week_strip.dart`·`home_week.dart`·`mode_row.dart`·`home_bar.dart`·`home_playlists.dart`·`today_plan.dart`·`home_load_error.dart` (새) | 일력 장·이번 주 줄·학습 방식 한 줄·재생목록 괘선 행·아래 고정 바. `TodayPlan`은 표시만(세션은 같은 `SessionSize`로 학습 서비스가 만듦) |
+| 주간 줄 | `packages/core/lib/src/study/study_week.dart` (새), `shiori_core.dart` | `studyWeekOf(answeredAt, now:, calendar:)` → 이번 주 월~일·연속 일수. 순수 함수, 저장 없음. 학습 일 경계(04시)를 따름 |
+| 학습 | `app/lib/features/study/study_screen.dart`·`word_card.dart`·`recall_card.dart`·`choice_card.dart`·`card_parts.dart`·`pitch_line.dart`·`study_mode_chips.dart`·`study_mode_labels.dart`, `answer_buttons.dart`·`choice_answers.dart`·`session_tear.dart`·`session_done.dart`·`study_stand_ins.dart`·`study_mode_pick.dart` (새) | 일력 메모지 카드, 가린 칸 = 빈 괘선, 답은 아래 고정(네 방식), 진행 선, 세션 끝 찢김 한 번과 「오늘 학습 끝」 메모 줄, 큰 글자 배치, 방식 고르기를 홈 메뉴·재생목록 칩이 같이 씀 |
+| 찍기·검토 | `app/lib/features/capture/capture_screen.dart`·`capture_controller.dart`·`review_screen.dart`·`evidence_tile.dart`·`evidence_view.dart`·`fragment_tray.dart`·`entry_editor_sheet.dart`, `review_filter.dart` (새) | 찍기 아래 바(앨범 / 카메라), 개발용 표본 쪽을 괘선 행으로, 단어 없는 사진의 문구와 「다시 찍기」. 검토 머리를 일력 장 꼴(단어 수 크게 + 메모 줄 둘), 필터를 세그먼트(큰 글자는 두 행), 행은 괘선 행·색 왼쪽 띠 없앰·상태 글자·「확인 필요」 = `warn`·칸 44pt |
+| 재생목록 | `app/lib/features/playlists/playlist_screen.dart`·`mode_meters.dart`·`playlists_screen.dart`·`playlist_actions.dart`·`playlist_picker.dart` | 아래 바, 단어 행은 지금 방식의 단계 하나(「뜻 맞히기 2단계」로 읽힘), 행을 누르면 네 방식 단계 시트. 편집 화면은 괘선 행·끝 절취선·끌 때 그림자 대신 면. 확인 창은 adaptive, VoiceOver 중엔 되돌리기 알림 유지 |
+| 설정·백업 | `app/lib/features/settings/settings_screen.dart`, `app/lib/features/backup/backup_dialogs.dart` | 하루 목표 = iOS 세그먼트(큰 글자는 칩), 고르기 = 오른쪽 체크 행(라디오로 읽힘), 섞기 = adaptive 스위치, 아직 만들지 않은 선택지(「재생목록마다 따로」 등)는 행 대신 섹션 끝 한 줄 안내(저장값은 그대로). 백업 확인 창은 adaptive |
+| 정보 | `app/lib/features/about/about_screen.dart`·`about_parts.dart`·`examples_card.dart`·`crash_log_screen.dart`·`privacy_policy.dart` | 상자 대신 괘선, 인용(출처 문구)은 위아래 괘선, 「사용 안내 다시 보기」 |
+| 첫 실행 안내 | `app/lib/features/onboarding/` (새: `onboarding_store.dart`·`onboarding_gate.dart`·`onboarding_screen.dart`·`onboarding_art.dart`), `app/lib/adapters/file_onboarding_store.dart` (새) | 39.1 「첫 실행 안내」 |
+| 오프닝 | `app/lib/features/opening/` (새: `opening.dart`·`opening_timeline.dart`·`opening_painter.dart`) | 39.1 「오프닝」 |
+| 아이콘·시작 화면 | `tools/design/make_icons.py`·`design/icon/` (새), `app/ios/Runner/Assets.xcassets/`(`AppIcon`, `AppIcon-dev`·`LaunchBackground` 새, `LaunchImage` 라이트·다크), `Base.lproj/LaunchScreen.storyboard`, `Runner.xcodeproj/project.pbxproj`(dev 세 구성), `app/android/app/src/main/res/`(mipmap·적응형 아이콘·시작 화면 그림·색, `values-v31`·`values-night-v31` 새), `app/android/app/src/dev/res/` (새) | 39.1 「아이콘·시작 화면」 |
+
+새 의존성은 없습니다(생성기의 Pillow는 `tools/ocr/make_fixture.py`와 같음). 저장 스키마 v5, 백업 형식 판 1, 권한·Info.plist는 그대로입니다.
+
+### 39.3 검증
+
+| 파일 | 내용 |
+|---|---|
+| `app/test/design/token_contrast_test.dart` (새, 7) | 라이트·다크 각각: 글자 짝 4.5:1, 누르는 것의 경계 3:1, 톤 3개 이하. 테마가 토큰으로 칠함(버튼·FAB·오류) |
+| `app/test/design/large_text_test.dart` (새, 52) | 12화면 × (×1.0·×2.0·×3.1 + 다크), 학습 카드는 가린 칸을 열거나 답한 뒤까지. 「오늘 학습 끝」 × 3배율, 홈 머리 「외움」 ×2.0·×3.1. 레이아웃 오류가 나면 실패 |
+| `app/test/design/semantics_test.dart` (새, 19) | 12화면 모든 버튼에 이름, 학습 카드 표제어는 한 번·일본어, 재생목록 표제어 일본어, 「뜻 보기」가 연 뜻을 알림, 고를 수 없는 방식의 까닭, VoiceOver 중 「되돌리기」 유지, iOS 동작 줄이기를 켜면 `Motion` 0·끄면 그대로 |
+| `app/test/design/touch_targets_test.dart` (새, 13) | 12화면 44pt(`iOSTapTargetGuideline`), 화면 코드에 토큰 밖 색 없음 |
+| `app/test/design/empty_states_test.dart` (새, 7) | 홈 단어 없음·오늘 할 것 없음(흐린 버튼 아님), 단어 없는 사진의 「다시 찍기」(카메라 다시 엶), 빈 재생목록, 재생목록 편집 목록 없음 → 「새 재생목록」, 학습할 카드 없는 재생목록(글, 버튼 아님), 불러오기 실패(예외 글 없음, 「다시 불러오기」) |
+| `app/test/design/home_day_sheet_test.dart` (새, 9) | 날짜 머리(일·월·요일), 메모 줄 합(복습 먼저), 하루 목표 전부(「· n개 중」 없음)·50, 이번 주 줄의 학습한 날과 연속 일수, 학습 방식 한 줄 메뉴, 고를 수 없는 방식의 까닭(메뉴 안), 아래 바 고정, 단어 0개(장 문구·아래 바는 페이지 등록만) |
+| `app/test/design/opening_test.dart` (새, 7) | 콜드 스타트에 바탕색 위 오프닝, 1.2초 안에 끝나고 홈, 탭으로 건너뜀, 동작 줄이기면 없음, 돌아와도 다시 안 나옴, VoiceOver가 멈추지 않음, `firstLaunch` 없으면 안 나옴 |
+| `app/test/design/icon_assets_test.dart` (새, 6) | 아이콘 세트 둘의 모든 크기·불투명·픽셀 크기, dev 아이콘이 prod와 다름, dev 구성은 `AppIcon-dev`·prod는 `AppIcon`, 시작 화면 바탕이 라이트·다크 `bg`, Android 두 flavor의 레거시·적응형 아이콘. 아이콘 모양은 보지 않음 |
+| `app/test/features/onboarding_test.dart` (새, 14) | 첫 실행·빈 서재면 1장, 건너뛰기 → 홈·다시 안 나옴, 다음·다음·시작하기, 밀어서 넘김, 단어가 있으면 안 나옴, 표시를 못 읽으면 빈 서재일 때만 나옴, `firstLaunch` 없으면 홈, 카메라·사진 권한을 묻지 않음, 정보 › 사용 안내 다시 보기, 세 장 × 3배율, 버튼 44pt |
+| `app/test/adapters/file_onboarding_store_test.dart` (새, 3) | 표시 전에는 안 봄·표시 뒤에는 새 store도 봄, 판이 오르면 안 본 것, 숫자 아닌 표시는 안 본 것 |
+| `app/test/support/design.dart` (새, 지원) | 12화면 열기, 글자 배율 목록, 스크롤하며 글 찾아 누르기 |
+| `packages/core/test/study/study_week_test.dart` (새, 9) | 오늘이 든 주 월~일, 기록 없음, 오늘 아직 안 해도 하루가 끝나기 전까지 연속 유지, 오늘 하면 늘어남, 빠진 날에 끊김, 04시 전 답은 전날, 금요일 01시는 아직 목요일, 주·달을 넘어 이어지는 연속, 일요일엔 오늘 끝나는 주 |
+
+결과: app **551** 통과(그중 새 파일 137), core **860**(+9) 통과, `flutter analyze`·`dart analyze`(core) 문제 없음.
+`python3 tools/design/make_icons.py --check` 종료 0(모든 아이콘·시작 화면 파일이 생성기 출력과 같음).
+
+### 39.4 바뀐 기존 테스트
+
+기대하는 의미는 그대로 두고, 바뀐 화면 구조에 맞춰 찾는 방법만 바꿨습니다.
+
+| 파일 | 왜 | 바꾼 것 |
+|---|---|---|
+| `app/test/shared/format_and_widgets_test.dart` | 토큰 이름 변경 | `paper` → `bg`, `ink` → `text` |
+| `app/test/features/failure_export_test.dart` | 단어 없는 사진 문구가 바뀜 | 새 문구 상수 |
+| `app/test/features/general_review_test.dart` | 검토 칸이 44pt로 커져 위쪽 단어가 화면·캐시 밖 | 찾기 전에 목록 맨 위로 올린 뒤 내려가며 찾음 |
+| `app/test/features/study_mode_picker_test.dart` | 홈의 방식 칩이 한 줄 메뉴가 됨 | 홈은 「학습 방식」 메뉴를 열고 항목을 고름(고를 수 없는 까닭은 메뉴 항목에서), 칩 검사는 재생목록 화면에서 |
+| `app/test/features/session_size_buttons_test.dart` | 「전부」 설명 글이 메모 줄과 합 한 줄로 바뀜 | 「38개」, 「· n개 중」 없음, 「복습 2장을 먼저, 남은 38장은 새 단어로 — 오늘 40장.」 |
+| `app/test/features/capture_flow_test.dart` | 홈 새 단어 숫자 타일이 메모 줄로, 검토 필터가 칩에서 세그먼트로 | 「10개 · 11개 중」, `ReviewFilter.onlyFlagged`가 거짓이고 「전체 11」이 보임 |
+| `app/test/app/playlists_provider_test.dart` | 홈 위가 길어져 셋째 재생목록이 첫 화면 아래 | 스크롤해서 찾음 |
+| `app/test/features/review_marks_test.dart` | 검토 필터가 세그먼트 | 「확인 필요 n」을 세그먼트 항목 글로 찾음 |
+| `app/test/features/session_size_settings_test.dart` | 하루 목표가 `SegmentedButton`에서 iOS 세그먼트로 | `CupertinoSlidingSegmentedControl<DailyGoal>`의 고른 값 |
+| `app/test/features/settings_screen_test.dart` | 고르기가 라디오에서 오른쪽 체크 행으로, 아직 만들지 않은 선택지가 섹션 끝 안내 줄로 | 체크 표시·semantics checked, 고를 수 있는 행만, 안내 문장 확인, 미구현 선택지를 고를 수 없고 저장값은 그대로 |
+| `app/test/features/study_mode_playlist_test.dart` | 재생목록 행이 네 방식 막대 대신 지금 방식 단계 하나 | 행 라벨 「…, 뜻 맞히기 2단계」, 행을 눌러 연 시트에서 네 방식 단계(「처음부터 다시 학습」이 모든 방식을 지우는지도 시트에서) |
+| `app/test/features/known_hide_playlist_test.dart` | 행 높이가 바뀌어 「숨긴 단어 1개 보기」가 아래 바 경계에 걸림 | 스크롤한 뒤 프레임을 그리는 한 줄 |
+
+### 39.5 남은 것
+
+- **아이콘 최종 모양:** 지금 파일은 생성기의 기본 시안입니다. 모양을 정하면 `tools/design/make_icons.py`의 모양 정의(`icon()`·`SHI`)와 `app/lib/shared/shi_stroke.dart`의 획을 같이 바꾸고 생성기를 다시 돌린 뒤 `--check`로 확인합니다. `icon_assets_test.dart`는 모양을 보지 않으므로 그대로 통과해야 합니다.
+- **스크린샷 130~149** (iPhone 17 Pro Max 시뮬레이터, `integration_test/design_pass_screenshots_test.dart`, 일상 낱말만): 130 홈 일력 · 131 학습 방식 메뉴 · 132 홈 다크 · 133 홈 빈 상태 · 134 홈 큰 글자(주간 줄 4칸+3칸) · 135·136 오프닝(책 → 모서리·し) · 137·138 첫 실행 안내 1·3장 · 139·140 뜻 맞히기(앞·연 뒤) · 141 일본어 떠올리기 · 142 객관식(답이 아래 고정) · 143 학습 큰 글자 · 144 페이지 등록 · 145 검토 · 146 재생목록 · 147 단어의 방식별 기억 단계 시트 · 148 설정 · 149 정보.
+  오프닝 두 장면은 시뮬레이터에서 프레임이 시계보다 늦게 따라와 시간표보다 조금 뒤에 찍었습니다(시간 조건은 `test/design/opening_test.dart`가 지킵니다).
+- **세션 끝의 「내일 n장」:** 찢긴 뒤 드러나는 장에 내일 복습할 장 수를 보이려면 그 수를 미리 세는 조회가 새로 필요해(기능 추가) 이번에는 넣지 않았습니다. 지금은 「오늘 학습 끝」 장만 보입니다.
+- **아이콘 체계:** 화면 안 아이콘은 Material 아이콘 그대로입니다(SF Symbols 계열로 바꾸지 않음).
+- 하루 목표 「전부」는 수백 장이 될 수 있어 진행을 장마다 한 칸 눈금으로 그리지 않고 선 + 숫자로 둡니다.

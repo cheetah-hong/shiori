@@ -26,10 +26,10 @@ class AboutLink extends StatelessWidget {
                 Text(
                   url,
                   style: TextStyle(
-                    color: t.ink,
+                    color: t.text,
                     fontWeight: FontWeight.w600,
                     decoration: TextDecoration.underline,
-                    decorationColor: t.ink3,
+                    decorationColor: t.text3,
                   ),
                 ),
               ],
@@ -37,7 +37,7 @@ class AboutLink extends StatelessWidget {
           ),
           IconButton(
             tooltip: '링크 복사',
-            icon: Icon(Icons.copy_rounded, size: 20, color: t.ink2),
+            icon: Icon(Icons.copy_rounded, size: 20, color: t.text2),
             onPressed: () async {
               final messenger = ScaffoldMessenger.of(context);
               await Clipboard.setData(ClipboardData(text: url));
@@ -84,19 +84,46 @@ class AboutFact extends StatelessWidget {
   );
 }
 
-/// One card of the 정보 screen.
+/// One part of the 정보 screen: on the page under its heading, ruled
+/// above, no box.
 class AboutCard extends StatelessWidget {
   const AboutCard({super.key, required this.child});
 
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(Space.lg),
+  Widget build(BuildContext context) => DecoratedBox(
     decoration: BoxDecoration(
-      color: context.tokens.sheet,
-      borderRadius: BorderRadius.circular(Radii.card),
+      border: Border(top: BorderSide(color: context.tokens.line)),
     ),
-    child: child,
+    child: Padding(
+      padding: const EdgeInsets.only(top: Space.md),
+      child: child,
+    ),
   );
+}
+
+/// A notice quoted as its source words it (an attribution): set off by
+/// rules above and below, not by a box.
+class AboutQuote extends StatelessWidget {
+  const AboutQuote(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final rule = BorderSide(color: context.tokens.line);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(top: rule, bottom: rule),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: Space.md),
+        child: Text(
+          text,
+          style: context.text.bodyMedium?.copyWith(height: 1.5),
+        ),
+      ),
+    );
+  }
 }

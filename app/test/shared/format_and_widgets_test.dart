@@ -76,10 +76,10 @@ void main() {
         ),
       ),
     );
-    expect(tokens.paper, ShioriTokens.dark.paper);
+    expect(tokens.bg, ShioriTokens.dark.bg);
     expect(
-      ShioriTokens.light.lerp(ShioriTokens.dark, 1).ink,
-      ShioriTokens.dark.ink,
+      ShioriTokens.light.lerp(ShioriTokens.dark, 1).text,
+      ShioriTokens.dark.text,
     );
   });
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/shared/widgets.dart';
 import 'package:shiori_core/shiori_core.dart';
 
 /// Opens the editor for one captured entry. Returns the edited entry, or null.
@@ -84,11 +85,12 @@ class _EntryEditorSheetState extends State<EntryEditorSheet> {
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(
+        padding: EdgeInsets.fromLTRB(
           Space.gutter,
           0,
           Space.gutter,
-          Space.xl,
+          // Clear of the home indicator.
+          Space.xl + MediaQuery.viewPaddingOf(context).bottom,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -115,7 +117,7 @@ class _EntryEditorSheetState extends State<EntryEditorSheet> {
             if (_e.headwordCandidates.isNotEmpty) ...[
               Text(
                 '사전에서 찾은 후보',
-                style: context.text.labelLarge?.copyWith(color: t.ink3),
+                style: context.text.labelLarge?.copyWith(color: t.text3),
               ),
               const SizedBox(height: Space.sm),
               Wrap(
@@ -123,7 +125,7 @@ class _EntryEditorSheetState extends State<EntryEditorSheet> {
                 children: [
                   for (final c in _e.headwordCandidates)
                     ActionChip(
-                      label: Text(c, style: JpType.print(18, t.ink)),
+                      label: JpText(c, style: JpType.print(18, t.text)),
                       onPressed: () => setState(() => _headword.text = c),
                     ),
                 ],
@@ -132,14 +134,14 @@ class _EntryEditorSheetState extends State<EntryEditorSheet> {
             ],
             TextField(
               controller: _headword,
-              style: JpType.print(22, t.ink),
+              style: JpType.print(22, t.text),
               decoration: const InputDecoration(labelText: '표제어'),
               textInputAction: TextInputAction.next,
             ),
             const SizedBox(height: Space.md),
             TextField(
               controller: _readings,
-              style: JpType.gothic(16, t.ink),
+              style: JpType.gothic(16, t.text),
               decoration: const InputDecoration(
                 labelText: '읽기',
                 helperText: '여러 개면 / 로 나눠요. 가나 단어는 비워 두세요',
@@ -147,7 +149,10 @@ class _EntryEditorSheetState extends State<EntryEditorSheet> {
               textInputAction: TextInputAction.next,
             ),
             const SizedBox(height: Space.md),
-            Text('품사', style: context.text.labelLarge?.copyWith(color: t.ink3)),
+            Text(
+              '품사',
+              style: context.text.labelLarge?.copyWith(color: t.text3),
+            ),
             const SizedBox(height: Space.sm),
             Wrap(
               spacing: Space.sm,
@@ -171,7 +176,7 @@ class _EntryEditorSheetState extends State<EntryEditorSheet> {
             if (_showExample) ...[
               TextField(
                 controller: _exampleJa,
-                style: JpType.gothic(15, t.ink),
+                style: JpType.gothic(15, t.text),
                 decoration: const InputDecoration(labelText: '예문 (일본어)'),
                 maxLines: null,
               ),

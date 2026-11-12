@@ -62,7 +62,13 @@ void main() {
       );
       await tester.pumpWidget(app(blocks));
       await tester.pumpAndSettle();
-      expect(find.textContaining('복습할 단어와 새 단어를 모두 학습해요'), findsOneWidget);
+      // Every new word goes in: no 「· n개 중」, and the memo adds up to all.
+      expect(find.text('38개'), findsOneWidget);
+      expect(find.textContaining('개 중'), findsNothing);
+      expect(
+        find.textContaining('복습 2장을 먼저, 남은 38장은 새 단어로 — 오늘 40장.'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('the count follows a goal picked meanwhile', (tester) async {
