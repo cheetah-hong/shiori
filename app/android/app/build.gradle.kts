@@ -56,15 +56,18 @@ android {
 
     // Two flavors (docs/architecture.md, 5). `dev` bundles the development samples
     // and never builds for release; `prod` is the distributed app. The dev suffix
-    // lets both sit on one device with their own data.
+    // lets both sit on one device with their own data, and the dev label tells
+    // them apart on the home screen (AndroidManifest.xml: ${appLabel}).
     flavorDimensions += "channel"
     productFlavors {
         create("dev") {
             dimension = "channel"
             applicationIdSuffix = ".dev"
+            manifestPlaceholders["appLabel"] = "시오리 dev"
         }
         create("prod") {
             dimension = "channel"
+            manifestPlaceholders["appLabel"] = "시오리"
         }
     }
 

@@ -4,20 +4,41 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shiori/adapters/backup_exclusion.dart';
 import 'package:shiori/app/crash_reporting.dart';
 
 /// Crash log in a text file in the app support folder: one JSON record per
 /// line, oldest first, at most [maxBytes]. Nothing is sent anywhere.
+///
+/// The app's log lives in a folder of its own ([folderName]) that is kept out
+/// of device backups; the learning database next to it stays in them.
 ///
 /// Operations run one at a time, and each write replaces the whole file
 /// (a temporary file renamed over it), so a crash mid-write leaves the old log.
 final class FileCrashLog implements CrashLog {
   FileCrashLog({required this.directory, this.maxBytes = defaultMaxBytes});
 
-  /// The log in the app support folder (not shared with other apps).
-  factory FileCrashLog.appSupport() =>
-      FileCrashLog(directory: getApplicationSupportDirectory);
+  /// The log in the app support folder (not shared with other apps), in the
+  /// [folderName] folder kept out of device backups.
+  factory FileCrashLog.appSupport() => FileCrashLog.inSupportFolder(
+    support: getApplicationSupportDirectory,
+    exclusion: backupExclusionFor(isIOS: Platform.isIOS),
+  );
 
+  /// The log in `<support>/<folderName>/`. On first use the folder is made,
+  /// a log an earlier version kept in [support] itself is moved into it, and
+  /// the folder is marked with [exclusion]; a mark that fails is tried again
+  /// on the next use and never stops the log.
+  factory FileCrashLog.inSupportFolder({
+    required Future<Directory> Function() support,
+    required BackupExclusion exclusion,
+    int maxBytes = defaultMaxBytes,
+  }) => FileCrashLog(
+    directory: _CrashLogFolder(support, exclusion).open,
+    maxBytes: maxBytes,
+  );
+
+  static const String folderName = 'diagnostics';
   static const String fileName = 'crash_log.jsonl';
   static const int defaultMaxBytes = 64 * 1024;
 
@@ -167,4 +188,56 @@ final class FileCrashLog implements CrashLog {
 
   static String _cut(String text, int length) =>
       text.length <= length ? text : '${text.substring(0, length)}…';
+}
+
+/// The crash log's own folder in the support folder, made, moved into and
+/// marked once.
+final class _CrashLogFolder {
+  _CrashLogFolder(this._support, this._exclusion);
+
+  final Future<Directory> Function() _support;
+  final BackupExclusion _exclusion;
+  bool _moved = false;
+  bool _excluded = false;
+
+  Future<Directory> open() async {
+    final support = await _support();
+    final sep = Platform.pathSeparator;
+    final folder = Directory('${support.path}$sep${FileCrashLog.folderName}');
+    if (_moved && _excluded) return folder;
+    await folder.create(recursive: true);
+    if (!_moved) {
+      _moved = await _moveEarlierLog(
+        File('${support.path}$sep${FileCrashLog.fileName}'),
+        File('${folder.path}$sep${FileCrashLog.fileName}'),
+      );
+    }
+    if (!_excluded) {
+      try {
+        await _exclusion.exclude(folder);
+        _excluded = true;
+      } on Object catch (e) {
+        debugPrint('[shiori] crash log folder not kept out of backups: $e');
+      }
+    }
+    return folder;
+  }
+
+  /// Before the folder, the log sat in the support folder itself (and so in
+  /// backups). It moves over unless the folder already has a log. False when
+  /// it could not, so the next use tries again.
+  static Future<bool> _moveEarlierLog(File earlier, File current) async {
+    try {
+      if (!await earlier.exists()) return true;
+      if (await current.exists()) {
+        await earlier.delete();
+      } else {
+        await earlier.rename(current.path);
+      }
+      return true;
+    } on FileSystemException catch (e) {
+      debugPrint('[shiori] earlier crash log not moved: ${e.message}');
+      return false;
+    }
+  }
 }

@@ -190,6 +190,7 @@ runApp(ProviderScope(
 | | dev (개발) | prod (배포) |
 |---|---|---|
 | 앱 ID | `com.nihongoapp.shiori.dev` | `com.nihongoapp.shiori` |
+| 홈 화면 이름 | 「시오리 dev」 | 「시오리」 |
 | `assets/dev_samples/` | 들어감 (pubspec `flavors: [dev]`) | 들어가지 않음 |
 | "샘플 페이지로 해 보기"·샘플 판독기 | 켜짐 | 꺼짐 |
 | release 빌드 | **항상 실패** | 사전 asset·서명 키가 있으면 성공 |
@@ -201,6 +202,8 @@ runApp(ProviderScope(
 - Android: `productFlavors` `dev`(`applicationIdSuffix = ".dev"`)·`prod`, 차원 `channel`(`app/android/app/build.gradle.kts`).
 - iOS: 빌드 구성 `Debug-dev`·`Profile-dev`·`Release-dev`·`Debug-prod`·`Profile-prod`·`Release-prod`, 스킴 `dev`·`prod`.
   구성마다 `Flutter/<구성>.xcconfig`가 CocoaPods 설정과 `Flutter/Shared.xcconfig`(Generated + `Local.xcconfig`)를 읽습니다. Podfile도 여섯 구성을 압니다.
+  홈 화면 이름은 같은 xcconfig의 `APP_DISPLAY_NAME`(Info.plist `CFBundleDisplayName = $(APP_DISPLAY_NAME)`), Android는 flavor의 `manifestPlaceholders["appLabel"]`(매니페스트 `android:label="${appLabel}"`)입니다.
+  모든 구성이 iPhone 전용(`TARGETED_DEVICE_FAMILY = "1"`)입니다.
   RunnerTests는 스킴 `dev`로 돌립니다.
 - **dev 앱 ID에 `.dev`를 붙인 이유:** 한 기기에 두 앱을 같이 깔 수 있고, 개발 빌드(샘플·실험 중인 코드)가 학습자의 실제 단어·복습 기록(prod 앱의 데이터)을 건드리지 않습니다.
   비용은 iOS에서 App ID가 하나 더 드는 것입니다. 무료(개인) 팀은 7일마다 다시 설치해야 하고, 새 App ID 수와 한 기기에 동시에 둘 수 있는 앱 수에 제한이 있으므로
@@ -236,11 +239,15 @@ runApp(ProviderScope(
 - `main.dart`가 `installCrashHandlers(crashLog)`로 `FlutterError.onError`(화면 오류)와 `PlatformDispatcher.instance.onError`(아무도 기다리지 않은 비동기 오류 등)를 연결합니다.
   원래 처리는 그대로입니다: 화면 오류는 콘솔에 찍히고, 비동기 오류는 `false`를 돌려 엔진 기본 처리도 돕니다. 기록은 백그라운드로 하고 실패해도 처리기를 깨지 않습니다.
   zone 처리기(`runZonedGuarded`)는 쓰지 않습니다. 루트 zone의 잡히지 않은 오류는 `PlatformDispatcher.onError`로 옵니다.
-- 기본 블록 `FileCrashLog`(`lib/adapters/file_crash_log.dart`): 앱 지원 폴더의 `crash_log.jsonl`, 한 줄에 기록 하나(시각, 출처, 오류 글, 스택, 위치).
+- 기본 블록 `FileCrashLog`(`lib/adapters/file_crash_log.dart`): 앱 지원 폴더 안 `diagnostics/crash_log.jsonl`, 한 줄에 기록 하나(시각, 출처, 오류 글, 스택, 위치).
   파일은 **64KiB 상한**이고 넘으면 오래된 기록부터 지웁니다. 기록 하나는 오류 글 4000자·스택 60줄까지 남기고, 그래도 상한보다 크면 스택을 빼고 글을 줄입니다.
   쓰기는 한 번에 하나씩, 임시 파일에 쓴 뒤 바꿔치기합니다. 같은 오류(출처·글·위치)가 1분 안에 되풀이되면 다시 쓰지 않습니다(매 프레임 나는 오류가
   디스크를 두드리거나 처음 기록을 밀어내지 않게). 형식이 맞지 않는 줄은 읽을 때 건너뜁니다. 네트워크로 보내지 않습니다.
-  iOS는 앱 지원 폴더가 기기 백업(iCloud·컴퓨터)에 들어가므로 기록도 백업에 함께 들어갈 수 있고, 화면 안내에 그렇게 적었습니다(Android는 `allowBackup="false"`).
+- **기기 백업에서 뺌.** 앱 지원 폴더는 iOS 기기 백업(iCloud·컴퓨터)에 들어가고, 학습 DB(`shiori.sqlite`)는 그래서 백업으로 지켜집니다. 오류 기록은 그럴 필요가 없어
+  `diagnostics/` 폴더째 `isExcludedFromBackup`을 겁니다(폴더에 걸면 안의 파일이 모두 빠짐. 파일에 걸면 쓰기마다 바꿔치기하는 새 파일에서 표시가 사라짐).
+  표시는 포트 `BackupExclusion`(`lib/adapters/backup_exclusion.dart`)의 iOS 블록 `ChannelBackupExclusion` → 채널 `shiori/backup`(`ios/Runner/BackupChannel.swift`,
+  앱 컨테이너 밖 경로는 거절)이 겁니다. 처음 쓸 때 한 번 걸고, 실패하면 다음에 다시 시도하며 기록은 그대로 합니다. 예전 판이 지원 폴더에 바로 둔 `crash_log.jsonl`은 처음 쓸 때 새 폴더로 옮깁니다.
+  Android는 `allowBackup="false"`라 걸 것이 없습니다(`NoBackupExclusion`). 풀어 놓은 사전·발음 파일은 Caches 폴더라 처음부터 백업되지 않습니다.
 - 정보 화면 → "오류 기록 보기"(`lib/features/about/crash_log_screen.dart`): 최근 것부터 보여 주고, 복사(클립보드)와 지우기가 있습니다.
   무엇이 기록되는지와 사진 경로 같은 개인 정보가 섞일 수 있다는 안내를 화면 맨 위에 둡니다.
 - **충돌 보고 서비스를 끼우는 방법**(지금은 넣지 않음. 계정·비용·개인 정보 처리 방침을 먼저 정해야 함):
@@ -258,6 +265,12 @@ runApp(ProviderScope(
 - **iOS:** 서명은 `app/ios/Flutter/Local.xcconfig`(git 제외)의 `DEVELOPMENT_TEAM`으로 하고 자동 서명입니다. 모든 구성이 `Shared.xcconfig`를 거쳐 이 파일을 읽습니다.
   틀은 `Local.xcconfig.example`(배포용 수동 서명 자리 `CODE_SIGN_STYLE`·`CODE_SIGN_IDENTITY`·`PROVISIONING_PROFILE_SPECIFIER`를 주석으로 둠). 키·프로필 파일은 저장소에 두지 않습니다.
   App Store·TestFlight 배포는 유료 Apple Developer Program 팀이 있어야 합니다.
+
+### 5.5 스토어 심사 설정
+
+수출 규정 답(`ITSAppUsesNonExemptEncryption = false`), 개인정보 매니페스트(`ios/Runner/PrivacyInfo.xcprivacy`), App Privacy 「수집 안 함」 근거,
+개인정보처리방침(앱 안 `lib/features/about/privacy_policy.dart`, 웹 초안 `site/`), 계정 가입 뒤 할 일, Google Play 점검은 `docs/release.md`에 있습니다.
+빌드 결과물은 `tools/release/check_build.py`(ios·apk·site)로 확인합니다.
 
 ## 6. 다음 블록 (이번에 하지 않은 것, 포트와 TODO만 있음)
 

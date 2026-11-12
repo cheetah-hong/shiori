@@ -103,7 +103,7 @@ class _WhatIsKept extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(
     '앱에서 난 오류의 시각, 내용, 코드 위치를 이 기기에만 저장하고, 앱이 어디로도 보내지 않아요'
-    '(기기 백업에는 함께 들어갈 수 있어요). '
+    '(iPhone의 기기 백업에도 들어가지 않아요). '
     '오류 내용에 사진 파일 경로 같은 개인 정보가 섞일 수 있으니 복사해서 보내기 전에 확인해 주세요. '
     '같은 오류가 1분 안에 되풀이되면 한 번만 남겨요.',
     style: context.text.bodySmall?.copyWith(height: 1.5),

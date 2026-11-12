@@ -25,5 +25,11 @@ import UIKit
     } else {
       NSLog("[Shiori] audio channel was not registered: no plugin registrar")
     }
+    // Backup exclusion (crash log folder) for the Dart BackupExclusion port.
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "ShioriBackup") {
+      BackupChannel.register(with: registrar)
+    } else {
+      NSLog("[Shiori] backup channel was not registered: no plugin registrar")
+    }
   }
 }

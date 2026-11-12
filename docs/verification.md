@@ -2470,3 +2470,63 @@ iPhone 17 시뮬레이터(실제 사전·발음 asset)에서 `save` → 앱 종�
 | `117_home_daily_goal_all.png` | 하루 목표 「전부」: 「오늘 학습 시작 · 40장」, 「모든 재생목록의 복습할 단어와 새 단어를 모두 학습해요」 |
 | `118_playlist_study_all.png` | 재생목록(32단어): 「이 목록 학습 · 32장」(하루 목표와 무관) |
 | `119_playlist_session_shuffled.png` | 그 목록 학습 「0 / 32」, 섞여서 목록 첫 단어가 아닌 카드부터 |
+
+## 38. App Store 심사 준비: 수출 규정·개인정보 매니페스트·iPhone 전용·dev 이름·백업 제외, Android 출시 점검 (2026-11-12)
+
+계정(유료 개발자 프로그램) 없이 할 수 있는 심사 설정을 넣었습니다. 답과 근거, 계정 가입 뒤 할 일은 `docs/release.md`에 있습니다.
+번들 ID·서명·Android 키는 바꾸거나 만들지 않았습니다.
+
+### 38.1 바꾼 것
+
+| 항목 | 위치 | 내용 |
+|---|---|---|
+| 수출 규정 | `app/ios/Runner/Info.plist` | `ITSAppUsesNonExemptEncryption = false` (근거: release.md 5절) |
+| iPhone 전용 | `Runner.xcodeproj/project.pbxproj`, `Info.plist` | 여섯 구성 `TARGETED_DEVICE_FAMILY = "1"`, `UISupportedInterfaceOrientations~ipad` 삭제 |
+| 개인정보 매니페스트 | `app/ios/Runner/PrivacyInfo.xcprivacy` (새, Runner 리소스) | 추적 안 함·수집 없음, FileTimestamp `C617.1`·DiskSpace `E174.1` (매니페스트 없는 sqlite3·VOICEVOX 두 framework 몫, release.md 6.2절) |
+| dev 이름 | `app/ios/Flutter/*-{dev,prod}.xcconfig`, `Info.plist`, `app/android/app/build.gradle.kts`, `AndroidManifest.xml` | `APP_DISPLAY_NAME`·`manifestPlaceholders["appLabel"]`: dev 「시오리 dev」, prod 「시오리」 |
+| 오류 기록 백업 제외 | `app/lib/adapters/file_crash_log.dart`, `backup_exclusion.dart` (새), `app/ios/Runner/BackupChannel.swift` (새), `AppDelegate.swift` | 기록을 `Application Support/diagnostics/`로 옮기고 폴더째 `isExcludedFromBackup`. 채널 `shiori/backup`은 앱 컨테이너 밖 경로 거절. 예전 위치 파일은 처음 쓸 때 옮김. 학습 DB는 그대로 백업 |
+| 정보 → 개인정보 | `app/lib/features/about/privacy_policy.dart` (새), `about_screen.dart`, `crash_log_screen.dart` | 요약 + 방침 전문 화면. 웹 주소·문의처 상수는 비어 있고 비면 보이지 않음. 오류 기록 안내 「기기 백업에도 들어가지 않아요」 |
+| 웹 페이지 초안 | `site/index.html`·`privacy.html`·`privacy-en.html`·`support.html` (새) | 스크립트·외부 자원 없음, 문의처는 `{{CONTACT_EMAIL}}` 자리. 게시하지 않음(release.md 7.3절) |
+| 검사 도구 | `tools/release/check_build.py` (새) | `ios`(빌드 결과 plist·매니페스트·매니페스트 없는 framework 목록), `apk`(라벨·targetSdk ≥ 36, `--release`면 네트워크 권한이 있으면 실패), `site`(`--publish`면 자리표시 남으면 실패) |
+
+### 38.2 조사 결과 (요약)
+
+- 필수 이유 API: release 빌드의 실행 파일 10개를 `nm -u`로 확인. 앱 코드(Swift·Dart)는 사용 없음. Flutter·image_picker_ios·share_plus는 자체 매니페스트, Flutter xcframework는 서명 있음.
+  매니페스트 없이 쓰는 것은 sqlite3(파일 시각·`statfs`)와 voicevox_core·voicevox_onnxruntime(파일 시각) — 앱 매니페스트에 모아 신고.
+- 네트워크: iOS 실행 파일에 서버로 보내는 코드 없음. Android는 ML Kit이 datatransport를 끌고 와 INTERNET·ACCESS_NETWORK_STATE가 병합됨(release.md 8.2절, 결정은 출시 직전).
+- 시뮬레이터 실측 파일 위치: 학습 DB `Library/Application Support/shiori.sqlite`(백업), 풀어 놓은 사전 `Library/Caches/*.sqlite`(jmdict 29.8MB·한국어 뜻 9.3MB·위키 4.0MB, 백업 안 됨), 발음 `Library/Caches/voice`·`speech`, 찍은 사진 `tmp`(판독 뒤 삭제).
+- Android: Flutter 3.41.5의 `targetSdkVersion` 36·`compileSdkVersion` 36·`minSdkVersion` 24. 빌드된 APK `aapt`도 targetSdk 36.
+
+### 38.3 테스트
+
+| 파일 | 내용 |
+|---|---|
+| `app/test/release/store_settings_test.dart` (새, 11) | R1 Info.plist(암호화 false, 카메라·사진 설명, 파일 공유 키 없음, 표시 이름이 `$(APP_DISPLAY_NAME)`, iPad 키 없음), R2 매니페스트 내용과 Runner 리소스 단계 포함, R3 모든 구성 iPhone 전용, R4 xcconfig 여섯 개·gradle flavor·매니페스트 라벨, R6 `targetSdk = flutter.targetSdkVersion` |
+| `app/test/adapters/file_crash_log_backup_test.dart` (새, 9) | R5 기록 폴더만 표시(지원 폴더 = DB 폴더는 표시 안 함), 한 번만 표시, 실패해도 기록·다음에 다시 시도, 예전 위치 기록 옮김, 채널 이름·인자·오류 전달, 플랫폼별 블록 |
+| `app/test/features/about_privacy_test.dart` (새, 7) | 정보 화면 「개인정보」, 웹 주소는 있을 때만, 방침 전문의 제목들, 문의처 없으면 자리표시·「문의」 줄 없음, 있으면 한 줄, **앱 방침 문장이 `site/privacy.html`에 모두 있음** |
+| `app/test/support/plist.dart` (새) | 테스트용 XML plist 읽기 |
+| `app/ios/RunnerTests/RunnerTests.swift` (+3) | 임시 폴더 표시·읽기, 컨테이너 밖(`/etc`, `..`로 빠져나가는 경로) 거절, 없는 경로 거절 |
+| `tools/release/test_check_build.py` (새, 15) | 합성 Runner.app·`aapt` 출력·사이트 폴더로 `check_build.py` 검사(release APK의 네트워크 권한 포함) |
+| `app/integration_test/backup_exclusion_test.dart` (새) | 시뮬레이터: 실제 기록 뒤 `diagnostics` 폴더 표시 true, 지원 폴더 false |
+
+결과: app **383**(+27) 통과, analyze 문제 없음. iOS RunnerTests **8**(+3) 통과. Android 채널 단위 테스트 15 통과(JDK 21).
+`python3 -m unittest discover -s tools/release -p 'test_*.py'` **15** 통과. 통합 테스트(iPhone 17 Pro 시뮬레이터, dev) 통과.
+
+빌드 결과물:
+
+| 명령 | 결과 |
+|---|---|
+| `flutter build ios --flavor prod --release --no-codesign` → `check_build.py ios … --flavor prod` | 성공(157.3MB) → ok: 「시오리」, `UIDeviceFamily [1]`, 암호화 false, `Runner.app/PrivacyInfo.xcprivacy` 있음(`plutil -lint` OK, 소스와 같음) |
+| `flutter build ios --flavor dev --debug --no-codesign` / `--simulator` → `check_build.py ios … --flavor dev` | 성공 → ok: 「시오리 dev」 |
+| `flutter build ios --flavor dev --release --no-codesign` | 의도대로 실패(dev flavor release 차단) |
+| `flutter build apk --flavor dev --debug` / `--flavor prod --debug` → `check_build.py apk` | 성공 → ok: 라벨 「시오리 dev」/「시오리」, targetSdk 36 |
+| `flutter build appbundle --flavor prod --release` (key.properties 없음) | 의도대로 실패: `Release signing: android/key.properties is missing. A release is never signed with the debug key. …` |
+| `check_build.py site` / `site --publish` | ok / 문의처 자리표시가 남아 실패(의도) |
+
+### 38.4 스크린샷 (iPhone 17 Pro 시뮬레이터)
+
+| 파일 | 화면 |
+|---|---|
+| `127_home_icon_dev.png` | 홈 화면: dev 앱 「시오리 dev」 |
+| `128_home_icons_dev_prod.png` | 홈 화면: 「시오리 dev」와 「시오리」가 나란히 (한 기기에 두 앱) |
+| `129_about_privacy.png` | 정보 → 「개인정보」: 수집하지 않는다는 요약과 「개인정보처리방침」 (`integration_test/privacy_screenshots_test.dart`) |

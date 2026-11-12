@@ -10,6 +10,7 @@ import 'package:shiori/features/about/about_parts.dart';
 import 'package:shiori/features/about/crash_log_screen.dart';
 import 'package:shiori/features/about/examples_card.dart';
 import 'package:shiori/features/about/extract_licenses.dart';
+import 'package:shiori/features/about/privacy_policy.dart';
 import 'package:shiori/features/about/voice_licenses.dart';
 import 'package:shiori/shared/dictionary_notice.dart';
 import 'package:shiori/shared/widgets.dart';
@@ -110,6 +111,8 @@ class AboutScreen extends ConsumerWidget {
                 ),
               ),
             ),
+            const SizedBox(height: Space.section),
+            const PrivacySection(),
             const SizedBox(height: Space.section),
             const SectionLabel('오픈소스'),
             AboutCard(

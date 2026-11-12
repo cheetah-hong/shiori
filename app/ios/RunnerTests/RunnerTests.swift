@@ -57,3 +57,42 @@ class OcrOrientationTests: XCTestCase {
     XCTAssertTrue(OcrOrientation.swapsSides(.leftMirrored))
   }
 }
+
+/// Backup exclusion channel: marks folders inside the app container only.
+class BackupExclusionTests: XCTestCase {
+  private var folder: URL!
+
+  override func setUpWithError() throws {
+    folder = FileManager.default.temporaryDirectory
+      .appendingPathComponent("backup-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+  }
+
+  override func tearDownWithError() throws {
+    try? FileManager.default.removeItem(at: folder)
+  }
+
+  func testMarksAFolderAndReadsTheMarkBack() throws {
+    XCTAssertFalse(try BackupExclusion.isExcluded(path: folder.path))
+    try BackupExclusion.exclude(path: folder.path)
+    XCTAssertTrue(try BackupExclusion.isExcluded(path: folder.path))
+  }
+
+  func testRefusesPathsOutsideTheApp() {
+    XCTAssertThrowsError(try BackupExclusion.exclude(path: "/etc")) { error in
+      XCTAssertEqual(error as? BackupExclusion.Failure, .outsideApp)
+    }
+    // Enough ".." to climb past the root (which stays "/"), so it resolves to /etc.
+    let escaping = folder.path + String(repeating: "/..", count: 40) + "/etc"
+    XCTAssertThrowsError(try BackupExclusion.exclude(path: escaping)) { error in
+      XCTAssertEqual(error as? BackupExclusion.Failure, .outsideApp)
+    }
+  }
+
+  func testRefusesAMissingPath() {
+    let missing = folder.appendingPathComponent("missing").path
+    XCTAssertThrowsError(try BackupExclusion.exclude(path: missing)) { error in
+      XCTAssertEqual(error as? BackupExclusion.Failure, .missing)
+    }
+  }
+}
