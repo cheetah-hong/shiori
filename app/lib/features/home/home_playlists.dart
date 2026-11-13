@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/app/data.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/features/decks/deck_data.dart';
+import 'package:shiori/features/decks/decks_screen.dart';
 import 'package:shiori/features/home/home_load_error.dart';
 import 'package:shiori/features/playlists/playlist_screen.dart';
 import 'package:shiori/features/playlists/playlists_screen.dart';
@@ -123,13 +125,20 @@ class _PlaylistRow extends StatelessWidget {
 }
 
 /// No playlist yet: one ruled row that says what fills it. The bar below
-/// offers 첫 페이지 등록하기.
-class _EmptyShelf extends StatelessWidget {
+/// offers 첫 페이지 등록하기; the row offers the built-in decks.
+class _EmptyShelf extends ConsumerWidget {
   const _EmptyShelf();
 
   @override
-  Widget build(BuildContext context) => const EmptyNote(
+  Widget build(BuildContext context, WidgetRef ref) => EmptyNote(
     title: '페이지를 등록하고 재생목록에 단어를 모아 보세요',
     body: '사진 속 일본어 단어와 읽기·품사·뜻, 예문을 모아요.',
+    // Only in a build with the decks.
+    action: ref.watch(builtinDecksProvider).value == null
+        ? null
+        : TextButton(
+            onPressed: () => pushScreen<void>(context, const DecksScreen()),
+            child: const Text('기본 단어장 둘러보기'),
+          ),
   );
 }

@@ -23,6 +23,9 @@ dev_dependencies:
   krdict_block:
     path: ../krdict_block
   lints: ^6.0.0
+  # The local test of the built-in decks asks for accents like a card does.
+  voicevox_block:
+    path: ../voicevox_block
   # Same constraint as dict_jmdict: tests load the SQL fixture in memory.
   sqlite3: ">=3.4.0 <3.6.0"
   test: ^1.30.0

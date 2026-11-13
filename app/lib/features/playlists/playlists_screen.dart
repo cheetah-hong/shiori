@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/data.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/features/decks/decks_screen.dart';
 import 'package:shiori/shared/action_sheet.dart';
+import 'package:shiori/shared/navigation.dart';
 import 'package:shiori/features/playlists/playlist_actions.dart';
 import 'package:shiori/features/playlists/playlist_names.dart';
 import 'package:shiori/shared/ruled.dart';
@@ -90,6 +92,11 @@ class PlaylistsScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('재생목록 편집'),
         actions: [
+          IconButton(
+            tooltip: '기본 단어장',
+            icon: const Icon(CupertinoIcons.book),
+            onPressed: () => pushScreen<void>(context, const DecksScreen()),
+          ),
           IconButton(
             tooltip: '새 재생목록',
             icon: const Icon(CupertinoIcons.plus),

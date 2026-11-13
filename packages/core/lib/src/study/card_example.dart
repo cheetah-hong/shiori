@@ -67,7 +67,8 @@ final class CardExample {
 /// from [examples], else null.
 ///
 /// The entry: [lexicon]'s entries written as the headword, narrowed to the
-/// word's readings when that keeps any; for a headword in kana, the entries
+/// word's readings (the headword itself for a word without readings) when
+/// that keeps any; for a headword in kana, the entries
 /// a kana word stands for ([kanaEntries]). Of the entries' sentences the
 /// first whose reading is one of the word's, else the first filed under any
 /// reading.
@@ -83,7 +84,9 @@ Future<CardExample?> cardExampleOf(
   final bare = withoutPrintedEnding(word.headword, word.readings);
   final looked = await lexicon.lookup([word.headword, ?bare?.headword]);
   var found = looked[word.headword] ?? const <LexiconEntry>[];
-  var wordReadings = word.readings;
+  // A word written in kana keeps no readings: it is read as written (the
+  // way its speech is asked, `wordSpeechFor`).
+  var wordReadings = word.readings.isEmpty ? [word.headword] : word.readings;
   if (found.isEmpty && bare != null) {
     found = looked[bare.headword] ?? const <LexiconEntry>[];
     wordReadings = bare.readings;

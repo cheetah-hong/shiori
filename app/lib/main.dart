@@ -8,6 +8,7 @@ import 'package:shiori/app/crash_reporting.dart';
 import 'package:shiori/app/startup.dart';
 import 'package:shiori/features/about/about_screen.dart';
 import 'package:shiori/features/about/examples_card.dart';
+import 'package:shiori/features/decks/decks_card.dart';
 
 /// Blocks are wired in `lib/app/blocks.dart`. To swap one, add an override here:
 ///
@@ -26,6 +27,7 @@ Future<void> main() async {
   registerExtractorLicenses();
   registerVoiceLicenses();
   registerFontLicense();
+  registerDeckLicenses();
   // Unpacking the dictionaries starts now and runs while the app starts.
   final dictionary = bundledDictionaryOverride();
   final glossary = bundledGlossaryOverride();

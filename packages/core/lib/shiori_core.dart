@@ -53,6 +53,8 @@ export 'src/backup/backup_data.dart';
 export 'src/backup/backup_service.dart';
 
 // Library and study use cases
+export 'src/decks/builtin_deck.dart';
+export 'src/decks/deck_draft.dart';
 export 'src/library/library_service.dart';
 export 'src/study/card_example.dart';
 export 'src/study/choice_maker.dart';

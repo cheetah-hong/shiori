@@ -15,7 +15,8 @@ nihongo-app/
 │   ├── lib/src/extract/    단어 추출기(배치에 기대지 않음, docs/extraction.md)와 검토 초안 만들기(page_draft.dart)
 │   ├── lib/src/capture/    검토 화면의 편집(후보 고르기, 조각 붙이기, 고치기), 녹화 판독 블록, 문자 분류
 │   ├── lib/src/study/      라이트너 4단계 스케줄러, 세션 빌더, 세션, 학습 일 경계, StudyService, 홈 이번 주 줄(study_week.dart, 순수 함수)
-│   ├── lib/src/library/    LibraryService (재생목록 만들기·이름·순서·삭제, 검토 초안을 재생목록에 추가, 빼기·되돌리기)
+│   ├── lib/src/library/    LibraryService (재생목록 만들기·이름·순서·삭제, 검토 초안을 재생목록에 추가, 기본 단어장 추가, 빼기·되돌리기)
+│   ├── lib/src/decks/      기본 단어장: 단어장 파일 읽기·검사(parseBuiltinDecks), 추가할 초안 만들기(deckDraft: 사전으로 뜻·품사 채우기)
 │   ├── lib/src/storage/    InMemory 저장소 (테스트용 블록, 트랜잭션 포함)
 │   ├── lib/src/eval/       채점기 (lib/eval.dart로만 공개, 앱은 쓰지 않음)
 │   ├── test/               단위·회귀 테스트, fixtures/synthetic/ (합성 단어장 쪽 판독 기록·정답), fixtures/synthetic_mlkit/ (같은 단어의 ML Kit형 판독),
@@ -46,6 +47,7 @@ nihongo-app/
 ├── tools/ocr/              사진 → Apple Vision 두 패스 판독 기록 (make_fixture.py, vision_ocr.swift)
 ├── tools/synthetic/        합성 페이지 생성기 (make_pages.py 단어장 쪽, make_general_pages.py 배치가 다른 쪽)
 ├── tools/dict/             JMdict → SQLite (build_jmdict_db.py), 앱 asset (build_app_asset.py), 효과 측정
+├── tools/decks/            기본 단어장 파일 (build_decks.py: 단어 목록 + JMdict → app/assets/decks/jlpt.json, 사전 asset처럼 git 제외, 원자료는 저장소 밖, --check)
 ├── tools/design/           앱 아이콘·시작 화면 생성기 (make_icons.py: iOS·Android 파일과 SVG를 모두 씀, --check는 비교만)
 ├── design/icon/            아이콘 그림 SVG (shiori.svg·shiori-dev.svg, 생성기 출력)
 └── docs/                   이 문서, verification.md, dictionary.md, screenshots/
@@ -73,6 +75,7 @@ nihongo-app/
 | `TextRecognizer` (샘플) | `FixtureTextRecognizer` + `assets/dev_samples/` (합성 페이지). dev flavor에서만 켜짐(5.1절) | `sampleRecognizerProvider` (켜짐: `devSamplesEnabledProvider`) | (개발용 전용) |
 | `Lexicon` (`lookup(forms)`: 표기 여러 개 → 읽기·품사·빈도) | `JmdictLexiconAdapter` (`packages/jmdict_block`, JMdict full-lean SQLite, CC BY-SA 4.0), 테스트·합성 세트는 `InMemoryLexicon`. 사전 asset이 없거나 열지 못하면 `EmptyLexicon`. 모든 쪽을 단어 추출기(+한국어 뜻 사전)로 읽음(`docs/extraction.md`; 가로줄 틀 경로는 2026-11-06에 걷어냄, 같은 문서 9절) | `lexiconProvider` (열기: `bundledDictionaryProvider`) → `generalExtractorProvider` | 데이터 정기 갱신 자동화 |
 | `KoreanGlossary` (`lookup(headword, readings:)` → 뜻 묶음 `KoreanSense`, `sources` 출처·판; 거꾸로 찾기 `KoreanReverseGlossary`) | `KrdictGlossary` (`packages/krdict_block`, 한국어기초사전 일본어 대역어 역색인 SQLite, CC BY-SA 2.0 KR, `app/assets/dict/ko-glossary.*`, docs/dictionary.md 11절). 추출기가 짝짓기 근거, 사진에 뜻이 없는 사전 낱말의 1순위 뜻("추정"), 못 읽은 표제어 되살리기에 씀. asset이 없으면 `EmptyKoreanGlossary` | `koreanGlossaryProvider` (열기: `bundledGlossaryProvider`). 기초사전에 없는 낱말의 뜻만 위키낱말사전 보조 사전(같은 블록, 다른 asset `wikt-glossary.*`, CC BY-SA 4.0, docs/dictionary.md 13절)을 `wiktionaryGlossaryProvider` → 추출기 `meaningFallback`으로 | 기기 번역 |
+| 기본 단어장 (앱, `lib/features/decks/deck_data.dart`) | `app/assets/decks/jlpt.json`(사전 asset처럼 만들어 넣고 git 제외, `tools/decks/build_decks.py`, docs/dictionary.md 15절)을 `parseBuiltinDecks`로 읽음. 파일이 없는 빌드는 null(단어장 화면이 「이 빌드에는 없음」, 빈 홈의 버튼 숨김). 뜻은 추가할 때 `Lexicon`·`KoreanGlossary`(+위키낱말)로 채움 | `builtinDecksProvider`, `deckDictionariesProvider`(사전이 하나라도 안 열리면 null → 추가 안 함) | 다른 단어 목록 |
 | `ExampleSentences` (`lookup(entryIds)` → 항목·읽기별 문장 `StoredExample`) | `TatoebaExamples` (`packages/example_block`, Tatoeba 문장 SQLite, CC BY 2.0 FR, `app/assets/dict/examples.*`, docs/dictionary.md 14절). core `cardExampleOf`가 사진 예문이 없는 카드에 `Lexicon` 항목 번호로 찾음. asset이 없으면 `EmptyExampleSentences` | `exampleSentencesProvider` (열기: `bundledExamplesProvider`, 카드: `cardExampleProvider`) | — |
 | `ImageSource` | `ImagePickerSource` (카메라·앨범, 판독 뒤 임시 파일 `discard`) | `imageSourceProvider` | 문서 스캐너(cunning_document_scanner), 굽은 페이지 펴기 |
 | `LibraryRepository` (단어는 라이브러리에 한 번 `Word.key`, 재생목록이 가리킴) | `DriftLibraryRepository` (SQLite, `packages/storage_drift`). 테스트: `InMemoryLibraryRepository`. 홈 재생목록은 `playlistStats()`(목록별 단어 수·숨김 수·마지막 추가를 한 번에) | `libraryRepositoryProvider` (DB: `appDatabaseProvider`) | 백업·동기화 |
@@ -123,12 +126,15 @@ runApp(ProviderScope(
                                                              ▼
                                          검토 화면(후보 고르기·조각 붙이기·고치기·제외) → 「단어 N개 추가」 → 재생목록 고르기 → LibraryService.addDraft
                                                              ▼                    (같은 단어 = 표제어 wordKey 하나: 새 단어만 넣고, 있는 단어는 연결만)
+                                         기본 단어장(앱 안 파일) → deckDraft(사전으로 뜻·품사, 뜻 없는 단어 뺌) → LibraryService.addDeck
+                                                             ▼                    (단어장 이름의 재생목록에, 규칙은 addDraft 그대로)
                                          StudyService(전체 / 재생목록 하나): 복습할 카드 먼저 + 새 단어로 채운 세션
                                                              ▼
                                          알고있음 / 다시 학습 → ReviewScheduler → ReviewRepository
 ```
 
 - 숨긴 단어(이미 알아요)의 표제어만 추출에서 건너뛰고 그 수를 검토 요약에 보입니다. 라이브러리에 이미 있는 다른 단어는 검토에 그대로 나오고 「이미 라이브러리에 있음 · 저장된 뜻 유지」로 표시됩니다. 추가할 때 그 목록에 이미 있으면 「이미 있음」, 다른 목록에만 있으면 저장된 단어를 연결합니다(내용·학습 기록 그대로).
+- 기본 단어장(docs/dictionary.md 15절, verification.md 41절)은 보통 재생목록으로 들어갑니다. 저장 스키마·백업 형식은 그대로이고 단어장과 재생목록의 연결은 저장하지 않습니다(이름이 같은 재생목록이 그 단어장). 다시 추가하면 그 목록에 없는 단어만 더해지고, 이미 있는 단어의 뜻·학습 기록·숨김은 그대로입니다. 큰 단어장도 홈 「오늘 학습」은 하루 목표만큼만 꺼내고, 재생목록 화면의 「이 목록 학습」은 지금처럼 그 목록의 카드 전부입니다.
 - 교재·DAY는 없습니다(2026-11-06, verification.md 21절). 묶음은 학습자가 재생목록으로 만듭니다. 학습 기록은 단어 하나에 하나이고 재생목록끼리 공유합니다. 어느 목록에도 없게 된 단어는 라이브러리에 남지만 보이지 않고 학습에도 나오지 않으며, 다시 추가하면 기록이 이어집니다.
 
 ### 재생목록과 설정 확장 지점
@@ -290,6 +296,7 @@ runApp(ProviderScope(
 - Flutter는 이전 빌드의 asset 폴더를 빌드 폴더에서 지우지 않습니다(Android `build/app/intermediates/flutter/<변형>/`, iOS `build/ios/<구성>/`).
   pubspec이 맞는데 결과물 검사가 실패하면 그렇게 남은 파일이니 `flutter clean` 뒤 다시 빌드합니다. 검사는 이런 남은 파일도 막습니다.
 - **사전 asset**(`app/assets/dict/`)은 git에 없고 `python3 tools/dict/build_app_asset.py`로 만듭니다. 없으면 debug 빌드는 사전 없이 동작합니다.
+- **기본 단어장 파일**(`app/assets/decks/`)도 git에 없고 `python3 tools/decks/build_decks.py --built-on <날>`로 만듭니다(원자료는 저장소 밖 비공개 폴더). 없으면 debug 빌드는 단어장 없이 동작하고, release 검사(`asset_check.py --release`)는 실패합니다.
   첫 실행 때 앱 캐시 폴더로 풀고(백그라운드 isolate, 기기 백업에서 빠지게. 지워지면 다시 풂), 판 표시 파일이 바뀌면 다시 풉니다(`lib/adapters/bundled_dictionary.dart`).
 
 ### 5.3 충돌 기록

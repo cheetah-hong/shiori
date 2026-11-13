@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/app/blocks.dart';
+import 'package:shiori/features/decks/decks_screen.dart';
 import 'package:shiori/features/onboarding/onboarding_screen.dart';
 import 'package:shiori/features/onboarding/onboarding_store.dart';
+import 'package:shiori/shared/navigation.dart';
 
 /// Shows the first-run guide before [child] when it has not been seen and
 /// the library is empty. Someone who already has words (an update, a
@@ -73,10 +75,18 @@ class _OnboardingGateState extends ConsumerState<OnboardingGate> {
     setState(() => _show = false);
   }
 
+  /// Done, then 기본 단어장 over home (back goes home).
+  void _decks() {
+    _done();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(pushScreen<void>(context, const DecksScreen()));
+    });
+  }
+
   @override
   Widget build(BuildContext context) => switch (_show) {
     null => const Scaffold(),
-    true => OnboardingScreen(onDone: _done),
+    true => OnboardingScreen(onDone: _done, onDecks: _decks),
     false => widget.child,
   };
 }

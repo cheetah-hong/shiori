@@ -121,6 +121,8 @@ flutter:
     # buttons say the data is missing, and release builds stop.
     - assets/voice/
     - assets/accent/
+    # The built-in deck lists (tools/decks/build_decks.py; built, not committed).
+    - assets/decks/
     # The font's licence, shown on the licences page (lib/app/fonts.dart).
     - assets/fonts/OFL.txt
 

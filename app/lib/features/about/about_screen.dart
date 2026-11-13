@@ -8,6 +8,7 @@ import 'package:shiori/adapters/dictionary_problem.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/theme.dart';
 import 'package:shiori/features/about/about_parts.dart';
+import 'package:shiori/features/decks/decks_card.dart';
 import 'package:shiori/features/about/crash_log_screen.dart';
 import 'package:shiori/features/about/examples_card.dart';
 import 'package:shiori/features/about/extract_licenses.dart';
@@ -109,6 +110,7 @@ class AboutScreen extends ConsumerWidget {
             const SectionLabel('예문'),
             const ExamplesSection(),
             const SizedBox(height: Space.section),
+            const DecksSection(),
             const SectionLabel('단어 추출 데이터'),
             const _ExtractorCard(),
             const SizedBox(height: Space.section),

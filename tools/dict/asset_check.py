@@ -20,7 +20,9 @@ the Python 3 standard library is used.
 The speech assets (the voice asset and the accent table, speech_check.py) are checked
 too, in their own folders, both in a plain run and with --release; a failing one
 prints the command that rebuilds it. They are pinned editions, so --max-age-days and
-the release age limit do not apply to them.
+the release age limit do not apply to them. So is the built-in deck asset (app/assets/decks,
+built by tools/decks/build_decks.py, git-ignored; --decks-dir, which the release builds give): a
+release needs it; a plain run checks it when it is built.
 """
 from __future__ import annotations
 
@@ -40,6 +42,9 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
+sys.path.insert(0, str(HERE.parent / "decks"))
+
+import build_decks  # noqa: E402
 import speech_check  # noqa: E402
 from speech_check import (  # noqa: E402,F401  (the speech checks, under this module's name too)
     ACCENT_FILES,
@@ -56,6 +61,10 @@ from speech_check import (  # noqa: E402,F401  (the speech checks, under this mo
 DEFAULT_DIR = HERE.parent.parent / "app" / "assets" / "dict"
 REPO_VOICE_DIR = HERE.parent.parent / "app" / "assets" / "voice"
 REPO_ACCENT_DIR = HERE.parent.parent / "app" / "assets" / "accent"
+REPO_DECKS_DIR = HERE.parent.parent / "app" / "assets" / "decks"
+# The deck folder main() checks when --decks-dir is not given and --dir is the default (read
+# when main runs); with another --dir the decks are checked only when --decks-dir names them.
+DEFAULT_DECKS_DIR = REPO_DECKS_DIR
 # What main() checks when --voice-dir / --accent-dir are not given (read when main runs).
 DEFAULT_VOICE_DIR = REPO_VOICE_DIR
 DEFAULT_ACCENT_DIR = REPO_ACCENT_DIR
@@ -251,10 +260,25 @@ def _speech_dirs(voice_dir: Path | None, accent_dir: Path | None) -> dict[str, P
     return {"voice": voice_dir, "accent": accent_dir}
 
 
+def _decks_problems(decks_dir: Path | None, *, release: bool = False) -> list[str]:
+    """The built-in deck asset against its edition file; nothing when no folder is given. A plain
+    run passes a folder without the asset (a debug build runs without it)."""
+    if decks_dir is None:
+        return []
+    if not release and not (decks_dir / build_decks.DECKS_NAME).exists():
+        print(f"decks: not built (a release needs it: {build_decks.BUILD_COMMAND})")
+        return []
+    problems = build_decks.check(decks_dir)
+    if not problems:
+        print("decks: ok")
+    return problems
+
+
 def report(directory: Path, *, max_age_days: int | None = None, names: tuple[str, ...] = tuple(ASSETS),
-           voice_dir: Path | None = None, accent_dir: Path | None = None) -> int:
-    """Print the check of [names] in [directory] and of the speech assets whose folder is
-    given; 0 when all are good, else 1."""
+           voice_dir: Path | None = None, accent_dir: Path | None = None,
+           decks_dir: Path | None = None) -> int:
+    """Print the check of [names] in [directory], of the speech assets whose folder is
+    given and of the deck asset when [decks_dir] is given; 0 when all are good, else 1."""
     problems = check_dir(directory, max_age_days=max_age_days, names=names)
     # With every dictionary asked for, the example sentences too when they are built.
     if names == tuple(ASSETS):
@@ -277,6 +301,7 @@ def report(directory: Path, *, max_age_days: int | None = None, names: tuple[str
         problems += fallback_cut_problems(directory)
     dirs = _speech_dirs(voice_dir, accent_dir)
     speech_problems, speech_failed = speech_check.check_speech(dirs)
+    speech_problems += _decks_problems(decks_dir)
     for p in problems + speech_problems:
         print(p)
     for name in names:
@@ -318,7 +343,7 @@ def release_problems(directory: Path, *, today: dt.date | None = None) -> list[s
 
 
 def release_report(directory: Path, *, voice_dir: Path | None = None, accent_dir: Path | None = None,
-                   engine: str | None = None) -> int:
+                   engine: str | None = None, decks_dir: Path | None = None) -> int:
     """Print the release check of [directory] and of the speech assets whose folder is
     given (and, with [engine], of that platform's speech engine files), and how to fix it;
     0 when it passes, else 1."""
@@ -326,9 +351,10 @@ def release_report(directory: Path, *, voice_dir: Path | None = None, accent_dir
     dirs = _speech_dirs(voice_dir, accent_dir)
     speech_problems, speech_failed = speech_check.check_speech(dirs)
     engine_problems = speech_check.check_engine(engine, HERE.parent.parent) if engine else []
+    decks_problems = _decks_problems(decks_dir, release=True)
     if engine and not engine_problems:
         print(f"engine ({engine}): ok")
-    for p in problems + speech_problems + engine_problems:
+    for p in problems + speech_problems + engine_problems + decks_problems:
         print(p)
     for name in ALL_ASSETS:
         if name not in mismatched and name not in too_old:
@@ -351,7 +377,9 @@ def release_report(directory: Path, *, voice_dir: Path | None = None, accent_dir
         print(f"  Not matching their edition: rebuild with: {rebuild}")
     if engine_problems:
         print(f"error: The speech engine is not in this build: {speech_check.ENGINE_COMMAND}")
-    return 1 if problems or speech_problems or engine_problems else 0
+    if decks_problems:
+        print(f"error: The built-in decks cannot ship in a release: {build_decks.BUILD_COMMAND}")
+    return 1 if problems or speech_problems or engine_problems or decks_problems else 0
 
 
 def add_arguments(ap: argparse.ArgumentParser) -> None:
@@ -364,6 +392,8 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--dir", type=Path, default=DEFAULT_DIR, help="default: app/assets/dict")
     ap.add_argument("--voice-dir", type=Path, help="default: app/assets/voice")
     ap.add_argument("--accent-dir", type=Path, help="default: app/assets/accent")
+    ap.add_argument("--decks-dir", type=Path,
+                    help="default: app/assets/decks when --dir is the default, else not checked")
     add_arguments(ap)
     ap.add_argument("--release", action="store_true",
                     help=f"the release build check: every asset matches its edition and JMdict is at "
@@ -377,9 +407,12 @@ def main(argv: list[str]) -> int:
         ap.error("--release has its own age limit; do not give --max-age-days with it")
     voice_dir = a.voice_dir or DEFAULT_VOICE_DIR
     accent_dir = a.accent_dir or DEFAULT_ACCENT_DIR
+    decks_dir = a.decks_dir or (DEFAULT_DECKS_DIR if a.dir.resolve() == DEFAULT_DIR.resolve() else None)
     if a.release:
-        return release_report(a.dir, voice_dir=voice_dir, accent_dir=accent_dir, engine=a.engine)
-    return report(a.dir, max_age_days=a.max_age_days, voice_dir=voice_dir, accent_dir=accent_dir)
+        return release_report(a.dir, voice_dir=voice_dir, accent_dir=accent_dir, engine=a.engine,
+                              decks_dir=decks_dir)
+    return report(a.dir, max_age_days=a.max_age_days, voice_dir=voice_dir, accent_dir=accent_dir,
+                  decks_dir=decks_dir)
 
 
 if __name__ == "__main__":

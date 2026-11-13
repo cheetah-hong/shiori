@@ -1,3 +1,4 @@
+import 'package:shiori_core/src/decks/deck_draft.dart';
 import 'package:shiori_core/src/models/capture_draft.dart';
 import 'package:shiori_core/src/models/library.dart';
 import 'package:shiori_core/src/models/word_key.dart';
@@ -252,6 +253,23 @@ final class LibraryService {
           skipped: skipped,
         );
       });
+
+  /// Adds [deck]'s words to the playlist named like the deck (the same name
+  /// under [playlistNameKey]), made when there is none, by [addDraft]'s
+  /// rules: adding a deck again adds only the words it is missing.
+  Future<AddResult> addDeck(DeckDraft deck) async {
+    final key = playlistNameKey(deck.deck.name);
+    final same = [
+      for (final p in await library.playlists())
+        if (playlistNameKey(p.name) == key) p,
+    ];
+    return addDraft(
+      deck.draft,
+      to: same.isEmpty
+          ? NewPlaylist(deck.deck.name)
+          : ExistingPlaylist(same.first.id),
+    );
+  }
 
   /// Adds library words to the playlist [to] (다른 목록에 추가).
   Future<AddResult> addWords(List<String> wordIds, {required AddTarget to}) =>

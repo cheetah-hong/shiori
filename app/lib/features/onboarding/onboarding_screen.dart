@@ -35,10 +35,14 @@ const _pages = [
 /// The first-run guide: three pages, 건너뛰기 at any time. It asks for no
 /// permission; the camera is asked for when the learner first takes a photo.
 class OnboardingScreen extends StatefulWidget {
-  const OnboardingScreen({super.key, required this.onDone});
+  const OnboardingScreen({super.key, required this.onDone, this.onDecks});
 
   /// Called once, on 건너뛰기 or 시작하기.
   final VoidCallback onDone;
+
+  /// Called once instead of [onDone] on the last page's 기본 단어장으로 시작;
+  /// without it the page does not offer that.
+  final VoidCallback? onDecks;
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -59,6 +63,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     if (_done) return;
     _done = true;
     widget.onDone();
+  }
+
+  void _toDecks(VoidCallback onDecks) {
+    if (_done) return;
+    _done = true;
+    onDecks();
   }
 
   void _next() {
@@ -110,6 +120,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       // scrolls on its own and never runs under them.
       bottomNavigationBar: BottomActionBar(
         top: _Dots(count: _pages.length, index: _index),
+        secondary: switch (widget.onDecks) {
+          final onDecks? when last => BarAction(
+            label: '기본 단어장으로 시작',
+            onPressed: () => _toDecks(onDecks),
+          ),
+          _ => null,
+        },
         primary: BarPrimaryButton(
           label: last ? '시작하기' : '다음',
           onPressed: _next,

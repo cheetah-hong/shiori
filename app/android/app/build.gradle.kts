@@ -157,7 +157,10 @@ abstract class CheckReleaseDictionary @Inject constructor(
             )
         val output = ByteArrayOutputStream()
         val result = execOperations.exec {
-            commandLine(python.path, checkScript.get().asFile.path, "--release", "--engine", "android", "--dir", dir.path)
+            commandLine(
+                python.path, checkScript.get().asFile.path, "--release", "--engine", "android",
+                "--dir", dir.path, "--decks-dir", File(dir.parentFile, "decks").path,
+            )
             standardOutput = output
             errorOutput = output
             isIgnoreExitValue = true

@@ -2928,3 +2928,73 @@ iPhone SE 3세대(4.7″)부터 17 Pro Max(6.9″)까지 화면을 맞추고, �
 - **스크린샷 150~165** (합성 낱말만, Pretendard JP): 150 SE 홈 · 151 SE 홈 큰 글자 · 152 SE 뜻 맞히기 · 153 SE 학습 큰 글자 · 154 SE 검토 · 155 SE 첫 실행 안내 · 156 mini 홈 다크 · 157 mini 듣고 맞히기 · 158 mini 객관식 답한 뒤 · 159 mini 학습 방식 시트 · 160 mini 재생목록 · 161 mini 설정 · 162 17 세션 끝 · 163 17 찍기 큰 글자 · 164 Pro Max 홈 · 165 Pro Max 일본어 떠올리기 큰 글자.
 - 큰 글자에서 아래 바의 보조 버튼은 글을 두 줄로 줄여 둡니다. iOS의 「큰 내용 보기」(길게 눌러 확대) 같은 동작은 Flutter에 없어 넣지 않았습니다.
 - 실제 iPhone(13 mini)에서 글꼴 렌더링과 VoiceOver 일본어 낭독은 아직 확인하지 않았습니다.
+
+## 41. 기본 단어장: JLPT N5~N1 대비 (2026-11-13)
+
+교재가 없는 학습자도 바로 시작할 수 있게 레벨별 단어장 다섯 개를 앱에 넣었습니다. 「기본 단어장」에서 고르면 보통 재생목록(「JLPT N5 대비」 …)으로 들어가고, 카드의 뜻·품사·예문·악센트·발음은 교재에서 찍은 단어와 같은 장치로 채웁니다.
+목록의 출처·라이선스·만드는 규칙은 docs/dictionary.md 15절에 있습니다. 앱은 네트워크를 쓰지 않습니다. 저장 스키마(v5)·백업 형식(판 1)·학습 규칙은 그대로입니다.
+
+### 41.1 규칙과 결정
+
+| 항목 | 정한 것 |
+|---|---|
+| 원천 | Waller의 JLPT 목록(CC BY)을 Stephen Kraus가 JMdict 항목에 이은 판(CC BY-SA 4.0, 커밋 고정). 「공식」이라고 쓰지 않음 |
+| 단어장 | 레벨마다 하나: N5 663 · N4 627 · N3 1,617 · N2 1,736 · N1 2,967. 한 단어는 가장 쉬운 레벨에 한 번(표제어 키와 JMdict 항목 번호 둘 다로 거름) |
+| 순서 | JMdict 빈도대 → 상용 → 목록 순 |
+| 뜻 | 추가할 때 앱 사전으로(추출기와 같은 함수). 뜻이 없는 단어는 넣지 않고 수를 알림. N5~N3은 직접 쓴 보충 뜻 48개(저장소 밖)로 빠짐 0 |
+| 추가 | 단어장 이름의 재생목록에(없으면 새로). 이미 있는 단어는 저장된 뜻·학습 기록 그대로 연결, 숨긴 단어는 숨긴 채로. 다시 추가(「빠진 단어 채우기」)는 그 목록에 없는 단어만 |
+| 큰 단어장 | 학습 규칙 그대로: 홈 「오늘 학습」은 하루 목표만큼, 재생목록의 「이 목록 학습」은 그 목록 카드 전부. 단어장 화면에 「홈의 「오늘 학습」에서 하루 목표만큼씩 나와요.」 |
+| 진입 | 빈 홈 「기본 단어장 둘러보기」, 첫 실행 안내 마지막 장 「기본 단어장으로 시작」, 재생목록 편집 앱바의 책 버튼(「기본 단어장」) |
+| 출처 표기 | 단어장 화면 바닥, 정보 화면 「기본 단어장」 절(목록 파일을 읽은 뒤에만 그림), 라이선스 페이지 두 항목 |
+
+### 41.2 바꾼 것
+
+| 항목 | 위치 | 내용 |
+|---|---|---|
+| 빌드 도구 | `tools/decks/build_decks.py` (새) | 비공개 폴더의 목록 CSV·보충 뜻 + JMdict 원본 → `app/assets/decks/jlpt.json`·`jlpt.edition.json`, 입력 sha256 확인, `--check`(판 정보 대조 + 같은 입력이면 다시 빌드해 바이트 비교) |
+| asset | `app/assets/decks/` (새, `.gitignore`만 커밋 — 사전 asset과 같음), `app/pubspec.yaml` | 365 KB(gzip 105 KB). 없는 빌드는 단어장 화면이 「이 빌드에는 기본 단어장이 들어 있지 않아요」, 빈 홈의 버튼 숨김 |
+| 배포 검사 | `tools/dict/asset_check.py`, `app/ios/Runner.xcodeproj/project.pbxproj`, `app/android/app/build.gradle.kts` | `--decks-dir`: 일반 실행은 있으면 대조·없으면 「not built」, `--release`는 없거나 다르면 실패. 주지 않으면 `--dir`가 기본(`app/assets/dict`)일 때만 `app/assets/decks`를 봄. Xcode·Gradle release 단계는 `--decks-dir`를 명시 |
+| core | `lib/src/decks/builtin_deck.dart`·`deck_draft.dart` (새), `library/library_service.dart` | `parseBuiltinDecks`, `deckDraft`, `LibraryService.addDeck` |
+| core | `study/card_example.dart` | 읽기가 없는(가나로 쓰는) 단어는 표제어를 읽기로 예문을 찾음. 교재 가나 단어도 읽기가 여럿인 항목(あちら·こっち 등)의 예문이 나옴 |
+| 앱 | `lib/features/decks/` (새: 데이터·목록 화면·단어장 화면·출처 부품·정보 카드), `features/home/home_playlists.dart`, `features/onboarding/`, `features/playlists/playlists_screen.dart`, `features/about/about_screen.dart`, `main.dart` | 화면·진입·출처·라이선스 등록 |
+| 테스트 의존 | `packages/jmdict_block/pubspec.yaml` | dev 의존 `voicevox_block`(로컬 B2가 카드처럼 악센트를 물음) |
+
+### 41.3 테스트
+
+| 파일 | 내용 |
+|---|---|
+| `tools/decks/test_build_decks.py` (새, 17) | B1: 같은 입력 같은 바이트, 머리·단어장 이름·출처(「공식」 없음), 보이는 표기 규칙, 조회 표기, 가장 쉬운 레벨에 한 번(키·항목), 순서, 뺀 수, 보충 뜻, 판 정보, sha256이 다르면 멈춤, `--check` 성공·실패, `word_key` = 앱 규칙 |
+| `packages/core/test/decks/builtin_deck_test.dart` (새, 33) | B3·B4: 파일 읽기·거절 14가지, 가나 단어 읽기 없음, 뜻 채우기 순서(조회 표기 → 표제어 → 보조 사전 → 보충 뜻), 항목의 품사, 뜻 없는 단어 빼기, 진행, 추가·연결·숨김·두 번·새 판·같은 이름 목록, 학습 세션·예문 |
+| `packages/storage_drift/test/builtin_deck_storage_test.dart` (새, 2) | B3 SQLite에서 추가, B5 백업 파일 왕복 행 단위 같음·판 1 |
+| `packages/jmdict_block/test/builtin_decks_local_test.dart` (새, 로컬) | B2: 실제 asset으로 레벨별 뜻·예문·악센트 하한(다시 잰 값 − 0.5%p 내림: N5 99.5·98.2·87.7 / N4 99.5·98.2·87.6 / N3 99.5·97.5·94.1 / N2 93.9·87.2·90.2 / N1 88.9·78.9·94.7). asset이 없으면 건너뜀 |
+| `app/test/features/builtin_decks_test.dart` (새, 12) | B7: 목록·수·출처, 단어장 미리보기, 확인 → 넣기 → 결과·뺀 수, 취소, 진행 선, 추가됨·빠진 단어 채우기, 재생목록 열기, 사전 없음, 빈 홈·첫 실행 안내·재생목록 편집 진입, 만든 단어장 파일 읽기(파일이 있을 때만) |
+| `app/test/features/about_decks_test.dart` (새, 2) | B6: 정보 화면 두 원천·라이선스·링크·목록 판, 라이선스 페이지 두 항목 |
+| `tools/dict/test_asset_check_decks.py` (새, 4) | release에서 단어장 없음·바뀐 파일은 실패, 일반 실행은 없어도 통과, 다른 `--dir`로 도는 사전 검사는 저장소의 단어장 폴더를 보지 않음 |
+| `app/integration_test/builtin_decks_screenshots_test.dart` (새) | 스크린샷 180~188(합성 단어장) |
+
+결과: core **893** · storage_drift **234** · app **837** 통과, tools/decks 17 · tools/dict 181 통과, analyze 문제 없음, `build_decks.py --check`·`asset_check.py --release --engine ios` ok.
+jmdict_block 38 통과(B2 포함, 로컬).
+
+B2 실측(실제 asset, 앱과 같은 조회):
+
+| 레벨 | 단어 | 뜻 | 뜻 없어 빠짐 | 예문 | 악센트 |
+|---|---|---|---|---|---|
+| N5 | 663 | 100% | 0 | 98.8% | 88.2% |
+| N4 | 627 | 100% | 0 | 98.7% | 88.2% |
+| N3 | 1,617 | 100% | 0 | 98.1% | 94.7% |
+| N2 | 1,736 | 94.5% | 96 | 87.7% | 90.7% |
+| N1 | 2,967 | 89.5% | 312 | 79.5% | 95.2% |
+
+뜻 정확도 표본(레벨마다 무작위 30, 엄격): 139/150 (93%), docs/dictionary.md 15.6절.
+
+### 41.4 스크린샷 180~188 (iPhone 17 Pro 시뮬레이터, 합성 단어장)
+
+180 기본 단어장 · 181 같은 화면 다크 · 182 JLPT N5 대비(처음 단어) · 183 넣기 확인 · 184 N5·N1을 넣은 뒤 목록(추가됨) · 185 N5를 넣은 결과 · 186 빈 홈의 진입 · 187 정보 화면 출처 · 188 목록 큰 글자.
+단어장 이름·레벨은 그대로 두고 낱말은 지어낸 것(레벨마다 5~8개, 뜻 없는 낱말 1개)과 지어낸 사전 데이터로 찍었습니다. 실제 단어 목록은 공개 저장소와 그 그림에 두지 않습니다.
+실제 단어장(N1 2,967단어)을 넣는 데 시뮬레이터에서 0.3초가 걸리지 않아 「넣고 있어요」 진행 화면은 그림이 없습니다(위젯 테스트로 확인).
+
+### 41.5 남은 것
+
+- 단어 목록은 공개 저장소에 두지 않습니다(저장소 위생 검사가 교재와 기본어가 겹치는 목록을 막음). 앱 빌드 전에 사전 asset처럼 만들어 넣습니다.
+- 같은 항목의 다른 표기를 빼면서 높은 레벨에서 한자로 다시 나오던 낱말(いちばん → 一番)도 빠졌습니다.
+- 실제 iPhone에서 추가 시간은 재지 않았습니다.
