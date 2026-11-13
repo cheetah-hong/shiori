@@ -3,6 +3,7 @@ import 'package:shiori_storage_drift/shiori_storage_drift.dart';
 
 import 'contract/card_reset_contract.dart';
 import 'contract/repository_contract.dart';
+import 'contract/word_edit_contract.dart';
 
 final class _InMemory implements StorageUnderTest {
   @override
@@ -34,4 +35,6 @@ void main() {
   repositoryContract('drift', () => _Drift(ShioriDatabase.memory()));
   cardResetContract('in-memory', _InMemory.new);
   cardResetContract('drift', () => _Drift(ShioriDatabase.memory()));
+  wordEditContract('in-memory', _InMemory.new);
+  wordEditContract('drift', () => _Drift(ShioriDatabase.memory()));
 }

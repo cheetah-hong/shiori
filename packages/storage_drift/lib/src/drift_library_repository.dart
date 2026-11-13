@@ -133,6 +133,34 @@ final class DriftLibraryRepository
     });
   }
 
+  /// Checks the id and the key, then writes, in one transaction; the unique
+  /// `words.key` is the last guard.
+  @override
+  Future<void> updateWord(Word word) => _db.transaction(() async {
+    final w = _db.words;
+    if ((await _existingWordIds([word.id])).isEmpty) {
+      throw WordNotFoundException([word.id]);
+    }
+    final clash =
+        await (_db.selectOnly(w)
+              ..addColumns([w.id])
+              ..where(w.key.equals(word.key) & w.id.equals(word.id).not())
+              ..limit(1))
+            .getSingleOrNull();
+    if (clash != null) throw DuplicateWordException([word.key]);
+    await (_db.update(w)..where((r) => r.id.equals(word.id))).write(
+      WordsCompanion(
+        key: Value(word.key),
+        headword: Value(word.headword),
+        readings: Value(word.readings),
+        pos: Value(word.pos),
+        meaning: Value(word.meaning),
+        exampleJa: Value(word.example?.ja),
+        exampleKo: Value(word.example?.ko),
+      ),
+    );
+  });
+
   // ------------------------------------------------------------- playlists
 
   @override

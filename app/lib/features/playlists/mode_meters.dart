@@ -13,78 +13,11 @@ String modeLevelSaid(StudyMode mode, int level) =>
 /// 「2단계」, or 「새 단어」 for a word not studied yet.
 String levelSaid(int level) => level == 0 ? '새 단어' : '$level단계';
 
-/// A word's memory level in every way of studying, in a bottom sheet: each
-/// mode by its full name, its meter and its level in words. [current] is
-/// the way in use (the one the playlist row shows).
-Future<void> showModeLevels(
-  BuildContext context, {
-  required Word word,
-  required Map<StudyMode, int> levels,
-  required int max,
-  required StudyMode current,
-}) => showModalBottomSheet<void>(
-  context: context,
-  isScrollControlled: true,
-  useSafeArea: true,
-  builder: (_) =>
-      _LevelsSheet(word: word, levels: levels, max: max, current: current),
-);
-
-class _LevelsSheet extends StatelessWidget {
-  const _LevelsSheet({
-    required this.word,
-    required this.levels,
-    required this.max,
-    required this.current,
-  });
-
-  final Word word;
-  final Map<StudyMode, int> levels;
-  final int max;
-  final StudyMode current;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        Space.gutter,
-        0,
-        Space.gutter,
-        // Clear of the home indicator.
-        Space.xl + MediaQuery.viewPaddingOf(context).bottom,
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            JpText(
-              word.headword,
-              style: JpType.headword(TypeScale.display, t.text),
-            ),
-            const SizedBox(height: Space.xs),
-            Text('학습 방식마다 기억 단계', style: context.text.bodySmall),
-            const SizedBox(height: Space.md),
-            for (final (i, mode) in StudyMode.values.indexed)
-              _LevelRow(
-                mode: mode,
-                level: levels[mode] ?? 0,
-                max: max,
-                isCurrent: mode == current,
-                first: i == 0,
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// One way of studying: its name (지금 for the one in use), the meter and
-/// the level in words, read as one line.
-class _LevelRow extends StatelessWidget {
-  const _LevelRow({
+/// One way of studying in a word's sheet: its name (지금 for the one in
+/// use), the meter and the level in words, read as one line.
+class ModeLevelRow extends StatelessWidget {
+  const ModeLevelRow({
+    super.key,
     required this.mode,
     required this.level,
     required this.max,

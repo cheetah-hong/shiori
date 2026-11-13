@@ -5,6 +5,7 @@ import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/data.dart';
 import 'package:shiori/app/theme.dart';
 import 'package:shiori/features/decks/decks_screen.dart';
+import 'package:shiori/features/words/word_search_screen.dart';
 import 'package:shiori/shared/action_sheet.dart';
 import 'package:shiori/shared/navigation.dart';
 import 'package:shiori/features/playlists/playlist_actions.dart';
@@ -92,6 +93,7 @@ class PlaylistsScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('재생목록 편집'),
         actions: [
+          const WordSearchButton(),
           IconButton(
             tooltip: '기본 단어장',
             icon: const Icon(CupertinoIcons.book),

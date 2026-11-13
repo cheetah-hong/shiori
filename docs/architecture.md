@@ -15,7 +15,8 @@ nihongo-app/
 │   ├── lib/src/extract/    단어 추출기(배치에 기대지 않음, docs/extraction.md)와 검토 초안 만들기(page_draft.dart)
 │   ├── lib/src/capture/    검토 화면의 편집(후보 고르기, 조각 붙이기, 고치기), 녹화 판독 블록, 문자 분류
 │   ├── lib/src/study/      라이트너 4단계 스케줄러, 세션 빌더, 세션, 학습 일 경계, StudyService, 홈 이번 주 줄(study_week.dart, 순수 함수)
-│   ├── lib/src/library/    LibraryService (재생목록 만들기·이름·순서·삭제, 검토 초안을 재생목록에 추가, 기본 단어장 추가, 빼기·되돌리기)
+│   ├── lib/src/library/    LibraryService (재생목록 만들기·이름·순서·삭제, 검토 초안을 재생목록에 추가, 기본 단어장 추가, 빼기·되돌리기,
+│   │                       단어 고치기·직접 추가·저장된 단어로 바꾸기), 고칠 값 word_edit.dart, 사전 채움 word_fill.dart, 단어 찾기 색인 word_search.dart
 │   ├── lib/src/decks/      기본 단어장: 단어장 파일 읽기·검사(parseBuiltinDecks), 추가할 초안 만들기(deckDraft: 사전으로 뜻·품사 채우기)
 │   ├── lib/src/storage/    InMemory 저장소 (테스트용 블록, 트랜잭션 포함)
 │   ├── lib/src/eval/       채점기 (lib/eval.dart로만 공개, 앱은 쓰지 않음)
@@ -33,7 +34,7 @@ nihongo-app/
 │   ├── lib/app/theme.dart  디자인 토큰: 역할 이름 색(라이트·다크 값은 여기에만), 간격·모서리·동작·일본어 글꼴 (4절 「화면 구성과 디자인 토큰」)
 │   ├── lib/app/data.dart   화면이 같이 쓰는 읽기 모델 (저장·답변 뒤 새로고침)
 │   ├── lib/adapters/       기기 블록: OCR 채널, image_picker, 개발용 샘플, 사전 asset 풀기(bundled_dictionary.dart), 첫 실행 안내 표시 파일(file_onboarding_store.dart)
-│   ├── lib/features/       home · capture(등록·검토) · playlists(재생목록 고르기·화면·편집) · study(학습·범위 고르기) · settings(설정) · about(정보: 사전 출처·라이선스)
+│   ├── lib/features/       home · capture(등록·검토) · playlists(재생목록 고르기·화면·편집) · words(단어 시트·고치기·직접 추가·단어 찾기) · study(학습·범위 고르기) · settings(설정) · about(정보: 사전 출처·라이선스)
 │   ├── lib/features/onboarding/  첫 실행 안내 세 장, 보일지 정하는 OnboardingGate, 본 표시 포트 OnboardingStore
 │   ├── lib/features/opening/     콜드 스타트 오프닝 1.2초 (시간표 opening_timeline.dart, 그림 opening_painter.dart)
 │   ├── lib/shared/         화면 공용 부품: sheet.dart(일력 장·절취선·메모 줄), bottom_action_bar.dart(아래 고정 바), ruled.dart(괘선 행),
@@ -78,7 +79,7 @@ nihongo-app/
 | 기본 단어장 (앱, `lib/features/decks/deck_data.dart`) | `app/assets/decks/jlpt.json`(사전 asset처럼 만들어 넣고 git 제외, `tools/decks/build_decks.py`, docs/dictionary.md 15절)을 `parseBuiltinDecks`로 읽음. 파일이 없는 빌드는 null(단어장 화면이 「이 빌드에는 없음」, 빈 홈의 버튼 숨김). 뜻은 추가할 때 `Lexicon`·`KoreanGlossary`(+위키낱말)로 채움 | `builtinDecksProvider`, `deckDictionariesProvider`(사전이 하나라도 안 열리면 null → 추가 안 함) | 다른 단어 목록 |
 | `ExampleSentences` (`lookup(entryIds)` → 항목·읽기별 문장 `StoredExample`) | `TatoebaExamples` (`packages/example_block`, Tatoeba 문장 SQLite, CC BY 2.0 FR, `app/assets/dict/examples.*`, docs/dictionary.md 14절). core `cardExampleOf`가 사진 예문이 없는 카드에 `Lexicon` 항목 번호로 찾음. asset이 없으면 `EmptyExampleSentences` | `exampleSentencesProvider` (열기: `bundledExamplesProvider`, 카드: `cardExampleProvider`) | — |
 | `ImageSource` | `ImagePickerSource` (카메라·앨범, 판독 뒤 임시 파일 `discard`) | `imageSourceProvider` | 문서 스캐너(cunning_document_scanner), 굽은 페이지 펴기 |
-| `LibraryRepository` (단어는 라이브러리에 한 번 `Word.key`, 재생목록이 가리킴) | `DriftLibraryRepository` (SQLite, `packages/storage_drift`). 테스트: `InMemoryLibraryRepository`. 홈 재생목록은 `playlistStats()`(목록별 단어 수·숨김 수·마지막 추가를 한 번에) | `libraryRepositoryProvider` (DB: `appDatabaseProvider`) | 백업·동기화 |
+| `LibraryRepository` (단어는 라이브러리에 한 번 `Word.key`, 재생목록이 가리킴) | `DriftLibraryRepository` (SQLite, `packages/storage_drift`). 테스트: `InMemoryLibraryRepository`. 홈 재생목록은 `playlistStats()`(목록별 단어 수·숨김 수·마지막 추가를 한 번에). 단어 고치기는 `updateWord`(id로 내용·키를 바꿈, 만든 때·숨김은 그대로, 다른 단어의 키면 `DuplicateWordException`) | `libraryRepositoryProvider` (DB: `appDatabaseProvider`) | 백업·동기화 |
 | `HiddenWordRepository` (「이미 알아요」 숨기기·되살리기, `hiddenWords()`) | 서재 블록이 함께 구현(`words.hidden_at`). 숨김은 단어 단위라 모든 재생목록에서 숨겨짐. `words()`는 숨긴 단어도 돌려주고 `Word.isHidden`으로 구분, 학습 세션·오늘 학습 수에서 빠짐 (verification.md 16·21절) | (없음: `StudyService`·`LibraryService`가 서재 블록에서 꺼냄) | 백업·동기화 |
 | `ReviewRepository` (카드·기록은 `CardScope`와 `StudyMode`별: scope는 지금 공유 `''`만, 재생목록마다 따로 `p:<id>`는 칸만; 방식은 뜻 맞히기·일본어 떠올리기·듣고 맞히기·객관식) | `DriftReviewRepository` (같은 DB 파일). 테스트: `InMemoryReviewRepository` | `reviewRepositoryProvider` | 백업·동기화 |
 | `StudyPreferencesRepository` (설정: 학습 기록 모드·학습 범위 모드·마지막 고른 학습 방식) | `DriftStudyPreferencesRepository` (`settings` 키-값 표). 테스트: `InMemoryStudyPreferencesRepository` | `studyPreferencesRepositoryProvider` → `studyPreferencesProvider` | 백업·동기화 |
@@ -135,6 +136,7 @@ runApp(ProviderScope(
 
 - 숨긴 단어(이미 알아요)의 표제어만 추출에서 건너뛰고 그 수를 검토 요약에 보입니다. 라이브러리에 이미 있는 다른 단어는 검토에 그대로 나오고 「이미 라이브러리에 있음 · 저장된 뜻 유지」로 표시됩니다. 추가할 때 그 목록에 이미 있으면 「이미 있음」, 다른 목록에만 있으면 저장된 단어를 연결합니다(내용·학습 기록 그대로).
 - 기본 단어장(docs/dictionary.md 15절, verification.md 41절)은 보통 재생목록으로 들어갑니다. 저장 스키마·백업 형식은 그대로이고 단어장과 재생목록의 연결은 저장하지 않습니다(이름이 같은 재생목록이 그 단어장). 다시 추가하면 그 목록에 없는 단어만 더해지고, 이미 있는 단어의 뜻·학습 기록·숨김은 그대로입니다. 큰 단어장도 홈 「오늘 학습」은 하루 목표만큼만 꺼내고, 재생목록 화면의 「이 목록 학습」은 지금처럼 그 목록의 카드 전부입니다.
+- **단어 고치기·직접 추가·단어 찾기**(verification.md 42절): 고치기는 같은 단어 id의 내용만 바꿔 모든 재생목록·학습 카드에 같이 보이고, 학습 기록과 숨김은 그대로입니다(표제어 키가 바뀌고 기록이 있으면 「학습 기록 처음부터」를 고를 수 있음 — 단어를 먼저 고친 뒤 카드를 지움, 두 저장소라 한 트랜잭션이 아님). 다른 단어의 키가 되면 저장하지 않고 「저장된 단어로 바꾸기」를 묻습니다: 이 단어가 든 모든 목록의 같은 자리에 저장된 단어를 놓고, 고치던 단어와 그 기록은 어느 목록에도 없는 단어로 남깁니다(학습 기록은 합치지 않음). 직접 추가는 항목 하나짜리 초안으로 `addDraft` 규칙 그대로(있는 단어는 연결만). 사전 채움(`wordFill`·`mergeFill`)은 빈 칸만 채우고 값이 있는 칸은 제안만 합니다. 악센트·발음·사전 예문은 저장하지 않으므로 고친 표제어·읽기로 카드가 다시 찾습니다. 단어 찾기는 `words()`를 한 번 읽어 메모리 색인(`WordSearchIndex`)으로 거릅니다. 저장 스키마(v5)·백업 형식(판 1)은 그대로입니다.
 - 교재·DAY는 없습니다(2026-11-06, verification.md 21절). 묶음은 학습자가 재생목록으로 만듭니다. 학습 기록은 단어 하나에 하나이고 재생목록끼리 공유합니다. 어느 목록에도 없게 된 단어는 라이브러리에 남지만 보이지 않고 학습에도 나오지 않으며, 다시 추가하면 기록이 이어집니다.
 
 ### 재생목록과 설정 확장 지점

@@ -20,6 +20,9 @@ class ForwardingLibrary implements LibraryRepository, HiddenWordRepository {
   Future<void> insertWords(List<Word> words) => inner.insertWords(words);
 
   @override
+  Future<void> updateWord(Word word) => inner.updateWord(word);
+
+  @override
   Future<List<Playlist>> playlists() => inner.playlists();
 
   @override

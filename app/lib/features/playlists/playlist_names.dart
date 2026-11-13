@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:shiori/shared/large_text.dart';
 import 'package:shiori/shared/keep_words.dart';
@@ -62,29 +63,45 @@ class _NameDialogState extends State<_NameDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.tokens;
     final problem = playlistNameProblem(_name.text, widget.taken);
     void submit() => Navigator.of(context).pop(_name.text.trim());
-    // An iOS alert on the phone; the field needs a Material ancestor there.
+    final shown = problem == null || problem.isEmpty ? null : problem;
+    // An iOS alert on the phone, with the iOS alert's own kind of field.
     return AlertDialog.adaptive(
       title: CappedText(
         max: TextCaps.chrome,
         child: KeepWordsText(widget.title),
       ),
-      content: Material(
-        type: MaterialType.transparency,
-        child: Padding(
-          padding: const EdgeInsets.only(top: Space.sm),
-          child: TextField(
-            controller: _name,
-            autofocus: true,
-            textInputAction: TextInputAction.done,
-            decoration: InputDecoration(
-              labelText: '재생목록 이름',
-              errorText: problem == null || problem.isEmpty ? null : problem,
+      content: Padding(
+        padding: const EdgeInsets.only(top: Space.sm),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            CupertinoTextField(
+              key: const ValueKey('playlist-name'),
+              controller: _name,
+              autofocus: true,
+              placeholder: '재생목록 이름',
+              textInputAction: TextInputAction.done,
+              style: TextStyle(color: t.text, fontSize: TypeScale.body),
+              onChanged: (_) => setState(() {}),
+              onSubmitted: problem == null ? (_) => submit() : null,
             ),
-            onChanged: (_) => setState(() {}),
-            onSubmitted: problem == null ? (_) => submit() : null,
-          ),
+            if (shown != null)
+              Padding(
+                padding: const EdgeInsets.only(top: Space.xs),
+                child: Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    shown,
+                    textAlign: TextAlign.start,
+                    style: TextStyle(color: t.risk, fontSize: TypeScale.small),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
       actions: [

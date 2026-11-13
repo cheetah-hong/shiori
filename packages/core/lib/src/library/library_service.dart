@@ -1,4 +1,5 @@
 import 'package:shiori_core/src/decks/deck_draft.dart';
+import 'package:shiori_core/src/library/word_edit.dart';
 import 'package:shiori_core/src/models/capture_draft.dart';
 import 'package:shiori_core/src/models/library.dart';
 import 'package:shiori_core/src/models/word_key.dart';
@@ -277,6 +278,134 @@ final class LibraryService {
         final playlist = await _target(to);
         return _link(playlist, wordIds, clock.now(), isNew: const {});
       });
+
+  /// Adds one word the learner typed (단어 추가) to the playlist [to], by
+  /// [addDraft]'s rules: a word whose key the library has is linked, not
+  /// made again. Throws [LibraryException] for a blank or non-Japanese
+  /// headword or a blank meaning.
+  Future<AddResult> addWord(WordEdit word, {required AddTarget to}) async {
+    final clean = _checked(word);
+    return addDraft(CaptureDraft(entries: [clean.toEntry()]), to: to);
+  }
+
+  /// Changes the content of word [wordId] (단어 고치기): every playlist that
+  /// holds it shows the change; its learning state and hidden state stay.
+  ///
+  /// Throws [LibraryException] for a blank or non-Japanese headword, a blank
+  /// meaning or an unknown id, and [WordKeyTakenException] when another
+  /// word has the key the headword now makes; nothing is written then.
+  Future<WordEdited> editWord(String wordId, WordEdit edit) async {
+    final clean = _checked(edit);
+    return library.transaction(() async {
+      final before = await _word(wordId);
+      final after = Word(
+        id: before.id,
+        headword: clean.headword,
+        readings: clean.readings,
+        pos: clean.pos,
+        meaning: clean.meaning,
+        example: clean.example,
+        createdAt: before.createdAt,
+        hiddenAt: before.hiddenAt,
+      );
+      await _update(after);
+      return WordEdited(before: before, after: after);
+    });
+  }
+
+  /// Puts the word back as it was before [edited]. Throws
+  /// [WordKeyTakenException] when another word took its key meanwhile.
+  Future<void> undoEdit(WordEdited edited) =>
+      library.transaction(() => _update(edited.before));
+
+  /// 저장된 단어로 바꾸기: in every playlist that holds [wordId], the
+  /// library word [existingId] takes its place (same position and time; a
+  /// playlist holding both just loses [wordId]). [wordId] stays in the
+  /// library, in no playlist, with its learning state. One transaction.
+  Future<Replacement> replaceWithExisting(String wordId, String existingId) =>
+      library.transaction(() async {
+        await _word(wordId);
+        await _word(existingId);
+        final of = await library.playlistsOf([wordId, existingId]);
+        final lists = of[wordId] ?? const <String>{};
+        final holding = of[existingId] ?? const <String>{};
+        final removed = <PlaylistEntry>[];
+        final linked = <PlaylistEntry>[];
+        for (final p in await library.playlists()) {
+          if (!lists.contains(p.id)) continue;
+          final out = await library.removeFromPlaylist(p.id, [wordId]);
+          removed.addAll(out);
+          if (holding.contains(p.id)) continue;
+          final entries = [
+            for (final e in out)
+              PlaylistEntry(
+                playlistId: e.playlistId,
+                wordId: existingId,
+                position: e.position,
+                addedAt: e.addedAt,
+              ),
+          ];
+          await library.restoreEntries(entries);
+          linked.addAll(entries);
+        }
+        return Replacement(
+          wordId: wordId,
+          existingId: existingId,
+          removed: List.unmodifiable(removed),
+          linked: List.unmodifiable(linked),
+        );
+      });
+
+  /// Undoes [replaceWithExisting]: [Replacement.linked] taken out, the word
+  /// back at its places.
+  Future<void> undoReplace(Replacement replacement) =>
+      library.transaction(() async {
+        for (final e in replacement.linked) {
+          await library.removeFromPlaylist(e.playlistId, [e.wordId]);
+        }
+        await library.restoreEntries(replacement.removed);
+      });
+
+  /// [edit] trimmed, when its headword and meaning can be saved.
+  WordEdit _checked(WordEdit edit) {
+    final clean = edit.trimmed;
+    final problem =
+        headwordProblem(clean.headword) ?? meaningProblem(clean.meaning);
+    if (problem != null) throw LibraryException(problem);
+    return clean;
+  }
+
+  Future<Word> _word(String id) async =>
+      await library.word(id) ?? (throw const LibraryException('단어를 찾지 못했어요'));
+
+  /// Stores [word]'s content, or throws [WordKeyTakenException] with the
+  /// word that has its key (found by the service's own check, or by the
+  /// repository's when a write landed in between).
+  Future<void> _update(Word word) async {
+    final holder = await _holderOf(word);
+    if (holder != null) throw WordKeyTakenException(holder);
+    try {
+      await library.updateWord(word);
+    } on DuplicateWordException {
+      throw WordKeyTakenException(
+        await _holderOf(word, everyWord: true) ??
+            (throw const LibraryException('같은 단어가 이미 있어요')),
+      );
+    }
+  }
+
+  /// Another library word with [word]'s key, if any. With [everyWord], the
+  /// words listed in playlists are read too (a block's key lookup can miss
+  /// a word written a moment ago).
+  Future<Word?> _holderOf(Word word, {bool everyWord = false}) async {
+    final byKey = (await library.wordsByKey([word.key]))[word.key];
+    if (byKey != null && byKey.id != word.id) return byKey;
+    if (!everyWord) return null;
+    for (final w in await library.words()) {
+      if (w.key == word.key && w.id != word.id) return w;
+    }
+    return null;
+  }
 
   /// Takes [wordIds] out of the playlist; returns what to give
   /// [restoreWords] to undo.

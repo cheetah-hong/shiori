@@ -82,6 +82,25 @@ final class InMemoryLibraryRepository
   });
 
   @override
+  Future<void> updateWord(Word word) => _tx.run(() {
+    final stored = _words[word.id];
+    if (stored == null) throw WordNotFoundException([word.id]);
+    if (_words.values.any((w) => w.key == word.key && w.id != word.id)) {
+      throw DuplicateWordException([word.key]);
+    }
+    _words[word.id] = Word(
+      id: word.id,
+      headword: word.headword,
+      readings: List.unmodifiable(word.readings),
+      pos: word.pos,
+      meaning: word.meaning,
+      example: word.example,
+      createdAt: stored.createdAt,
+      hiddenAt: stored.hiddenAt,
+    );
+  });
+
+  @override
   Future<List<Playlist>> playlists() =>
       _tx.run(() => List<Playlist>.unmodifiable(_sortedPlaylists()));
 

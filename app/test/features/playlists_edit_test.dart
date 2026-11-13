@@ -30,7 +30,7 @@ void main() {
     await tester.tap(find.byTooltip('새 재생목록'));
     await tester.pumpAndSettle();
     expect(find.text('새 재생목록'), findsWidgets);
-    await tester.enterText(find.widgetWithText(TextField, '재생목록 이름'), 'B');
+    await tester.enterText(find.byKey(const ValueKey('playlist-name')), 'B');
     await tester.pump();
     await tester.tap(find.widgetWithText(TextButton, '만들기'));
     await tester.pumpAndSettle();
@@ -49,10 +49,10 @@ void main() {
     await tester.pumpAndSettle();
     TextButton make() =>
         tester.widget<TextButton>(find.widgetWithText(TextButton, '만들기'));
-    await tester.enterText(find.widgetWithText(TextField, '재생목록 이름'), ' ');
+    await tester.enterText(find.byKey(const ValueKey('playlist-name')), ' ');
     await tester.pump();
     expect(make().onPressed, isNull);
-    await tester.enterText(find.widgetWithText(TextField, '재생목록 이름'), 'a');
+    await tester.enterText(find.byKey(const ValueKey('playlist-name')), 'a');
     await tester.pump();
     expect(find.text('같은 이름의 재생목록이 있어요'), findsOneWidget);
     expect(make().onPressed, isNull);
@@ -72,7 +72,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('이름 바꾸기'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.widgetWithText(TextField, '재생목록 이름'), 'A2');
+    await tester.enterText(find.byKey(const ValueKey('playlist-name')), 'A2');
     await tester.pump();
     await tester.tap(find.widgetWithText(TextButton, '저장'));
     await tester.pumpAndSettle();

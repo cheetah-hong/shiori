@@ -118,7 +118,7 @@ void main() {
     expect(camera.picks, 2, reason: '다시 찍기 opens the camera again');
   });
 
-  testWidgets('a playlist with no word: how words get in, 「페이지 등록」', (
+  testWidgets('a playlist with no word: how words get in, 「단어 추가」', (
     tester,
   ) async {
     usePhoneSize(tester);
@@ -133,7 +133,9 @@ void main() {
 
     expect(find.text('이 목록에는 아직 단어가 없어요'), findsOneWidget);
     expect(find.text('페이지를 등록할 때 이 재생목록을 고르면 단어가 들어와요.'), findsOneWidget);
-    await tester.tap(_button('페이지 등록'));
+    await tester.tap(_button('단어 추가'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('사진으로'));
     await tester.pumpAndSettle();
     expect(find.widgetWithText(AppBar, '페이지 등록'), findsOneWidget);
   });

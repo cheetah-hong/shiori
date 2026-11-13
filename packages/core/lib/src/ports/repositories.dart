@@ -46,6 +46,16 @@ abstract interface class LibraryRepository {
   /// one. A new word is stored shown, whatever `Word.hiddenAt` says.
   Future<void> insertWords(List<Word> words);
 
+  /// Replaces the content of the word with `word.id` (headword and so its
+  /// key, readings, class, meaning, example), all or nothing. Its creation
+  /// time and hidden state stay as stored, whatever [word] says; its
+  /// playlists and learning state go with its id.
+  ///
+  /// Throws `WordNotFoundException` for an unknown id and
+  /// [DuplicateWordException] when another word has `word.key`; nothing is
+  /// written then.
+  Future<void> updateWord(Word word);
+
   /// Every playlist by position (then creation time, then id).
   Future<List<Playlist>> playlists();
 

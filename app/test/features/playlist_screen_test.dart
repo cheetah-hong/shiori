@@ -149,7 +149,7 @@ void main() {
     await tester.tap(find.text('이름 바꾸기'));
     await tester.pumpAndSettle();
 
-    final field = find.widgetWithText(TextField, '재생목록 이름');
+    final field = find.byKey(const ValueKey('playlist-name'));
     await tester.enterText(field, '여행');
     await tester.pump();
     expect(find.text('같은 이름의 재생목록이 있어요'), findsOneWidget);

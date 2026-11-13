@@ -6,13 +6,17 @@ import 'package:shiori/app/data.dart';
 import 'package:shiori/app/theme.dart';
 import 'package:shiori/shared/keep_words.dart';
 import 'package:shiori/shared/action_sheet.dart';
-import 'package:shiori/features/capture/capture_screen.dart';
 import 'package:shiori/features/playlists/mode_meters.dart';
 import 'package:shiori/features/playlists/playlist_actions.dart';
 import 'package:shiori/features/playlists/playlist_picker.dart';
 import 'package:shiori/features/study/restudy_labels.dart';
 import 'package:shiori/features/study/study_mode_chips.dart';
 import 'package:shiori/features/study/study_screen.dart';
+import 'package:shiori/features/words/word_add_menu.dart';
+import 'package:shiori/features/words/word_editor_sheet.dart';
+import 'package:shiori/features/words/word_labels.dart';
+import 'package:shiori/features/words/word_search_screen.dart';
+import 'package:shiori/features/words/word_sheet.dart';
 import 'package:shiori/shared/bottom_action_bar.dart';
 import 'package:shiori/shared/format.dart';
 import 'package:shiori/shared/hide_labels.dart';
@@ -51,7 +55,10 @@ class PlaylistScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: KeepWordsText(view.value?.playlist.name ?? '재생목록'),
-        actions: [if (view.value case final v?) _PlaylistMenu(view: v)],
+        actions: [
+          WordSearchButton(playlistId: playlistId),
+          if (view.value case final v?) _PlaylistMenu(view: v),
+        ],
       ),
       body: switch (view) {
         // While a change (hiding or taking out a word) reloads the view, the
@@ -147,6 +154,7 @@ class _BodyState extends ConsumerState<_Body> {
   );
 
   Future<void> _wordAction(Word word, _WordAction action) => switch (action) {
+    _WordAction.edit => showWordEditor(context, word),
     _WordAction.hide => _setHidden(word, hidden: true),
     _WordAction.remove => removeFromPlaylist(
       messenger: ScaffoldMessenger.of(context),
@@ -306,6 +314,7 @@ class _BodyState extends ConsumerState<_Body> {
             _HiddenList(
               words: hiddenWords,
               onRestore: (w) => _setHidden(w, hidden: false),
+              onOpen: (w) => showWordSheet(context, wordId: w.id),
             ),
         ],
         const SliverToBoxAdapter(child: SizedBox(height: Space.section * 2)),
@@ -314,7 +323,7 @@ class _BodyState extends ConsumerState<_Body> {
   }
 }
 
-enum _WordAction { hide, remove, addElsewhere, reset }
+enum _WordAction { edit, hide, remove, addElsewhere, reset }
 
 /// The bottom bar: 이 목록 학습 (every card it can study, 「· n장」); with
 /// nothing to study today, 더 학습하기 (every card that can be brought
@@ -338,16 +347,14 @@ class _StudyBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scope = PlaylistOnly(view.playlist.id);
-    if (view.words.isEmpty) {
-      return BottomActionBar(
-        secondary: BarAction(
-          label: '페이지 등록',
-          onPressed: () => pushScreen<void>(context, const CaptureScreen()),
-        ),
-      );
-    }
+    final add = BarAction(
+      label: WordLabels.addWords,
+      onPressed: () => showWordAddMenu(context, playlistId: view.playlist.id),
+    );
+    if (view.words.isEmpty) return BottomActionBar(secondary: add);
     if (studyCards == 0 && aheadCards > 0) {
       return BottomActionBar(
+        secondary: add,
         top: Text(
           RestudyLabels.moreHint(aheadCards),
           style: context.text.bodySmall,
@@ -362,6 +369,7 @@ class _StudyBar extends StatelessWidget {
     if (studyCards == 0) {
       // Nothing to press: said plainly, not as a dimmed button.
       return BottomActionBar(
+        secondary: add,
         primary: Text(
           '지금은 학습할 카드가 없어요',
           style: context.text.titleMedium?.copyWith(color: context.tokens.text),
@@ -369,6 +377,7 @@ class _StudyBar extends StatelessWidget {
       );
     }
     return BottomActionBar(
+      secondary: add,
       primary: BarPrimaryButton(
         label: '이 목록 학습 · $studyCards장',
         onPressed: () => pushScreen<void>(context, StudyScreen(scope: scope)),
@@ -421,19 +430,17 @@ class _WordList extends StatelessWidget {
                     mode: mode,
                     level: levels[mode] ?? 0,
                     maxLevel: maxLevel,
-                    onTap: () => showModeLevels(
-                      context,
-                      word: w,
-                      levels: levels,
-                      max: maxLevel,
-                      current: mode,
-                    ),
+                    onTap: () => showWordSheet(context, wordId: w.id),
                   ),
                 ),
                 MoreButton<_WordAction>(
                   tooltip: '${w.headword} 메뉴',
                   color: t.text3,
                   choices: () => [
+                    const SheetChoice(
+                      label: WordLabels.edit,
+                      value: _WordAction.edit,
+                    ),
                     const SheetChoice(
                       label: HideLabels.button,
                       value: _WordAction.hide,
@@ -496,7 +503,7 @@ class _WordTap extends StatelessWidget {
     return Semantics(
       container: true,
       button: true,
-      hint: '학습 방식마다 기억 단계 보기',
+      hint: '단어와 학습 방식마다 기억 단계 보기',
       attributedLabel: AttributedString(
         said,
         attributes: [
@@ -561,12 +568,17 @@ class _WordTap extends StatelessWidget {
   }
 }
 
-/// Words hidden with 이미 알아요, each with 되살리기.
+/// Words hidden with 이미 알아요, each with 되살리기; a row opens the word.
 class _HiddenList extends StatelessWidget {
-  const _HiddenList({required this.words, required this.onRestore});
+  const _HiddenList({
+    required this.words,
+    required this.onRestore,
+    required this.onOpen,
+  });
 
   final List<Word> words;
   final ValueChanged<Word> onRestore;
+  final ValueChanged<Word> onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -580,6 +592,7 @@ class _HiddenList extends StatelessWidget {
           return RuledRow(
             ruleAbove: i == 0,
             padding: const EdgeInsets.symmetric(vertical: Space.xs),
+            onTap: () => onOpen(w),
             child: Row(
               children: [
                 Expanded(
