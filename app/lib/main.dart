@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shiori/app/fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/adapters/file_crash_log.dart';
 import 'package:shiori/app/app.dart';
@@ -24,6 +25,7 @@ Future<void> main() async {
   registerExampleLicense();
   registerExtractorLicenses();
   registerVoiceLicenses();
+  registerFontLicense();
   // Unpacking the dictionaries starts now and runs while the app starts.
   final dictionary = bundledDictionaryOverride();
   final glossary = bundledGlossaryOverride();

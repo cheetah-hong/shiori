@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:shiori/app/theme.dart';
 import 'package:shiori/features/study/study_mode_labels.dart';
@@ -126,10 +127,10 @@ class _OptionRow extends StatelessWidget {
                       meaning,
                       style: TextStyle(
                         color: t.text,
-                        fontSize: 17,
+                        fontSize: TypeScale.body,
                         fontWeight: isAnswer && answered
-                            ? FontWeight.w700
-                            : FontWeight.w500,
+                            ? FontWeight.w600
+                            : FontWeight.w400,
                       ),
                     ),
                   ),
@@ -139,8 +140,8 @@ class _OptionRow extends StatelessWidget {
                       label,
                       style: TextStyle(
                         color: color,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
+                        fontSize: TypeScale.body2,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -176,7 +177,12 @@ class _Result extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(right ? Icons.check_circle : Icons.cancel, color: color),
+          Icon(
+            right
+                ? CupertinoIcons.checkmark_circle_fill
+                : CupertinoIcons.xmark_circle_fill,
+            color: color,
+          ),
           const SizedBox(width: Space.xs),
           Flexible(
             child: Text(

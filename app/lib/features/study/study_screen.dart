@@ -1,12 +1,13 @@
 import 'dart:async';
-import 'dart:math' as math;
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/adapters/voicevox_speech.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/data.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/shared/keep_words.dart';
 import 'package:shiori/features/study/answer_buttons.dart';
 import 'package:shiori/features/study/choice_answers.dart';
 import 'package:shiori/features/study/choice_card.dart';
@@ -323,7 +324,9 @@ class _Notice extends StatelessWidget {
           child: Row(
             children: [
               Icon(
-                failed ? Icons.error_outline : Icons.visibility_off_outlined,
+                failed
+                    ? CupertinoIcons.exclamationmark_circle
+                    : CupertinoIcons.eye_slash,
                 size: 18,
                 color: failed ? t.risk : t.text2,
               ),
@@ -472,8 +475,7 @@ class _Session extends ConsumerWidget {
     final preview = intervalLabel(controller.previewKnown(item));
     final duration = Motion.of(context, Motion.card);
     // From about the AX1 text size the parts around the card would leave it
-    // no room: the screen scrolls and the card keeps a height of its own
-    // (it scrolls inside).
+    // no room: the screen scrolls and the card is as tall as what it holds.
     final large = isLargeText(context);
 
     return _StudyLayout(
@@ -490,7 +492,7 @@ class _Session extends ConsumerWidget {
             children: [
               IconButton(
                 tooltip: '학습 그만하기',
-                icon: const Icon(Icons.close),
+                icon: const Icon(CupertinoIcons.xmark),
                 onPressed: () => Navigator.of(context).maybePop(),
               ),
               Expanded(
@@ -498,7 +500,7 @@ class _Session extends ConsumerWidget {
                     ? const SizedBox.shrink()
                     : Semantics(
                         header: true,
-                        child: Text(
+                        child: KeepWordsText(
                           _title(request),
                           style: context.text.titleMedium,
                         ),
@@ -523,7 +525,10 @@ class _Session extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
             child: Semantics(
               header: true,
-              child: Text(_title(request), style: context.text.titleMedium),
+              child: KeepWordsText(
+                _title(request),
+                style: context.text.titleMedium,
+              ),
             ),
           ),
         Padding(
@@ -598,14 +603,13 @@ class _Session extends ConsumerWidget {
             ),
             child: Align(
               alignment: Alignment.centerRight,
-              child: TextButton.icon(
+              child: TextButton(
                 style: TextButton.styleFrom(
                   foregroundColor: t.text2,
                   minimumSize: const Size(48, 48),
                 ),
                 onPressed: onHide,
-                icon: const Icon(Icons.visibility_off_outlined, size: 18),
-                label: Semantics(
+                child: Semantics(
                   label: HideLabels.buttonSemantics,
                   child: const ExcludeSemantics(child: Text(HideLabels.button)),
                 ),
@@ -645,8 +649,8 @@ class _Session extends ConsumerWidget {
   }
 }
 
-/// The card's place: the rest of the screen, or (large text) a fixed share
-/// of it in a scrolling screen.
+/// The card's place: the rest of the screen, or (large text) its own height
+/// in a scrolling screen.
 class _CardSlot extends StatelessWidget {
   const _CardSlot({required this.child});
 
@@ -657,8 +661,8 @@ class _CardSlot extends StatelessWidget {
 }
 
 /// A column whose card slot takes the remaining height, or with [large]
-/// text a fixed first row (close, count) over a scrolling rest whose card
-/// slot is most of the screen.
+/// text a fixed first row (close, count) over a scrolling rest in which the
+/// card is as tall as what it holds.
 class _StudyLayout extends StatelessWidget {
   const _StudyLayout({required this.large, required this.children});
 
@@ -682,19 +686,12 @@ class _StudyLayout extends StatelessWidget {
       children: [
         TearFade(child: children.first),
         Expanded(
-          child: LayoutBuilder(
-            builder: (context, box) => SingleChildScrollView(
-              child: Column(
-                children: [
-                  for (final c in children.skip(1))
-                    c is _CardSlot
-                        ? SizedBox(
-                            height: math.max(box.maxHeight * 0.8, 320),
-                            child: TearCard(child: c),
-                          )
-                        : TearFade(child: c),
-                ],
-              ),
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                for (final c in children.skip(1))
+                  c is _CardSlot ? TearCard(child: c) : TearFade(child: c),
+              ],
             ),
           ),
         ),
@@ -703,12 +700,13 @@ class _StudyLayout extends StatelessWidget {
   }
 }
 
-/// 「오늘 학습」 or 「더 학습하기」, with the mode's name unless it is 뜻 맞히기.
+/// The head of a session: the way's name (「오늘 학습」 or 「더 학습하기」 for
+/// 뜻 맞히기, the plain way).
 String _title(StudyRequest request) {
-  final what = request.more ? RestudyLabels.more : '오늘 학습';
-  return request.mode == StudyMode.meaning
-      ? what
-      : StudyModeLabels.header(what, request.mode);
+  if (request.mode != StudyMode.meaning) {
+    return StudyModeLabels.name(request.mode);
+  }
+  return request.more ? RestudyLabels.more : '오늘 학습';
 }
 
 /// How far the session is: a square-ended 2 pt ink line on a hairline,

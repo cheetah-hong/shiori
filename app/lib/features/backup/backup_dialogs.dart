@@ -20,7 +20,7 @@ Future<T> withProgress<T>(
       useRootNavigator: true,
       builder: (context) => PopScope(
         canPop: false,
-        child: AlertDialog(
+        child: AlertDialog.adaptive(
           content: Row(
             children: [
               const SizedBox.square(

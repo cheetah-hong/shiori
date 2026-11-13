@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/data.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/shared/keep_words.dart';
+import 'package:shiori/shared/action_sheet.dart';
 import 'package:shiori/features/capture/capture_screen.dart';
 import 'package:shiori/features/playlists/mode_meters.dart';
 import 'package:shiori/features/playlists/playlist_actions.dart';
@@ -17,7 +19,6 @@ import 'package:shiori/shared/hide_labels.dart';
 import 'package:shiori/shared/large_text.dart';
 import 'package:shiori/shared/navigation.dart';
 import 'package:shiori/shared/ruled.dart';
-import 'package:shiori/shared/sheet.dart';
 import 'package:shiori/shared/states.dart';
 import 'package:shiori/shared/widgets.dart';
 import 'package:shiori_core/shiori_core.dart';
@@ -49,7 +50,7 @@ class PlaylistScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(view.value?.playlist.name ?? '재생목록'),
+        title: KeepWordsText(view.value?.playlist.name ?? '재생목록'),
         actions: [if (view.value case final v?) _PlaylistMenu(view: v)],
       ),
       body: switch (view) {
@@ -84,8 +85,12 @@ class _PlaylistMenu extends ConsumerWidget {
   final PlaylistView view;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => PopupMenuButton<String>(
+  Widget build(BuildContext context, WidgetRef ref) => MoreButton<String>(
     tooltip: '재생목록 메뉴',
+    choices: () => const [
+      SheetChoice(label: '이름 바꾸기', value: 'rename'),
+      SheetChoice(label: '삭제', value: 'delete', destructive: true),
+    ],
     onSelected: (action) async {
       switch (action) {
         case 'rename':
@@ -102,10 +107,6 @@ class _PlaylistMenu extends ConsumerWidget {
           }
       }
     },
-    itemBuilder: (_) => const [
-      PopupMenuItem(value: 'rename', child: Text('이름 바꾸기')),
-      PopupMenuItem(value: 'delete', child: Text('삭제')),
-    ],
   );
 }
 
@@ -137,7 +138,7 @@ class _Body extends ConsumerStatefulWidget {
 class _BodyState extends ConsumerState<_Body> {
   bool _showHidden = false;
 
-  void _setHidden(Word word, {required bool hidden}) => setWordHidden(
+  Future<void> _setHidden(Word word, {required bool hidden}) => setWordHidden(
     messenger: ScaffoldMessenger.of(context),
     library: ref.read(libraryServiceProvider),
     revision: ref.read(dataRevisionProvider.notifier),
@@ -146,6 +147,7 @@ class _BodyState extends ConsumerState<_Body> {
   );
 
   Future<void> _wordAction(Word word, _WordAction action) => switch (action) {
+    _WordAction.hide => _setHidden(word, hidden: true),
     _WordAction.remove => removeFromPlaylist(
       messenger: ScaffoldMessenger.of(context),
       library: ref.read(libraryServiceProvider),
@@ -217,25 +219,13 @@ class _BodyState extends ConsumerState<_Body> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SheetFrame(
-                  padding: const EdgeInsets.fromLTRB(14, Space.xs, 14, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      SheetMemoRow(
-                        label: '단어',
-                        value: '${view.shownCount}',
-                        unit: '개',
-                      ),
-                      SheetMemoRow(label: '학습함', value: '$learned', unit: '개'),
-                      SheetMemoRow(
-                        label: '장기 기억',
-                        value: '$longTerm',
-                        unit: '개',
-                        last: true,
-                      ),
-                    ],
-                  ),
+                // One line, not a board of numbers: the playlist's words
+                // are the page.
+                Text(
+                  '단어 ${view.shownCount}개, 학습함 $learned개, '
+                  '장기 기억 $longTerm개',
+                  key: const ValueKey('playlist-counts'),
+                  style: context.text.bodyMedium?.copyWith(color: t.text2),
                 ),
                 if (widget.cardsFailed) ...[
                   const SizedBox(height: Space.sm),
@@ -243,8 +233,8 @@ class _BodyState extends ConsumerState<_Body> {
                     '기억 단계를 불러오지 못해 막대가 비어 보일 수 있어요',
                     style: TextStyle(
                       color: t.risk,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      fontSize: TypeScale.small,
                     ),
                   ),
                 ],
@@ -287,7 +277,6 @@ class _BodyState extends ConsumerState<_Body> {
             cardsByMode: widget.cardsByMode,
             mode: widget.mode,
             maxLevel: maxLevel,
-            onHide: (w) => _setHidden(w, hidden: true),
             onAction: _wordAction,
           ),
         ],
@@ -302,13 +291,9 @@ class _BodyState extends ConsumerState<_Body> {
             sliver: SliverToBoxAdapter(
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: TextButton.icon(
+                child: TextButton(
                   onPressed: () => setState(() => _showHidden = !_showHidden),
-                  icon: Icon(
-                    _showHidden ? Icons.expand_less : Icons.expand_more,
-                    size: 20,
-                  ),
-                  label: Text(
+                  child: Text(
                     _showHidden
                         ? HideLabels.collapseHidden
                         : HideLabels.showHidden(hiddenWords.length),
@@ -329,7 +314,7 @@ class _BodyState extends ConsumerState<_Body> {
   }
 }
 
-enum _WordAction { remove, addElsewhere, reset }
+enum _WordAction { hide, remove, addElsewhere, reset }
 
 /// The bottom bar: 이 목록 학습 (every card it can study, 「· n장」); with
 /// nothing to study today, 더 학습하기 (every card that can be brought
@@ -357,7 +342,6 @@ class _StudyBar extends StatelessWidget {
       return BottomActionBar(
         secondary: BarAction(
           label: '페이지 등록',
-          icon: Icons.photo_camera_outlined,
           onPressed: () => pushScreen<void>(context, const CaptureScreen()),
         ),
       );
@@ -370,7 +354,6 @@ class _StudyBar extends StatelessWidget {
         ),
         primary: BarPrimaryButton(
           label: RestudyLabels.more,
-          icon: Icons.replay_rounded,
           onPressed: () =>
               pushScreen<void>(context, StudyScreen(scope: scope, more: true)),
         ),
@@ -388,7 +371,6 @@ class _StudyBar extends StatelessWidget {
     return BottomActionBar(
       primary: BarPrimaryButton(
         label: '이 목록 학습 · $studyCards장',
-        icon: Icons.play_arrow_rounded,
         onPressed: () => pushScreen<void>(context, StudyScreen(scope: scope)),
       ),
     );
@@ -403,7 +385,6 @@ class _WordList extends StatelessWidget {
     required this.cardsByMode,
     required this.mode,
     required this.maxLevel,
-    required this.onHide,
     required this.onAction,
   });
 
@@ -413,7 +394,6 @@ class _WordList extends StatelessWidget {
   /// The way of studying in use: the one level a row shows.
   final StudyMode mode;
   final int maxLevel;
-  final ValueChanged<Word> onHide;
   final Future<void> Function(Word, _WordAction) onAction;
 
   @override
@@ -450,34 +430,31 @@ class _WordList extends StatelessWidget {
                     ),
                   ),
                 ),
-                IconButton(
-                  tooltip: HideLabels.hideWord(w.headword),
-                  color: t.text3,
-                  iconSize: 20,
-                  onPressed: () => onHide(w),
-                  icon: const Icon(Icons.visibility_off_outlined),
-                ),
-                PopupMenuButton<_WordAction>(
+                MoreButton<_WordAction>(
                   tooltip: '${w.headword} 메뉴',
-                  iconColor: t.text3,
-                  onSelected: (action) => onAction(w, action),
-                  itemBuilder: (_) => [
-                    const PopupMenuItem(
-                      value: _WordAction.remove,
-                      child: Text('이 목록에서 빼기'),
+                  color: t.text3,
+                  choices: () => [
+                    const SheetChoice(
+                      label: HideLabels.button,
+                      value: _WordAction.hide,
                     ),
-                    const PopupMenuItem(
+                    const SheetChoice(
+                      label: '이 목록에서 빼기',
+                      value: _WordAction.remove,
+                    ),
+                    const SheetChoice(
+                      label: '다른 목록에 추가',
                       value: _WordAction.addElsewhere,
-                      child: Text('다른 목록에 추가'),
                     ),
                     // A word new in every mode has nothing to start
                     // again from.
                     if (cardsByMode.values.any((c) => c.containsKey(w.id)))
-                      const PopupMenuItem(
+                      const SheetChoice(
+                        label: RestudyLabels.resetWord,
                         value: _WordAction.reset,
-                        child: Text(RestudyLabels.resetWord),
                       ),
                   ],
+                  onSelected: (action) => onAction(w, action),
                 ),
               ],
             ),
@@ -550,12 +527,16 @@ class _WordTap extends StatelessWidget {
                           ExcludeSemantics(
                             child: JpText(
                               head,
-                              style: JpType.print(20, t.text),
+                              style: JpType.headword(TypeScale.title, t.text),
                             ),
                           ),
                           JpText(
                             readingsLabel(word.readings),
-                            style: JpType.gothic(12.5, t.text3, height: 1.2),
+                            style: JpType.body(
+                              TypeScale.small,
+                              t.text3,
+                              height: 1.2,
+                            ),
                           ),
                         ],
                       ),
@@ -607,7 +588,7 @@ class _HiddenList extends StatelessWidget {
                     children: [
                       JpText(
                         w.headword,
-                        style: JpType.print(18, t.text2),
+                        style: JpType.headword(TypeScale.body, t.text2),
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
@@ -619,10 +600,9 @@ class _HiddenList extends StatelessWidget {
                     ],
                   ),
                 ),
-                TextButton.icon(
+                TextButton(
                   onPressed: () => onRestore(w),
-                  icon: const Icon(Icons.visibility_outlined, size: 18),
-                  label: Semantics(
+                  child: Semantics(
                     label: HideLabels.restoreWord(w.headword),
                     child: const ExcludeSemantics(
                       child: Text(HideLabels.restore),

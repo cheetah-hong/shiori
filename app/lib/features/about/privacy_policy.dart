@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:shiori/app/theme.dart';
 import 'package:shiori/features/about/about_parts.dart';
@@ -95,10 +96,9 @@ class PrivacySection extends StatelessWidget {
               ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.privacy_tip_outlined),
                 title: const Text('개인정보처리방침'),
                 subtitle: const Text('무엇을 어디에 저장하는지'),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const Icon(CupertinoIcons.chevron_forward),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) => PrivacyPolicyScreen(contact: contact),

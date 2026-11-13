@@ -202,12 +202,14 @@ runApp(ProviderScope(
 
 저장소 포트 `ReviewRepository.deleteCards(wordIds, {scope, mode})`(지운 카드를 돌려줌)와 `deleteAllCards({scope, mode})`(null이면 모든 scope·방식)가 카드 행만 지웁니다.
 
-### 화면 구성과 디자인 토큰 (verification.md 39절)
+### 화면 구성과 디자인 토큰 (verification.md 39·40절)
 
 화면은 「일력 한 장」 은유 하나로 그립니다: 바탕 위 괘선 행, 한 화면에 일력 장 하나, 주 행동은 아래 고정 바, 그림자 없음. 규칙 10개와 값·대비 수치는 verification.md 39.1절에 있습니다.
 
 - **토큰은 `app/lib/app/theme.dart` 한 곳입니다.** `ShioriTokens`(ThemeExtension)의 역할 이름: 바탕 `bg`·`surface`·`surfaceStrong`·`line`, 글자 `text`·`text2`·`text3`·`outline`, 포인트 `accent`·`accentTint`·`accentText`·`onAccent`, 기능 `ok`/`okBg`·`warn`/`warnBg`·`risk`/`riskBg`/`onRisk`, `shadow`.
-  값은 `ShioriTokens.light`·`ShioriTokens.dark` 두 묶음에만 있습니다. 같은 파일에 `Space`·`Radii`(버튼 모서리 14 하나)·`Motion`·`JpType`(명조·고딕, `ja-JP`)과, Material 테마를 토큰으로 칠하는 `buildTheme`가 있습니다.
+  값은 `ShioriTokens.light`·`ShioriTokens.dark` 두 묶음에만 있습니다. 같은 파일에 `Space`·`Radii`(버튼 모서리 14 하나)·`Motion`, 글자 크기 7단 `TypeScale`(12·13·15·17·20·28·96)과 굵기 3단 `Weights`(400 본문·600 강조·700 날짜 숫자와 표제어), 일본어 글 `JpType`(`headword`·`body`, `ja-JP`)과, Material 테마를 토큰으로 칠하는 `buildTheme`(누를 때 물결 없음)가 있습니다.
+- **글꼴은 하나입니다.** Pretendard JP 1.3.9(SIL OFL 1.1) 정적 400·600·700을 `app/assets/fonts/`에 두고, `AppFonts`(`app/lib/app/fonts.dart`)가 이름과 대체 글꼴(Hiragino Sans)을 정합니다. 한국어·일본어 모두 이 글꼴이고 일본어 글에는 `JpType`·`JpText`가 `ja-JP` locale을 붙입니다. 라이선스는 `registerFontLicense()`가 라이선스 화면에 올립니다. 명조체는 쓰지 않습니다.
+- **글자 크기·굵기는 토큰으로만** 씁니다. 화면 코드에 숫자 글자 크기나 400·600·700 밖의 굵기를 쓰면 `app/test/design/slop_test.dart`가 실패합니다.
 - **위젯은 토큰만 읽습니다**(`context.tokens`). `app/lib/features`·`app/lib/shared`에 `Color(0x…)`나 `Colors.*`(`Colors.transparent` 빼고)가 들어가면 `app/test/design/touch_targets_test.dart`가 실패하고, 글자 4.5:1·경계 3:1·톤 3개 이하는 `token_contrast_test.dart`가 봅니다.
   팔레트를 바꾸는 일은 두 값 묶음을 바꾸는 것이고, 아이콘·시작 화면 색은 생성기 `tools/design/make_icons.py`의 `LIGHT`·`DARK`를 같이 고친 뒤 다시 돌립니다.
 - **공용 부품** (`app/lib/shared/`):
@@ -216,11 +218,13 @@ runApp(ProviderScope(
 |---|---|---|
 | `SheetFrame` | `sheet.dart` | 일력 장: 위 4px 먹 띠·옆 hairline·모서리 0·그림자 없음·아래 절취선. 한 화면에 한 장(홈 일력 장, 학습 카드, 「오늘 학습 끝」) |
 | `TearLine` | `sheet.dart` | 점선 절취선: 장의 아래 끝(먹색), 목록의 끝(`line` 색) |
-| `SheetMemoList` · `SheetMemoRow` | `sheet.dart` | 메모 줄: 왼쪽 라벨, 오른쪽 굵은 tabular 숫자 + 작은 단위(「12개」), 한 줄로 읽힘 |
-| `BottomActionBar` (`BarAction`·`BarPrimaryButton`) | `bottom_action_bar.dart` | 아래 고정 바: 위 hairline, 54pt, 오른쪽 채운 주 버튼, 왼쪽 옅은 보조, 큰 글자에서 세로로 |
+| `SheetMemoList` · `SheetMemoRow` | `sheet.dart` | 메모 줄: 왼쪽 라벨, 오른쪽 tabular 숫자 + 작은 단위(「12개」, 앞말이 있으면 「13개 중 8개」), 한 줄로 읽힘 |
+| `BottomActionBar` (`BarAction`·`BarPrimaryButton`) | `bottom_action_bar.dart` | 아래 고정 바: 위 hairline, 54pt, 오른쪽 채운 주 버튼, 왼쪽 옅은 보조, 글자만(아이콘 없음). 큰 글자에서는 글자가 2.0배에서 멈추고 두 버튼이 폭을 2:3으로 나눔 |
 | `RuledRow` | `ruled.dart` | 괘선 행(최소 56pt, 아래 hairline, 상자 없음) |
 | `EmptyNote` · `LoadFailure` · `Loading` | `states.dart` | 빈 상태(문장 + 설명 줄), 불러오기 실패(「다시 불러오기」, 예외 글은 기록으로), 「불러오는 중」으로 읽히는 스피너 |
-| `isLargeText` | `large_text.dart` | 큰 글자 문턱 하나(약 AX1). 넘으면 나란한 것을 세로로 |
+| `isLargeText` · `TextCaps` · `CappedText` | `large_text.dart` | 큰 글자 문턱 하나(약 AX1). 넘으면 나란한 것을 세로로. 고정된 자리의 글자 상한: 바·시트·대화상자 머리와 날짜 옆 월·요일 2.0배, 날짜 숫자·카드 표제어 1.4배(본문은 상한 없음) |
+| `KeepWordsText` · `keepWords` | `keep_words.dart` | 제목이 낱말 가운데서 끊기지 않게(음절 사이 U+2060). 찾기·VoiceOver는 원래 글 그대로 |
+| `showChoices` · `MoreButton` | `action_sheet.dart` | iOS 액션 시트(아래에서 올라오는 목록 + 취소): 학습 방식 고르기와 「···」 메뉴 |
 | `JpText` | `widgets.dart` | 일본어 글에 `ja-JP` locale을 붙여 VoiceOver가 일본어로 읽게 함 |
 | `adaptiveDialogAction` | `adaptive_dialog.dart` | `AlertDialog.adaptive`의 버튼(iOS 경고창 동작, 파괴는 `risk` 색) |
 

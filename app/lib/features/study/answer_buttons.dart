@@ -22,15 +22,14 @@ class AnswerButtons extends StatelessWidget {
     final shape = buttonShape;
     final retry = ConstrainedBox(
       constraints: const BoxConstraints(minHeight: 60),
-      child: FilledButton.icon(
+      child: FilledButton(
         style: FilledButton.styleFrom(
           backgroundColor: t.surfaceStrong,
           foregroundColor: t.text,
           shape: shape,
         ),
         onPressed: () => onAnswer(Answer.retry),
-        icon: const Icon(Icons.undo_rounded, size: 20),
-        label: const Text('다시 학습', textAlign: TextAlign.center),
+        child: const Text('다시 학습', textAlign: TextAlign.center),
       ),
     );
     final known = ConstrainedBox(
@@ -52,8 +51,8 @@ class AnswerButtons extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: t.onAccent,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
+                      fontSize: TypeScale.caption,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],

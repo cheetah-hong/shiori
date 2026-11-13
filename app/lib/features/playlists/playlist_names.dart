@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shiori/shared/large_text.dart';
+import 'package:shiori/shared/keep_words.dart';
+import 'package:shiori/shared/adaptive_dialog.dart';
+import 'package:shiori/app/theme.dart';
 import 'package:shiori_core/shiori_core.dart';
 
 /// What is wrong with [name] as a playlist name (null: nothing). [taken]
@@ -20,7 +24,7 @@ Future<String?> showPlaylistNameDialog(
   required String action,
   required Iterable<String> taken,
   String initial = '',
-}) => showDialog<String>(
+}) => showAdaptiveDialog<String>(
   context: context,
   builder: (_) => _NameDialog(
     title: title,
@@ -60,27 +64,40 @@ class _NameDialogState extends State<_NameDialog> {
   Widget build(BuildContext context) {
     final problem = playlistNameProblem(_name.text, widget.taken);
     void submit() => Navigator.of(context).pop(_name.text.trim());
-    return AlertDialog(
-      title: Text(widget.title),
-      content: TextField(
-        controller: _name,
-        autofocus: true,
-        textInputAction: TextInputAction.done,
-        decoration: InputDecoration(
-          labelText: '재생목록 이름',
-          errorText: problem == null || problem.isEmpty ? null : problem,
+    // An iOS alert on the phone; the field needs a Material ancestor there.
+    return AlertDialog.adaptive(
+      title: CappedText(
+        max: TextCaps.chrome,
+        child: KeepWordsText(widget.title),
+      ),
+      content: Material(
+        type: MaterialType.transparency,
+        child: Padding(
+          padding: const EdgeInsets.only(top: Space.sm),
+          child: TextField(
+            controller: _name,
+            autofocus: true,
+            textInputAction: TextInputAction.done,
+            decoration: InputDecoration(
+              labelText: '재생목록 이름',
+              errorText: problem == null || problem.isEmpty ? null : problem,
+            ),
+            onChanged: (_) => setState(() {}),
+            onSubmitted: problem == null ? (_) => submit() : null,
+          ),
         ),
-        onChanged: (_) => setState(() {}),
-        onSubmitted: problem == null ? (_) => submit() : null,
       ),
       actions: [
-        TextButton(
+        adaptiveDialogAction(
+          context,
+          label: '취소',
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('취소'),
         ),
-        TextButton(
+        adaptiveDialogAction(
+          context,
+          label: widget.action,
+          isDefault: true,
           onPressed: problem == null ? submit : null,
-          child: Text(widget.action),
         ),
       ],
     );

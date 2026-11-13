@@ -85,11 +85,9 @@ void main() {
     expect(find.text('복습할 단어'), findsOneWidget);
     expect(find.text('2개'), findsOneWidget);
     expect(find.text('새 단어'), findsOneWidget);
-    expect(find.text('8개 · 13개 중'), findsOneWidget);
-    expect(
-      find.textContaining('복습 2장을 먼저, 남은 8장은 새 단어로 — 오늘 10장.'),
-      findsOneWidget,
-    );
+    expect(find.text('13개 중 8개'), findsOneWidget);
+    // Two reviews and eight new words make the ten: the rows say it.
+    expect(find.textContaining('— 오늘'), findsNothing);
     expect(find.text('오늘 학습 시작 · 10장'), findsOneWidget);
   });
 
@@ -103,7 +101,8 @@ void main() {
 
     expect(find.text('15개'), findsOneWidget);
     expect(find.textContaining('개 중'), findsNothing);
-    expect(find.textContaining('새 단어 15장 — 오늘 15장.'), findsOneWidget);
+    // The rows say what today holds; no line repeats them.
+    expect(find.textContaining('— 오늘'), findsNothing);
     expect(find.text('오늘 학습 시작 · 15장'), findsOneWidget);
   });
 
@@ -119,12 +118,12 @@ void main() {
     await _pump(tester, blocks);
 
     expect(find.text('55개'), findsOneWidget);
-    expect(find.text('0개 · 5개 중'), findsOneWidget);
-    expect(find.textContaining('복습 50장 — 오늘 50장.'), findsOneWidget);
+    expect(find.text('5개 중 0개'), findsOneWidget);
+    expect(find.textContaining('— 오늘'), findsNothing);
     expect(find.text('오늘 학습 시작 · 50장'), findsOneWidget);
   });
 
-  testWidgets('the week strip marks the days studied and the run of days', (
+  testWidgets('the week strip marks the days studied, with no streak line', (
     tester,
   ) async {
     final blocks = TestBlocks();
@@ -139,7 +138,8 @@ void main() {
     for (final day in ['월', '화', '수', '목', '금', '토', '일']) {
       expect(find.text(day), findsOneWidget);
     }
-    expect(find.text('이번 주 2일 학습 · 연속 2일'), findsOneWidget);
+    // The days studied show on the strip; no streak line.
+    expect(find.textContaining('연속'), findsNothing);
     expect(find.bySemanticsLabel(RegExp('11월 4일 수요일, 학습함')), findsOneWidget);
     expect(find.bySemanticsLabel(RegExp('11월 5일 목요일, 오늘')), findsOneWidget);
   });

@@ -1,5 +1,7 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/shared/large_text.dart';
 import 'package:shiori/shared/sheet.dart';
 import 'package:shiori/shared/widgets.dart';
 import 'package:shiori_core/shiori_core.dart';
@@ -49,7 +51,8 @@ class ExampleSentence extends StatelessWidget {
 }
 
 /// Keeps the space while hidden (no layout jump) and fades the content in.
-/// Hidden, the space is an empty ruled line with a small 「[label] 가림」, a
+/// Hidden, the space is an empty ruled line with a quiet 「· · ·」 (read
+/// aloud as 「[label] 가림」), a
 /// blank in a notebook; tapping it does what the reveal button does (which
 /// alone is read and counted as a button, so the line is not).
 class CoveredPart extends StatelessWidget {
@@ -95,7 +98,8 @@ class CoveredPart extends StatelessWidget {
   }
 }
 
-/// The hairline-ruled blank of a covered part, its label small at the left.
+/// The hairline-ruled blank of a covered part: an empty line with a quiet
+/// 「· · ·」, a blank in a notebook. VoiceOver reads 「[label] 가림」.
 class _BlankLine extends StatelessWidget {
   const _BlankLine({required this.label, this.onTap});
 
@@ -105,7 +109,9 @@ class _BlankLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    return ExcludeSemantics(
+    return Semantics(
+      label: '$label 가림',
+      excludeSemantics: true,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
@@ -113,17 +119,13 @@ class _BlankLine extends StatelessWidget {
           decoration: BoxDecoration(
             border: Border(bottom: BorderSide(color: t.line)),
           ),
-          child: Align(
-            alignment: Alignment.bottomLeft,
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 2),
-              child: Text(
-                '$label 가림',
-                style: TextStyle(
-                  color: t.text3,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
+          child: Center(
+            child: Text(
+              '· · ·',
+              style: TextStyle(
+                color: t.outline,
+                fontSize: TypeScale.small,
+                letterSpacing: 2,
               ),
             ),
           ),
@@ -166,28 +168,15 @@ class RevealButton extends StatelessWidget {
                   horizontal: Space.sm,
                   vertical: Space.xs,
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      on
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
-                      size: 18,
-                      color: t.text2,
+                child: Center(
+                  child: Text(
+                    on ? '$label 가리기' : '$label 보기',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: t.text,
+                      fontWeight: Weights.emphasis,
                     ),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        on ? '$label 가리기' : '$label 보기',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: t.text,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -221,21 +210,21 @@ class SpeakButton extends StatelessWidget {
             dimension: small ? 16 : 20,
             child: const CircularProgressIndicator(strokeWidth: 2),
           )
-        : Icon(Icons.volume_up_outlined, size: small ? 20 : null);
+        : Icon(CupertinoIcons.speaker_2, size: small ? 20 : null);
     final pressed = loading ? null : onPressed;
     final label = loading ? '불러오는 중' : tooltip;
-    return small
-        ? IconButton(tooltip: label, onPressed: pressed, icon: icon)
-        : IconButton.filledTonal(
-            tooltip: label,
-            onPressed: pressed,
-            icon: icon,
-          );
+    // A plain speaker in the accent: no tinted circle behind it.
+    return IconButton(
+      tooltip: label,
+      color: context.tokens.accentText,
+      onPressed: pressed,
+      icon: icon,
+    );
   }
 }
 
 /// The sheet every study card sits on: a page of the tear-off calendar, as
-/// on 홈 ([SheetFrame]), with the card's tag (새 단어, 복습 · n단계, 다시 n)
+/// on 홈 ([SheetFrame]), with the card's tag (새 단어, 복습 n단계, 다시 n)
 /// as a small line under the binding strip.
 class CardFrame extends StatelessWidget {
   const CardFrame({super.key, required this.item, required this.children});
@@ -246,13 +235,15 @@ class CardFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final (tag, tagColor) = switch (item) {
-      SessionItem(retries: > 0) => ('다시 ${item.retries}', t.text),
-      SessionItem(isNew: true) => ('새 단어', t.accentText),
-      _ => ('복습 · ${item.before?.level ?? 0}단계', t.text2),
+    final tag = switch (item) {
+      SessionItem(retries: > 0) => '다시 ${item.retries}',
+      SessionItem(isNew: true) => '새 단어',
+      _ => '복습 ${item.before?.level ?? 0}단계',
     };
     return SheetFrame(
-      fill: true,
+      // At large text sizes the screen scrolls and the sheet is as tall as
+      // what it holds; otherwise it fills the place between the bars.
+      fill: !isLargeText(context),
       padding: const EdgeInsets.fromLTRB(
         Space.lg,
         Space.sm,
@@ -266,9 +257,9 @@ class CardFrame extends StatelessWidget {
             child: Text(
               tag,
               style: TextStyle(
-                color: tagColor,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
+                color: t.text3,
+                fontSize: TypeScale.small,
+                fontWeight: Weights.text,
               ),
             ),
           ),
@@ -277,6 +268,67 @@ class CardFrame extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A card's middle: at the default sizes it takes the sheet's free height,
+/// centred, and scrolls inside if it must; at large text sizes the screen
+/// scrolls instead and the card is as tall as what it holds (one scroll,
+/// nothing hidden under the buttons).
+class CardBody extends StatelessWidget {
+  const CardBody({super.key, required this.child, this.top = 0});
+
+  final Widget child;
+
+  /// Space above the content, as a share of the free height (default
+  /// sizes only).
+  final double top;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isLargeText(context)) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: Space.md),
+        child: child,
+      );
+    }
+    if (top == 0) {
+      return Expanded(
+        child: Center(child: SingleChildScrollView(child: child)),
+      );
+    }
+    return Expanded(
+      child: LayoutBuilder(
+        builder: (context, box) => SingleChildScrollView(
+          padding: EdgeInsets.only(top: box.maxHeight * top),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+/// A card's headword: large already, so it grows with the text size only
+/// up to [TextCaps.display].
+class CardHeadword extends StatelessWidget {
+  const CardHeadword(
+    this.headword, {
+    super.key,
+    this.textAlign = TextAlign.center,
+  });
+
+  final String headword;
+  final TextAlign textAlign;
+
+  @override
+  Widget build(BuildContext context) => CappedText(
+    max: TextCaps.display,
+    child: JpText(
+      headword,
+      key: const ValueKey('card-headword'),
+      style: JpType.headword(headwordSize(headword), context.tokens.text),
+      textAlign: textAlign,
+    ),
+  );
 }
 
 /// A space that holds [label] 가림 until the learner opens it (the content

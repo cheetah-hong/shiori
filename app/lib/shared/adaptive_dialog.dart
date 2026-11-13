@@ -4,11 +4,11 @@ import 'package:shiori/app/theme.dart';
 
 /// A button of an [AlertDialog.adaptive]: an iOS alert action on Apple
 /// platforms, a text button elsewhere. [destructive] says it in the risk
-/// color.
+/// color; a null [onPressed] shows it off.
 Widget adaptiveDialogAction(
   BuildContext context, {
   required String label,
-  required VoidCallback onPressed,
+  required VoidCallback? onPressed,
   bool destructive = false,
   bool isDefault = false,
 }) {

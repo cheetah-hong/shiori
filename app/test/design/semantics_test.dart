@@ -145,7 +145,9 @@ void main() {
       tester,
       designScreens.firstWhere((s) => s.name == 'playlist'),
     );
-    await tester.tap(find.byTooltip('語一 숨기기 (이미 알아요)'));
+    await tester.tap(find.byTooltip('語一 메뉴'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('이미 알아요'));
     await tester.pumpAndSettle();
     expect(find.text('되돌리기'), findsOneWidget);
     await tester.pump(const Duration(seconds: 30));

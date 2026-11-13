@@ -2,36 +2,33 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:shiori/app/theme.dart';
-import 'package:shiori/features/onboarding/onboarding_art.dart';
 import 'package:shiori/shared/bottom_action_bar.dart';
+import 'package:shiori/shared/keep_words.dart';
 import 'package:shiori/shared/large_text.dart';
 
-/// One page of the guide.
+/// One page of the guide: words only, set as a page of the tear-off
+/// calendar (an ink strip over a large title).
 final class _Page {
-  const _Page(this.title, this.body, this.art);
+  const _Page(this.title, this.body);
 
   final String title;
   final String body;
-  final Widget art;
 }
 
 const _pages = [
   _Page(
     '교재 한 쪽을 찍으면\n단어장이 돼요',
     '사진 속 일본어 단어와 읽기·뜻·예문을 찾아 정리해요. '
-        '확인이 필요한 칸은 따로 표시해 드려요.',
-    PageArt(),
+        '확인이 필요한 칸은 따로 표시해요.',
   ),
   _Page(
     '재생목록에 담아\n원하는 만큼 묶어요',
     '같은 단어는 한 번만 저장되고, 어느 재생목록에서 공부해도 학습 기록이 이어져요.',
-    PlaylistArt(),
   ),
   _Page(
     '네 가지 방식으로\n매일 조금씩',
     '알고 있으면 30분·3일·7일·21일 뒤에 다시 나와요. '
-        '홈에서 오늘 학습할 만큼만 보여 드려요.',
-    ModesArt(),
+        '홈에는 오늘 학습할 만큼만 나와요.',
   ),
 ];
 
@@ -101,6 +98,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 onPageChanged: (i) => setState(() => _index = i),
                 itemBuilder: (context, i) => _PageBody(
                   page: _pages[i],
+                  number: i + 1,
                   position: '${_pages.length}장 중 ${i + 1}장',
                 ),
               ),
@@ -153,9 +151,16 @@ class _Dots extends StatelessWidget {
 }
 
 class _PageBody extends StatelessWidget {
-  const _PageBody({required this.page, required this.position});
+  const _PageBody({
+    required this.page,
+    required this.number,
+    required this.position,
+  });
 
   final _Page page;
+
+  /// The page's number, set large as the day sheet's date.
+  final int number;
   final String position;
 
   @override
@@ -172,21 +177,34 @@ class _PageBody extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.end,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // At large text sizes the words need the room.
-                if (!isLargeText(context))
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: Space.xl),
-                      child: ExcludeSemantics(child: page.art),
+                Container(height: _stripWidth, color: t.text),
+                const SizedBox(height: Space.md),
+                ExcludeSemantics(
+                  child: CappedText(
+                    max: TextCaps.display,
+                    child: Text(
+                      '$number',
+                      style: TextStyle(
+                        color: t.text,
+                        fontSize: TypeScale.page,
+                        height: 0.92,
+                        fontWeight: Weights.display,
+                        letterSpacing: -3.8,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
                     ),
                   ),
+                ),
+                const SizedBox(height: Space.lg),
                 Semantics(
                   header: true,
-                  child: Text(
-                    page.title,
-                    style: context.text.headlineSmall?.copyWith(
-                      color: t.text,
-                      height: 1.3,
+                  child: CappedText(
+                    max: TextCaps.chrome,
+                    child: KeepWordsText(
+                      page.title,
+                      style: context.text.headlineLarge?.copyWith(
+                        color: t.text,
+                      ),
                     ),
                   ),
                 ),
@@ -207,3 +225,6 @@ class _PageBody extends StatelessWidget {
     );
   }
 }
+
+/// The ink strip over each page's title, as the day sheet's binding.
+const double _stripWidth = 4;

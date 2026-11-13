@@ -8,3 +8,25 @@ bool isLargeText(BuildContext context) =>
 
 const double _probe = 16;
 const double _largeFactor = 1.6;
+
+/// How far text in fixed places grows with the text size. Running text has
+/// no cap; bars, sheet and dialog heads stop at [chrome] (as iOS bars do),
+/// and the marks already shown large (the day numeral, a card's headword)
+/// at [display].
+abstract final class TextCaps {
+  static const double chrome = 2.0;
+  static const double label = 2.0;
+  static const double display = 1.4;
+}
+
+/// [child] with its text growing at most [max] times.
+class CappedText extends StatelessWidget {
+  const CappedText({super.key, required this.max, required this.child});
+
+  final double max;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) =>
+      MediaQuery.withClampedTextScaling(maxScaleFactor: max, child: child);
+}

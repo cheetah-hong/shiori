@@ -100,15 +100,14 @@ class _PickerState extends ConsumerState<_Picker> {
             if (state.hasError)
               Text(
                 '재생목록을 불러오지 못했어요',
-                style: TextStyle(color: t.risk, fontWeight: FontWeight.w700),
+                style: TextStyle(color: t.risk, fontWeight: FontWeight.w600),
               ),
             if (!_creating)
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.playlist_add),
                 title: const Text(
                   '새 재생목록',
-                  style: TextStyle(fontWeight: FontWeight.w700),
+                  style: TextStyle(fontWeight: FontWeight.w600),
                 ),
                 onTap: () => setState(() => _openForm(all)),
               )
@@ -166,7 +165,7 @@ class _Row extends StatelessWidget {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: BookSpine(label: name.characters.firstOrNull ?? '?'),
-      title: Text(name, style: const TextStyle(fontWeight: FontWeight.w700)),
+      title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
       subtitle: Text(
         [
           '단어 ${stats.shownCount}개',

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:shiori/features/capture/capture_screen.dart';
 import 'package:shiori/features/home/today_plan.dart';
 import 'package:shiori/features/study/restudy_labels.dart';
@@ -18,11 +18,7 @@ class HomeBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => BottomActionBar(
-    secondary: BarAction(
-      label: '페이지 등록',
-      icon: Icons.photo_camera_outlined,
-      onPressed: () => _capture(context),
-    ),
+    secondary: BarAction(label: '페이지 등록', onPressed: () => _capture(context)),
     primary: _primary(context),
   );
 
@@ -35,14 +31,12 @@ class HomeBar extends StatelessWidget {
     if (p.canStudy) {
       return BarPrimaryButton(
         label: '오늘 학습 시작 · ${p.cards}장',
-        icon: Icons.play_arrow_rounded,
         onPressed: () => pushScreen<void>(context, const StudyScreen()),
       );
     }
     if (p.canStudyMore) {
       return BarPrimaryButton(
         label: RestudyLabels.more,
-        icon: Icons.replay_rounded,
         onPressed: () =>
             pushScreen<void>(context, const StudyScreen(more: true)),
       );
@@ -50,7 +44,6 @@ class HomeBar extends StatelessWidget {
     if (p.wordCount == 0) {
       return BarPrimaryButton(
         label: '첫 페이지 등록하기',
-        icon: Icons.photo_camera_outlined,
         onPressed: () => _capture(context),
       );
     }

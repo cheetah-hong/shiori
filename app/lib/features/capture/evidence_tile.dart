@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:shiori/app/theme.dart';
 import 'package:shiori/features/capture/evidence_view.dart';
@@ -101,7 +102,7 @@ class EvidenceEntryTile extends StatelessWidget {
                           IconButton(
                             tooltip: '고치기',
                             icon: Icon(
-                              Icons.edit_outlined,
+                              CupertinoIcons.pencil,
                               size: 18,
                               color: t.text3,
                             ),
@@ -115,7 +116,7 @@ class EvidenceEntryTile extends StatelessWidget {
                           child: Row(
                             children: [
                               Icon(
-                                Icons.library_add_check_outlined,
+                                CupertinoIcons.checkmark_circle,
                                 size: 16,
                                 color: t.text2,
                               ),
@@ -125,7 +126,7 @@ class EvidenceEntryTile extends StatelessWidget {
                                   inLibraryLabel,
                                   style: context.text.bodySmall?.copyWith(
                                     color: t.text2,
-                                    fontWeight: FontWeight.w700,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ),
@@ -141,7 +142,10 @@ class EvidenceEntryTile extends StatelessWidget {
                             ? const _Missing('표제어 없음')
                             : JpText(
                                 e.headword,
-                                style: JpType.print(24, t.text),
+                                style: JpType.headword(
+                                  TypeScale.display,
+                                  t.text,
+                                ),
                               ),
                       ),
                       _Candidates(
@@ -162,8 +166,8 @@ class EvidenceEntryTile extends StatelessWidget {
                               ? const _Missing('읽기 없음')
                               : JpText(
                                   e.readings.join(' / '),
-                                  style: JpType.gothic(
-                                    14,
+                                  style: JpType.body(
+                                    TypeScale.body2,
                                     t.text2,
                                     height: 1.3,
                                   ),
@@ -212,7 +216,11 @@ class EvidenceEntryTile extends StatelessWidget {
                         const SizedBox(height: Space.sm),
                         JpText(
                           ex.ja,
-                          style: JpType.gothic(13, t.text2, height: 1.5),
+                          style: JpType.body(
+                            TypeScale.small,
+                            t.text2,
+                            height: 1.5,
+                          ),
                         ),
                         if (ex.ko.isNotEmpty)
                           Text(
@@ -264,7 +272,10 @@ class _Cell extends StatelessWidget {
         onTap: () => onTap(field),
         // 44 pt to press, however short the value.
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 44),
+          constraints: const BoxConstraints(
+            minHeight: _cellTarget,
+            minWidth: _cellTarget,
+          ),
           child: Align(
             alignment: Alignment.centerLeft,
             widthFactor: 1,
@@ -300,7 +311,9 @@ class _Cell extends StatelessWidget {
   }
 }
 
-/// 사진 / 사전 / 번역: where a cell's value came from.
+/// 사진 / 사전 / 번역: where a cell's value came from. A value read from the
+/// photo is the usual case and shows nothing (VoiceOver still hears it);
+/// a dictionary or translation value is named in small words.
 class SourceBadge extends StatelessWidget {
   const SourceBadge({super.key, required this.source, required this.field});
 
@@ -314,40 +327,22 @@ class SourceBadge extends StatelessWidget {
       container: true,
       label: '${fieldLabel(field)} 출처 ${source.label}',
       excludeSemantics: true,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              switch (source) {
-                FieldSource.photo => Icons.photo_camera_outlined,
-                FieldSource.dictionary => Icons.menu_book_outlined,
-                FieldSource.translation => Icons.translate,
-              },
-              size: 11,
-              color: t.text3,
-            ),
-            const SizedBox(width: 3),
-            Text(
-              source.label,
-              style: TextStyle(
-                color: t.text2,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
+      child: source == FieldSource.photo
+          ? const SizedBox(width: 1, height: 1)
+          : Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: Text(
+                source.label,
+                style: TextStyle(color: t.text2, fontSize: TypeScale.caption),
               ),
             ),
-          ],
-        ),
-      ),
     );
   }
 }
 
-/// 높음 / 중간 / 낮음: how sure a cell's pairing with the headword is, in
-/// words, icon and colour (green for 높음; the check color for the two that
-/// ask for a look, told apart by word and icon — red is for wrong, not
-/// unsure), with a label for screen readers.
+/// 높음 / 중간 / 낮음: how sure a cell's pairing with the headword is. 높음
+/// needs nothing and shows nothing (VoiceOver still hears it); the two that
+/// ask for a look are named in the check color.
 class ConfidenceChip extends StatelessWidget {
   const ConfidenceChip({super.key, required this.level, required this.field});
 
@@ -357,33 +352,23 @@ class ConfidenceChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final (fg, icon) = switch (level) {
-      PairConfidence.high => (t.ok, Icons.check_circle_outline),
-      PairConfidence.medium => (t.warn, Icons.remove_circle_outline),
-      PairConfidence.low => (t.warn, Icons.help_outline),
-    };
     return Semantics(
       container: true,
       label: '${fieldLabel(field)} 짝 신뢰도 ${level.label}',
       excludeSemantics: true,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 11, color: fg),
-            const SizedBox(width: 3),
-            Text(
-              level.label,
-              style: TextStyle(
-                color: fg,
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
+      child: level == PairConfidence.high
+          ? const SizedBox(width: 1, height: 1)
+          : Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: Text(
+                level.label,
+                style: TextStyle(
+                  color: t.warn,
+                  fontSize: TypeScale.caption,
+                  fontWeight: Weights.emphasis,
+                ),
               ),
             ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -453,8 +438,8 @@ class _Missing extends StatelessWidget {
         text,
         style: TextStyle(
           color: t.warn,
-          fontWeight: FontWeight.w800,
-          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          fontSize: TypeScale.small,
         ),
       ),
     );
@@ -499,7 +484,11 @@ class _IncludeBox extends StatelessWidget {
                   borderRadius: BorderRadius.circular(7),
                 ),
                 child: included
-                    ? Icon(Icons.check, size: 16, color: t.onAccent)
+                    ? Icon(
+                        CupertinoIcons.checkmark,
+                        size: 16,
+                        color: t.onAccent,
+                      )
                     : null,
               ),
             ),
@@ -544,8 +533,8 @@ class FieldMark extends StatelessWidget {
         label,
         style: TextStyle(
           color: fg,
-          fontSize: 11,
-          fontWeight: guess ? FontWeight.w500 : FontWeight.w800,
+          fontSize: TypeScale.caption,
+          fontWeight: guess ? FontWeight.w400 : FontWeight.w600,
         ),
       ),
     );
@@ -566,7 +555,11 @@ class _StateText extends StatelessWidget {
   Widget build(BuildContext context) {
     final words = Text(
       text,
-      style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w700),
+      style: TextStyle(
+        color: color,
+        fontSize: TypeScale.small,
+        fontWeight: FontWeight.w600,
+      ),
     );
     if (!dot) return words;
     return Row(
@@ -585,3 +578,6 @@ class _StateText extends StatelessWidget {
 }
 
 const double _dotSize = 6;
+
+/// The least size of a cell to press, in points.
+const double _cellTarget = 44;

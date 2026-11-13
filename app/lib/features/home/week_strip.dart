@@ -8,16 +8,11 @@ import 'package:shiori/shared/format.dart';
 import 'package:shiori/shared/large_text.dart';
 import 'package:shiori_core/shiori_core.dart';
 
-/// This week, Monday first: a short ink stub under each day studied, today
-/// as an ink disc, and the run of study days. Left out while it loads or
-/// when it cannot be read (it only adds context to the day sheet). Before
-/// the first page, with nothing studied, the run of days (all zeros) is
-/// left out.
+/// This week, Monday first: a short ink stub under each day studied and
+/// today as an ink disc. Left out while it loads or when it cannot be read
+/// (it only adds context to the day sheet).
 class WeekStrip extends ConsumerWidget {
-  const WeekStrip({super.key, this.noWords = false});
-
-  /// The library has no word yet.
-  final bool noWords;
+  const WeekStrip({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -30,9 +25,7 @@ class WeekStrip extends ConsumerWidget {
     final value = week.value;
     if (week.hasError || value == null) return const SizedBox.shrink();
 
-    final t = context.tokens;
     final cells = [for (final d in value.days) _DayCell(day: d)];
-    final showRun = !noWords || value.studiedThisWeek > 0 || value.streak > 0;
     return Padding(
       padding: const EdgeInsets.only(top: Space.xl),
       child: Column(
@@ -59,29 +52,10 @@ class WeekStrip extends ConsumerWidget {
             )
           else
             Row(children: [for (final c in cells) Expanded(child: c)]),
-          if (showRun) ...[
-            const SizedBox(height: 14),
-            Text.rich(
-              TextSpan(
-                style: TextStyle(color: t.text2, fontSize: 15),
-                children: [
-                  const TextSpan(text: '이번 주 '),
-                  _strong('${value.studiedThisWeek}일', t),
-                  const TextSpan(text: ' 학습 · 연속 '),
-                  _strong('${value.streak}일', t),
-                ],
-              ),
-            ),
-          ],
         ],
       ),
     );
   }
-
-  static TextSpan _strong(String text, ShioriTokens t) => TextSpan(
-    text: text,
-    style: TextStyle(color: t.text, fontWeight: FontWeight.w700),
-  );
 }
 
 class _DayCell extends StatelessWidget {
@@ -115,7 +89,7 @@ class _DayCell extends StatelessWidget {
               weekdayLetter(day.date),
               style: TextStyle(
                 color: t.text2,
-                fontSize: 13,
+                fontSize: TypeScale.small,
                 fontWeight: FontWeight.w600,
               ),
             ),

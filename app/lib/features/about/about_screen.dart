@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/adapters/bundled_dictionary.dart';
@@ -62,10 +63,9 @@ class AboutScreen extends ConsumerWidget {
             AboutCard(
               child: ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.menu_book_outlined),
                 title: const Text('사용 안내 다시 보기'),
                 subtitle: const Text('처음 켰을 때 본 세 장의 안내'),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const Icon(CupertinoIcons.chevron_forward),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (route) => OnboardingScreen(
@@ -119,10 +119,9 @@ class AboutScreen extends ConsumerWidget {
             AboutCard(
               child: ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.bug_report_outlined),
                 title: const Text('오류 기록 보기'),
                 subtitle: const Text('앱에서 난 오류를 이 기기에만 남겨요. 복사해서 보낼 수 있어요.'),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const Icon(CupertinoIcons.chevron_forward),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) => const CrashLogScreen(),
@@ -137,10 +136,9 @@ class AboutScreen extends ConsumerWidget {
             AboutCard(
               child: ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.description_outlined),
                 title: const Text('오픈소스 라이선스'),
                 subtitle: const Text('앱에 쓰인 패키지와 데이터의 라이선스'),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const Icon(CupertinoIcons.chevron_forward),
                 onTap: () =>
                     showLicensePage(context: context, applicationName: '시오리'),
               ),
@@ -428,7 +426,7 @@ class _NoDictionary extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.info_outline, color: t.warn),
+          Icon(CupertinoIcons.info_circle, color: t.warn),
           const SizedBox(width: Space.md),
           Expanded(
             child: Text(
@@ -453,7 +451,7 @@ class _NoGlossary extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.info_outline, color: t.warn),
+          Icon(CupertinoIcons.info_circle, color: t.warn),
           const SizedBox(width: Space.md),
           Expanded(
             child: Text(

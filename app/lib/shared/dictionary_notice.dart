@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/adapters/dictionary_problem.dart';
@@ -109,11 +110,10 @@ class DictionaryNotice extends ConsumerWidget {
               ),
             ],
           )
-        : TextButton.icon(
+        : TextButton(
             onPressed: () => retryDictionaries(ref, context),
             style: TextButton.styleFrom(foregroundColor: t.risk),
-            icon: const Icon(Icons.refresh, size: 18),
-            label: const Text(DictionaryNoticeText.retry),
+            child: const Text(DictionaryNoticeText.retry),
           );
     final text = TextStyle(color: t.risk, height: 1.45);
     return Semantics(
@@ -132,7 +132,7 @@ class DictionaryNotice extends ConsumerWidget {
         child: compact
             ? Row(
                 children: [
-                  Icon(Icons.menu_book_outlined, color: t.risk, size: 20),
+                  Icon(CupertinoIcons.book, color: t.risk, size: 20),
                   const SizedBox(width: Space.md),
                   Expanded(
                     child: Text(
@@ -148,12 +148,16 @@ class DictionaryNotice extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.error_outline, color: t.risk, size: 20),
+                      Icon(
+                        CupertinoIcons.exclamationmark_circle,
+                        color: t.risk,
+                        size: 20,
+                      ),
                       const SizedBox(width: Space.md),
                       Expanded(
                         child: Text(
                           DictionaryNoticeText.title,
-                          style: text.copyWith(fontWeight: FontWeight.w700),
+                          style: text.copyWith(fontWeight: FontWeight.w600),
                         ),
                       ),
                     ],
@@ -196,7 +200,7 @@ class ReadWithoutDictionaryNotice extends ConsumerWidget {
         ),
         child: Row(
           children: [
-            Icon(Icons.menu_book_outlined, color: t.warn, size: 20),
+            Icon(CupertinoIcons.book, color: t.warn, size: 20),
             const SizedBox(width: Space.md),
             Expanded(
               child: Text(

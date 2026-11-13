@@ -2826,3 +2826,105 @@ iPhone 17 시뮬레이터(실제 사전·발음 asset)에서 `save` → 앱 종�
 - **세션 끝의 「내일 n장」:** 찢긴 뒤 드러나는 장에 내일 복습할 장 수를 보이려면 그 수를 미리 세는 조회가 새로 필요해(기능 추가) 이번에는 넣지 않았습니다. 지금은 「오늘 학습 끝」 장만 보입니다.
 - **아이콘 체계:** 화면 안 아이콘은 Material 아이콘 그대로입니다(SF Symbols 계열로 바꾸지 않음).
 - 하루 목표 「전부」는 수백 장이 될 수 있어 진행을 장마다 한 칸 눈금으로 그리지 않고 선 + 숫자로 둡니다.
+
+## 40. 작은 화면 맞춤·화면 덜어내기·글꼴 Pretendard JP (2026-11-13)
+
+iPhone SE 3세대(4.7″)부터 17 Pro Max(6.9″)까지 화면을 맞추고, 기본값처럼 보이던 장식과 문구를 덜어 냈으며, 글꼴을 Pretendard JP 하나로 바꿨습니다.
+일력 장·말차 색·절취선은 그대로 두었습니다. 학습 규칙·저장 스키마(v5)·백업 형식(판 1)·추출·사전·발음은 바꾸지 않았습니다.
+
+### 40.1 화면 맞춤
+
+**확인한 범위.** 시뮬레이터 4대(iPhone SE 3세대·13 mini·17·17 Pro Max, iOS 26.5) × 29장면 × {기본 글자, 큰 글자 3.1배(iOS 접근성 최대 근사), 다크}를 찍어 봤고, 위젯 테스트로 4개 논리 크기(375×667·375×812·402×874·440×956) × 1.0·2.0·3.1배를 돌렸습니다.
+레이아웃 넘침은 고치기 전에도 0건이었습니다. 문제는 넘치지 않고 **잘리거나 겹치는** 것이었고, 모두 큰 글자에서 나왔습니다.
+
+| # | 고치기 전 | 고친 것 |
+|---|---|---|
+| W1 | 큰 글자에서 학습 카드가 화면 80% 높이로 고정되고 안에서 따로 스크롤 → 표제어가 잘리거나 「뜻 보기」 버튼 뒤로 겹쳐 보임(4대 모두) | 큰 글자에서는 화면 하나만 스크롤하고 카드는 내용만큼(`CardBody`), 표제어는 글자 배율 1.4까지(`CardHeadword`) |
+| W2 | 아래 고정 바가 SE에서 화면의 ⅓ 넘게 차지(홈은 날짜만 보임), 아이콘만 작게 남아 구석에 | 바 글자 2.0배 상한(iOS 바처럼), 두 버튼이 폭을 2:3으로 나눔, 아이콘 없음 → SE 3.1배에서 화면 높이 25% 이하 |
+| W3 | 새 재생목록 이름 창: 제목이 입력칸 라벨과 겹침 | iOS 알림 대화상자(`AlertDialog.adaptive`), 제목 2.0배 상한 |
+| W4 | 고치기 시트 머리 「고치\n기」, 키보드 위에서 입력칸이 반만 보임 | 시트 머리 2.0배 상한·한 줄 |
+| W5 | 학습 방식 메뉴가 좁아 「일본어 떠올리\n기」, 뒤 글자가 비침 | 아래에서 올라오는 액션 시트(폭 전체) |
+| W6 | 한국어 제목이 낱말 가운데서 끊김(「교재 한 쪽\n을」, 「한국어 뜻 사\n전」) | 제목·아래 바 버튼에 `KeepWordsText`(글자(grapheme) 사이 U+2060 — 이모지는 쪼개지 않음, 찾기·VoiceOver는 원래 글) |
+| W7 | 날짜 숫자는 1.4배에서 멈추는데 「11월」「금요일」은 3.1배까지 커져 위계가 뒤집힘 | 월·요일 2.0배 상한 |
+| W8 | 객관식·듣고 맞히기 큰 글자에서 첫 화면에 선택지 없음 | W1로 카드가 내용만큼이 되어 줄어듦 |
+| W9 | SE 세션 끝: 통계 아래 빈 칸이 큼 | 통계를 버튼 위 공간 가운데로 |
+| W10 | 첫 실행 안내 큰 글자: 제목이 화면을 채움 | 제목 2.0배 상한 |
+
+그대로 괜찮았던 것: SE 기본 글자에서 홈 「오늘 학습 시작」이 스크롤 없이 보임, 안전 영역, 44pt, 다크, 기본 글자의 키보드.
+
+### 40.2 덜어 낸 것
+
+| # | 덜어 낸 것 | 지금 |
+|---|---|---|
+| S1 | 글 있는 버튼마다 붙은 아이콘(▶·카메라·↶·눈·형광펜·음표 등), 목록 행 앞 아이콘 | 글만. 아이콘은 아이콘만 있는 버튼(닫기·뒤로·설정·정보·발음·공유·메뉴·끌기)에만 |
+| S2 | Material 아이콘 44종(outlined·rounded·filled 혼용) | `cupertino_icons` 1.0.8(MIT) 한 벌, 약 20종 |
+| S3 | w800 25곳·인라인 글자 크기 62곳(13가지 값) | 굵기 3단 `Weights`(400·600·700), 크기 7단 `TypeScale`, 화면 코드에 숫자 크기 없음 |
+| S4 | 홈 「복습 2장을 먼저, 남은 8장은 새 단어로 — 오늘 10장. 순서는 섞어서 보여요.」, 설정 「…준비 중이에요」 두 줄, 찍기 머리 둘째 줄, 빈 홈 둘째 문장 | 삭제(메모 줄이 같은 것을 말함). 카드 순서 섞기는 홈에 표시하지 않고 설정에서만 보임 |
+| S5 | 「8개 · 12개 중」, 「오늘 학습 · 객관식」, 「복습 · 2단계」, 「샘플 10쪽 · 판독 1.1초」, 「… — 이유」 | 「12개 중 8개」, 방식 이름만(뜻 맞히기는 「오늘 학습」), 「복습 2단계」, 「샘플 10쪽, 판독 1.1초」, 「방식: 이유」 |
+| S6 | 「이번 주 0일 학습 · 연속 0일」 | 문장 삭제(학습한 날은 주 줄의 먹 선으로 보임) |
+| S7 | 카드의 초록 「새 단어」 꼬리표, 가린 줄마다 「읽기 가림」「뜻 가림」「번역 가림」 | 회색 꼬리표, 가린 줄은 「· · ·」(VoiceOver는 「뜻 가림」) |
+| S8 | 듣고 맞히기의 초록 틴트 원 안 스피커, 카드 발음 버튼의 틴트 원 | 「다시 듣기」 글 버튼, 발음 버튼은 원 없는 스피커 |
+| S9 | 검토 칸마다 「⊙ 사진」「⊙ 높음」 | 사진·높음은 화면에 안 보이고 VoiceOver로만, 사전·번역·중간·낮음만 글로 |
+| S10 | 첫 실행 안내의 뷰파인더·뼈대 문서·목업 그림 | 그림 없이 먹 띠 + 큰 쪽 번호 + 제목·두 줄 |
+| S11 | Material 팝업 메뉴 3곳, 학습 방식 `MenuAnchor`, 이름 입력 `AlertDialog`, 진행 창 `AlertDialog` | iOS 액션 시트(`showChoices`·`MoreButton`), `AlertDialog.adaptive` |
+| S12 | 누를 때 Material 물결 | `NoSplash`(누름은 기존 눌림 크기·불투명도) |
+| S13 | 재생목록 단어 행 끝 장치 셋(기억 막대·숨기기 아이콘····) | 숨기기를 「···」 안 「이미 알아요」로 |
+| S14 | 재생목록 편집 목록 끝·재생목록 머리 아래 절취선 | 찢는 곳(홈 일력 장·학습 카드·세션 끝)에만 |
+| S15 | 「표시해 드려요」「보여 드려요」, 해요체 사이 합니다체 4곳 | 해요체로 통일 |
+| S16 | 재생목록 머리 3줄 통계 칸, 검토 머리 「단어 **12**개」 큰 숫자 | 한 줄 「단어 12개, 학습함 2개, 장기 기억 0개」, 「단어 12개」 제목 |
+
+### 40.3 글꼴
+
+- **Pretendard JP 1.3.9** (SIL Open Font License 1.1) 공식 릴리스 `PretendardJP-1.3.9.zip`의 정적 OTF 3개: Regular(400) 3.65MB, SemiBold(600) 3.78MB, Bold(700) 3.77MB, 합 11.2MB. `app/assets/fonts/`, 라이선스 전문 `app/assets/fonts/OFL.txt`.
+- 한국어·일본어 모두 이 글꼴입니다(대체는 Hiragino Sans). 표제어·읽기·예문·후보는 `JpType`·`JpText`로 `ja-JP` locale을 붙여 일본 글자꼴로 그리고 VoiceOver가 일본어로 읽습니다. 명조체는 없앴습니다.
+- 라이선스는 `registerFontLicense()`(`app/lib/app/fonts.dart`, `main.dart`에서 한 번)로 정보 › 오픈소스 라이선스에 「Pretendard JP」로 나옵니다.
+- 앱 크기: prod release `Runner.app`(서명 없음) **167.2MB**. 늘어난 몫은 글꼴 파일 10,960KB와 tree-shake 뒤 `CupertinoIcons.ttf` 3.8KB입니다(Material 아이콘 글꼴은 1.5KB로 줄어듦). 글꼴을 넣기 전 빌드는 같은 조건으로 따로 만들지 않았습니다.
+
+### 40.4 바꾼 것
+
+| 위치 | 내용 |
+|---|---|
+| `app/lib/app/theme.dart`, `app/lib/app/fonts.dart` (새), `app/lib/main.dart`, `app/pubspec.yaml`, `app/assets/fonts/` (새) | `TypeScale`·`Weights`, 테마 글꼴·물결 없음, `JpType.headword`·`body`, `AppFonts`·`registerFontLicense`, 글꼴 3개·`cupertino_icons` 1.0.8 |
+| `app/lib/shared/keep_words.dart`·`action_sheet.dart` (새), `large_text.dart`·`bottom_action_bar.dart`·`sheet.dart`·`widgets.dart`·`states.dart`·`adaptive_dialog.dart`·`dictionary_notice.dart` | `KeepWordsText`, `showChoices`·`MoreButton`, `TextCaps`·`CappedText`, 글만 있는 바, 메모 줄 앞말, 토큰 크기 |
+| `app/lib/features/study/` | `CardBody`·`CardHeadword`, 큰 글자 한 번 스크롤, 「· · ·」 가린 줄, 회색 꼬리표, 「다시 듣기」 글 버튼, 원 없는 스피커, 머리 = 방식 이름, 세션 끝 가운데 |
+| `app/lib/features/home/` | 계획 문장·연속 문장 삭제, 「12개 중 8개」, 날짜 머리 상한, 학습 방식 액션 시트 |
+| `app/lib/features/capture/` | 검토 머리, 사진·높음 표시 숨김, 칸 44×44, 아래 바 공용 부품, 고치기 시트 머리, 해요체, 일본어 조각 칩을 `JpText`로(VoiceOver 일본어) |
+| `app/lib/features/playlists/` | 「···」 액션 시트 3곳, 숨기기를 메뉴로, 머리 한 줄, 편집 목록 끝 절취선 삭제, 이름 입력 iOS 대화상자 |
+| `app/lib/features/onboarding/` (`onboarding_art.dart` 삭제) | 글자만: 먹 띠 + 큰 쪽 번호 + 제목 |
+| `app/lib/features/settings/`·`about/`·`backup/` | 「준비 중」 줄 삭제, 행 앞 아이콘 삭제, 진행 창 adaptive |
+
+### 40.5 검증
+
+| 파일 | 내용 |
+|---|---|
+| `app/test/design/screen_fit_test.dart` (새, 245) | 4개 논리 크기 × 1.0·2.0·3.1 × 12화면 + 학습 4방식 뒤 + 세션 끝: 레이아웃 오류 0, 주 행동이 보이거나 스크롤로 닿아 눌림. 3.1배에서 카드 안 스크롤 없음·표제어가 화면 안·버튼과 안 겹침(4방식), 새 재생목록 제목·고치기 머리가 입력칸과 안 겹침, 학습 방식 시트 폭 60% 이상, 날짜 숫자 > 요일 × 1.3. SE 3.1배 아래 바 ≤ 25%. SE 기본 글자 「오늘 학습 시작」 첫 화면. `keepWords`와 `KeepWordsText`(낱말 사이에서만 줄바꿈, 찾기·VoiceOver는 원래 글) |
+| `app/test/design/slop_test.dart` (새, 20) | 물결 없음, 글 버튼에 아이콘 없음(홈·빈 홈·찍기·검토·학습 앞뒤·세션 끝), 화면 코드에 Material 아이콘·팝업 메뉴·`AlertDialog(` 없음, 굵기 3단·숫자 크기 없음, 「드려요」「준비 중」·합니다체 없음, 홈 계획·연속 문장·「 · 」 없음, 학습 머리, 검토 「, 판독」, 가린 줄 라벨은 VoiceOver만·회색 꼬리표, 「다시 듣기」 글 버튼·원 없음, 검토 기본 칸 배지 없음, 재생목록 숨기기 메뉴·절취선·통계 칸 없음, 안내 그림 없음 |
+| `app/test/design/font_test.dart` (새, 7) | 글꼴 3개 번들·pubspec 굵기, 테마·`JpType` 글꼴·대체·`ja-JP`, 명조·serif 없음, 카드 표제어 글꼴·locale, 라이선스 등록(한 번만)·`main.dart` 호출 |
+| `app/test/support/screen_fit.dart` (새, 지원) | 기기 크기·배율 설정, 크기 지정해 화면 열기, 카드 뒤집기, 겹침 판정 |
+| `app/integration_test/screen_fit_screenshots_test.dart` (새) | 스크린샷 150~165, 기기마다 `--dart-define=SCREEN=se|mini|17|promax` |
+
+결과: app **823** 통과(그중 새 파일 272), `flutter analyze` 문제 없음. 생성기 `--check` 4개(`make_pages.py`·`make_general_pages.py`·`build_extract_data.py`·`make_icons.py`) 종료 0.
+
+### 40.6 바뀐 기존 테스트
+
+기대하는 의미는 그대로 두고 문구·찾는 방법만 바꿨습니다.
+
+| 파일 | 왜 | 바꾼 것 |
+|---|---|---|
+| `app/test/design/home_day_sheet_test.dart` | 메모 줄 문구, 계획·연속 문장 삭제 | 「13개 중 8개」「5개 중 0개」, 계획 문장·「연속」 없음 |
+| `app/test/features/session_size_buttons_test.dart` | 계획 문장 삭제 | 복습 「2개」, 계획 문장 없음 |
+| `app/test/features/study_flow_test.dart` | 가린 줄 라벨이 VoiceOver로만, 꼬리표 문구 | `bySemanticsLabel('뜻 가림')`, 「복습 2단계」 |
+| `app/test/features/capture_flow_test.dart` | 메모 줄 문구 | 「11개 중 10개」 |
+| `app/test/features/study_mode_cards_test.dart`·`study_mode_picker_test.dart` | 학습 머리 = 방식 이름 | 「객관식」「듣고 맞히기」「일본어 떠올리기」 |
+| `app/test/features/review_heading_test.dart` | 출처·판독 시간 문구 | 「샘플 10쪽, 판독 1.2초」 |
+| `app/test/features/general_review_test.dart` | 사진·높음은 화면에 안 보임 | VoiceOver 라벨 「뜻 출처 사진」「뜻 짝 신뢰도 높음」, 화면에 「사진」「높음」 없음 |
+| `app/test/design/empty_states_test.dart` | 이름 입력이 `AlertDialog.adaptive` | `w is AlertDialog` |
+| `app/test/features/settings_screen_test.dart` | 선택 표시 아이콘 교체, 「준비 중」 줄 삭제 | 체크 = `CupertinoIcons.checkmark`, 아직 만들지 않은 선택지는 행도 안내 줄도 없고 저장값은 그대로 |
+| `app/test/features/known_hide_playlist_test.dart`, `app/test/design/semantics_test.dart` | 숨기기가 단어 「···」 메뉴 안으로 | 메뉴를 열고 「이미 알아요」 (숨김·되돌리기 기대는 그대로) |
+| `app/test/features/failure_export_test.dart` | 해요체 통일 | 「판독 기록을 내보내지 못했어요」 |
+
+### 40.7 남은 것
+
+- **스크린샷 150~165** (합성 낱말만, Pretendard JP): 150 SE 홈 · 151 SE 홈 큰 글자 · 152 SE 뜻 맞히기 · 153 SE 학습 큰 글자 · 154 SE 검토 · 155 SE 첫 실행 안내 · 156 mini 홈 다크 · 157 mini 듣고 맞히기 · 158 mini 객관식 답한 뒤 · 159 mini 학습 방식 시트 · 160 mini 재생목록 · 161 mini 설정 · 162 17 세션 끝 · 163 17 찍기 큰 글자 · 164 Pro Max 홈 · 165 Pro Max 일본어 떠올리기 큰 글자.
+- 큰 글자에서 아래 바의 보조 버튼은 글을 두 줄로 줄여 둡니다. iOS의 「큰 내용 보기」(길게 눌러 확대) 같은 동작은 Flutter에 없어 넣지 않았습니다.
+- 실제 iPhone(13 mini)에서 글꼴 렌더링과 VoiceOver 일본어 낭독은 아직 확인하지 않았습니다.

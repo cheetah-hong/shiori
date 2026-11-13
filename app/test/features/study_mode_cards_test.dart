@@ -85,7 +85,7 @@ void main() {
     ) async {
       final (_, words) = await open(tester, StudyMode.choice);
 
-      expect(find.text('오늘 학습 · 객관식'), findsOneWidget);
+      expect(find.text('객관식'), findsOneWidget);
       expect(find.text('語一'), findsOneWidget);
       expect(find.byKey(ValueKey('option-${words[0].id}')), findsOneWidget);
       expect(
@@ -183,7 +183,7 @@ void main() {
       await open(tester, StudyMode.listening);
 
       expect(speech.requests, [first]);
-      expect(find.text('오늘 학습 · 듣고 맞히기'), findsOneWidget);
+      expect(find.text('듣고 맞히기'), findsOneWidget);
       expect(find.text('語一'), findsNothing);
       expect(find.textContaining('ごいち'), findsNothing);
       expect(exampleJa(), findsNothing);

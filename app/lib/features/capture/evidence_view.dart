@@ -97,7 +97,7 @@ class EvidenceScreen extends StatelessWidget {
           const SizedBox(height: Space.xs),
           JpText(
             _value.isEmpty ? '(비어 있음)' : _value,
-            style: JpType.print(22, t.text),
+            style: JpType.headword(TypeScale.title, t.text),
           ),
           const SizedBox(height: Space.sm),
           Text(
@@ -131,7 +131,7 @@ class EvidenceScreen extends StatelessWidget {
                 child: EvidenceCrop(page: page, box: box),
               ),
             if (page.photo == null)
-              Text('사진이 없어 판독 기록으로 그린 쪽입니다.', style: context.text.bodySmall),
+              Text('사진이 없어 판독 기록으로 그린 쪽이에요.', style: context.text.bodySmall),
           ],
         ],
       ),

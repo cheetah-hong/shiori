@@ -149,7 +149,7 @@ void main() {
       expect(find.text('검토'), findsNothing, reason: 'back on the home screen');
       expect(find.text('내 단어장'), findsOneWidget);
       expect(
-        find.text('10개 · 11개 중'),
+        find.text('11개 중 10개'),
         findsOneWidget,
         reason: '11 new words on the day sheet, 10 of them today',
       );

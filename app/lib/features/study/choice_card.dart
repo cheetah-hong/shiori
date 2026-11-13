@@ -72,70 +72,61 @@ class _ChoiceCardState extends State<ChoiceCard> with CardSpeech {
     return CardFrame(
       item: widget.item,
       children: [
-        Expanded(
-          child: Center(
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (widget.listening && !answered && playWord != null)
-                    IconButton.filledTonal(
-                      tooltip: StudyModeLabels.replay,
-                      iconSize: 40,
-                      onPressed: _wordLoading
-                          ? null
-                          : () => _playWord(playWord),
-                      icon: _wordLoading
-                          ? const SizedBox.square(
-                              dimension: 40,
-                              child: CircularProgressIndicator(strokeWidth: 3),
-                            )
-                          : const Icon(Icons.volume_up_rounded),
+        CardBody(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (widget.listening && !answered && playWord != null)
+                // The word plays by itself; 다시 듣기 sits where the headword
+                // will appear.
+                Tooltip(
+                  message: StudyModeLabels.replay,
+                  excludeFromSemantics: true,
+                  child: TextButton(
+                    onPressed: _wordLoading ? null : () => _playWord(playWord),
+                    style: TextButton.styleFrom(
+                      textStyle: context.text.titleLarge,
+                      minimumSize: const Size(_replayWidth, _replayHeight),
                     ),
-                  if (showWord) ...[
-                    if (answered) ...[
-                      JpText(
-                        readingsLabel(w.readings),
-                        style: JpType.gothic(17, t.text3, height: 1.3),
-                      ),
-                      if (widget.pitch case final pitch?) ...[
-                        const SizedBox(height: Space.xs),
-                        PitchLine(info: pitch),
-                      ],
-                    ],
-                    JpText(
-                      w.headword,
-                      style: JpType.print(
-                        headwordSize(w.headword),
-                        t.text,
-                        weight: FontWeight.w700,
-                      ),
-                      textAlign: TextAlign.center,
+                    child: Text(
+                      _wordLoading ? '불러오는 중' : StudyModeLabels.replay,
                     ),
-                    if (example != null) ...[
-                      const SizedBox(height: Space.sm),
-                      ExampleSentence(
-                        sentence: example.ja,
-                        focus: w.headword,
-                        style: JpType.gothic(14, t.text2, height: 1.6),
-                        onSpeak: playExample == null || _exampleLoading
-                            ? null
-                            : () => speakWith(
-                                playExample,
-                                (on) => _exampleLoading = on,
-                              ),
-                      ),
-                      if (answered)
-                        Text(
-                          example.ko,
-                          style: context.text.bodySmall,
-                          textAlign: TextAlign.center,
-                        ),
-                    ],
+                  ),
+                ),
+              if (showWord) ...[
+                if (answered) ...[
+                  JpText(
+                    readingsLabel(w.readings),
+                    style: JpType.body(TypeScale.body, t.text3, height: 1.3),
+                  ),
+                  if (widget.pitch case final pitch?) ...[
+                    const SizedBox(height: Space.xs),
+                    PitchLine(info: pitch),
                   ],
                 ],
-              ),
-            ),
+                CardHeadword(w.headword),
+                if (example != null) ...[
+                  const SizedBox(height: Space.sm),
+                  ExampleSentence(
+                    sentence: example.ja,
+                    focus: w.headword,
+                    style: JpType.body(TypeScale.body2, t.text2, height: 1.6),
+                    onSpeak: playExample == null || _exampleLoading
+                        ? null
+                        : () => speakWith(
+                            playExample,
+                            (on) => _exampleLoading = on,
+                          ),
+                  ),
+                  if (answered)
+                    Text(
+                      example.ko,
+                      style: context.text.bodySmall,
+                      textAlign: TextAlign.center,
+                    ),
+                ],
+              ],
+            ],
           ),
         ),
         // After the pick the word can be heard again, as on the other cards.
@@ -152,3 +143,6 @@ class _ChoiceCardState extends State<ChoiceCard> with CardSpeech {
     );
   }
 }
+
+const double _replayWidth = 160;
+const double _replayHeight = 64;

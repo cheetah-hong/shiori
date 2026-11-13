@@ -60,7 +60,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('숨긴 단어'), findsNothing);
 
-    await tester.tap(find.byTooltip(HideLabels.hideWord(target.headword)));
+    // 이미 알아요 is in the word's 「···」 menu.
+    await tester.tap(find.byTooltip('${target.headword} 메뉴'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(HideLabels.button));
     await tester.pumpAndSettle();
     expect(find.text(target.headword), findsNothing);
     expect((await blocks.library.word(target.id))?.isHidden, isTrue);

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/shared/large_text.dart';
+import 'package:shiori/shared/keep_words.dart';
 import 'package:shiori/shared/widgets.dart';
 import 'package:shiori_core/shiori_core.dart';
 
@@ -96,22 +98,29 @@ class _EntryEditorSheetState extends State<EntryEditorSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Actions sit at the top so the keyboard never covers them.
-            Row(
-              children: [
-                Expanded(child: Text('고치기', style: context.text.titleLarge)),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('취소'),
-                ),
-                const SizedBox(width: Space.xs),
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(88, 44),
+            // The head stops growing at the bars' size, so a large text size
+            // leaves the fields room above the keyboard.
+            CappedText(
+              max: TextCaps.chrome,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: KeepWordsText('고치기', style: context.text.titleLarge),
                   ),
-                  onPressed: () => Navigator.of(context).pop(_result()),
-                  child: const Text('고치기'),
-                ),
-              ],
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('취소'),
+                  ),
+                  const SizedBox(width: Space.xs),
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(88, 44),
+                    ),
+                    onPressed: () => Navigator.of(context).pop(_result()),
+                    child: const Text('고치기'),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: Space.lg),
             if (_e.headwordCandidates.isNotEmpty) ...[
@@ -125,7 +134,10 @@ class _EntryEditorSheetState extends State<EntryEditorSheet> {
                 children: [
                   for (final c in _e.headwordCandidates)
                     ActionChip(
-                      label: JpText(c, style: JpType.print(18, t.text)),
+                      label: JpText(
+                        c,
+                        style: JpType.headword(TypeScale.body, t.text),
+                      ),
                       onPressed: () => setState(() => _headword.text = c),
                     ),
                 ],
@@ -134,14 +146,14 @@ class _EntryEditorSheetState extends State<EntryEditorSheet> {
             ],
             TextField(
               controller: _headword,
-              style: JpType.print(22, t.text),
+              style: JpType.headword(TypeScale.title, t.text),
               decoration: const InputDecoration(labelText: '표제어'),
               textInputAction: TextInputAction.next,
             ),
             const SizedBox(height: Space.md),
             TextField(
               controller: _readings,
-              style: JpType.gothic(16, t.text),
+              style: JpType.body(TypeScale.body, t.text),
               decoration: const InputDecoration(
                 labelText: '읽기',
                 helperText: '여러 개면 / 로 나눠요. 가나 단어는 비워 두세요',
@@ -176,7 +188,7 @@ class _EntryEditorSheetState extends State<EntryEditorSheet> {
             if (_showExample) ...[
               TextField(
                 controller: _exampleJa,
-                style: JpType.gothic(15, t.text),
+                style: JpType.body(TypeScale.body2, t.text),
                 decoration: const InputDecoration(labelText: '예문 (일본어)'),
                 maxLines: null,
               ),

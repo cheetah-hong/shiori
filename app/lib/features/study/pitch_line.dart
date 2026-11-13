@@ -78,8 +78,8 @@ class PitchLine extends StatelessWidget {
                   '추정',
                   style: TextStyle(
                     color: t.text3,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                    fontSize: TypeScale.caption,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),

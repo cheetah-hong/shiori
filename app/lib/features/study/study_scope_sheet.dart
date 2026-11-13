@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/app/data.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/shared/keep_words.dart';
 import 'package:shiori/features/study/study_mode_labels.dart';
 import 'package:shiori_core/shiori_core.dart';
 
@@ -34,7 +35,7 @@ class _ScopeSheet extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('무엇을 학습할까요?', style: context.text.titleLarge),
+            KeepWordsText('무엇을 학습할까요?', style: context.text.titleLarge),
             Text(
               '방식: ${StudyModeLabels.name(ref.watch(studyModeProvider).value ?? StudyMode.meaning)}',
               style: context.text.bodySmall,
@@ -78,10 +79,7 @@ class _ScopeRow extends StatelessWidget {
     final cards = s == null ? 0 : s.dueCount + s.newCount;
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: Icon(
-        scope is AllWords ? Icons.all_inclusive : Icons.queue_music_outlined,
-      ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
       subtitle: Text(switch (summary) {
         AsyncValue(hasError: true) => '불러오지 못했어요',
         AsyncData() when cards == 0 => '오늘 할 것 없음',

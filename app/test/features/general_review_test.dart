@@ -167,16 +167,22 @@ void main() {
     expect(find.text('숨긴 단어 1개는 뺐어요'), findsOneWidget);
   });
 
-  testWidgets('each cell names its source: 사진 or 사전', (tester) async {
+  testWidgets('each cell names its source: 사진 for screen readers, 사전 shown', (
+    tester,
+  ) async {
     await _pump(tester);
+    final semantics = tester.ensureSemantics();
 
+    // Read from the photo is the usual case: nothing on screen, said aloud.
     expect(
       find.descendant(
         of: find.byKey(const ValueKey('source-0-meaning')),
         matching: find.text('사진'),
       ),
-      findsOneWidget,
+      findsNothing,
     );
+    expect(find.bySemanticsLabel('뜻 출처 사진'), findsWidgets);
+    semantics.dispose();
     await _show(tester, find.byKey(const ValueKey('source-1-meaning')));
     expect(
       find.descendant(
@@ -194,7 +200,8 @@ void main() {
     final semantics = tester.ensureSemantics();
 
     expect(find.bySemanticsLabel('뜻 짝 신뢰도 높음'), findsOneWidget);
-    expect(find.text('높음'), findsWidgets);
+    // 높음 needs nothing: said aloud, not shown.
+    expect(find.text('높음'), findsNothing);
     await _show(tester, find.byKey(const ValueKey('confidence-2-meaning')));
     expect(find.bySemanticsLabel('뜻 짝 신뢰도 낮음'), findsOneWidget);
     expect(find.text('낮음'), findsWidgets);

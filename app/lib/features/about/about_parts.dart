@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shiori/app/theme.dart';
@@ -37,7 +38,7 @@ class AboutLink extends StatelessWidget {
           ),
           IconButton(
             tooltip: '링크 복사',
-            icon: Icon(Icons.copy_rounded, size: 20, color: t.text2),
+            icon: Icon(CupertinoIcons.doc_on_doc, size: 20, color: t.text2),
             onPressed: () async {
               final messenger = ScaffoldMessenger.of(context);
               await Clipboard.setData(ClipboardData(text: url));
@@ -74,7 +75,7 @@ class AboutFact extends StatelessWidget {
                 ? const TextStyle(
                     fontFamily: 'Menlo',
                     fontFamilyFallback: ['monospace'],
-                    fontSize: 12,
+                    fontSize: TypeScale.caption,
                   )
                 : context.text.bodyMedium,
           ),

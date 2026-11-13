@@ -40,7 +40,7 @@ void main() {
 
     expect(find.byKey(const ValueKey('review-heading')), findsOneWidget);
     expect(find.text('단어 3개'), findsOneWidget);
-    expect(find.text('샘플 10쪽 · 판독 1.2초'), findsOneWidget);
+    expect(find.text('샘플 10쪽, 판독 1.2초'), findsOneWidget);
     expect(find.textContaining('DAY'), findsNothing);
     expect(find.text('쪽 정보 없음'), findsNothing);
     expect(find.text('쪽 정보'), findsNothing);

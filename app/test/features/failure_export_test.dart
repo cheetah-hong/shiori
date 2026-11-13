@@ -213,6 +213,6 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text(_export));
     await tester.pumpAndSettle();
-    expect(find.text('판독 기록을 내보내지 못했습니다'), findsOneWidget);
+    expect(find.text('판독 기록을 내보내지 못했어요'), findsOneWidget);
   });
 }

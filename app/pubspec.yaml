@@ -31,8 +31,8 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
+  # SF Symbols-like icons (MIT), the one icon set of the screens.
+  cupertino_icons: 1.0.8
   flutter_riverpod: ^3.3.2
   image_picker: ^1.2.4
   shiori_core:
@@ -121,6 +121,20 @@ flutter:
     # buttons say the data is missing, and release builds stop.
     - assets/voice/
     - assets/accent/
+    # The font's licence, shown on the licences page (lib/app/fonts.dart).
+    - assets/fonts/OFL.txt
+
+  # Pretendard JP 1.3.9 (SIL OFL 1.1), static weights 400, 600 and 700: the
+  # one typeface for Korean and Japanese (lib/app/fonts.dart).
+  fonts:
+    - family: PretendardJP
+      fonts:
+        - asset: assets/fonts/PretendardJP-Regular.otf
+          weight: 400
+        - asset: assets/fonts/PretendardJP-SemiBold.otf
+          weight: 600
+        - asset: assets/fonts/PretendardJP-Bold.otf
+          weight: 700
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

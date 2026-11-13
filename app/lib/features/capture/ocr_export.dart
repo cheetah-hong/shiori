@@ -9,6 +9,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
@@ -90,7 +91,7 @@ Future<void> shareOcrExport(
     await export.share(files);
   } on Exception catch (e) {
     debugPrint('OCR export failed: $e');
-    messenger?.showSnackBar(const SnackBar(content: Text('판독 기록을 내보내지 못했습니다')));
+    messenger?.showSnackBar(const SnackBar(content: Text('판독 기록을 내보내지 못했어요')));
   }
 }
 
@@ -110,7 +111,7 @@ class OcrExportButton extends ConsumerWidget {
     return IconButton(
       key: const ValueKey('export-ocr'),
       tooltip: ocrExportLabel,
-      icon: const Icon(Icons.ios_share),
+      icon: const Icon(CupertinoIcons.share),
       onPressed: () => unawaited(shareOcrExport(context, ref, scan)),
     );
   }
@@ -129,11 +130,10 @@ class OcrExportFailureButton extends ConsumerWidget {
     if (!ref.watch(ocrExportProvider).enabled || scan == null) {
       return const SizedBox.shrink();
     }
-    return OutlinedButton.icon(
+    return OutlinedButton(
       key: const ValueKey('export-ocr-failed'),
-      icon: const Icon(Icons.ios_share, size: 18),
-      label: const Text(ocrExportLabel),
       onPressed: () => unawaited(shareOcrExport(context, ref, scan)),
+      child: const Text(ocrExportLabel),
     );
   }
 }

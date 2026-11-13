@@ -31,7 +31,7 @@ class EmptyNote extends StatelessWidget {
               title,
               style: TextStyle(
                 color: t.text2,
-                fontSize: 17,
+                fontSize: TypeScale.body,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -39,7 +39,11 @@ class EmptyNote extends StatelessWidget {
               const SizedBox(height: Space.xs),
               Text(
                 body,
-                style: TextStyle(color: t.text3, fontSize: 15, height: 1.45),
+                style: TextStyle(
+                  color: t.text3,
+                  fontSize: TypeScale.body2,
+                  height: 1.45,
+                ),
               ),
             ],
             if (action case final action?) ...[
@@ -76,11 +80,7 @@ class LoadFailure extends StatelessWidget {
             ),
           ),
           const SizedBox(height: Space.md),
-          TextButton.icon(
-            onPressed: onRetry,
-            icon: const Icon(Icons.refresh),
-            label: const Text('다시 불러오기'),
-          ),
+          TextButton(onPressed: onRetry, child: const Text('다시 불러오기')),
         ],
       ),
     ),

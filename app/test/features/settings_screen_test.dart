@@ -1,6 +1,6 @@
 // 설정: the study options. Only the shared record and 전체 + 재생목록 are
-// built; the other choices are not offered, only said to be 준비 중 at the
-// end of their section.
+// built; the other choices are not offered (no row, no notice).
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shiori/features/settings/settings_screen.dart';
@@ -16,7 +16,7 @@ void main() {
     find.descendant(
       of: row(title),
       // The chosen row carries a check on its right.
-      matching: find.byIcon(Icons.check),
+      matching: find.byIcon(CupertinoIcons.checkmark),
     ),
   );
 
@@ -35,8 +35,7 @@ void main() {
     expect(isSelected(tester, '재생목록마다 따로'), isFalse);
     expect(isSelected(tester, '전체 복습 + 재생목록 골라 학습'), isTrue);
     expect(isSelected(tester, '항상 재생목록 하나씩'), isFalse);
-    expect(find.text('재생목록마다 따로 기록하기는 준비 중이에요.'), findsOneWidget);
-    expect(find.text('항상 재생목록 하나씩 학습하기는 준비 중이에요.'), findsOneWidget);
+    expect(find.textContaining('준비 중'), findsNothing);
   });
 
   testWidgets('screen readers hear which choice is on', (tester) async {
@@ -62,11 +61,10 @@ void main() {
     await tester.pumpWidget(screen(blocks, const SettingsScreen()));
     await tester.pumpAndSettle();
 
-    // Not offered as rows: only a line says they are coming.
+    // Not offered as rows, so nothing can store them.
     expect(row('재생목록마다 따로'), findsNothing);
     expect(row('항상 재생목록 하나씩'), findsNothing);
-    await tester.tap(find.text('재생목록마다 따로 기록하기는 준비 중이에요.'));
-    await tester.pumpAndSettle();
+    expect(find.textContaining('재생목록마다 따로'), findsNothing);
     expect(await blocks.preferences.load(), const StudyPreferences());
   });
 

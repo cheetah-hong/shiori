@@ -65,10 +65,8 @@ void main() {
       // Every new word goes in: no 「· n개 중」, and the memo adds up to all.
       expect(find.text('38개'), findsOneWidget);
       expect(find.textContaining('개 중'), findsNothing);
-      expect(
-        find.textContaining('복습 2장을 먼저, 남은 38장은 새 단어로 — 오늘 40장.'),
-        findsOneWidget,
-      );
+      expect(find.text('2개'), findsOneWidget);
+      expect(find.textContaining('— 오늘'), findsNothing);
     });
 
     testWidgets('the count follows a goal picked meanwhile', (tester) async {

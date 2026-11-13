@@ -1,12 +1,13 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/data.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/shared/action_sheet.dart';
 import 'package:shiori/features/playlists/playlist_actions.dart';
 import 'package:shiori/features/playlists/playlist_names.dart';
 import 'package:shiori/shared/ruled.dart';
-import 'package:shiori/shared/sheet.dart';
 import 'package:shiori/shared/states.dart';
 import 'package:shiori_core/shiori_core.dart';
 
@@ -91,7 +92,7 @@ class PlaylistsScreen extends ConsumerWidget {
         actions: [
           IconButton(
             tooltip: '새 재생목록',
-            icon: const Icon(Icons.playlist_add),
+            icon: const Icon(CupertinoIcons.plus),
             onPressed: () => _create(context, ref),
           ),
         ],
@@ -136,11 +137,7 @@ class _List extends ConsumerWidget {
         child: EmptyNote(
           title: '재생목록이 없어요',
           body: '페이지를 등록하면서 만들거나, 여기서 먼저 만들 수 있어요.',
-          action: TextButton.icon(
-            onPressed: onCreate,
-            icon: const Icon(Icons.playlist_add),
-            label: const Text('새 재생목록'),
-          ),
+          action: TextButton(onPressed: onCreate, child: const Text('새 재생목록')),
         ),
       );
     }
@@ -152,8 +149,6 @@ class _List extends ConsumerWidget {
         Space.gutter,
         Space.xl,
       ),
-      // The list ends on a faint tear line, as a calendar page does.
-      footer: const TearLine(faint: true),
       // A row being dragged lifts as paper does: a fill, no shadow.
       proxyDecorator: (child, _, _) => Material(color: t.surface, child: child),
       itemCount: lists.length,
@@ -178,13 +173,16 @@ class _List extends ConsumerWidget {
                       name,
                       style: TextStyle(
                         color: t.text,
-                        fontSize: 17,
+                        fontSize: TypeScale.body,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     Text(
                       '단어 ${s.shownCount}개',
-                      style: TextStyle(color: t.text2, fontSize: 15),
+                      style: TextStyle(
+                        color: t.text2,
+                        fontSize: TypeScale.body2,
+                      ),
                     ),
                   ],
                 ),
@@ -200,7 +198,7 @@ class _List extends ConsumerWidget {
                 index: i,
                 child: Padding(
                   padding: const EdgeInsets.all(Space.sm),
-                  child: Icon(Icons.drag_handle, color: t.text3),
+                  child: Icon(CupertinoIcons.line_horizontal_3, color: t.text3),
                 ),
               ),
             ],
@@ -231,8 +229,18 @@ class _RowMenu extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final i = index;
     final s = stats;
-    return PopupMenuButton<_RowAction>(
+    return MoreButton<_RowAction>(
       tooltip: '$name 메뉴',
+      choices: () => [
+        if (i > 0) const SheetChoice(label: '위로 옮기기', value: _RowAction.up),
+        if (!last) const SheetChoice(label: '아래로 옮기기', value: _RowAction.down),
+        const SheetChoice(label: '이름 바꾸기', value: _RowAction.rename),
+        const SheetChoice(
+          label: '삭제',
+          value: _RowAction.delete,
+          destructive: true,
+        ),
+      ],
       onSelected: (action) async {
         switch (action) {
           case _RowAction.up:
@@ -250,14 +258,6 @@ class _RowMenu extends ConsumerWidget {
             );
         }
       },
-      itemBuilder: (_) => [
-        if (i > 0)
-          const PopupMenuItem(value: _RowAction.up, child: Text('위로 옮기기')),
-        if (!last)
-          const PopupMenuItem(value: _RowAction.down, child: Text('아래로 옮기기')),
-        const PopupMenuItem(value: _RowAction.rename, child: Text('이름 바꾸기')),
-        const PopupMenuItem(value: _RowAction.delete, child: Text('삭제')),
-      ],
     );
   }
 }

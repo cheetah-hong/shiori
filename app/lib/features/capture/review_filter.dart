@@ -1,5 +1,4 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
 import 'package:shiori/app/theme.dart';
 import 'package:shiori/shared/large_text.dart';
 import 'package:shiori/shared/ruled.dart';
@@ -75,8 +74,8 @@ class _Segment extends StatelessWidget {
         textAlign: TextAlign.center,
         style: TextStyle(
           color: context.tokens.text,
-          fontSize: 15,
-          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          fontSize: TypeScale.body2,
+          fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
         ),
       ),
     ),
@@ -115,11 +114,11 @@ class _FilterRow extends StatelessWidget {
                 label,
                 style: TextStyle(
                   color: onTap == null ? t.text3 : t.text,
-                  fontSize: 17,
+                  fontSize: TypeScale.body,
                 ),
               ),
             ),
-            if (selected) Icon(Icons.check, color: t.accentText),
+            if (selected) Icon(CupertinoIcons.checkmark, color: t.accentText),
           ],
         ),
       ),

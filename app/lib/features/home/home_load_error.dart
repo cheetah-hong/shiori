@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:shiori/app/theme.dart';
 
@@ -24,12 +25,12 @@ class HomeLoadError extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.error_outline, color: t.risk),
+          Icon(CupertinoIcons.exclamationmark_circle, color: t.risk),
           const SizedBox(width: Space.md),
           Expanded(
             child: Text(
               message,
-              style: TextStyle(color: t.risk, fontWeight: FontWeight.w700),
+              style: TextStyle(color: t.risk, fontWeight: FontWeight.w600),
             ),
           ),
           TextButton(onPressed: onRetry, child: const Text('다시 불러오기')),

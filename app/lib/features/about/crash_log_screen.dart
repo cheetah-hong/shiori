@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,12 +28,12 @@ class CrashLogScreen extends ConsumerWidget {
         actions: [
           IconButton(
             tooltip: '복사',
-            icon: const Icon(Icons.copy_rounded),
+            icon: const Icon(CupertinoIcons.doc_on_doc),
             onPressed: shown.isEmpty ? null : () => _copy(context, shown),
           ),
           IconButton(
             tooltip: '지우기',
-            icon: const Icon(Icons.delete_outline),
+            icon: const Icon(CupertinoIcons.delete),
             // Also when the log cannot be read: clearing is the way out.
             onPressed: shown.isEmpty && !records.hasError
                 ? null
@@ -162,7 +163,7 @@ class _ReportCard extends StatelessWidget {
               style: TextStyle(
                 fontFamily: 'Menlo',
                 fontFamilyFallback: const ['monospace'],
-                fontSize: 11,
+                fontSize: TypeScale.caption,
                 color: t.text2,
               ),
             ),

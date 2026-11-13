@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/app/blocks.dart';
@@ -52,10 +53,7 @@ class HomeScreen extends ConsumerWidget {
     } else if (plan == null) {
       body = const SizedBox(height: _loadingHeight);
     } else if (plan.canStudy || plan.canStudyMore) {
-      body = SheetMemo(
-        plan: plan,
-        shuffle: preferences?.shuffle ?? const StudyPreferences().shuffle,
-      );
+      body = SheetMemo(plan: plan);
     } else {
       // Nothing to press: said plainly, not as a dimmed button.
       body = SheetNothing(noWords: plan.wordCount == 0);
@@ -94,7 +92,7 @@ class HomeScreen extends ConsumerWidget {
                             )
                           : null,
                     ),
-                    WeekStrip(noWords: noWords),
+                    const WeekStrip(),
                     StudyOptions(
                       canPick:
                           ref.watch(playlistsProvider).value?.isNotEmpty ??
@@ -145,7 +143,7 @@ class _TopBar extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: t.text,
-                  fontSize: 17,
+                  fontSize: TypeScale.body,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -158,13 +156,13 @@ class _TopBar extends StatelessWidget {
               children: [
                 IconButton(
                   tooltip: '설정',
-                  icon: Icon(Icons.settings_outlined, color: t.accentText),
+                  icon: Icon(CupertinoIcons.gear, color: t.accentText),
                   onPressed: () =>
                       pushScreen<void>(context, const SettingsScreen()),
                 ),
                 IconButton(
                   tooltip: '정보',
-                  icon: Icon(Icons.info_outline, color: t.accentText),
+                  icon: Icon(CupertinoIcons.info_circle, color: t.accentText),
                   onPressed: () =>
                       pushScreen<void>(context, const AboutScreen()),
                 ),

@@ -1,7 +1,10 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/app/data.dart';
+import 'package:shiori/app/fonts.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/shared/action_sheet.dart';
 import 'package:shiori/features/study/study_mode_labels.dart';
 import 'package:shiori/features/study/study_mode_pick.dart';
 import 'package:shiori/features/study/study_scope_sheet.dart';
@@ -45,7 +48,7 @@ class StudyOptions extends StatelessWidget {
             if (canPick)
               DecoratedBox(
                 decoration: BoxDecoration(border: Border(top: rule)),
-                child: TextButton.icon(
+                child: TextButton(
                   onPressed: () => _pickPlaylist(context),
                   style: TextButton.styleFrom(
                     minimumSize: const Size.fromHeight(_rowHeight),
@@ -53,12 +56,13 @@ class StudyOptions extends StatelessWidget {
                     padding: EdgeInsets.zero,
                     shape: const RoundedRectangleBorder(),
                     textStyle: const TextStyle(
-                      fontSize: 17,
+                      fontFamily: AppFonts.family,
+                      fontFamilyFallback: AppFonts.fallback,
+                      fontSize: TypeScale.body,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  icon: const Icon(Icons.queue_music_outlined),
-                  label: const Text('재생목록 골라 학습'),
+                  child: const Text('재생목록 골라 학습'),
                 ),
               ),
           ],
@@ -70,10 +74,9 @@ class StudyOptions extends StatelessWidget {
 
 const double _rowHeight = 50;
 
-/// 「학습 방식 · 뜻 맞히기 ↕」: opens a menu of the four ways. A way that
-/// cannot be studied now says why, there (and under the row once there are
-/// words), and picking it
-/// changes nothing.
+/// 「학습 방식  뜻 맞히기 ↕」: opens an action sheet of the four ways. A way
+/// that cannot be studied now says why, there (and under the row once there
+/// are words), and picking it changes nothing.
 class StudyModeRow extends ConsumerWidget {
   const StudyModeRow({super.key, this.showBlockers = true});
 
@@ -96,48 +99,50 @@ class StudyModeRow extends ConsumerWidget {
         ),
     };
 
+    Future<void> open() async {
+      final picked = await showChoices<StudyMode>(
+        context,
+        title: '학습 방식',
+        choices: [
+          for (final mode in StudyMode.values)
+            SheetChoice(
+              label: StudyModeLabels.name(mode),
+              value: mode,
+              selected: mode == current,
+              detail: blockers[mode],
+            ),
+        ],
+      );
+      if (picked == null || !context.mounted) return;
+      await pickStudyMode(
+        context,
+        ref,
+        picked,
+        available: blockers[picked] == null,
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        MenuAnchor(
-          // Under the current way on the right, as an iOS pop-up button.
-          style: const MenuStyle(alignment: AlignmentDirectional.bottomEnd),
-          menuChildren: [
-            for (final mode in StudyMode.values)
-              _ModeItem(
-                mode: mode,
-                selected: mode == current,
-                blocker: blockers[mode],
-                onPressed: () => pickStudyMode(
-                  context,
-                  ref,
-                  mode,
-                  available: blockers[mode] == null,
-                ),
+        Semantics(
+          container: true,
+          button: true,
+          label: name == null ? '학습 방식' : '학습 방식, $name',
+          excludeSemantics: true,
+          // The InkWell's tap goes with its excluded subtree: VoiceOver,
+          // Switch Control and Full Keyboard Access press through here.
+          onTap: open,
+          child: InkWell(
+            onTap: open,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: _rowHeight),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: Space.sm),
+                child: _ModeRowContent(name: name),
               ),
-          ],
-          builder: (context, controller, _) {
-            void toggle() =>
-                controller.isOpen ? controller.close() : controller.open();
-            return Semantics(
-              container: true,
-              button: true,
-              expanded: controller.isOpen,
-              label: name == null ? '학습 방식' : '학습 방식, $name',
-              excludeSemantics: true,
-              onTap: toggle,
-              child: InkWell(
-                onTap: toggle,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: _rowHeight),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: Space.sm),
-                    child: _ModeRowContent(name: name),
-                  ),
-                ),
-              ),
-            );
-          },
+            ),
+          ),
         ),
         // Only once the modes are known: a guess could name a way that can
         // be picked.
@@ -154,8 +159,11 @@ class StudyModeRow extends ConsumerWidget {
                   hint: why,
                   child: ExcludeSemantics(
                     child: Text(
-                      '${StudyModeLabels.name(mode)} — $why',
-                      style: TextStyle(color: t.text3, fontSize: 13),
+                      '${StudyModeLabels.name(mode)}: $why',
+                      style: TextStyle(
+                        color: t.text3,
+                        fontSize: TypeScale.small,
+                      ),
                     ),
                   ),
                 ),
@@ -179,7 +187,10 @@ class _ModeRowContent extends StatelessWidget {
       crossAxisAlignment: WrapCrossAlignment.center,
       spacing: Space.sm,
       children: [
-        Text('학습 방식', style: TextStyle(color: t.text, fontSize: 17)),
+        Text(
+          '학습 방식',
+          style: TextStyle(color: t.text, fontSize: TypeScale.body),
+        ),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -189,79 +200,20 @@ class _ModeRowContent extends StatelessWidget {
                   name,
                   style: TextStyle(
                     color: t.accentText,
-                    fontSize: 17,
+                    fontSize: TypeScale.body,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
             const SizedBox(width: Space.xs),
-            Icon(Icons.unfold_more, size: 20, color: t.accentText),
+            Icon(
+              CupertinoIcons.chevron_up_chevron_down,
+              size: 20,
+              color: t.accentText,
+            ),
           ],
         ),
       ],
     );
   }
 }
-
-class _ModeItem extends StatelessWidget {
-  const _ModeItem({
-    required this.mode,
-    required this.selected,
-    required this.blocker,
-    required this.onPressed,
-  });
-
-  final StudyMode mode;
-  final bool selected;
-
-  /// Why it cannot be picked now; null when it can.
-  final String? blocker;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-    final why = blocker;
-    return Semantics(
-      selected: selected,
-      child: MenuItemButton(
-        onPressed: onPressed,
-        trailingIcon: selected
-            ? Icon(Icons.check, size: 20, color: t.accentText)
-            : null,
-        child: Semantics(
-          hint: why,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: _menuTextWidth),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  StudyModeLabels.name(mode),
-                  style: TextStyle(
-                    color: why == null ? t.text : t.text3,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  ),
-                ),
-                if (why != null)
-                  ExcludeSemantics(
-                    child: Text(
-                      why,
-                      style: TextStyle(
-                        color: t.text3,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-const double _menuTextWidth = 240;

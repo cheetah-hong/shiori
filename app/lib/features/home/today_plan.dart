@@ -52,19 +52,10 @@ final class TodayPlan {
     return left < fresh ? left : fresh;
   }
 
-  /// 「· 13개 중」 after today's new words when not all of them fit.
-  String? get freshOutOf => freshToday < fresh ? ' · $fresh개 중' : null;
+  /// 「13개 중」 before today's new words when not all of them fit.
+  String? get freshOutOf => freshToday < fresh ? '$fresh개 중 ' : null;
 
-  /// The line under the memo rows: how today's cards add up, or what
-  /// 더 학습하기 brings forward. Null when there is nothing to study.
-  String? line({required bool shuffle}) {
-    if (canStudyMore) return RestudyLabels.moreHint(moreCards);
-    if (!canStudy) return null;
-    final sum = due >= cards
-        ? '복습 $cards장 — 오늘 $cards장.'
-        : due == 0
-        ? '새 단어 $cards장 — 오늘 $cards장.'
-        : '복습 $due장을 먼저, 남은 ${cards - due}장은 새 단어로 — 오늘 $cards장.';
-    return shuffle ? '$sum 순서는 섞어서 보여요.' : sum;
-  }
+  /// The line under the memo rows: what 더 학습하기 brings forward. Null
+  /// otherwise (the rows say what today holds).
+  String? line() => canStudyMore ? RestudyLabels.moreHint(moreCards) : null;
 }

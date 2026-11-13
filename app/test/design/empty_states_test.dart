@@ -147,7 +147,7 @@ void main() {
     expect(find.text('페이지를 등록하면서 만들거나, 여기서 먼저 만들 수 있어요.'), findsOneWidget);
     await tester.tap(_button('새 재생목록'));
     await tester.pumpAndSettle();
-    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.byWidgetPredicate((w) => w is AlertDialog), findsOneWidget);
   });
 
   testWidgets('a playlist with nothing to study: a message, not a button', (

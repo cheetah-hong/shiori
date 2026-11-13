@@ -123,6 +123,7 @@ class SheetMemoRow extends StatelessWidget {
     required this.label,
     required this.value,
     this.unit = '',
+    this.lead,
     this.valueColor,
     this.last = false,
     this.trailing,
@@ -135,6 +136,9 @@ class SheetMemoRow extends StatelessWidget {
 
   /// After the value, small: 「개」, 「번」, 「개 · 13개 중」.
   final String unit;
+
+  /// Small words before the value (「13개 중 」).
+  final String? lead;
 
   /// Ink unless the row reports a problem.
   final Color? valueColor;
@@ -150,7 +154,7 @@ class SheetMemoRow extends StatelessWidget {
     final t = context.tokens;
     final unitStyle = TextStyle(
       color: t.text2,
-      fontSize: 15,
+      fontSize: TypeScale.body2,
       fontWeight: FontWeight.w600,
     );
     return DecoratedBox(
@@ -169,16 +173,21 @@ class SheetMemoRow extends StatelessWidget {
                   crossAxisAlignment: WrapCrossAlignment.center,
                   spacing: Space.sm,
                   children: [
-                    Text(label, style: TextStyle(color: t.text, fontSize: 17)),
+                    Text(
+                      label,
+                      style: TextStyle(color: t.text, fontSize: TypeScale.body),
+                    ),
                     Text.rich(
                       TextSpan(
                         children: [
+                          if (lead case final lead?)
+                            TextSpan(text: lead, style: unitStyle),
                           TextSpan(
                             text: value,
                             style: TextStyle(
                               color: valueColor ?? t.text,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
+                              fontSize: TypeScale.title,
+                              fontWeight: FontWeight.w600,
                               fontFeatures: const [
                                 FontFeature.tabularFigures(),
                               ],

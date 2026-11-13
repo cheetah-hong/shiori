@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/shared/keep_words.dart';
 import 'package:shiori/features/study/restudy_labels.dart';
 import 'package:shiori/shared/format.dart';
 import 'package:shiori/shared/sheet.dart';
@@ -24,7 +25,8 @@ class SessionDone extends ConsumerWidget {
     final elapsed =
         session.elapsed ??
         ref.read(clockProvider).now().difference(session.startedAt);
-    // Scrolls when the text is large; otherwise the spacers place it.
+    // Scrolls when the text is large; otherwise the spacers centre the
+    // sheet in the space above the buttons.
     return LayoutBuilder(
       builder: (context, box) => SingleChildScrollView(
         padding: const EdgeInsets.all(Space.gutter),
@@ -39,19 +41,21 @@ class SessionDone extends ConsumerWidget {
                 const Spacer(),
                 Semantics(
                   header: true,
-                  child: Text('오늘 학습 끝', style: context.text.headlineSmall),
+                  child: KeepWordsText(
+                    '오늘 학습 끝',
+                    style: context.text.headlineSmall,
+                  ),
                 ),
                 const SizedBox(height: Space.md),
                 SheetFrame(
                   padding: const EdgeInsets.fromLTRB(14, Space.xs, 14, 0),
                   child: _Numbers(session: session, elapsed: elapsed),
                 ),
-                const Spacer(flex: 2),
+                const Spacer(),
                 if (onMore case final more?) ...[
-                  OutlinedButton.icon(
+                  OutlinedButton(
                     onPressed: more,
-                    icon: const Icon(Icons.replay_rounded),
-                    label: const Text(RestudyLabels.more),
+                    child: const Text(RestudyLabels.more),
                   ),
                   const SizedBox(height: Space.sm),
                 ],

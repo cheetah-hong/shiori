@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/adapters/dev_samples.dart';
@@ -56,7 +57,7 @@ class CaptureScreen extends ConsumerWidget {
               ),
               children: [
                 Text(
-                  '교재 한 쪽을 위에서 똑바로 찍어 주세요.\n사진 속 일본어 단어와 읽기·뜻을 내용으로 짝지어 모읍니다.',
+                  '교재 한 쪽을 위에서 똑바로 찍어 주세요.',
                   style: context.text.bodyMedium?.copyWith(
                     color: t.text2,
                     height: 1.55,
@@ -80,13 +81,13 @@ class CaptureScreen extends ConsumerWidget {
                       '개발용',
                       style: TextStyle(
                         color: t.warn,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
+                        fontSize: TypeScale.small,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
                   Text(
-                    '미리 판독해 둔 교재 쪽으로 등록 흐름을 끝까지 볼 수 있어요. 배포판에는 들어가지 않습니다.',
+                    '미리 판독해 둔 교재 쪽으로 등록 흐름을 끝까지 볼 수 있어요. 배포판에는 없어요.',
                     style: context.text.bodySmall?.copyWith(height: 1.5),
                   ),
                   const SizedBox(height: Space.sm),
@@ -109,14 +110,12 @@ class CaptureScreen extends ConsumerWidget {
       bottomNavigationBar: BottomActionBar(
         secondary: BarAction(
           label: '앨범에서 고르기',
-          icon: Icons.photo_library_outlined,
           onPressed: busy
               ? null
               : () => unawaited(controller.pick(ImageOrigin.gallery)),
         ),
         primary: BarPrimaryButton(
           label: '카메라로 찍기',
-          icon: Icons.photo_camera_outlined,
           onPressed: busy
               ? null
               : () => unawaited(controller.pick(ImageOrigin.camera)),
@@ -164,8 +163,8 @@ class _SampleTile extends StatelessWidget {
               '${sample.page}',
               style: TextStyle(
                 color: t.text,
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
+                fontSize: TypeScale.display,
+                fontWeight: FontWeight.w600,
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
@@ -177,7 +176,7 @@ class _SampleTile extends StatelessWidget {
                 Text(
                   sample.detail,
                   style: context.text.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 Text(
@@ -187,7 +186,7 @@ class _SampleTile extends StatelessWidget {
               ],
             ),
           ),
-          Icon(Icons.chevron_right, color: t.text3),
+          Icon(CupertinoIcons.chevron_forward, color: t.text3),
         ],
       ),
     );
@@ -221,7 +220,11 @@ class _FailureNote extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.error_outline, color: t.risk, size: 20),
+            Icon(
+              CupertinoIcons.exclamationmark_circle,
+              color: t.risk,
+              size: 20,
+            ),
             const SizedBox(width: Space.md),
             Expanded(
               child: Column(
@@ -237,10 +240,9 @@ class _FailureNote extends StatelessWidget {
                   ),
                   if (onRetake case final retake?) ...[
                     const SizedBox(height: Space.md),
-                    OutlinedButton.icon(
+                    OutlinedButton(
                       onPressed: retake,
-                      icon: const Icon(Icons.photo_camera_outlined),
-                      label: const Text('다시 찍기'),
+                      child: const Text('다시 찍기'),
                     ),
                   ],
                   if (scan != null) ...[
@@ -288,19 +290,19 @@ class _ReadingOverlay extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.highlight_outlined, color: t.accentText),
+                  Icon(CupertinoIcons.viewfinder, color: t.accentText),
                   const SizedBox(height: Space.md),
                   Text(
                     '글자를 읽는 중',
                     style: context.text.titleMedium?.copyWith(
                       color: t.text,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     '일본어와 한국어로 두 번 읽고 표를 정리해요',
-                    style: TextStyle(color: t.text2, fontSize: 13),
+                    style: TextStyle(color: t.text2, fontSize: TypeScale.small),
                   ),
                   const SizedBox(height: Space.lg),
                   LinearProgressIndicator(

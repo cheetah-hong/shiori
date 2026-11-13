@@ -45,7 +45,7 @@ class FragmentTray extends StatelessWidget {
           Text(
             '짝 없는 조각 ${fragments.length}',
             style: context.text.titleSmall?.copyWith(
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: Space.xs),
@@ -61,10 +61,12 @@ class FragmentTray extends StatelessWidget {
               for (final f in fragments)
                 ActionChip(
                   key: ValueKey('fragment-${f.id}'),
-                  label: Text(
-                    f.text,
-                    style: f.isJapanese ? JpType.gothic(15, t.text) : null,
-                  ),
+                  label: f.isJapanese
+                      ? JpText(
+                          f.text,
+                          style: JpType.body(TypeScale.body2, t.text),
+                        )
+                      : Text(f.text),
                   tooltip: '${f.text} 쓰기',
                   backgroundColor: t.bg,
                   side: BorderSide(color: t.outline),
@@ -127,12 +129,11 @@ class _FragmentSheetState extends State<_FragmentSheet> {
         children: [
           Text('「${f.text}」 쓰기', style: context.text.titleLarge),
           const SizedBox(height: Space.md),
-          FilledButton.tonalIcon(
+          FilledButton.tonal(
             key: const ValueKey('new-entry-from-fragment'),
             onPressed: () =>
                 Navigator.of(context).pop(const NewEntryFromFragment()),
-            icon: const Icon(Icons.add),
-            label: const Text('새 단어로 만들기'),
+            child: const Text('새 단어로 만들기'),
           ),
           const SizedBox(height: Space.lg),
           Text('단어의 칸에 붙이기', style: context.text.labelLarge),
@@ -160,7 +161,7 @@ class _FragmentSheetState extends State<_FragmentSheet> {
               contentPadding: EdgeInsets.zero,
               title: JpText(
                 e.headword.isEmpty ? '(표제어 없음)' : e.headword,
-                style: JpType.gothic(16, t.text),
+                style: JpType.body(TypeScale.body, t.text),
               ),
               subtitle: Text(
                 [

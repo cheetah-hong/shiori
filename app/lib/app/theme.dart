@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shiori/app/fonts.dart';
 
 /// Color tokens by role. Every widget reads colors from here; the values
 /// live only in [light] and [dark], so the palette changes in one place.
@@ -282,46 +283,56 @@ class _ReduceMotionState extends State<_ReduceMotion>
   }
 }
 
-/// Japanese type. Printed headwords use a Mincho face like the textbook;
-/// readings and examples a gothic face. Both carry the `ja` locale so kanji
-/// get Japanese glyph forms on a Korean phone.
+/// The type scale: every size a screen uses. Seven steps, from small print
+/// to the day numeral; headwords size themselves ([JpType.headword]).
+abstract final class TypeScale {
+  static const double caption = 12;
+  static const double small = 13;
+  static const double body2 = 15;
+  static const double body = 17;
+  static const double title = 20;
+  static const double display = 28;
+  static const double page = 96;
+}
+
+/// Three weights only: text, emphasis (labels, buttons, titles) and the
+/// display marks (the day numeral, headwords, a screen's one big title).
+abstract final class Weights {
+  static const FontWeight text = FontWeight.w400;
+  static const FontWeight emphasis = FontWeight.w600;
+  static const FontWeight display = FontWeight.w700;
+}
+
+/// Japanese type: the app's one typeface ([AppFonts]), marked Japanese so
+/// kanji take their Japanese forms on a Korean phone and VoiceOver reads
+/// them in Japanese.
 abstract final class JpType {
   static const Locale locale = Locale('ja', 'JP');
-  static const String _mincho = 'Hiragino Mincho ProN';
-  static const List<String> _minchoFallback = [
-    'Noto Serif CJK JP',
-    'Noto Serif JP',
-    'serif',
-  ];
-  static const String _gothic = 'Hiragino Sans';
-  static const List<String> _gothicFallback = [
-    'Noto Sans CJK JP',
-    'Noto Sans JP',
-    'sans-serif',
-  ];
 
-  static TextStyle print(
+  /// A headword or a word shown large.
+  static TextStyle headword(
     double size,
     Color color, {
-    FontWeight weight = FontWeight.w600,
+    FontWeight weight = Weights.display,
   }) => TextStyle(
-    fontFamily: _mincho,
-    fontFamilyFallback: _minchoFallback,
+    fontFamily: AppFonts.family,
+    fontFamilyFallback: AppFonts.fallback,
     fontSize: size,
     fontWeight: weight,
-    height: 1.15,
+    height: 1.2,
     color: color,
     locale: locale,
   );
 
-  static TextStyle gothic(
+  /// Readings, examples and other running Japanese text.
+  static TextStyle body(
     double size,
     Color color, {
-    FontWeight weight = FontWeight.w500,
+    FontWeight weight = Weights.text,
     double height = 1.6,
   }) => TextStyle(
-    fontFamily: _gothic,
-    fontFamilyFallback: _gothicFallback,
+    fontFamily: AppFonts.family,
+    fontFamilyFallback: AppFonts.fallback,
     fontSize: size,
     fontWeight: weight,
     height: height,
@@ -371,29 +382,65 @@ ThemeData buildTheme(Brightness brightness) {
     useMaterial3: true,
     colorScheme: scheme,
     brightness: brightness,
+    fontFamily: AppFonts.family,
+    fontFamilyFallback: AppFonts.fallback,
+    // Presses on iOS do not splash; buttons and rows answer with a press
+    // scale or a light highlight instead.
+    splashFactory: NoSplash.splashFactory,
   );
-  final text = base.textTheme.apply(bodyColor: t.text, displayColor: t.text);
+  final text = base.textTheme.apply(
+    bodyColor: t.text,
+    displayColor: t.text,
+    fontFamily: AppFonts.family,
+    fontFamilyFallback: AppFonts.fallback,
+  );
 
   return base.copyWith(
     scaffoldBackgroundColor: t.bg,
     extensions: [t],
     textTheme: text.copyWith(
       headlineLarge: text.headlineLarge?.copyWith(
-        fontWeight: FontWeight.w800,
-        letterSpacing: -0.8,
-        height: 1.15,
+        fontSize: TypeScale.display,
+        fontWeight: Weights.display,
+        letterSpacing: -0.6,
+        height: 1.2,
       ),
       headlineSmall: text.headlineSmall?.copyWith(
-        fontWeight: FontWeight.w800,
+        fontSize: 24,
+        fontWeight: Weights.emphasis,
         letterSpacing: -0.4,
       ),
       titleLarge: text.titleLarge?.copyWith(
-        fontWeight: FontWeight.w800,
+        fontSize: TypeScale.title,
+        fontWeight: Weights.emphasis,
         letterSpacing: -0.3,
       ),
-      titleMedium: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-      labelLarge: text.labelLarge?.copyWith(fontWeight: FontWeight.w800),
-      bodySmall: text.bodySmall?.copyWith(color: t.text3),
+      titleMedium: text.titleMedium?.copyWith(
+        fontSize: TypeScale.body,
+        fontWeight: Weights.emphasis,
+      ),
+      titleSmall: text.titleSmall?.copyWith(
+        fontSize: TypeScale.body2,
+        fontWeight: Weights.emphasis,
+      ),
+      bodyLarge: text.bodyLarge?.copyWith(fontSize: TypeScale.body),
+      bodyMedium: text.bodyMedium?.copyWith(fontSize: TypeScale.body2),
+      labelLarge: text.labelLarge?.copyWith(
+        fontSize: TypeScale.body2,
+        fontWeight: Weights.emphasis,
+      ),
+      labelMedium: text.labelMedium?.copyWith(
+        fontSize: TypeScale.small,
+        fontWeight: Weights.emphasis,
+      ),
+      labelSmall: text.labelSmall?.copyWith(
+        fontSize: TypeScale.caption,
+        fontWeight: Weights.emphasis,
+      ),
+      bodySmall: text.bodySmall?.copyWith(
+        fontSize: TypeScale.small,
+        color: t.text3,
+      ),
     ),
     appBarTheme: AppBarTheme(
       backgroundColor: t.bg,
@@ -405,9 +452,11 @@ ThemeData buildTheme(Brightness brightness) {
       // its buttons in the accent.
       centerTitle: true,
       titleTextStyle: TextStyle(
+        fontFamily: AppFonts.family,
+        fontFamilyFallback: AppFonts.fallback,
         color: t.text,
-        fontSize: 17,
-        fontWeight: FontWeight.w600,
+        fontSize: TypeScale.body,
+        fontWeight: Weights.emphasis,
       ),
       iconTheme: IconThemeData(color: t.accentText),
       actionsIconTheme: IconThemeData(color: t.accentText),
@@ -420,7 +469,12 @@ ThemeData buildTheme(Brightness brightness) {
         disabledForegroundColor: t.text3,
         minimumSize: const Size(48, 52),
         shape: buttonShape,
-        textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+        textStyle: const TextStyle(
+          fontFamily: AppFonts.family,
+          fontFamilyFallback: AppFonts.fallback,
+          fontWeight: Weights.emphasis,
+          fontSize: TypeScale.body2,
+        ),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
@@ -433,22 +487,33 @@ ThemeData buildTheme(Brightness brightness) {
         side: BorderSide.none,
         minimumSize: const Size(48, 48),
         shape: buttonShape,
-        textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+        textStyle: const TextStyle(
+          fontFamily: AppFonts.family,
+          fontFamilyFallback: AppFonts.fallback,
+          fontWeight: Weights.emphasis,
+          fontSize: TypeScale.body2,
+        ),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: t.accentText,
         minimumSize: const Size(48, 48),
-        textStyle: const TextStyle(fontWeight: FontWeight.w700),
+        textStyle: const TextStyle(
+          fontFamily: AppFonts.family,
+          fontFamilyFallback: AppFonts.fallback,
+          fontWeight: Weights.emphasis,
+        ),
       ),
     ),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
       backgroundColor: t.accent,
       foregroundColor: t.onAccent,
       extendedTextStyle: const TextStyle(
-        fontWeight: FontWeight.w800,
-        fontSize: 15,
+        fontFamily: AppFonts.family,
+        fontFamilyFallback: AppFonts.fallback,
+        fontWeight: Weights.emphasis,
+        fontSize: TypeScale.body2,
       ),
       shape: buttonShape,
     ),
@@ -457,10 +522,17 @@ ThemeData buildTheme(Brightness brightness) {
       selectedColor: t.accentTint,
       disabledColor: t.surface,
       side: BorderSide(color: t.outline),
-      labelStyle: TextStyle(color: t.text, fontWeight: FontWeight.w700),
+      labelStyle: TextStyle(
+        fontFamily: AppFonts.family,
+        fontFamilyFallback: AppFonts.fallback,
+        color: t.text,
+        fontWeight: Weights.emphasis,
+      ),
       secondaryLabelStyle: TextStyle(
+        fontFamily: AppFonts.family,
+        fontFamilyFallback: AppFonts.fallback,
         color: t.accentText,
-        fontWeight: FontWeight.w800,
+        fontWeight: Weights.emphasis,
       ),
       checkmarkColor: t.accentText,
       shape: buttonShape,
@@ -506,11 +578,20 @@ ThemeData buildTheme(Brightness brightness) {
         borderRadius: BorderRadius.circular(Radii.tile),
         borderSide: BorderSide(color: t.accent, width: 2),
       ),
-      labelStyle: TextStyle(color: t.text3),
+      labelStyle: TextStyle(
+        fontFamily: AppFonts.family,
+        fontFamilyFallback: AppFonts.fallback,
+        color: t.text3,
+      ),
     ),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: t.text,
-      contentTextStyle: TextStyle(color: t.bg, fontWeight: FontWeight.w600),
+      contentTextStyle: TextStyle(
+        fontFamily: AppFonts.family,
+        fontFamilyFallback: AppFonts.fallback,
+        color: t.bg,
+        fontWeight: Weights.emphasis,
+      ),
       actionTextColor: t.accentTint,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(

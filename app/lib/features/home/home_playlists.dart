@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/app/data.dart';
@@ -90,7 +91,7 @@ class _PlaylistRow extends StatelessWidget {
                         item.playlist.name,
                         style: TextStyle(
                           color: t.text,
-                          fontSize: 17,
+                          fontSize: TypeScale.body,
                           fontWeight: FontWeight.w600,
                         ),
                         maxLines: 1,
@@ -102,13 +103,16 @@ class _PlaylistRow extends StatelessWidget {
                           if (item.hiddenCount > 0)
                             HideLabels.hiddenCount(item.hiddenCount),
                         ].join(' · '),
-                        style: TextStyle(color: t.text2, fontSize: 15),
+                        style: TextStyle(
+                          color: t.text2,
+                          fontSize: TypeScale.body2,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(width: Space.xs),
-                Icon(Icons.chevron_right, color: t.text3),
+                Icon(CupertinoIcons.chevron_forward, color: t.text3),
               ],
             ),
           ),
@@ -126,6 +130,6 @@ class _EmptyShelf extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const EmptyNote(
     title: '페이지를 등록하고 재생목록에 단어를 모아 보세요',
-    body: '사진 속 일본어 단어와 읽기·품사·뜻, 예문을 모아요. 확인이 필요한 칸은 따로 표시해 드려요.',
+    body: '사진 속 일본어 단어와 읽기·품사·뜻, 예문을 모아요.',
   );
 }

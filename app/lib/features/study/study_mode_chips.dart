@@ -41,7 +41,7 @@ class StudyModeChips extends ConsumerWidget {
                   width: mode == current ? 1.5 : 1,
                 ),
                 labelStyle: TextStyle(
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                   color: mode == current
                       ? t.accentText
                       : (available.contains(mode) ? t.text : t.text3),

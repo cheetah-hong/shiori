@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/shared/keep_words.dart';
 import 'package:shiori_core/shiori_core.dart';
 
 /// A section heading on the page, as 홈's 「재생목록」: bold ink, more room
@@ -20,12 +21,12 @@ class SectionLabel extends StatelessWidget {
           Expanded(
             child: Semantics(
               header: true,
-              child: Text(
+              child: KeepWordsText(
                 text,
                 style: TextStyle(
                   color: t.text,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
+                  fontSize: TypeScale.title,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
@@ -73,8 +74,8 @@ class Pill extends StatelessWidget {
                 label,
                 style: TextStyle(
                   color: foreground,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
+                  fontSize: TypeScale.caption,
+                  fontWeight: FontWeight.w600,
                   height: 1.3,
                 ),
               ),
@@ -111,8 +112,8 @@ class PosBadge extends StatelessWidget {
             pos?.badge ?? '?',
             style: TextStyle(
               color: color,
-              fontSize: 11.5,
-              fontWeight: FontWeight.w800,
+              fontSize: TypeScale.caption,
+              fontWeight: FontWeight.w600,
               height: 1.25,
             ),
           ),
@@ -240,14 +241,14 @@ class HighlightedSentence extends StatelessWidget {
         : (sentence.contains(focus) ? focus : stemOf(focus));
     if (key.isNotEmpty && !sentence.contains(key)) key = '';
     if (key.isEmpty) {
-      return Text(sentence, style: style, textAlign: textAlign);
+      return JpText(sentence, style: style, textAlign: textAlign);
     }
 
     final start = sentence.indexOf(key);
     final mark = style.copyWith(
       background: Paint()..color = t.accentTint,
       color: t.text,
-      fontWeight: FontWeight.w700,
+      fontWeight: FontWeight.w600,
     );
     return Text.rich(
       TextSpan(
@@ -286,7 +287,11 @@ class BookSpine extends StatelessWidget {
       ),
       child: JpText(
         label,
-        style: JpType.print(15, t.accentText, weight: FontWeight.w800),
+        style: JpType.headword(
+          TypeScale.body2,
+          t.accentText,
+          weight: FontWeight.w600,
+        ),
       ),
     );
   }

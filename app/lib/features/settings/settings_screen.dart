@@ -87,7 +87,6 @@ class SettingsScreen extends ConsumerWidget {
             // (so the screen still shows what is on).
             if (value.recordMode == RecordMode.perPlaylist)
               const _Choice(title: '재생목록마다 따로', selected: true),
-            const _Upcoming('재생목록마다 따로 기록하기는 준비 중이에요.'),
             const Divider(),
             const _ResetAll(),
             const SectionLabel('학습 범위'),
@@ -103,7 +102,6 @@ class SettingsScreen extends ConsumerWidget {
             ),
             if (value.scopeMode == StudyScopeMode.playlistOnly)
               const _Choice(title: '항상 재생목록 하나씩', selected: true),
-            const _Upcoming('항상 재생목록 하나씩 학습하기는 준비 중이에요.'),
             const Divider(),
             const BackupSection(),
           ],
@@ -174,10 +172,10 @@ class _DailyGoalPicker extends StatelessWidget {
                       _label(g),
                       style: TextStyle(
                         color: context.tokens.text,
-                        fontSize: 15,
+                        fontSize: TypeScale.body2,
                         fontWeight: g == goal
-                            ? FontWeight.w700
-                            : FontWeight.w500,
+                            ? FontWeight.w600
+                            : FontWeight.w400,
                       ),
                     ),
                   ),
@@ -190,23 +188,6 @@ class _DailyGoalPicker extends StatelessWidget {
 }
 
 const double _segmentHeight = 44;
-
-/// A choice not built yet, folded into one small line at the end of its
-/// section.
-class _Upcoming extends StatelessWidget {
-  const _Upcoming(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(top: Space.xs, bottom: Space.md),
-    child: Text(
-      text,
-      style: TextStyle(color: context.tokens.text3, fontSize: 13),
-    ),
-  );
-}
 
 /// One choice of a group as an iOS check row (the chosen one has an accent
 /// check on the right), read as a radio button. Without [onTap] it is not
@@ -237,9 +218,12 @@ class _Choice extends StatelessWidget {
           contentPadding: EdgeInsets.zero,
           enabled: enabled,
           title: Text(title),
-          subtitle: Text(enabled ? subtitle ?? '' : '준비 중'),
+          subtitle: Text(enabled ? subtitle ?? '' : '아직 쓸 수 없어요'),
           trailing: selected
-              ? Icon(Icons.check, color: enabled ? t.accentText : t.text3)
+              ? Icon(
+                  CupertinoIcons.checkmark,
+                  color: enabled ? t.accentText : t.text3,
+                )
               : null,
           onTap: onTap,
         ),
@@ -307,7 +291,6 @@ class _ResetAll extends ConsumerWidget {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       enabled: enabled,
-      leading: const Icon(Icons.restart_alt),
       title: const Text(RestudyLabels.resetAll),
       subtitle: Text(
         enabled ? RestudyLabels.resetAllHint : RestudyLabels.nothingLearned,

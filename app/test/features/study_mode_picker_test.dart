@@ -188,7 +188,7 @@ void main() {
 
     await tester.tap(find.textContaining('오늘 학습 시작'));
     await tester.pumpAndSettle();
-    expect(find.text('오늘 학습 · 일본어 떠올리기'), findsOneWidget);
+    expect(find.text('일본어 떠올리기'), findsOneWidget);
   });
 
   testWidgets('the playlist screen has the same chips, the same mode', (

@@ -117,127 +117,117 @@ class _WordCardState extends State<WordCard> {
     return CardFrame(
       item: item,
       children: [
-        Expanded(
-          child: Center(
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CoveredPart(
-                    visible: _showReading,
-                    label: '읽기',
-                    onReveal: _toggleReading,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        JpText(
-                          readingsLabel(w.readings),
-                          style: JpType.gothic(17, t.text3, height: 1.3),
-                        ),
-                        if (_pitch case final pitch?) ...[
-                          const SizedBox(height: Space.xs),
-                          PitchLine(info: pitch),
-                        ],
-                      ],
+        CardBody(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CoveredPart(
+                visible: _showReading,
+                label: '읽기',
+                onReveal: _toggleReading,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    JpText(
+                      readingsLabel(w.readings),
+                      style: JpType.body(TypeScale.body, t.text3, height: 1.3),
                     ),
-                  ),
-                  const SizedBox(height: Space.xs),
-                  JpText(
-                    w.headword,
-                    style: JpType.print(
-                      headwordSize(w.headword),
-                      t.text,
-                      weight: FontWeight.w700,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: Space.md),
-                  CoveredPart(
-                    visible: _showMeaning,
-                    label: '뜻',
-                    onReveal: _openMeaning,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (w.pos != null) ...[
-                          PosBadge(w.pos),
-                          const SizedBox(width: Space.sm),
-                        ],
-                        Flexible(
-                          child: Text(
-                            w.meaning,
-                            style: context.text.titleLarge,
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (_example(w) case final ex?) ...[
-                    const SizedBox(height: Space.xl),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Flexible(
-                          child: ExampleSentence(
-                            sentence: ex.ja,
-                            focus: ex.surface ?? w.headword,
-                            style: JpType.gothic(15, t.text2, height: 1.75),
-                            onSpeak: _exampleLoading
-                                ? null
-                                : switch (widget.onSpeakExample) {
-                                    final play? => () => _speak(
-                                      play,
-                                      (on) => _exampleLoading = on,
-                                    ),
-                                    null => null,
-                                  },
-                          ),
-                        ),
-                        if (widget.onSpeakExample case final play?) ...[
-                          const SizedBox(width: Space.xs),
-                          SpeakButton(
-                            tooltip: '예문 듣기',
-                            loading: _exampleLoading,
-                            small: true,
-                            onPressed: () =>
-                                _speak(play, (on) => _exampleLoading = on),
-                          ),
-                        ],
-                      ],
-                    ),
-                    if (ex.ko ?? ex.en case final translation?) ...[
+                    if (_pitch case final pitch?) ...[
                       const SizedBox(height: Space.xs),
-                      CoveredPart(
-                        visible: _showMeaning,
-                        label: '번역',
-                        onReveal: _openMeaning,
-                        child: Text(
-                          translation,
-                          style: context.text.bodySmall?.copyWith(
-                            height: 1.5,
-                            fontStyle: ex.ko == null ? FontStyle.italic : null,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
+                      PitchLine(info: pitch),
                     ],
-                    if (ex.isFilled) ...[
-                      const SizedBox(height: Space.xs),
-                      Text(
-                        ex.ko == null && ex.en != null
-                            ? '예문: Tatoeba · 영어 번역'
-                            : '예문: Tatoeba',
-                        style: context.text.labelSmall?.copyWith(
-                          color: t.text3,
-                        ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: Space.xs),
+              CardHeadword(w.headword),
+              const SizedBox(height: Space.md),
+              CoveredPart(
+                visible: _showMeaning,
+                label: '뜻',
+                onReveal: _openMeaning,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (w.pos != null) ...[
+                      PosBadge(w.pos),
+                      const SizedBox(width: Space.sm),
+                    ],
+                    Flexible(
+                      child: Text(
+                        w.meaning,
+                        style: context.text.titleLarge,
                         textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (_example(w) case final ex?) ...[
+                const SizedBox(height: Space.xl),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: ExampleSentence(
+                        sentence: ex.ja,
+                        focus: ex.surface ?? w.headword,
+                        style: JpType.body(
+                          TypeScale.body2,
+                          t.text2,
+                          height: 1.75,
+                        ),
+                        onSpeak: _exampleLoading
+                            ? null
+                            : switch (widget.onSpeakExample) {
+                                final play? => () => _speak(
+                                  play,
+                                  (on) => _exampleLoading = on,
+                                ),
+                                null => null,
+                              },
+                      ),
+                    ),
+                    if (widget.onSpeakExample case final play?) ...[
+                      const SizedBox(width: Space.xs),
+                      SpeakButton(
+                        tooltip: '예문 듣기',
+                        loading: _exampleLoading,
+                        small: true,
+                        onPressed: () =>
+                            _speak(play, (on) => _exampleLoading = on),
                       ),
                     ],
                   ],
+                ),
+                if (ex.ko ?? ex.en case final translation?) ...[
+                  const SizedBox(height: Space.xs),
+                  CoveredPart(
+                    visible: _showMeaning,
+                    label: '번역',
+                    onReveal: _openMeaning,
+                    child: Text(
+                      translation,
+                      style: context.text.bodySmall?.copyWith(
+                        height: 1.5,
+                        fontStyle: ex.ko == null ? FontStyle.italic : null,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
                 ],
-              ),
-            ),
+                if (ex.isFilled) ...[
+                  const SizedBox(height: Space.xs),
+                  Text(
+                    ex.ko == null && ex.en != null
+                        ? '예문: Tatoeba · 영어 번역'
+                        : '예문: Tatoeba',
+                    style: context.text.labelSmall?.copyWith(color: t.text3),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ],
+            ],
           ),
         ),
         _RevealRow(

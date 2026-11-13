@@ -59,7 +59,10 @@ class _LevelsSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            JpText(word.headword, style: JpType.print(28, t.text)),
+            JpText(
+              word.headword,
+              style: JpType.headword(TypeScale.display, t.text),
+            ),
             const SizedBox(height: Space.xs),
             Text('학습 방식마다 기억 단계', style: context.text.bodySmall),
             const SizedBox(height: Space.md),
@@ -127,13 +130,13 @@ class _LevelRow extends StatelessWidget {
                           text: '  지금',
                           style: TextStyle(
                             color: t.accentText,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
+                            fontSize: TypeScale.small,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                     ],
                   ),
-                  style: TextStyle(color: t.text, fontSize: 17),
+                  style: TextStyle(color: t.text, fontSize: TypeScale.body),
                 ),
                 Row(
                   mainAxisSize: MainAxisSize.min,
@@ -146,7 +149,7 @@ class _LevelRow extends StatelessWidget {
                           : levelSaid(level),
                       style: TextStyle(
                         color: level == 0 ? t.text3 : t.text2,
-                        fontSize: 15,
+                        fontSize: TypeScale.body2,
                         fontWeight: FontWeight.w600,
                       ),
                     ),

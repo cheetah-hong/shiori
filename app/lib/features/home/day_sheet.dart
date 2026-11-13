@@ -78,43 +78,50 @@ class _DateHead extends StatelessWidget {
           // The numeral is the page itself: it grows with the text size
           // only so far, the words beside it keep growing.
           MediaQuery.withClampedTextScaling(
-            maxScaleFactor: _dayMaxScale,
+            maxScaleFactor: TextCaps.display,
             child: Text(
               '${today.day}',
+              key: const ValueKey('day-numeral'),
               style: TextStyle(
                 color: t.text,
-                fontSize: 96,
+                fontSize: TypeScale.page,
                 height: 0.92,
-                fontWeight: FontWeight.w800,
+                fontWeight: Weights.display,
                 letterSpacing: -3.8,
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.only(bottom: Space.xs),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${today.month}월',
-                  style: TextStyle(
-                    color: t.text2,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
+          // The month and weekday stay under the numeral: they grow only so
+          // far, or the page would lose its one big mark.
+          CappedText(
+            max: TextCaps.label,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: Space.xs),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${today.month}월',
+                    style: TextStyle(
+                      color: t.text2,
+                      fontSize: TypeScale.body,
+                      fontWeight: Weights.text,
+                    ),
                   ),
-                ),
-                Text(
-                  weekdayName(today),
-                  style: TextStyle(
-                    color: t.text,
-                    fontSize: 28,
-                    height: 1.2,
-                    fontWeight: FontWeight.w800,
+                  Text(
+                    weekdayName(today),
+                    key: const ValueKey('day-weekday'),
+                    style: TextStyle(
+                      color: t.text,
+                      fontSize: TypeScale.display,
+                      height: 1.2,
+                      fontWeight: Weights.emphasis,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
@@ -123,22 +130,17 @@ class _DateHead extends StatelessWidget {
   }
 }
 
-const double _dayMaxScale = 1.4;
-
 /// Today's numbers as memo rows (label left, value right, ruled between),
 /// and how they add up to today's session.
 class SheetMemo extends StatelessWidget {
-  const SheetMemo({super.key, required this.plan, required this.shuffle});
+  const SheetMemo({super.key, required this.plan});
 
   final TodayPlan plan;
-
-  /// 카드 순서 섞기 is on (said in the line under the rows).
-  final bool shuffle;
 
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final line = plan.line(shuffle: shuffle);
+    final line = plan.line();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -147,8 +149,9 @@ class SheetMemo extends StatelessWidget {
             SheetMemoRow(label: '복습할 단어', value: '${plan.due}', unit: '개'),
             SheetMemoRow(
               label: '새 단어',
+              lead: plan.freshOutOf,
               value: '${plan.freshToday}',
-              unit: '개${plan.freshOutOf ?? ''}',
+              unit: '개',
               last: true,
             ),
           ],
@@ -157,7 +160,11 @@ class SheetMemo extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             line,
-            style: TextStyle(color: t.text2, fontSize: 15, height: 1.35),
+            style: TextStyle(
+              color: t.text2,
+              fontSize: TypeScale.body2,
+              height: 1.35,
+            ),
           ),
         ],
       ],
@@ -217,15 +224,17 @@ class KnownToday extends StatelessWidget {
           '오늘 $count개 외움',
           style: TextStyle(
             color: t.text,
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
+            fontSize: TypeScale.small,
+            fontWeight: FontWeight.w600,
           ),
         ),
         if (modeName case final name?)
           Text(
             name,
             key: const ValueKey('known-today-mode'),
-            style: context.text.bodySmall?.copyWith(fontSize: 11),
+            style: context.text.bodySmall?.copyWith(
+              fontSize: TypeScale.caption,
+            ),
           ),
       ],
     );

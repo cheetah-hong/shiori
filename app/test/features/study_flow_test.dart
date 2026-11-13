@@ -10,6 +10,7 @@ void main() {
   testWidgets('new cards: preview, retry to the back, reveal, finish', (
     tester,
   ) async {
+    final semantics = tester.ensureSemantics();
     usePhoneSize(tester);
     final blocks = TestBlocks();
     await blocks.seedPage('s140'); // 6 entry-layout words with examples
@@ -31,7 +32,7 @@ void main() {
     expect(find.text('0 / 3'), findsOneWidget);
     expect(find.text('새 단어'), findsOneWidget);
     expect(find.text('21일 후'), findsOneWidget);
-    expect(find.text('뜻 가림'), findsOneWidget);
+    expect(find.bySemanticsLabel('뜻 가림'), findsOneWidget);
 
     await tester.tap(find.text('뜻 보기'));
     await tester.pumpAndSettle();
@@ -42,7 +43,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('0 / 3'), findsOneWidget);
     expect(
-      find.text('뜻 가림'),
+      find.bySemanticsLabel('뜻 가림'),
       findsOneWidget,
       reason: 'the next card starts covered',
     );
@@ -67,6 +68,7 @@ void main() {
     await tester.tap(find.text('확인'));
     await tester.pumpAndSettle();
     expect(find.text('오늘 3개 외움'), findsOneWidget);
+    semantics.dispose();
   });
 
   testWidgets('a due review card shows its level and comes first', (
@@ -86,7 +88,7 @@ void main() {
     );
     await tester.pumpWidget(screen(blocks, const StudyScreen()));
     await tester.pumpAndSettle();
-    expect(find.text('복습 · 2단계'), findsOneWidget);
+    expect(find.text('복습 2단계'), findsOneWidget);
     expect(find.text('7일 후'), findsOneWidget);
   });
 

@@ -184,7 +184,6 @@ class _BackupSectionState extends ConsumerState<BackupSection> {
           builder: (row) => ListTile(
             contentPadding: EdgeInsets.zero,
             enabled: enabled,
-            leading: const Icon(Icons.ios_share),
             title: const Text(BackupLabels.export),
             subtitle: const Text(BackupLabels.exportHint),
             onTap: () => unawaited(_run(() => _export(_originOf(row)))),
@@ -193,7 +192,6 @@ class _BackupSectionState extends ConsumerState<BackupSection> {
         ListTile(
           contentPadding: EdgeInsets.zero,
           enabled: enabled,
-          leading: const Icon(Icons.settings_backup_restore),
           title: const Text(BackupLabels.restore),
           subtitle: const Text(BackupLabels.restoreHint),
           onTap: () => unawaited(_run(_restore)),
@@ -202,7 +200,6 @@ class _BackupSectionState extends ConsumerState<BackupSection> {
           ListTile(
             contentPadding: EdgeInsets.zero,
             enabled: enabled,
-            leading: const Icon(Icons.undo),
             title: const Text(BackupLabels.undo),
             subtitle: Text(BackupLabels.kept(keptAt)),
             onTap: () => unawaited(_run(() => _undo(keptAt))),

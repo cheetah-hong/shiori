@@ -47,31 +47,26 @@ class _RecallCardState extends State<RecallCard> with CardSpeech {
       item: widget.item,
       children: [
         // The question heads the sheet, where 홈 has the day's number.
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, box) => SingleChildScrollView(
-              padding: EdgeInsets.only(top: box.maxHeight * _questionTop),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (w.pos != null) ...[
-                    Align(
-                      alignment: AlignmentDirectional.centerStart,
-                      child: PosBadge(w.pos),
-                    ),
-                    const SizedBox(height: Space.sm),
-                  ],
-                  _Question(meaning: w.meaning),
-                  const SizedBox(height: Space.lg),
-                  if (!_shown)
-                    HiddenPart(label: '일본어', onReveal: _toggle)
-                  else
-                    _Answer(word: w, pitch: widget.pitch),
-                  if (w.example case final example?)
-                    _example(example, w.headword),
-                ],
-              ),
-            ),
+        CardBody(
+          top: _questionTop,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (w.pos != null) ...[
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: PosBadge(w.pos),
+                ),
+                const SizedBox(height: Space.sm),
+              ],
+              _Question(meaning: w.meaning),
+              const SizedBox(height: Space.lg),
+              if (!_shown)
+                HiddenPart(label: '일본어', onReveal: _toggle)
+              else
+                _Answer(word: w, pitch: widget.pitch),
+              if (w.example case final example?) _example(example, w.headword),
+            ],
           ),
         ),
         Row(
@@ -108,7 +103,7 @@ class _RecallCardState extends State<RecallCard> with CardSpeech {
                 child: ExampleSentence(
                   sentence: example.ja,
                   focus: headword,
-                  style: JpType.gothic(15, t.text2, height: 1.75),
+                  style: JpType.body(TypeScale.body2, t.text2, height: 1.75),
                   textAlign: TextAlign.start,
                   onSpeak: play == null || _exampleLoading
                       ? null
@@ -156,7 +151,7 @@ class _Question extends StatelessWidget {
           color: t.text,
           fontSize: meaning.runes.length <= _shortQuestion ? 48 : 40,
           height: 1.15,
-          fontWeight: FontWeight.w800,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -181,20 +176,13 @@ class _Answer extends StatelessWidget {
       children: [
         JpText(
           readingsLabel(word.readings),
-          style: JpType.gothic(17, t.text3, height: 1.3),
+          style: JpType.body(TypeScale.body, t.text3, height: 1.3),
         ),
         if (pitch case final p?) ...[
           const SizedBox(height: Space.xs),
           PitchLine(info: p),
         ],
-        JpText(
-          word.headword,
-          style: JpType.print(
-            headwordSize(word.headword),
-            t.text,
-            weight: FontWeight.w700,
-          ),
-        ),
+        CardHeadword(word.headword, textAlign: TextAlign.start),
       ],
     );
   }

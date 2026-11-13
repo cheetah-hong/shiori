@@ -19,9 +19,6 @@ abstract final class StudyModeLabels {
 
   static const String tooFewWords = '뜻이 서로 다른 단어가 4개 이상 있어야 해요';
 
-  /// The study screen's header: 「오늘 학습 · 객관식」.
-  static String header(String what, StudyMode mode) => '$what · ${name(mode)}';
-
   static const String replay = '다시 듣기';
   static const String right = '맞았어요';
   static const String wrong = '틀렸어요';

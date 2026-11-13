@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/data.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/shared/bottom_action_bar.dart';
 import 'package:shiori/features/capture/entry_editor_sheet.dart';
 import 'package:shiori/features/capture/evidence_tile.dart';
 import 'package:shiori/features/capture/evidence_view.dart';
@@ -287,52 +288,20 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
             ),
         ],
       ),
-      bottomNavigationBar: SafeArea(
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(
-            Space.gutter,
-            Space.md,
-            Space.gutter,
-            Space.md,
-          ),
-          decoration: BoxDecoration(
-            color: t.bg,
-            border: Border(top: BorderSide(color: t.line)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (blankHeadwords > 0)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: Space.sm),
-                  child: Text(
-                    '표제어가 빈 단어 $blankHeadwords개는 저장하지 않아요',
-                    style: TextStyle(
-                      color: t.risk,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                    ),
-                  ),
+      bottomNavigationBar: BottomActionBar(
+        top: blankHeadwords > 0
+            ? Text(
+                '표제어가 빈 단어 $blankHeadwords개는 저장하지 않아요',
+                style: TextStyle(
+                  color: t.risk,
+                  fontWeight: Weights.emphasis,
+                  fontSize: TypeScale.small,
                 ),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: saveable == 0 || _saving ? null : _add,
-                  icon: _saving
-                      ? SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: t.text3,
-                          ),
-                        )
-                      : const Icon(Icons.playlist_add),
-                  label: Text('단어 $saveable개 추가'),
-                ),
-              ),
-            ],
-          ),
+              )
+            : null,
+        primary: BarPrimaryButton(
+          label: '단어 $saveable개 추가',
+          onPressed: saveable == 0 || _saving ? null : _add,
         ),
       ),
     );
@@ -364,13 +333,12 @@ class _Summary extends StatelessWidget {
     final t = context.tokens;
     final ms = draft.recognitionTime.inMilliseconds;
     final flagged = draft.needsReviewCount;
-    final small = TextStyle(color: t.text2, fontSize: 13);
+    final small = TextStyle(color: t.text2, fontSize: TypeScale.small);
     final approve = onApproveHigh == null
         ? null
-        : TextButton.icon(
+        : TextButton(
             onPressed: highConfidenceCount(draft) == 0 ? null : onApproveHigh,
-            icon: const Icon(Icons.done_all),
-            label: const Text('높음 전체 승인'),
+            child: const Text('높음 전체 승인'),
           );
     // Beside the ready count, or under the rows when the text is large.
     final large = isLargeText(context);
@@ -382,7 +350,7 @@ class _Summary extends StatelessWidget {
           [
             ?sourceLabel,
             if (ms > 0) '판독 ${(ms / 1000).toStringAsFixed(1)}초',
-          ].join(' · '),
+          ].join(', '),
           key: const ValueKey('review-source'),
           style: context.text.bodySmall,
         ),
@@ -447,34 +415,14 @@ class _Count extends StatelessWidget {
   final int count;
 
   @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-    final word = TextStyle(
-      color: t.text2,
-      fontSize: 17,
-      fontWeight: FontWeight.w600,
-    );
-    return Semantics(
-      header: true,
-      child: Text.rich(
-        key: const ValueKey('review-heading'),
-        TextSpan(
-          children: [
-            TextSpan(text: '단어 ', style: word),
-            TextSpan(
-              text: '$count',
-              style: TextStyle(
-                color: t.text,
-                fontSize: 40,
-                height: 1.1,
-                fontWeight: FontWeight.w800,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
-            ),
-            TextSpan(text: '개', style: word),
-          ],
-        ),
+  Widget build(BuildContext context) => Semantics(
+    header: true,
+    child: Text(
+      '단어 $count개',
+      key: const ValueKey('review-heading'),
+      style: context.text.headlineLarge?.copyWith(
+        fontFeatures: const [FontFeature.tabularFigures()],
       ),
-    );
-  }
+    ),
+  );
 }

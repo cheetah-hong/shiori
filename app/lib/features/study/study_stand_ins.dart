@@ -24,10 +24,9 @@ class NothingToStudy extends StatelessWidget {
           Text('복습할 때가 되면 홈에 숫자가 올라와요', style: context.text.bodyMedium),
           const SizedBox(height: Space.xl),
           if (onMore case final more?) ...[
-            FilledButton.icon(
+            FilledButton(
               onPressed: more,
-              icon: const Icon(Icons.replay_rounded),
-              label: const Text(RestudyLabels.more),
+              child: const Text(RestudyLabels.more),
             ),
             const SizedBox(height: Space.sm),
             TextButton(

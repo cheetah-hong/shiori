@@ -1,19 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:shiori/app/fonts.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/shared/keep_words.dart';
 import 'package:shiori/shared/large_text.dart';
 import 'package:shiori/shared/widgets.dart';
 
-/// A button of the bottom bar: what it says, its icon, what it does.
+/// A button of the bottom bar: what it says and what it does.
 @immutable
 final class BarAction {
-  const BarAction({
-    required this.label,
-    required this.icon,
-    required this.onPressed,
-  });
+  const BarAction({required this.label, required this.onPressed});
 
   final String label;
-  final IconData icon;
 
   /// Null: shown off.
   final VoidCallback? onPressed;
@@ -21,9 +18,11 @@ final class BarAction {
 
 /// A screen's main action in thumb reach, fixed at the bottom over a
 /// hairline: the [primary] (filled accent) on the right and a [secondary]
-/// (accent wash) on the left; stacked, primary first, at large text sizes.
-/// A secondary alone takes the primary's shape. [top] sits above them (a
-/// hint, a page indicator).
+/// (accent wash) on the left, words only. At large text sizes the bar's
+/// text stops growing at [TextCaps.chrome] (iOS bars do the same) and the
+/// two share the width, so the bar stays a strip and the page keeps the
+/// screen. A secondary alone takes the primary's shape. [top] sits above
+/// them (a hint, a page indicator).
 class BottomActionBar extends StatelessWidget {
   const BottomActionBar({super.key, this.secondary, this.primary, this.top});
 
@@ -47,22 +46,25 @@ class BottomActionBar extends StatelessWidget {
       ),
       child: SafeArea(
         top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            Space.gutter,
-            _barInset,
-            Space.gutter,
-            _barInset,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ?head,
-              if (head != null && content != null)
-                const SizedBox(height: Space.sm),
-              ?content,
-            ],
+        child: CappedText(
+          max: TextCaps.chrome,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              Space.gutter,
+              _barInset,
+              Space.gutter,
+              _barInset,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ?head,
+                if (head != null && content != null)
+                  const SizedBox(height: Space.sm),
+                ?content,
+              ],
+            ),
           ),
         ),
       ),
@@ -74,29 +76,21 @@ class BottomActionBar extends StatelessWidget {
     final p = primary;
     if (s == null) return p;
     if (p == null) {
-      return BarPrimaryButton(
-        label: s.label,
-        icon: s.icon,
-        onPressed: s.onPressed,
-      );
+      return BarPrimaryButton(label: s.label, onPressed: s.onPressed);
     }
-    if (isLargeText(context)) {
-      return Column(
+    // Both buttons as tall as the taller one.
+    return IntrinsicHeight(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
         children: [
-          p,
-          const SizedBox(height: Space.sm),
-          _SecondaryButton(action: s, wide: true),
+          if (isLargeText(context))
+            Expanded(flex: 2, child: _SecondaryButton(action: s))
+          else
+            _SecondaryButton(action: s),
+          const SizedBox(width: _barGap),
+          Expanded(flex: 3, child: p),
         ],
-      );
-    }
-    return Row(
-      children: [
-        _SecondaryButton(action: s, wide: false),
-        const SizedBox(width: _barGap),
-        Expanded(child: p),
-      ],
+      ),
     );
   }
 }
@@ -110,17 +104,15 @@ final _barShape = RoundedRectangleBorder(
   borderRadius: BorderRadius.circular(Radii.button),
 );
 
-/// The bar's main button: filled accent, 54 pt, the label centered.
+/// The bar's main button: words only, filled accent.
 class BarPrimaryButton extends StatelessWidget {
   const BarPrimaryButton({
     super.key,
     required this.label,
     required this.onPressed,
-    this.icon,
   });
 
   final String label;
-  final IconData? icon;
   final VoidCallback? onPressed;
 
   @override
@@ -128,63 +120,56 @@ class BarPrimaryButton extends StatelessWidget {
     final style = FilledButton.styleFrom(
       minimumSize: const Size.fromHeight(_barButtonHeight),
       shape: _barShape,
-      textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+      textStyle: const TextStyle(
+        fontFamily: AppFonts.family,
+        fontFamilyFallback: AppFonts.fallback,
+        fontSize: TypeScale.body,
+        fontWeight: Weights.emphasis,
+      ),
     );
-    final text = Text(label, textAlign: TextAlign.center);
-    final glyph = icon;
     return PressScale(
       enabled: onPressed != null,
-      child: glyph == null
-          ? FilledButton(onPressed: onPressed, style: style, child: text)
-          : FilledButton.icon(
-              onPressed: onPressed,
-              style: style,
-              icon: Icon(glyph),
-              label: text,
-            ),
+      child: FilledButton(
+        onPressed: onPressed,
+        style: style,
+        child: KeepWordsText(label, textAlign: TextAlign.center),
+      ),
     );
   }
 }
 
-/// The accent-wash button beside the main one: its icon over the words
-/// in a narrow slot, before them when it has the width.
+ButtonStyle _secondaryStyle(BuildContext context, Size minimumSize) {
+  final t = context.tokens;
+  return FilledButton.styleFrom(
+    backgroundColor: t.accentTint,
+    foregroundColor: t.accentText,
+    minimumSize: minimumSize,
+    padding: const EdgeInsets.symmetric(
+      horizontal: Space.md,
+      vertical: Space.xs,
+    ),
+    shape: _barShape,
+    textStyle: const TextStyle(
+      fontFamily: AppFonts.family,
+      fontFamilyFallback: AppFonts.fallback,
+      fontSize: TypeScale.body2,
+      fontWeight: Weights.emphasis,
+    ),
+  );
+}
+
 class _SecondaryButton extends StatelessWidget {
-  const _SecondaryButton({required this.action, required this.wide});
+  const _SecondaryButton({required this.action});
 
   final BarAction action;
-  final bool wide;
 
   @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-    final icon = Icon(action.icon, size: 22);
-    final label = Text(action.label, textAlign: TextAlign.center);
-    return FilledButton(
-      onPressed: action.onPressed,
-      style: FilledButton.styleFrom(
-        backgroundColor: t.accentTint,
-        foregroundColor: t.accentText,
-        minimumSize: const Size(_secondaryWidth, _barButtonHeight),
-        padding: const EdgeInsets.symmetric(
-          horizontal: Space.md,
-          vertical: Space.xs,
-        ),
-        shape: _barShape,
-        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-      ),
-      child: wide
-          ? Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                icon,
-                const SizedBox(width: Space.sm),
-                Flexible(child: label),
-              ],
-            )
-          : Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [icon, const SizedBox(height: 2), label],
-            ),
-    );
-  }
+  Widget build(BuildContext context) => FilledButton(
+    onPressed: action.onPressed,
+    style: _secondaryStyle(
+      context,
+      const Size(_secondaryWidth, _barButtonHeight),
+    ),
+    child: KeepWordsText(action.label, textAlign: TextAlign.center),
+  );
 }
