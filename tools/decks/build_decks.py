@@ -3,7 +3,8 @@
 reading and its JMdict entry, for learners without a textbook.
 
   python3 tools/decks/build_decks.py --built-on YYYY-MM-DD [--source <original_data>] [--source-commit <sha>]
-      [--jmdict <JMdict_e.gz>] [--supplement <supplement.tsv>] [--expect-sha256 n5=HEX ...]
+      [--jmdict <JMdict_e.gz>] [--supplement <supplement.tsv>] [--lookup-overrides <tsv>]
+      [--expect-sha256 n5=HEX ...]
       [--expect-jmdict-sha256 HEX] [--out-dir app/assets/decks]
   python3 tools/decks/build_decks.py --check [--out-dir app/assets/decks]
 
@@ -18,8 +19,12 @@ commit read from git), decks/supplement.tsv, and JMdict_e.gz from tools/dict's d
 - JMdict_e.gz (EDRDG, CC BY-SA 4.0), the same file the app's dictionary asset is built from:
   kanji forms with their priority tags, readings, "usually written in kana" senses.
 - decks/supplement.tsv (private folder): Korean meanings written for this project for words the
-  app's dictionaries give none (level, entry, headword, meaning). The app uses one only when its
-  dictionaries have no meaning for the word.
+  app's dictionaries give none (columns level, entry, headword, meaning, reviewed; others are
+  left alone). A row nobody has reviewed, a row twice or a row without its word stops the
+  build. The app uses one only when its dictionaries have no meaning for the word.
+- decks/lookup-overrides.tsv (private folder, optional): the lookup spelling of a few words
+  whose meaning the rule below asks under a spelling the glossary gives a wrong first sense for
+  (columns level, entry, headword, lookup, reviewed; same checks as the supplement).
 
 Rules (docs/dictionary.md 15):
 - A row without a JMdict entry, or whose entry the JMdict file lacks, is left out.
@@ -29,9 +34,13 @@ Rules (docs/dictionary.md 15):
   it stays. The reading is the entry's reading the list gives.
 - Lookup spelling ("l"): the entry's first common kanji form read so that holds every kanji
   of the shown one (たいへん → 大変, 話合い → 話し合い; 軍 is not asked as 戦), when it
-  differs: the app asks the Korean glossary for it first.
+  differs: the app asks the Korean glossary for it first. A row of the lookup overrides
+  sets it instead (色々 asked as いろいろ, like the N5 word of its entry).
 - One word per headword (the app's word key) and per JMdict entry (川 and 河, こちら and
-  こっち are one word), each in its easiest level: N5 first, then the list's order.
+  こっち are one word), each in its easiest level: N5 first, then the list's order. One
+  exception: an entry an easier level shows only in kana comes back once in a harder level
+  in kanji (いちばん in N5, 一番 in N1), read as that row reads it. Its spelling is another
+  word key, so the app keeps it as another word.
 - Order inside a level: the entry's JMdict frequency band (nf, lowest first), then common
   entries, then the list's order.
 Writes jlpt.json (one word per line) and jlpt.edition.json into --out-dir (git-ignored, like the
@@ -74,6 +83,10 @@ def default_source() -> Path:
 
 def default_supplement() -> Path:
     return private_dir() / "decks" / "supplement.tsv"
+
+
+def default_lookup_overrides() -> Path:
+    return private_dir() / "decks" / "lookup-overrides.tsv"
 
 
 DECKS_NAME = "jlpt.json"
@@ -214,6 +227,7 @@ class LeftOut:
     no_entry: int = 0
     not_in_jmdict: int = 0
     duplicate: int = 0
+    kanji_again: int = 0
 
 
 def _kanji_set(text: str) -> frozenset[str]:
@@ -251,24 +265,65 @@ def read_lists(source: Path) -> dict[str, list[dict]]:
     return out
 
 
-def read_supplement(path: Path) -> list[dict]:
+SUPPLEMENT_COLUMNS = ("level", "entry", "headword", "meaning", "reviewed")
+OVERRIDE_COLUMNS = ("level", "entry", "headword", "lookup", "reviewed")
+
+
+def read_word_table(path: Path, name: str, columns: tuple[str, ...]) -> list[dict]:
+    """A private table of rows about deck words: every column given, each row reviewed, each
+    word (level, entry, headword) once. No file, no rows."""
     if not path.exists():
         return []
     with path.open(encoding="utf-8", newline="") as f:
-        rows = list(csv.DictReader(f, delimiter="\t"))
+        reader = csv.DictReader(f, delimiter="\t")
+        rows = list(reader)
+        missing = [c for c in columns if c not in (reader.fieldnames or [])]
+    if missing:
+        raise BuildError(f"{name} needs the columns {', '.join(missing)}")
+    seen = set()
     for r in rows:
-        if not all((r.get(k) or "").strip() for k in ("level", "entry", "headword", "meaning")):
-            raise BuildError(f"supplement row needs level, entry, headword and meaning: {r}")
+        if not all((r.get(k) or "").strip() for k in columns):
+            raise BuildError(f"{name} row needs {', '.join(columns)}: {r}")
         if not r["entry"].strip().isdigit():
-            raise BuildError(f"supplement entry {r['entry']!r} is not a number")
+            raise BuildError(f"{name} entry {r['entry']!r} is not a number")
+        word = (r["level"].strip(), int(r["entry"]), r["headword"].strip())
+        if word in seen:
+            raise BuildError(f"{name} has a word twice: {' '.join(map(str, word))}")
+        seen.add(word)
     return rows
 
 
-def build_words(lists: dict[str, list[dict]], entries: dict[int, Entry],
-                supplement: list[dict]) -> tuple[dict[str, list[Word]], LeftOut]:
+def read_supplement(path: Path) -> list[dict]:
+    """The supplement's rows, each reviewed, each word once."""
+    return read_word_table(path, "supplement", SUPPLEMENT_COLUMNS)
+
+
+def read_lookup_overrides(path: Path) -> list[dict]:
+    """The lookup overrides' rows, each reviewed, each word once."""
+    return read_word_table(path, "lookup overrides", OVERRIDE_COLUMNS)
+
+
+def _row_word(decks: dict[str, list[Word]], r: dict, name: str) -> Word:
+    """The deck word a table row is about; a row without one stops the build."""
+    match = [w for w in decks.get(r["level"].strip(), [])
+             if w.entry.seq == int(r["entry"]) and w.headword == r["headword"].strip()]
+    if not match:
+        raise BuildError(f"{name} row without its word: {r['level']} {r['entry']} {r['headword']}")
+    return match[0]
+
+
+def _kanji_again(shown: str, seq: int, level: str, first_level: dict[int, str], in_kanji: set[int]) -> bool:
+    """Whether [shown] is an entry an easier level showed only in kana, back in kanji."""
+    return not _KANA.match(shown) and seq not in in_kanji and first_level[seq] != level
+
+
+def build_words(lists: dict[str, list[dict]], entries: dict[int, Entry], supplement: list[dict],
+                overrides: list[dict] | None = None) -> tuple[dict[str, list[Word]], LeftOut]:
     left = LeftOut()
     seen: set[str] = set()
-    seen_entries: set[int] = set()
+    # The level each entry first came in, and the entries shown in kanji so far.
+    first_level: dict[int, str] = {}
+    in_kanji: set[int] = set()
     decks: dict[str, list[Word]] = {}
     for level in LEVELS:
         words = []
@@ -286,22 +341,29 @@ def build_words(lists: dict[str, list[dict]], entries: dict[int, Entry],
             printed = (row.get("kanji") or "").strip() or row["kana"].strip()
             shown, reading, lookup = shown_and_lookup(printed, row["kana"].strip(), entry)
             key = word_key(shown)
-            if key in seen or entry.seq in seen_entries:
+            again = entry.seq in first_level
+            if key in seen or (again and not _kanji_again(shown, entry.seq, level, first_level, in_kanji)):
                 left.duplicate += 1
                 continue
             seen.add(key)
-            seen_entries.add(entry.seq)
+            first_level.setdefault(entry.seq, level)
+            if not _KANA.match(shown):
+                in_kanji.add(entry.seq)
+            if again:
+                left.kanji_again += 1
             words.append(Word(level, i, shown, reading, entry, lookup))
         if not words:
             raise BuildError(f"{level} has no words")
         words.sort(key=lambda w: (w.entry.nf, not w.entry.common, w.index))
         decks[level] = words
     for r in supplement:
-        match = [w for w in decks.get(r["level"].strip(), [])
-                 if w.entry.seq == int(r["entry"]) and w.headword == r["headword"].strip()]
-        if not match:
-            raise BuildError(f"supplement row without its word: {r['level']} {r['entry']} {r['headword']}")
-        match[0].meaning = r["meaning"].strip()
+        _row_word(decks, r, "supplement").meaning = r["meaning"].strip()
+    for r in overrides or []:
+        word = _row_word(decks, r, "lookup overrides")
+        lookup = r["lookup"].strip()
+        if lookup == word.headword:
+            raise BuildError(f"lookup overrides row asks {word.headword} as itself")
+        word.lookup = lookup
     return decks, left
 
 
@@ -325,7 +387,7 @@ def render(decks: dict[str, list[Word]], built_on: str) -> bytes:
 
 def edition(raw: bytes, decks: dict[str, list[Word]], left: LeftOut, *, built_on: str, commit: str,
             files: dict[str, str], jmdict_created: str, jmdict_sha: str, supplement_sha: str,
-            supplement_rows: int) -> bytes:
+            supplement_rows: int, overrides_sha: str, overrides_rows: int) -> bytes:
     doc = {
         "attribution": ATTRIBUTION,
         "built_on": built_on,
@@ -334,8 +396,11 @@ def edition(raw: bytes, decks: dict[str, list[Word]], left: LeftOut, *, built_on
         "jmdict": {"created": jmdict_created, "source_sha256": jmdict_sha},
         "json_bytes": len(raw),
         "json_sha256": hashlib.sha256(raw).hexdigest(),
+        "kanji_again": left.kanji_again,
         "left_out": {"no_entry": left.no_entry, "not_in_jmdict": left.not_in_jmdict, "duplicate": left.duplicate},
         "license": "CC BY-SA 4.0",
+        "lookup_overrides_rows": overrides_rows,
+        "lookup_overrides_sha256": overrides_sha,
         "source": {"commit": commit, "files": files, "url": SOURCE_URL},
         "supplement_rows": supplement_rows,
         "supplement_sha256": supplement_sha,
@@ -395,13 +460,16 @@ def rebuild_problems(a: argparse.Namespace) -> list[str]:
         return []
     files = {lv.lower(): sha256(a.source / f"{lv.lower()}.csv") for lv in LEVELS}
     supplement = sha256(a.supplement) if a.supplement.exists() else ""
+    overrides = sha256(a.lookup_overrides) if a.lookup_overrides.exists() else ""
     if (files != ed.get("source", {}).get("files") or sha256(a.jmdict) != ed.get("jmdict", {}).get("source_sha256")
-            or supplement != ed.get("supplement_sha256")):
+            or supplement != ed.get("supplement_sha256")
+            or overrides != ed.get("lookup_overrides_sha256", "")):
         print("decks: byte check skipped: the private inputs are not the ones the edition names")
         return []
     with tempfile.TemporaryDirectory() as tmp:
         again = argparse.Namespace(source=a.source, source_commit=ed["source"]["commit"], jmdict=a.jmdict,
-                                   supplement=a.supplement, built_on=ed["built_on"], out_dir=Path(tmp),
+                                   supplement=a.supplement, lookup_overrides=a.lookup_overrides,
+                                   built_on=ed["built_on"], out_dir=Path(tmp),
                                    expect_sha256=[], expect_jmdict_sha256=None)
         try:
             with contextlib.redirect_stdout(io.StringIO()):
@@ -437,12 +505,15 @@ def build(a: argparse.Namespace) -> None:
         raise BuildError(f"JMdict has sha256 {jmdict_sha}, expected {a.expect_jmdict_sha256}")
     entries, created = read_jmdict(a.jmdict)
     supplement = read_supplement(a.supplement)
-    decks, left = build_words(read_lists(a.source), entries, supplement)
+    overrides = read_lookup_overrides(a.lookup_overrides)
+    decks, left = build_words(read_lists(a.source), entries, supplement, overrides)
     raw = render(decks, a.built_on)
     ed = edition(raw, decks, left, built_on=a.built_on, commit=a.source_commit, files=files,
                  jmdict_created=created, jmdict_sha=jmdict_sha,
                  supplement_sha=sha256(a.supplement) if a.supplement.exists() else "",
-                 supplement_rows=len(supplement))
+                 supplement_rows=len(supplement),
+                 overrides_sha=sha256(a.lookup_overrides) if a.lookup_overrides.exists() else "",
+                 overrides_rows=len(overrides))
     a.out_dir.mkdir(parents=True, exist_ok=True)
     (a.out_dir / DECKS_NAME).write_bytes(raw)
     (a.out_dir / EDITION_NAME).write_bytes(ed)
@@ -463,11 +534,14 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--expect-jmdict-sha256", help="stop unless JMdict_e.gz has this sha256")
     ap.add_argument("--supplement", type=Path,
                     help="meanings written for words without one (default: $SHIORI_PRIVATE_DIR/decks/supplement.tsv)")
+    ap.add_argument("--lookup-overrides", type=Path,
+                    help="lookup spellings set by hand (default: $SHIORI_PRIVATE_DIR/decks/lookup-overrides.tsv)")
     ap.add_argument("--built-on", help="build day written to the files (YYYY-MM-DD)")
     ap.add_argument("--out-dir", type=Path, default=DEFAULT_OUT, help="default: app/assets/decks")
     a = ap.parse_args(argv)
     a.source = a.source or default_source()
     a.supplement = a.supplement or default_supplement()
+    a.lookup_overrides = a.lookup_overrides or default_lookup_overrides()
     if a.check:
         problems = check(a.out_dir)
         if not problems:

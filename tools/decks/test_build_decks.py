@@ -1,4 +1,4 @@
-"""B1: build_decks.py on a made-up word list and a made-up JMdict (no network).
+"""B1, F1, F3, F4, F6: build_decks.py on a made-up word list and a made-up JMdict (no network).
 
   python3 -m unittest discover -s tools/decks -p 'test_*.py'
 """
@@ -9,6 +9,7 @@ import gzip
 import hashlib
 import io
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -18,6 +19,10 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import build_decks  # noqa: E402
+
+# The private folder's tables (lookup overrides) are never the real ones here.
+_PRIVATE = tempfile.TemporaryDirectory()
+os.environ["SHIORI_PRIVATE_DIR"] = _PRIVATE.name
 
 BUILT_ON = "2026-11-13"
 COMMIT = "0123456789abcdef0123456789abcdef01234567"
@@ -76,6 +81,37 @@ JMDICT = """<?xml version="1.0" encoding="UTF-8"?>
  <k_ele><keb>風車</keb></k_ele>
  <r_ele><reb>かざぐるま</reb></r_ele>
  <sense><pos>&n;</pos><gloss>pinwheel</gloss></sense></entry>
+<entry><ent_seq>9000012</ent_seq>
+ <k_ele><keb>雨雲</keb><ke_pri>ichi1</ke_pri></k_ele>
+ <r_ele><reb>あまぐも</reb><re_pri>ichi1</re_pri></r_ele>
+ <sense><pos>&n;</pos><gloss>rain cloud</gloss></sense></entry>
+<entry><ent_seq>9000013</ent_seq>
+ <k_ele><keb>皆</keb><ke_pri>ichi1</ke_pri></k_ele>
+ <r_ele><reb>みんな</reb><re_pri>ichi1</re_pri></r_ele>
+ <r_ele><reb>みな</reb><re_pri>ichi1</re_pri></r_ele>
+ <sense><pos>&n;</pos><gloss>everyone</gloss></sense></entry>
+<entry><ent_seq>9000014</ent_seq>
+ <k_ele><keb>何時も</keb><ke_pri>ichi1</ke_pri></k_ele>
+ <r_ele><reb>いつも</reb><re_pri>ichi1</re_pri></r_ele>
+ <sense><pos>&adv;</pos><misc>&uk;</misc><gloss>always</gloss></sense></entry>
+<entry><ent_seq>9000015</ent_seq>
+ <k_ele><keb>早い</keb><ke_pri>ichi1</ke_pri></k_ele>
+ <k_ele><keb>速い</keb><ke_pri>ichi1</ke_pri></k_ele>
+ <r_ele><reb>はやい</reb><re_pri>ichi1</re_pri></r_ele>
+ <sense><pos>&n;</pos><gloss>fast</gloss></sense></entry>
+<entry><ent_seq>9000016</ent_seq>
+ <k_ele><keb>分かる</keb><ke_pri>ichi1</ke_pri></k_ele>
+ <r_ele><reb>わかる</reb><re_pri>ichi1</re_pri></r_ele>
+ <sense><pos>&n;</pos><gloss>to understand</gloss></sense></entry>
+<entry><ent_seq>9000017</ent_seq>
+ <k_ele><keb>綺麗</keb><ke_pri>ichi1</ke_pri></k_ele>
+ <r_ele><reb>きれい</reb><re_pri>ichi1</re_pri></r_ele>
+ <sense><pos>&n;</pos><gloss>pretty</gloss></sense></entry>
+<entry><ent_seq>9000018</ent_seq>
+ <k_ele><keb>宜しい</keb><ke_pri>ichi1</ke_pri></k_ele>
+ <k_ele><keb>好しい</keb><ke_pri>ichi1</ke_pri></k_ele>
+ <r_ele><reb>よろしい</reb><re_pri>ichi1</re_pri></r_ele>
+ <sense><pos>&n;</pos><gloss>good</gloss></sense></entry>
 </JMdict>
 """
 
@@ -110,7 +146,38 @@ LISTS = {
     ],
 }
 
-SUPPLEMENT = "level\tentry\theadword\tmeaning\nN3\t9000007\t夕凪\t저녁뜸\n"
+SUPPLEMENT_HEAD = "level\tentry\theadword\tmeaning\treviewed\n"
+SUPPLEMENT = SUPPLEMENT_HEAD + "N3\t9000007\t夕凪\t저녁뜸\t검수자 11/13\n"
+
+# F3: words an easier level shows in kana and a harder one in kanji (same entry).
+KANJI_AGAIN = {
+    "n5": [
+        ("9000012", "あまぐも", "", "rain cloud"),
+        ("9000013", "みんな", "", "everyone"),
+        ("9000014", "いつも", "", "always"),
+        ("9000015", "はやい", "早い", "fast"),
+        ("9000016", "わかる", "分かる", "to understand"),
+    ],
+    "n4": [
+        ("9000017", "きれい", "", "pretty"),
+        ("9000017", "きれい", "綺麗", "pretty"),          # kanji in the same level: left out
+        ("9000018", "よろしい", "", "good"),
+    ],
+    "n3": [
+        ("9000013", "みな", "皆", "everyone"),           # another reading: kept as read
+        ("9000014", "いつも", "何時も", "always"),
+        ("9000016", "わかる", "", "to understand"),      # kanji first, kana again: left out
+    ],
+    "n2": [
+        ("9000018", "よろしい", "宜しい", "good"),
+        ("9000015", "はやい", "速い", "fast"),           # other kanji: left out
+    ],
+    "n1": [
+        ("9000012", "あまぐも", "雨雲", "rain cloud"),
+        ("9000014", "いつも", "何時も", "always"),       # its kanji came already: left out
+        ("9000018", "よろしい", "好しい", "good"),       # the entry's kanji came already: left out
+    ],
+}
 
 
 def write_inputs(root: Path, lists=LISTS, supplement=SUPPLEMENT) -> dict[str, Path]:
@@ -308,6 +375,199 @@ class BuildTest(unittest.TestCase):
         self.assertEqual(build_decks.word_key("まだ"), "まだ")
         self.assertEqual(build_decks.word_key("ＡＢＣ"), "ABC")
         self.assertEqual(build_decks.word_key("小 道"), "小道")
+
+
+class KanjiAgainTest(unittest.TestCase):
+    """F3: a word first shown in kana comes back once in kanji in a harder level."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.inputs = write_inputs(self.tmp / "in", lists=KANJI_AGAIN, supplement=SUPPLEMENT_HEAD)
+        self.out = self.tmp / "out"
+        code, out = run([
+            "--source", str(self.inputs["source"]), "--source-commit", COMMIT,
+            "--jmdict", str(self.inputs["jmdict"]), "--supplement", str(self.inputs["supplement"]),
+            "--built-on", BUILT_ON, "--out-dir", str(self.out),
+        ])
+        self.assertEqual(code, 0, out)
+        self.doc = json.loads((self.out / build_decks.DECKS_NAME).read_text(encoding="utf-8"))
+        self.edition = json.loads((self.out / build_decks.EDITION_NAME).read_text(encoding="utf-8"))
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def heads(self, level: str) -> list[str]:
+        words = next(d for d in self.doc["decks"] if d["level"] == level)["words"]
+        return sorted(w["h"] for w in words)
+
+    def test_kanji_comes_back_in_the_harder_level(self) -> None:
+        self.assertEqual(self.heads("N5"), sorted(["あまぐも", "みんな", "いつも", "早い", "分かる"]))
+        self.assertEqual(self.heads("N1"), ["雨雲"])
+        n1 = next(d for d in self.doc["decks"] if d["level"] == "N1")["words"]
+        self.assertEqual(n1, [{"h": "雨雲", "r": "あまぐも", "e": 9000012}])
+
+    def test_another_reading_is_kept_as_read(self) -> None:
+        n3 = {w["h"]: w for w in next(d for d in self.doc["decks"] if d["level"] == "N3")["words"]}
+        self.assertEqual(n3["皆"]["r"], "みな")
+        self.assertEqual(sorted(n3), ["何時も", "皆"])
+
+    def test_once_per_entry_and_never_in_the_same_level(self) -> None:
+        self.assertEqual(self.heads("N4"), ["きれい", "よろしい"])
+        self.assertEqual(self.heads("N2"), ["宜しい"])
+
+    def test_other_kanji_and_kana_again_stay_out(self) -> None:
+        all_heads = [h for lv in build_decks.LEVELS for h in self.heads(lv)]
+        for left in ("速い", "わかる", "綺麗", "好しい"):
+            self.assertNotIn(left, all_heads)
+        self.assertEqual(len(all_heads), len({build_decks.word_key(h) for h in all_heads}))
+
+    def test_edition_counts_them(self) -> None:
+        self.assertEqual(self.edition["kanji_again"], 4)
+        self.assertEqual(self.edition["left_out"]["duplicate"], 5)
+        self.assertEqual(self.edition["counts"], {"N5": 5, "N4": 2, "N3": 2, "N2": 1, "N1": 1})
+
+
+class SupplementTest(unittest.TestCase):
+    """F4: the supplement table's rows."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def build(self, supplement: str) -> tuple[int, str, Path]:
+        inputs = write_inputs(self.tmp / "in", supplement=supplement)
+        out = self.tmp / "out"
+        code, text = run([
+            "--source", str(inputs["source"]), "--source-commit", COMMIT,
+            "--jmdict", str(inputs["jmdict"]), "--supplement", str(inputs["supplement"]),
+            "--built-on", BUILT_ON, "--out-dir", str(out),
+        ])
+        return code, text, out
+
+    def test_a_reviewed_row_goes_in(self) -> None:
+        code, text, out = self.build(SUPPLEMENT)
+        self.assertEqual(code, 0, text)
+        self.assertEqual(json.loads((out / build_decks.EDITION_NAME).read_text(encoding="utf-8"))["supplement_rows"], 1)
+
+    def test_a_row_not_reviewed_stops_the_build(self) -> None:
+        code, text, out = self.build(SUPPLEMENT_HEAD + "N3\t9000007\t夕凪\t저녁뜸\t\n")
+        self.assertNotEqual(code, 0)
+        self.assertIn("reviewed", text)
+        self.assertFalse((out / build_decks.DECKS_NAME).exists())
+
+    def test_a_table_without_the_reviewed_column_stops_the_build(self) -> None:
+        code, text, _ = self.build("level\tentry\theadword\tmeaning\nN3\t9000007\t夕凪\t저녁뜸\n")
+        self.assertNotEqual(code, 0)
+        self.assertIn("reviewed", text)
+
+    def test_a_row_twice_stops_the_build(self) -> None:
+        code, text, _ = self.build(SUPPLEMENT + "N3\t9000007\t夕凪\t저녁 바람\t검수자 11/13\n")
+        self.assertNotEqual(code, 0)
+        self.assertIn("twice", text)
+
+    def test_a_row_without_a_meaning_stops_the_build(self) -> None:
+        code, text, _ = self.build(SUPPLEMENT_HEAD + "N3\t9000007\t夕凪\t \t검수자 11/13\n")
+        self.assertNotEqual(code, 0)
+        self.assertIn("meaning", text)
+
+    def test_other_columns_are_left_alone(self) -> None:
+        code, text, _ = self.build(
+            "level\tentry\theadword\treading\tmeaning\treviewed\tnote\n"
+            "N3\t9000007\t夕凪\tゆうなぎ\t저녁뜸\t검수자 11/13\t메모\n")
+        self.assertEqual(code, 0, text)
+
+
+OVERRIDES_HEAD = "level\tentry\theadword\tlookup\treviewed\n"
+
+
+class LookupOverrideTest(unittest.TestCase):
+    """F6: a reviewed table sets the spelling a word's meaning is asked under first."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.inputs = write_inputs(self.tmp / "in")
+        self.table = self.tmp / "in" / "lookup-overrides.tsv"
+        self.out = self.tmp / "out"
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def build(self, table: str | None) -> tuple[int, str]:
+        if table is not None:
+            self.table.write_text(table, encoding="utf-8")
+        return run([
+            "--source", str(self.inputs["source"]), "--source-commit", COMMIT,
+            "--jmdict", str(self.inputs["jmdict"]), "--supplement", str(self.inputs["supplement"]),
+            "--lookup-overrides", str(self.table),
+            "--built-on", BUILT_ON, "--out-dir", str(self.out),
+        ])
+
+    def word(self, level: str, entry: int) -> dict:
+        doc = json.loads((self.out / build_decks.DECKS_NAME).read_text(encoding="utf-8"))
+        deck = next(d for d in doc["decks"] if d["level"] == level)
+        return next(w for w in deck["words"] if w["e"] == entry)
+
+    def edition(self) -> dict:
+        return json.loads((self.out / build_decks.EDITION_NAME).read_text(encoding="utf-8"))
+
+    def test_a_row_sets_the_lookup_spelling(self) -> None:
+        code, out = self.build(OVERRIDES_HEAD + "N5\t9000001\t雨傘\tあまがさ\t검수자 11/14\n")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.word("N5", 9000001)["l"], "あまがさ")
+
+    def test_a_row_replaces_the_rule_s_lookup_spelling(self) -> None:
+        code, out = self.build(OVERRIDES_HEAD + "N5\t9000006\tたいへん\tたいへん?\t검수자 11/14\n")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.word("N5", 9000006)["l"], "たいへん?")
+        self.assertEqual(self.word("N4", 9000003)["h"], "この")
+        self.assertNotIn("l", self.word("N4", 9000003))
+
+    def test_without_a_table_nothing_changes(self) -> None:
+        code, out = self.build(None)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.word("N5", 9000006)["l"], "大変")
+        self.assertNotIn("l", self.word("N5", 9000001))
+        self.assertEqual(self.edition()["lookup_overrides_rows"], 0)
+        self.assertEqual(self.edition()["lookup_overrides_sha256"], "")
+
+    def test_the_edition_records_the_table(self) -> None:
+        table = OVERRIDES_HEAD + "N5\t9000001\t雨傘\tあまがさ\t검수자 11/14\n"
+        self.build(table)
+        self.assertEqual(self.edition()["lookup_overrides_rows"], 1)
+        self.assertEqual(self.edition()["lookup_overrides_sha256"],
+                         hashlib.sha256(table.encode("utf-8")).hexdigest())
+
+    def test_a_row_not_reviewed_stops_the_build(self) -> None:
+        code, out = self.build(OVERRIDES_HEAD + "N5\t9000001\t雨傘\tあまがさ\t\n")
+        self.assertNotEqual(code, 0)
+        self.assertIn("reviewed", out)
+        self.assertFalse((self.out / build_decks.DECKS_NAME).exists())
+
+    def test_a_table_without_the_reviewed_column_stops_the_build(self) -> None:
+        code, out = self.build("level\tentry\theadword\tlookup\nN5\t9000001\t雨傘\tあまがさ\n")
+        self.assertNotEqual(code, 0)
+        self.assertIn("reviewed", out)
+
+    def test_a_row_without_its_word_stops_the_build(self) -> None:
+        code, out = self.build(OVERRIDES_HEAD + "N4\t9000001\t雨傘\tあまがさ\t검수자 11/14\n")
+        self.assertNotEqual(code, 0)
+        self.assertIn("lookup", out)
+
+    def test_a_row_twice_stops_the_build(self) -> None:
+        row = "N5\t9000001\t雨傘\tあまがさ\t검수자 11/14\n"
+        code, out = self.build(OVERRIDES_HEAD + row + row)
+        self.assertNotEqual(code, 0)
+        self.assertIn("twice", out)
+
+    def test_a_lookup_like_the_headword_stops_the_build(self) -> None:
+        code, out = self.build(OVERRIDES_HEAD + "N5\t9000001\t雨傘\t雨傘\t검수자 11/14\n")
+        self.assertNotEqual(code, 0)
+        self.assertIn("lookup", out)
 
 
 if __name__ == "__main__":
