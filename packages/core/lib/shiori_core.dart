@@ -62,6 +62,7 @@ export 'src/library/word_search.dart';
 export 'src/study/card_example.dart';
 export 'src/study/choice_maker.dart';
 export 'src/study/leitner_four_step_scheduler.dart';
+export 'src/study/review_reminders.dart';
 export 'src/study/session_builder.dart';
 export 'src/study/session_size.dart';
 export 'src/study/study_calendar.dart';

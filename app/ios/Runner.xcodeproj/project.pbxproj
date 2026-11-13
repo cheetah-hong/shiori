@@ -20,6 +20,7 @@
 		CBA2952C3BB2B22A99197F6B /* OcrChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57EB8064C969711692D82F5F /* OcrChannel.swift */; };
 		A1D10C5E7B3F4A2E9C6D8B01 /* AudioChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1D10C5E7B3F4A2E9C6D8B02 /* AudioChannel.swift */; };
 		B5C7E1A4D2F3061829304A51 /* BackupChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5C7E1A4D2F3061829304A52 /* BackupChannel.swift */; };
+		C6D8F2B5E3A4172930415B61 /* SystemChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6D8F2B5E3A4172930415B62 /* SystemChannel.swift */; };
 		B5C7E1A4D2F3061829304A53 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B5C7E1A4D2F3061829304A54 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
@@ -62,6 +63,7 @@
 		57EB8064C969711692D82F5F /* OcrChannel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OcrChannel.swift; sourceTree = "<group>"; };
 		A1D10C5E7B3F4A2E9C6D8B02 /* AudioChannel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AudioChannel.swift; sourceTree = "<group>"; };
 		B5C7E1A4D2F3061829304A52 /* BackupChannel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BackupChannel.swift; sourceTree = "<group>"; };
+		C6D8F2B5E3A4172930415B62 /* SystemChannel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SystemChannel.swift; sourceTree = "<group>"; };
 		B5C7E1A4D2F3061829304A54 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		6387E4D0BE2B620D0AB50EF0 /* Pods-Runner.release-dev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release-dev.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release-dev.xcconfig"; sourceTree = "<group>"; };
 		66BA1793CBB2D4FDA45DCD08 /* Pods-Runner.release-prod.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release-prod.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release-prod.xcconfig"; sourceTree = "<group>"; };
@@ -186,6 +188,7 @@
 				57EB8064C969711692D82F5F /* OcrChannel.swift */,
 				A1D10C5E7B3F4A2E9C6D8B02 /* AudioChannel.swift */,
 				B5C7E1A4D2F3061829304A52 /* BackupChannel.swift */,
+				C6D8F2B5E3A4172930415B62 /* SystemChannel.swift */,
 				B5C7E1A4D2F3061829304A54 /* PrivacyInfo.xcprivacy */,
 			);
 			path = Runner;
@@ -459,6 +462,7 @@
 				CBA2952C3BB2B22A99197F6B /* OcrChannel.swift in Sources */,
 				A1D10C5E7B3F4A2E9C6D8B01 /* AudioChannel.swift in Sources */,
 				B5C7E1A4D2F3061829304A51 /* BackupChannel.swift in Sources */,
+				C6D8F2B5E3A4172930415B61 /* SystemChannel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

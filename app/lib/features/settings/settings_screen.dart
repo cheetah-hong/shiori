@@ -5,6 +5,7 @@ import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/data.dart';
 import 'package:shiori/app/theme.dart';
 import 'package:shiori/features/backup/backup_section.dart';
+import 'package:shiori/features/reminders/reminder_section.dart';
 import 'package:shiori/features/study/restudy_labels.dart';
 import 'package:shiori/shared/adaptive_dialog.dart';
 import 'package:shiori/shared/large_text.dart';
@@ -17,7 +18,8 @@ import 'package:shiori_core/shiori_core.dart';
 /// the defaults are built (one shared record per word; 전체 + one playlist
 /// at a time); the other choices are one quiet line at the end of their
 /// section (준비 중), so the learner sees where the app is going without a
-/// row that cannot be picked. 학습 기록 also holds 모든
+/// row that cannot be picked. 학습 세션 also holds 햅틱; 알림 turns the
+/// review reminder on and picks its time. 학습 기록 also holds 모든
 /// 단어 처음부터 다시 학습 (asked first). 백업, last, makes and restores
 /// backup files.
 class SettingsScreen extends ConsumerWidget {
@@ -71,6 +73,9 @@ class SettingsScreen extends ConsumerWidget {
               onChanged: (on) =>
                   _save(context, ref, value.copyWith(shuffle: on)),
             ),
+            const HapticsSwitch(),
+            const Divider(),
+            const ReminderSection(),
             const Divider(),
             const SectionLabel('학습 기록'),
             _Choice(

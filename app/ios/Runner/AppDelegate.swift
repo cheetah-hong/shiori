@@ -1,5 +1,6 @@
 import Flutter
 import UIKit
+import UserNotifications
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -7,6 +8,9 @@ import UIKit
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    // Local review reminders: the notification plugin answers through the app delegate
+    // (whether one shows while the app is in front, what a tap does).
+    UNUserNotificationCenter.current().delegate = self as? UNUserNotificationCenterDelegate
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
@@ -30,6 +34,12 @@ import UIKit
       BackupChannel.register(with: registrar)
     } else {
       NSLog("[Shiori] backup channel was not registered: no plugin registrar")
+    }
+    // Notification permission and settings link for the Dart reminder block.
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "ShioriSystem") {
+      SystemChannel.register(with: registrar)
+    } else {
+      NSLog("[Shiori] system channel was not registered: no plugin registrar")
     }
   }
 }

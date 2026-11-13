@@ -7,10 +7,13 @@ import 'package:shiori/adapters/voicevox_speech.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/data.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/features/reminders/nudge_settings.dart';
+import 'package:shiori/features/reminders/reminder_labels.dart';
 import 'package:shiori/shared/keep_words.dart';
 import 'package:shiori/features/study/answer_buttons.dart';
 import 'package:shiori/features/study/choice_answers.dart';
 import 'package:shiori/features/study/choice_card.dart';
+import 'package:shiori/features/study/haptics.dart';
 import 'package:shiori/features/study/pitch_line.dart';
 import 'package:shiori/features/study/recall_card.dart';
 import 'package:shiori/features/study/restudy_labels.dart';
@@ -19,6 +22,7 @@ import 'package:shiori/features/study/session_tear.dart';
 import 'package:shiori/features/study/study_controller.dart';
 import 'package:shiori/features/study/study_mode_labels.dart';
 import 'package:shiori/features/study/study_stand_ins.dart';
+import 'package:shiori/features/study/swipe_answer.dart';
 import 'package:shiori/features/study/word_card.dart';
 import 'package:shiori/features/study/word_speech.dart';
 import 'package:shiori/shared/format.dart';
@@ -165,7 +169,46 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
     unawaited(speech.stop().catchError((Object _) {}));
   }
 
-  void _answer(Answer answer) => unawaited(_store(answer));
+  /// 알고있음 or 다시 학습 from the buttons: one tap, then the answer.
+  void _answer(Answer answer) {
+    unawaited(ref.read(hapticsProvider).answer());
+    unawaited(_store(answer));
+  }
+
+  /// The same from a swipe (its threshold already tapped) or a VoiceOver
+  /// action on the card shown as [cardKey]; the swipe line is not needed
+  /// any more. Whether the card may leave: a card answered meanwhile by a
+  /// button has gone already (its swipe is dropped, not given to the next
+  /// card); an answer that was not stored brings the card back.
+  Future<bool> _swiped(Answer answer, String cardKey) async {
+    final session = ref.read(studyControllerProvider(_request)).value;
+    final current = session?.current;
+    if (session == null ||
+        current == null ||
+        _cardKeyOf(current, session) != cardKey) {
+      return true;
+    }
+    _hinted();
+    return _store(answer);
+  }
+
+  /// The swipe line has been seen: a swipe, or a session's end.
+  void _hinted() {
+    final settings = ref.read(nudgeSettingsProvider).value;
+    if (settings == null || settings.swipeHinted) return;
+    unawaited(
+      ref
+          .read(nudgeSettingsProvider.notifier)
+          .change((s) => s.copyWith(swipeHinted: true))
+          .catchError((Object e) => debugPrint('swipe line not kept: $e')),
+    );
+  }
+
+  /// 오늘 학습 끝 shows: one tap.
+  void _ended() {
+    unawaited(ref.read(hapticsProvider).sessionEnd());
+    _hinted();
+  }
 
   Future<bool> _store(Answer answer) {
     _stopSound();
@@ -184,15 +227,14 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
   /// does not stay on screen.
   Future<void> _pick(_Picked picked) async {
     if (_writing || _controller.isBusy) return;
+    final right = picked.option.id == picked.question.answer.id;
+    final haptics = ref.read(hapticsProvider);
+    unawaited(right ? haptics.right() : haptics.wrong());
     setState(() {
       _picked = picked;
       _writing = true;
     });
-    final stored = await _store(
-      picked.option.id == picked.question.answer.id
-          ? Answer.known
-          : Answer.retry,
-    );
+    final stored = await _store(right ? Answer.known : Answer.retry);
     if (!mounted) return;
     setState(() {
       _writing = false;
@@ -220,6 +262,7 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
         session: s,
         request: request,
         onAnswer: _answer,
+        onSwipe: _swiped,
         onHide: _hide,
         picked: picked,
         onPick: _pick,
@@ -236,6 +279,7 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
         session: s,
         request: request,
         onAnswer: _answer,
+        onSwipe: _swiped,
         onHide: _hide,
         onPick: _pick,
         onNext: _next,
@@ -253,6 +297,7 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
     return SessionTear(
       live: body is _Session,
       done: body is SessionDone,
+      onEnd: _ended,
       child: body,
     );
   }
@@ -364,6 +409,7 @@ class _Session extends ConsumerWidget {
     required this.session,
     required this.request,
     required this.onAnswer,
+    required this.onSwipe,
     required this.onHide,
     required this.onPick,
     required this.onNext,
@@ -373,6 +419,9 @@ class _Session extends ConsumerWidget {
   final StudySession session;
   final StudyRequest request;
   final ValueChanged<Answer> onAnswer;
+
+  /// An answer from swiping the card (or its VoiceOver actions).
+  final Future<bool> Function(Answer answer, String cardKey) onSwipe;
   final VoidCallback onHide;
   final ValueChanged<_Picked> onPick;
 
@@ -381,6 +430,25 @@ class _Session extends ConsumerWidget {
 
   /// The pick on screen (객관식, 듣고 맞히기); its card stays until 다음.
   final _Picked? picked;
+
+  /// [card], swipeable in the self-graded ways (뜻 맞히기, 일본어
+  /// 떠올리기); as it is in 객관식 and 듣고 맞히기.
+  Widget _swipeable(
+    WidgetRef ref, {
+    required String cardKey,
+    required StudyMode mode,
+    required Widget card,
+  }) {
+    if (mode.isMultipleChoice) return card;
+    return SwipeToAnswer(
+      key: ValueKey('swipe-$cardKey'),
+      onAnswer: (answer) => onSwipe(answer, cardKey),
+      // 알고있음 on the last card left ends the session (and tears it off).
+      endsSession: session.queue.length == 1,
+      onThreshold: () => unawaited(ref.read(hapticsProvider).answer()),
+      child: card,
+    );
+  }
 
   /// The card of [mode] for [item].
   Widget _card(
@@ -436,9 +504,7 @@ class _Session extends ConsumerWidget {
     if (item == null) return const SizedBox.shrink();
     final mode = request.mode;
     // A new key per presentation resets what was revealed.
-    final cardKey =
-        picked?.cardKey ??
-        '${item.word.id}#${session.knownCount}#${session.retryCount}';
+    final cardKey = picked?.cardKey ?? _cardKeyOf(item, session);
     final controller = ref.read(studyControllerProvider(request).notifier);
     // 객관식 and 듣고 맞히기: the card asks, the rows under it answer.
     final question = mode.isMultipleChoice
@@ -477,6 +543,10 @@ class _Session extends ConsumerWidget {
     // From about the AX1 text size the parts around the card would leave it
     // no room: the screen scrolls and the card is as tall as what it holds.
     final large = isLargeText(context);
+    // 뜻 맞히기 and 일본어 떠올리기: the card can be swiped; told once.
+    final swipeHint =
+        !mode.isMultipleChoice &&
+        ref.watch(nudgeSettingsProvider).value?.swipeHinted == false;
 
     return _StudyLayout(
       large: large,
@@ -560,36 +630,55 @@ class _Session extends ConsumerWidget {
                   child: child,
                 ),
               ),
-              child: _card(
+              child: _swipeable(
                 ref,
-                item: item,
-                mode: mode,
-                question: question,
                 cardKey: cardKey,
-                onSpeakWord: speech.isAvailable
-                    ? () async => speech.speak(
-                        wordSpeechFor(item.word, await accents()),
-                      )
-                    : null,
-                onSpeakExample: speech.isAvailable && exampleSpeech != null
-                    ? () async => speech.speak(
-                        exampleSpeechFor(
-                              item.word,
-                              await accents(),
-                              filled: filled,
-                            ) ??
-                            exampleSpeech,
-                      )
-                    : null,
-                filledExample: filled,
-                pitch: pitchInfoFor(wordSpeech),
-                estimatePitch: speech.isAvailable && estimator != null
-                    ? () => estimator.estimateAccent(wordSpeech)
-                    : null,
+                mode: mode,
+                card: _card(
+                  ref,
+                  item: item,
+                  mode: mode,
+                  question: question,
+                  cardKey: cardKey,
+                  onSpeakWord: speech.isAvailable
+                      ? () async => speech.speak(
+                          wordSpeechFor(item.word, await accents()),
+                        )
+                      : null,
+                  onSpeakExample: speech.isAvailable && exampleSpeech != null
+                      ? () async => speech.speak(
+                          exampleSpeechFor(
+                                item.word,
+                                await accents(),
+                                filled: filled,
+                              ) ??
+                              exampleSpeech,
+                        )
+                      : null,
+                  filledExample: filled,
+                  pitch: pitchInfoFor(wordSpeech),
+                  estimatePitch: speech.isAvailable && estimator != null
+                      ? () => estimator.estimateAccent(wordSpeech)
+                      : null,
+                ),
               ),
             ),
           ),
         ),
+        if (swipeHint)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              Space.gutter,
+              Space.sm,
+              Space.gutter,
+              0,
+            ),
+            child: Text(
+              ReminderLabels.swipeHint,
+              textAlign: TextAlign.center,
+              style: context.text.bodySmall?.copyWith(color: t.text2),
+            ),
+          ),
         // 이미 알아요 is a quiet text button apart from the two answers, so it
         // is not taken for 알고있음 (which schedules the next review). Gone
         // while a pick's result is on screen: that card is answered.
@@ -739,3 +828,8 @@ class _ProgressBar extends StatelessWidget {
 }
 
 const double _progressHeight = 2;
+
+/// The key of [item]'s presentation in [session]: a new one per answer, so
+/// what was revealed resets.
+String _cardKeyOf(SessionItem item, StudySession session) =>
+    '${item.word.id}#${session.knownCount}#${session.retryCount}';

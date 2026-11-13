@@ -1,4 +1,6 @@
 import ImageIO
+import UserNotifications
+import Flutter
 import XCTest
 
 @testable import Runner
@@ -94,5 +96,24 @@ class BackupExclusionTests: XCTestCase {
     XCTAssertThrowsError(try BackupExclusion.exclude(path: missing)) { error in
       XCTAssertEqual(error as? BackupExclusion.Failure, .missing)
     }
+  }
+}
+
+class SystemChannelTests: XCTestCase {
+  func testStatusNamesMatchTheDartSide() {
+    XCTAssertEqual(SystemChannel.statusName(.notDetermined), "notDetermined")
+    XCTAssertEqual(SystemChannel.statusName(.denied), "denied")
+    XCTAssertEqual(SystemChannel.statusName(.authorized), "authorized")
+    XCTAssertEqual(SystemChannel.statusName(.provisional), "provisional")
+    XCTAssertEqual(SystemChannel.statusName(.ephemeral), "ephemeral")
+  }
+
+  func testUnknownMethodsAreNotImplemented() {
+    let answered = expectation(description: "answered")
+    SystemChannel().handle(FlutterMethodCall(methodName: "anything", arguments: nil)) { value in
+      XCTAssertTrue((value as AnyObject) === (FlutterMethodNotImplemented as AnyObject))
+      answered.fulfill()
+    }
+    wait(for: [answered], timeout: 1)
   }
 }

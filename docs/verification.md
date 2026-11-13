@@ -3071,6 +3071,73 @@ B2 실측(실제 asset, 앱과 같은 조회):
 - 「저장된 단어로 바꾸기」로 어느 목록에도 없게 된 단어는 화면에서 지울 길이 없습니다(지금의 「목록에서 빼기」와 같은 상태). 어느 목록에도 없는 단어는 화면·학습·단어 찾기에 나오지 않습니다.
 - 실제 iPhone에서 일본어 키보드 전환과 VoiceOver 낭독은 확인하지 않았습니다.
 
+## 43. 복습 알림·햅틱·카드 밀기 (2026-11-14)
+
+복습할 카드가 있는 날 정한 시각에 한 번 기기 안 알림으로 알려 주고, 답할 때 가벼운 햅틱을 주고, 뜻 맞히기·일본어 떠올리기 카드를 좌우로 밀어 답할 수 있게 했습니다.
+서버·원격 푸시·네트워크는 쓰지 않습니다. 학습 규칙·스케줄러·저장 스키마(v5)·백업 형식(판 1)은 그대로입니다.
+
+### 43.1 규칙과 결정
+
+| 항목 | 정한 것 |
+|---|---|
+| 알림 장치 | `flutter_local_notifications` 22.3.3(BSD-3, 버전 고정 — 23.x는 Flutter 3.44 이상 필요). 예약 시각은 UTC 순간으로 넘김(시간대 데이터 없음). iOS 권한 상태와 「iOS 설정 열기」는 앱 채널 `shiori/system` |
+| 알림 숫자 | 그날 알림 시각까지 복습할 때가 된 카드 수(마지막 고른 학습 방식, 홈과 같은 규칙: 숨긴 단어·그 방식이 못 묻는 단어 제외). 새 단어는 세지 않음. 하루 목표로 자르지 않음 |
+| 앱이 꺼져 있을 때 | 예약할 때 앞으로 7일치를 날마다 따로 계산해 숫자를 본문에 넣음. 카드의 다음 복습 시각은 학습할 때만 바뀌므로 꺼져 있어도 맞음. 0장인 날·그 학습일(04시 시작)에 이미 답한 날은 예약하지 않음. 7일이 지나면 조용함 |
+| 다시 예약 | 첫 프레임 뒤, 앱이 앞으로 올 때(권한도 다시 읽음), 뒤로 갈 때, 데이터가 바뀐 2초 뒤(학습·편집·복원), 알림 설정을 바꿀 때. 매번 「모두 취소 → 새로 예약」, 겹치면 끝난 뒤 한 번 더 |
+| 알림 내용 | 본문 「오늘 복습할 카드가 n장 있어요」, 제목 없음, 중단 수준 active, 배지 없음. 앱이 앞에 있으면 알림 목록에만 |
+| 권한 묻기 | 첫 실행에는 묻지 않음. 처음 「오늘 학습 끝」 아래 한 번 「복습 알림을 받을까요?」(알림 받기 · 나중에). 알림 받기를 눌러야 iOS 창. 나중에·확인으로 나가면 다시 묻지 않음(설정에서 켬) |
+| 기본 시각 | 제안을 보인 시각을 30분 단위로 내리고 07:00~22:00 안으로. 설정에서 처음 켜면 21:00 |
+| 알림 누르기 | 앱만 엶: 처음 열면 홈, 뒤에 있던 앱은 하던 화면 그대로(학습 세션·검토 중 사진을 잃지 않게) |
+| 설정 › 알림 | 복습 알림 켜기/끄기(아직 묻지 않았으면 켤 때 iOS 창), 시각(5분 단위 휠). iOS에서 꺼져 있으면 스위치는 꺼짐·「iOS 설정에서 시오리 알림이 꺼져 있어요」·「iOS 설정 열기」 |
+| 햅틱 | 한 동작에 한 번: 알고있음·다시 학습(버튼, 또는 밀기가 문턱을 넘는 순간) selection, 객관식·듣고 맞히기 정답 light·오답 medium, 세션 끝 success. 이미 알아요·되돌리기·다음·뜻 보기·소리는 없음. 설정 › 학습 세션 「햅틱」으로 끔(기본 켬) |
+| 카드 밀기 | 뜻 맞히기·일본어 떠올리기만. 오른쪽 알고있음, 왼쪽 다시 학습. 카드 폭 30% 또는 튕김(800pt/s 이상·48pt 이상). 못 넘으면 220ms 되돌아옴, 넘으면 180ms 그 방향으로 나감(세션을 끝내는 답이면 제자리 → 찢김). 최대 4° 기울기·방향 글자. 화면 왼쪽 24pt에서 시작한 끌기는 뒤로 가기 몫 |
+| 동작 줄이기·VoiceOver | 동작 줄이기면 카드는 움직이지 않고 방향 글자만. VoiceOver는 카드의 사용자 지정 동작 「알고있음」「다시 학습」. 버튼은 그대로 |
+| 처음 알려 주기 | 자기 채점 방식 첫 세션의 카드 아래 「카드를 밀어서도 답할 수 있어요」 한 줄, 한 번 밀거나 세션이 끝나면 다시 안 보임 |
+| 저장 | 알림 켬·시각·제안 여부·햅틱·밀기 안내는 기기 파일 `Application Support/nudge.json`(판 1). 학습 DB와 앱 백업 파일 밖(기기 백업에는 들어갈 수 있음). 알림은 그 기기의 권한이 있을 때만 예약하므로, 다른 기기로 옮겨도 권한 없이 켜지지 않음. 읽지 못하면 알림 꺼짐·제안·안내 없음. 동시에 바꾸면 차례로 저장 |
+
+### 43.2 바꾼 것
+
+| 항목 | 위치 | 내용 |
+|---|---|---|
+| core | `lib/src/study/review_reminders.dart` (새), `study_service.dart` | `ReminderTime`(`offeredAt`), `PlannedReminder`, `planReminders`(순수 함수), `StudyService.reminders`(읽기만) |
+| 앱 알림 | `lib/features/reminders/` (새: 설정·저장 포트, 알림 포트, 다시 예약 `ReminderSync`·`ReminderHost`, 세션 끝 제안, 설정 항목, 문구), `lib/adapters/local_review_notifications.dart`·`file_nudge_store.dart` (새), `main.dart` | 블록과 provider는 기능 폴더에(첫 실행 안내 저장과 같은 방식). `main.dart`만 `ReminderHost`로 앱을 감쌈(테스트·미리보기에는 없음) |
+| 학습 화면 | `lib/features/study/haptics.dart`·`swipe_answer.dart` (새), `study_screen.dart`, `session_tear.dart`(끝 콜백), `session_done.dart`(제안 칸) | 햅틱·밀기·밀기 안내 |
+| 설정 | `lib/features/settings/settings_screen.dart` | 학습 세션 「햅틱」, 「알림」 절 |
+| iOS | `Runner/SystemChannel.swift` (새), `AppDelegate.swift`, `RunnerTests.swift`, `project.pbxproj`, `Podfile.lock` | 알림 센터 대리자, `shiori/system`(권한 상태 이름·앱 알림 설정 열기). Info.plist·앱 매니페스트는 그대로 |
+| Android | `app/build.gradle.kts`, `AndroidManifest.xml` | core library desugaring, `POST_NOTIFICATIONS`, 예약 receiver 1개(내보내지 않음). 정확한 알람·부팅 뒤 다시 예약 권한은 넣지 않음 |
+| 의존 | `app/pubspec.yaml` | `flutter_local_notifications: 22.3.3`, `timezone: 0.11.2` |
+
+### 43.3 테스트
+
+| 파일 | 내용 |
+|---|---|
+| `packages/core/test/study/review_reminders_test.dart` (새, 18) | N1: 7일치·오늘 시각이 지났으면 내일부터·정확히 지금은 지난 것, 날마다 늘어나는 수(`dueAt == T` 포함), 0장 날 없음, 그 학습일에 답했으면 없음(04시 경계, 02시 알림), 월·연 넘김, UTC 시계, 제안 시각 반내림·07~22시 |
+| `packages/core/test/study/study_service_reminders_test.dart` (새, 5) | N1: 방식별 카드만, 숨긴 단어·못 묻는 단어 제외, 다른 방식의 답도 오늘을 뺌, 어제 학습일의 답은 그대로, 읽기만 |
+| `app/test/features/reminders/reminder_sync_test.dart` (새, 15) | N2: 고른 시각으로 모두 바꾸기·두 번 같음·기본 21시, 끄기·권한 없음 → 모두 취소(스스로 묻지 않음), 겹친 요청은 한 번 더, 실패해도 다음은 됨. 첫 프레임·앞뒤 오감·권한 다시 읽기·데이터 변경 2초 뒤·설정 변경 |
+| `app/test/features/reminders/permission_flow_test.dart` (새, 19) | N3: 첫 실행엔 없음, 첫 세션 끝 제안·지금 시각, 허용·거절·나중에·확인, 묻고 난 뒤·설정을 못 읽을 때 없음, 큰 글자. 설정: 기본 꺼짐, 켤 때 묻기, 거절 뒤 안내·iOS 설정 열기, 설정 열 수 없는 기기, 끄면 모두 취소, 시각 시트(5분)·취소, 햅틱 스위치, 저장 실패 알림 |
+| `app/test/features/reminders/notification_tap_test.dart` (새, 2) | N4: 처음 열면 홈, 뒤에서 돌아오면 하던 학습 그대로·다시 예약 |
+| `app/test/features/study/haptics_test.dart` (새, 8) | N5: 버튼 답 selection, 뜻 보기·이미 알아요·되돌리기 없음, 세션 끝 success(동작 줄이기 포함), 객관식·듣고 맞히기 light/medium, 끄면 없음 |
+| `app/test/features/study/swipe_answer_test.dart` (새, 17) | N6: 오른쪽·왼쪽, 못 넘으면 제자리·저장 없음, 튕김, 따라오기, 문턱 햅틱 한 번, 왼쪽 가장자리, 떠올리기, 4지선다 없음, 마지막 카드, 동작 줄이기, VoiceOver 동작, 큰 글자 세로 스크롤, 안내 줄 |
+| `app/test/adapters/file_nudge_store_test.dart` (새, 7), `local_review_notifications_test.dart` (새, 8) | 파일 판·임시 파일·깨진 파일 거절, 채널 이름·권한 상태 이름·설정 열기·오류 전달, 날짜별 id, 본문 |
+| `app/test/release/notification_settings_test.dart` (새, 7) | N8: 백그라운드 모드·푸시 키·푸시 자격 없음, 대리자·채널 등록, 패키지 버전 고정과 자체 매니페스트, Android는 알림 권한만·receiver 내보내지 않음·desugaring |
+| `app/ios/RunnerTests/RunnerTests.swift` (+2) | 권한 상태 이름, 모르는 메서드 |
+| `app/integration_test/reminder_screenshots_test.dart`·`reminder_device_test.dart` (새) | 스크린샷, 실제 알림 블록으로 권한 창 → 예약 목록 확인 → 배너 도착 |
+
+결과: core **971** · app **959** 통과(main 병합 뒤), analyze 문제 없음. iOS RunnerTests **10** 통과. `tools/release` unittest 통과.
+`flutter build ios --flavor prod --profile --no-codesign` 성공(177.8 MB) → `check_build.py ios --flavor prod` ok(플러그인 framework 148 KB, 자체 `PrivacyInfo.xcprivacy` 포함 — UserDefaults `CA92.1`, 수집·추적 없음).
+`flutter build apk --flavor dev --debug` 성공 → `check_build.py apk --flavor dev` ok. 늘어난 권한: `POST_NOTIFICATIONS`, 플러그인의 `VIBRATE`.
+
+### 43.4 스크린샷 200~209 (iPhone 17 시뮬레이터, 합성 낱말)
+
+200 첫 「오늘 학습 끝」의 알림 제안 · 201 iOS 권한 창 · 202 허용 뒤 한 줄 · 203 설정(햅틱·알림 켬·시각) · 204 시각 고르기 · 205 iOS에서 꺼짐 안내 · 206 도착한 알림 배너(도착 확인용으로 45초 뒤 예약, 장 수는 지어낸 값) · 207 오른쪽으로 밀기 · 208 왼쪽으로 밀기(다크) · 209 큰 글자에서 밀기.
+201·206은 시뮬레이터 화면(`xcrun simctl io … screenshot`)이고 나머지는 앱 화면입니다.
+
+### 43.5 남은 것
+
+- 실제 iPhone: 알림 도착(잠금·앱 종료·재부팅·집중 모드), 햅틱 세기와 시스템 햅틱 끔, 밀기 손맛과 뒤로 가기, VoiceOver 동작, 시간대 바꾼 뒤.
+- Android: 알림은 동작하게 넣었지만 권한 문구·흐름과 부팅 뒤 다시 예약은 Android 출시 결정 때 봅니다(그 전에는 앱을 열 때 다시 예약).
+- 시간대를 바꾸고 앱을 열기 전에 오는 알림 하나는 옛 시간대 시각일 수 있습니다.
+
 ## 44. 기본 단어장 후속: N2·N1 보충 뜻, 한자로 다시 나오는 낱말 (2026-11-14)
 
 41절의 남은 것 두 가지를 처리했습니다. 앱 코드·저장 스키마(v5)·백업 형식(판 1)·학습 규칙은 그대로이고, 바뀐 것은 단어장 빌드 도구와 비공개 보충 뜻표, 테스트입니다. 규칙은 docs/dictionary.md 15절에 있습니다.

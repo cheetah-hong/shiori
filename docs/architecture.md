@@ -14,7 +14,7 @@ nihongo-app/
 │   ├── lib/src/ports/      포트 11개 (아래 블록 지도)
 │   ├── lib/src/extract/    단어 추출기(배치에 기대지 않음, docs/extraction.md)와 검토 초안 만들기(page_draft.dart)
 │   ├── lib/src/capture/    검토 화면의 편집(후보 고르기, 조각 붙이기, 고치기), 녹화 판독 블록, 문자 분류
-│   ├── lib/src/study/      라이트너 4단계 스케줄러, 세션 빌더, 세션, 학습 일 경계, StudyService, 홈 이번 주 줄(study_week.dart, 순수 함수)
+│   ├── lib/src/study/      라이트너 4단계 스케줄러, 세션 빌더, 세션, 학습 일 경계, StudyService, 홈 이번 주 줄(study_week.dart, 순수 함수), 복습 알림 계획(review_reminders.dart, 순수 함수)
 │   ├── lib/src/library/    LibraryService (재생목록 만들기·이름·순서·삭제, 검토 초안을 재생목록에 추가, 기본 단어장 추가, 빼기·되돌리기,
 │   │                       단어 고치기·직접 추가·저장된 단어로 바꾸기), 고칠 값 word_edit.dart, 사전 채움 word_fill.dart, 단어 찾기 색인 word_search.dart
 │   ├── lib/src/decks/      기본 단어장: 단어장 파일 읽기·검사(parseBuiltinDecks), 추가할 초안 만들기(deckDraft: 사전으로 뜻·품사 채우기)
@@ -92,6 +92,8 @@ nihongo-app/
 | 악센트 데이터 (앱) | Kanjium 표(`AccentTable`, `app/assets/accent/`), 없으면 빈 표 | `accentTableProvider` (열기: `accentDataProvider`) | |
 | 설정값 | `StudySettings` (간격, 하루 시작 04시, 세션 10장, 상수) | `studySettingsProvider` | 설정 화면 |
 | `OnboardingStore` (앱, `lib/features/onboarding/onboarding_store.dart`: 첫 실행 안내를 봤는지) | `FileOnboardingStore` (앱 지원 폴더 파일 `onboarding_seen`, 내용 = 안내 판 번호). 테스트: `InMemoryOnboardingStore` | `onboardingStoreProvider` (같은 파일) | |
+| `ReviewNotifications` (앱, `lib/features/reminders/review_notifications.dart`: 권한 상태·묻기·예약 모두 바꾸기·취소·알림 설정 열기) | `LocalReviewNotifications` (`flutter_local_notifications` + iOS 채널 `shiori/system`, 기기 안 알림만). 테스트: `InMemoryReviewNotifications` | `reviewNotificationsProvider` (같은 파일) | |
+| `NudgeStore` (앱, `lib/features/reminders/nudge_settings.dart`: 이 기기의 알림·햅틱 설정) | `FileNudgeStore` (앱 지원 폴더 `nudge.json`, DB·백업 밖). 테스트: `InMemoryNudgeStore` | `nudgeStoreProvider` → `nudgeSettingsProvider` (같은 파일) | |
 | `CrashReporter` / `CrashLog` (앱, `lib/app/crash_reporting.dart`) | `FileCrashLog` (앱 지원 폴더의 텍스트 파일, 64KiB, 전송 없음). `main.dart`의 `installCrashHandlers`가 전역 오류 처리기에 연결 | `crashLogProvider` | 충돌 보고 서비스(5.3절) |
 
 조립만 하는 provider(교체 대상 아님): `generalExtractorProvider`, `libraryServiceProvider`, `studyServiceProvider`, `backupServiceProvider`.
@@ -209,6 +211,15 @@ runApp(ProviderScope(
 | 모든 단어 처음부터 (`resetAll`, 설정) | 모든 scope의 카드를 지움. 누른 기록·숨김·재생목록·단어는 그대로 |
 
 저장소 포트 `ReviewRepository.deleteCards(wordIds, {scope, mode})`(지운 카드를 돌려줌)와 `deleteAllCards({scope, mode})`(null이면 모든 scope·방식)가 카드 행만 지웁니다.
+
+### 복습 알림·햅틱·카드 밀기 (verification.md 43절)
+
+- **알림은 기기 안 예약만입니다.** core `planReminders`(순수 함수)가 카드의 다음 복습 시각으로 앞으로 7일 각각의 알림 시각에 「복습할 때가 된 카드 수」를 세고, 0장인 날과 그 학습일에 이미 답한 날을 뺍니다. `StudyService.reminders`가 홈과 같은 규칙(마지막 고른 방식, 숨긴 단어·못 묻는 단어 제외)으로 카드를 읽어 넘깁니다(읽기만, 스케줄러·기록 그대로).
+- **다시 예약:** 앱 `ReminderSync`가 「모두 취소 → 새로 예약」을 하고, `ReminderHost`(`main.dart`에서 앱을 감쌈)가 첫 프레임 뒤·앞뒤 오갈 때·데이터 변경(`dataRevisionProvider`) 2초 뒤·알림 설정 변경 때 부릅니다. 꺼져 있거나 권한이 없으면 모두 취소합니다. 알림을 누르면 앱이 열릴 뿐 화면을 바꾸지 않습니다.
+- **기기 설정:** 알림 켬·시각·제안 여부·햅틱·밀기 안내는 `nudge.json`(앱 지원 폴더)에 둡니다. 학습 DB의 `settings`에 넣지 않으므로 앱 백업 파일과 그 형식 판이 그대로입니다. 알림은 그 기기의 권한이 있을 때만 예약하므로 다른 기기로 옮겨도 권한 없이 켜지지 않습니다.
+- **권한:** 첫 실행이 아니라 처음 「오늘 학습 끝」의 제안 칸(`ReminderOffer`)에서 「알림 받기」를 누를 때만 iOS 창을 띄웁니다. 설정 › 알림(`ReminderSection`)에서 켜고 끄고 시각을 고릅니다.
+- **햅틱:** `Haptics`(`features/study/haptics.dart`)가 한 동작에 한 번 `HapticFeedback`을 부르고, 설정의 「햅틱」이 꺼져 있으면 부르지 않습니다.
+- **밀기:** `SwipeToAnswer`(`features/study/swipe_answer.dart`)가 뜻 맞히기·일본어 떠올리기 카드를 감쌉니다. 답은 버튼과 같은 `StudyController.answer`로 갑니다. 화면 왼쪽 24pt에서 시작한 끌기는 받지 않고(뒤로 가기), 동작 줄이기면 카드를 움직이지 않으며, VoiceOver에는 사용자 지정 동작을 줍니다.
 
 ### 화면 구성과 디자인 토큰 (verification.md 39·40절)
 

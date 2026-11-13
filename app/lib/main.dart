@@ -9,6 +9,7 @@ import 'package:shiori/app/startup.dart';
 import 'package:shiori/features/about/about_screen.dart';
 import 'package:shiori/features/about/examples_card.dart';
 import 'package:shiori/features/decks/decks_card.dart';
+import 'package:shiori/features/reminders/reminder_sync.dart';
 
 /// Blocks are wired in `lib/app/blocks.dart`. To swap one, add an override here:
 ///
@@ -40,7 +41,9 @@ Future<void> main() async {
         glossary,
         crashLogProvider.overrideWithValue(crashLog),
       ],
-      child: const ShioriApp(firstLaunch: true),
+      // Reminders are planned again around the app (start, front, back,
+      // data changes); a tap on one only opens the app.
+      child: const ReminderHost(child: ShioriApp(firstLaunch: true)),
     ),
   );
 }

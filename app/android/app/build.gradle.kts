@@ -37,6 +37,8 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // flutter_local_notifications (review reminders) uses java.time.
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -102,6 +104,8 @@ dependencies {
     implementation("com.google.mlkit:text-recognition-korean:16.0.1")
     // EXIF rotation of the photo (works around vendor EXIF bugs the platform reader keeps).
     implementation("androidx.exifinterface:exifinterface:1.4.2")
+    // java.time for older Android, needed by the reminder plugin.
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 
     // OcrGeometry (pieces, turns) runs as a plain JVM test: ./gradlew :app:testDevDebugUnitTest
     testImplementation("junit:junit:4.13.2")

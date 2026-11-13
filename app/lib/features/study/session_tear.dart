@@ -15,7 +15,12 @@ class SessionTear extends StatefulWidget {
     required this.live,
     required this.done,
     required this.child,
+    this.onEnd,
   });
+
+  /// Called once when the session on screen gives way to 오늘 학습 끝 (torn
+  /// or, with reduced motion, at once): the haptic tap.
+  final VoidCallback? onEnd;
 
   /// [child] is a session with a card on screen.
   final bool live;
@@ -48,6 +53,7 @@ class _SessionTearState extends State<SessionTear>
   @override
   void didUpdateWidget(SessionTear old) {
     super.didUpdateWidget(old);
+    if (old.live && widget.done) widget.onEnd?.call();
     if (old.live && widget.done && !Motion.reduced(context)) {
       _torn = old.child;
       _tear.forward(from: 0);

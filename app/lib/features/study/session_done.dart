@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shiori/app/blocks.dart';
 import 'package:shiori/app/theme.dart';
+import 'package:shiori/features/reminders/reminder_offer.dart';
 import 'package:shiori/shared/keep_words.dart';
 import 'package:shiori/features/study/restudy_labels.dart';
 import 'package:shiori/shared/format.dart';
@@ -51,6 +52,7 @@ class SessionDone extends ConsumerWidget {
                   padding: const EdgeInsets.fromLTRB(14, Space.xs, 14, 0),
                   child: _Numbers(session: session, elapsed: elapsed),
                 ),
+                const ReminderOffer(),
                 const Spacer(),
                 if (onMore case final more?) ...[
                   OutlinedButton(

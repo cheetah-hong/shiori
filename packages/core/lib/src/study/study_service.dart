@@ -9,6 +9,7 @@ import 'package:shiori_core/src/ports/hidden_word_repository.dart';
 import 'package:shiori_core/src/ports/repositories.dart';
 import 'package:shiori_core/src/ports/review_scheduler.dart';
 import 'package:shiori_core/src/study/choice_maker.dart';
+import 'package:shiori_core/src/study/review_reminders.dart';
 import 'package:shiori_core/src/study/session_builder.dart';
 import 'package:shiori_core/src/study/session_size.dart';
 import 'package:shiori_core/src/study/study_calendar.dart';
@@ -185,6 +186,34 @@ final class StudyService {
           .length,
       wordCount: words.length,
       hiddenCount: hiddenCount,
+    );
+  }
+
+  /// The review reminders of the next [days] days at [time] in [mode]
+  /// ([planReminders]): due times of the cards [summary] counts as due or
+  /// ahead (hidden words and words [mode] cannot ask left out), and the last
+  /// press of the current study day in any mode. Reads only.
+  Future<List<PlannedReminder>> reminders({
+    required StudyMode mode,
+    required ReminderTime time,
+    int days = 7,
+  }) async {
+    final now = clock.now();
+    final scope = cardScopeFor(const AllWords());
+    final words = await _wordsOf(const AllWords());
+    final shown = {
+      for (final w in await _askedIn(mode, words))
+        if (!w.isHidden) w.id,
+    };
+    final cards = await reviews.cards(wordIds: shown, scope: scope, mode: mode);
+    final today = await reviews.logs(since: calendar.startOfStudyDay(now));
+    return planReminders(
+      dueTimes: [for (final c in cards.values) c.dueAt],
+      now: now,
+      time: time,
+      calendar: calendar,
+      lastAnsweredAt: today.isEmpty ? null : today.last.at,
+      days: days,
     );
   }
 
