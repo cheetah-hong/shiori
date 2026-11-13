@@ -17,6 +17,8 @@ import 'package:shiori/features/about/voice_licenses.dart';
 import 'package:shiori/features/onboarding/onboarding_screen.dart';
 import 'package:shiori/shared/dictionary_notice.dart';
 import 'package:shiori/shared/widgets.dart';
+import 'package:shiori_core/shiori_core.dart'
+    show GlossarySource, MeaningOverrides;
 
 const _projectUrl =
     'https://www.edrdg.org/wiki/index.php/JMdict-EDICT_Dictionary_Project';
@@ -99,6 +101,11 @@ class AboutScreen extends ConsumerWidget {
                     _WiktionaryCard(edition: edition)
                   else
                     _NoWiktionary(problem: value.wiktionaryProblemKind),
+                  if (value.overrides case final overrides?
+                      when overrides.length > 0) ...[
+                    const SizedBox(height: Space.md),
+                    _OverridesCard(overrides: overrides),
+                  ],
                 ],
               ),
               AsyncData(:final value) when isNoticeable(value.problemKind) =>
@@ -391,6 +398,40 @@ class _WiktionaryCard extends StatelessWidget {
           ),
           // Each source's edition is in its credit line above.
           AboutFact('만든 날', edition.builtOn),
+        ],
+      ),
+    );
+  }
+}
+
+/// The meaning overrides (시오리 보정): how many words, where the meanings
+/// come from (JMdict's English glosses, CC BY-SA 4.0), the file's day.
+class _OverridesCard extends StatelessWidget {
+  const _OverridesCard({required this.overrides});
+
+  final MeaningOverrides overrides;
+
+  @override
+  Widget build(BuildContext context) {
+    return AboutCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(GlossarySource.shiori.label, style: context.text.titleLarge),
+          const SizedBox(height: Space.xs),
+          Text(
+            '사전이 엉뚱한 뜻을 먼저 주는 낱말 ${overrides.length}개는, 이 앱이 '
+            'JMdict 영어 뜻을 보고 쓴 짧은 뜻을 먼저 보여 줍니다. 이미 저장한 '
+            '단어의 뜻은 바꾸지 않습니다.',
+            style: context.text.bodySmall,
+          ),
+          const SizedBox(height: Space.lg),
+          const AboutLink(label: '라이선스 (CC BY-SA 4.0)', url: _ccBySa40Url),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: Space.md),
+            child: Divider(),
+          ),
+          AboutFact('만든 날', overrides.edition),
         ],
       ),
     );

@@ -1,8 +1,6 @@
 import 'package:shiori_core/src/capture/text/chars.dart' show nfkc;
 import 'package:shiori_core/src/extract/extracted_word.dart'
     show partOfSpeechOf;
-import 'package:shiori_core/src/extract/headword_repair.dart'
-    show optionalPrefixForms;
 import 'package:shiori_core/src/extract/meaning_senses.dart';
 import 'package:shiori_core/src/extract/script_runs.dart' show isKanji;
 import 'package:shiori_core/src/library/word_edit.dart';
@@ -104,11 +102,14 @@ const int maxKanjiChoices = 4;
 /// What [lexicon] and the glossaries ([glossary], then [fallback]) say
 /// about [headword], the way the word extractor fills a dictionary word.
 /// A な-adjective printed with its ending (`便利だ`) is looked up bare.
+/// [readings] (a saved word's, katakana or hiragana) pick the entry of a
+/// headword with kanji read so; without one of them, the common entry.
 Future<WordFill> wordFill(
   String headword, {
   required Lexicon lexicon,
   required KoreanGlossary glossary,
   KoreanGlossary? fallback,
+  List<String> readings = const [],
 }) async {
   final head = nfkc(headword.trim());
   if (head.isEmpty) return WordFill.none;
@@ -129,19 +130,22 @@ Future<WordFill> wordFill(
     for (final e in entries)
       if (!e.isKanaForm) e,
   ];
-  final entry = _likeliest(written.isEmpty ? entries : written);
-  final readings = [?entry?.readings.firstOrNull];
+  final candidates = written.isEmpty ? entries : written;
+  final (entry, reading) =
+      _readAs(candidates, readings) ??
+      (_likeliest(candidates), _likeliest(candidates)?.readings.firstOrNull);
+  final read = [?reading];
   final pos = partOfSpeechOf(entry?.partsOfSpeech ?? const []);
   final meanings = await _meanings(
     glossaries,
     {form, ...?entry?.kanjiForms},
-    readings: readings,
+    readings: read,
     pos: pos,
   );
   if (entry == null && meanings.isEmpty) return WordFill.none;
   return WordFill(
     found: entry != null,
-    readings: List.unmodifiable(readings),
+    readings: List.unmodifiable(read),
     pos: pos,
     meanings: meanings,
   );
@@ -199,6 +203,23 @@ Future<WordFill> _kanaFill(
   );
 }
 
+/// The entry of [entries] read as one of [readings], with that reading.
+(LexiconEntry?, String?)? _readAs(
+  List<LexiconEntry> entries,
+  List<String> readings,
+) {
+  for (final r in readings) {
+    final want = toHiraganaReading(r.trim());
+    if (want.isEmpty) continue;
+    for (final e in entries) {
+      for (final er in e.readings) {
+        if (toHiraganaReading(er) == want) return (e, er);
+      }
+    }
+  }
+  return null;
+}
+
 /// The common entry first, else the first.
 LexiconEntry? _likeliest(List<LexiconEntry> entries) {
   for (final e in entries) {
@@ -207,36 +228,14 @@ LexiconEntry? _likeliest(List<LexiconEntry> entries) {
   return entries.firstOrNull;
 }
 
-/// The meanings of the first glossary that has any for one of [forms] (and
-/// their forms without an optional prefix), best first, each once, at most
-/// [maxMeaningCandidates].
+/// The meanings of the first glossary that has any for one of [forms],
+/// best first, each once, at most [maxMeaningCandidates].
 Future<List<String>> _meanings(
   List<KoreanGlossary> glossaries,
   Set<String> forms, {
   required List<String> readings,
   PartOfSpeech? pos,
-}) async {
-  for (final g in glossaries) {
-    final texts = <String>[];
-    for (final form in forms) {
-      for (final f in [form, ...optionalPrefixForms(form)]) {
-        for (final s in await meaningSensesOf(
-          g,
-          f,
-          readings: readings,
-          pos: pos,
-        )) {
-          if (!texts.contains(s.text)) texts.add(s.text);
-        }
-      }
-      if (texts.isNotEmpty) break;
-    }
-    if (texts.isNotEmpty) {
-      return List.unmodifiable(texts.take(maxMeaningCandidates));
-    }
-  }
-  return const [];
-}
+}) => dictionaryMeanings(glossaries, forms, readings: readings, pos: pos);
 
 /// [current] with what [fill] can add, never what the learner wrote: an
 /// empty field takes the dictionary's value; a field with a value keeps it

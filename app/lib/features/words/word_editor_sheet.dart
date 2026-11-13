@@ -70,7 +70,10 @@ class _WordEditorSheetState extends ConsumerState<WordEditorSheet> {
   Future<void> _refill() async {
     final WordFill fill;
     try {
-      fill = await ref.read(wordFillerProvider)(_form.headword.text);
+      fill = await ref.read(wordFillerProvider)(
+        _form.headword.text,
+        readings: _form.value.readings,
+      );
     } on Exception catch (e, stack) {
       debugPrint('dictionary lookup for an edit: $e\n$stack');
       say(widget.messenger, WordLabels.refillFailed);

@@ -27,6 +27,7 @@ export 'src/ports/hidden_word_repository.dart';
 export 'src/ports/lexicon.dart';
 export 'src/ports/image_source.dart';
 export 'src/ports/korean_glossary.dart';
+export 'src/ports/meaning_overrides.dart';
 export 'src/ports/repositories.dart';
 export 'src/ports/review_scheduler.dart';
 export 'src/ports/speech.dart';

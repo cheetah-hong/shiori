@@ -1,8 +1,6 @@
 import 'package:shiori_core/src/decks/builtin_deck.dart';
 import 'package:shiori_core/src/extract/extracted_word.dart'
     show partOfSpeechOf;
-import 'package:shiori_core/src/extract/headword_repair.dart'
-    show optionalPrefixForms;
 import 'package:shiori_core/src/extract/meaning_senses.dart';
 import 'package:shiori_core/src/models/capture_draft.dart';
 import 'package:shiori_core/src/models/captured_entry.dart';
@@ -101,20 +99,10 @@ Future<String?> _meaningOf(
   LexiconEntry? entry,
   PartOfSpeech? pos,
   List<KoreanGlossary> glossaries,
-) async {
-  final forms = {?w.lookupForm, w.headword, ...?entry?.kanjiForms};
-  for (final g in glossaries) {
-    for (final form in forms) {
-      for (final f in [form, ...optionalPrefixForms(form)]) {
-        final senses = await meaningSensesOf(
-          g,
-          f,
-          readings: [w.reading],
-          pos: pos,
-        );
-        if (senses.isNotEmpty) return senses.first.text;
-      }
-    }
-  }
-  return null;
-}
+) async => (await dictionaryMeanings(
+  glossaries,
+  {?w.lookupForm, w.headword, ...?entry?.kanjiForms},
+  readings: [w.reading],
+  pos: pos,
+  limit: 1,
+)).firstOrNull;

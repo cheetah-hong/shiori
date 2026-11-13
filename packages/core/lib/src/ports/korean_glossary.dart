@@ -78,7 +78,11 @@ enum GlossarySource {
   krdict('한국어기초사전'),
 
   /// 한국어 위키낱말사전, CC BY-SA 4.0.
-  wiktionary('위키낱말사전');
+  wiktionary('위키낱말사전'),
+
+  /// Short meanings this app wrote for words whose dictionary meaning is
+  /// off (the meaning overrides file, CC BY-SA 4.0).
+  shiori('시오리 보정');
 
   const GlossarySource(this.label);
 

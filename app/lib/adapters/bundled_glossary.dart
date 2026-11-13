@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:krdict_block/krdict_block.dart';
@@ -33,6 +34,14 @@ const wiktGlossaryFileName = 'wikt-glossary.sqlite';
 
 /// The fallback edition file that was unpacked, kept next to its SQLite file.
 const wiktGlossaryMarkerName = 'wikt-glossary.sqlite.edition';
+
+/// Meanings this app wrote for words whose dictionary meaning is off
+/// (tools/dict/build_meaning_overrides.py, 시오리 보정).
+const meaningOverridesAsset = 'assets/dict/meaning-overrides.json';
+
+/// The meaning overrides file's edition, written next to it by the same script.
+const meaningOverridesEditionAsset =
+    'assets/dict/meaning-overrides.edition.json';
 
 /// The data inside the glossary asset (shown on the 정보 screen).
 final class GlossaryEdition {
@@ -95,6 +104,8 @@ final class BundledGlossary {
     this.wiktionaryEdition,
     this.wiktionaryProblem,
     this.wiktionaryProblemKind,
+    this.overrides,
+    this.overridesProblem,
   }) : problem = null,
        problemKind = null;
 
@@ -106,7 +117,9 @@ final class BundledGlossary {
        wiktionary = null,
        wiktionaryEdition = null,
        wiktionaryProblem = null,
-       wiktionaryProblemKind = null;
+       wiktionaryProblemKind = null,
+       overrides = null,
+       overridesProblem = null;
 
   final KrdictGlossary? krdict;
   final GlossaryEdition? edition;
@@ -123,6 +136,12 @@ final class BundledGlossary {
   /// build without the asset from a damaged one); null when it is open.
   final DictionaryProblem? wiktionaryProblemKind;
 
+  /// The meaning overrides put over [krdict], or null without the file.
+  final MeaningOverrides? overrides;
+
+  /// Why there are no meaning overrides (for the log).
+  final String? overridesProblem;
+
   /// Why there is no glossary (for the log and the 정보 screen).
   final String? problem;
 
@@ -131,8 +150,14 @@ final class BundledGlossary {
 
   bool get isAvailable => krdict != null;
 
-  /// The block for the glossary slot.
-  KoreanGlossary get glossary => krdict ?? const EmptyKoreanGlossary();
+  /// The block for the glossary slot: the Basic Korean Dictionary, with the
+  /// meaning overrides over it when there are any.
+  KoreanGlossary get glossary => switch ((krdict, overrides)) {
+    (null, _) => const EmptyKoreanGlossary(),
+    (final KrdictGlossary k, final MeaningOverrides o) when o.length > 0 =>
+      OverriddenKoreanGlossary(k, o),
+    (final KrdictGlossary k, _) => k,
+  };
 
   void close() {
     krdict?.close();
@@ -180,6 +205,7 @@ Future<BundledGlossary> openBundledGlossary({
       );
     }
     final fallback = await _openWiktionary(bundle, supportDirectory, log);
+    final overrides = await _readOverrides(bundle, log);
     return BundledGlossary.opened(
       opened.value,
       edition,
@@ -187,6 +213,8 @@ Future<BundledGlossary> openBundledGlossary({
       wiktionaryEdition: fallback.edition,
       wiktionaryProblem: fallback.problem,
       wiktionaryProblemKind: fallback.kind,
+      overrides: overrides.overrides,
+      overridesProblem: overrides.problem,
     );
   } on Object catch (error, stack) {
     log('not available: $error\n$stack');
@@ -253,6 +281,52 @@ Future<_Fallback> _openWiktionary(
     );
   } on Object catch (error) {
     return without(error, dictionaryProblemOf(error));
+  }
+}
+
+/// The meaning overrides read, or why not.
+typedef _Overrides = ({MeaningOverrides? overrides, String? problem});
+
+/// The meaning overrides file (a small JSON file, read as it is), checked
+/// against the size and sha256 its edition file gives; without it (a debug
+/// build may not have it, a release build always does:
+/// tools/dict/asset_check.py --release) or with a damaged one, one log line
+/// and the dictionary as it is.
+Future<_Overrides> _readOverrides(
+  AssetBundle bundle,
+  void Function(String message) log,
+) async {
+  _Overrides without(Object error) {
+    final problem = '$error'.split('\n').first;
+    log('meaning overrides not available: $problem');
+    return (overrides: null, problem: problem);
+  }
+
+  try {
+    final editionText = await bundle.loadString(
+      meaningOverridesEditionAsset,
+      cache: false,
+    );
+    final data = await bundle.load(meaningOverridesAsset);
+    final bytes = data.buffer.asUint8List(
+      data.offsetInBytes,
+      data.lengthInBytes,
+    );
+    final edition = switch (jsonDecode(editionText)) {
+      final Map<String, Object?> json => json,
+      _ => throw const FormatException('overrides edition: not a JSON object'),
+    };
+    if (edition['json_bytes'] != bytes.length ||
+        edition['json_sha256'] != sha256.convert(bytes).toString()) {
+      throw const FormatException(
+        'meaning overrides do not match their edition file',
+      );
+    }
+    final overrides = parseMeaningOverrides(utf8.decode(bytes));
+    log('meaning overrides: ${overrides.length} words, ${overrides.edition}');
+    return (overrides: overrides, problem: null);
+  } on Object catch (error) {
+    return without(error);
   }
 }
 

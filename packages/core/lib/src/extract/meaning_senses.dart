@@ -10,6 +10,8 @@
 library;
 
 import 'package:shiori_core/src/extract/hanja.dart';
+import 'package:shiori_core/src/extract/headword_repair.dart'
+    show optionalPrefixForms;
 import 'package:shiori_core/src/models/part_of_speech.dart';
 import 'package:shiori_core/src/ports/korean_glossary.dart';
 
@@ -59,12 +61,45 @@ Future<List<KoreanSense>> meaningSensesOf(
 /// the word in its sentence) and the first sense is no Korean adverb used
 /// with a negative, the first such sense in front; then, with a
 /// [translation] (the printed translation of the sentence the word came
-/// from), the first sense it names in front. Nothing is left out.
+/// from), the first sense it names in front. A meaning override
+/// ([GlossarySource.shiori]) stays first. Nothing is left out.
 List<KoreanSense> orderMeaningSenses(
   String headword,
   List<KoreanSense> senses, {
   String? translation,
   bool negated = false,
+}) {
+  final own = [
+    for (final s in senses)
+      if (s.source == GlossarySource.shiori) s,
+  ];
+  if (own.isEmpty) {
+    return _ordered(
+      headword,
+      senses,
+      translation: translation,
+      negated: negated,
+    );
+  }
+  return List.unmodifiable([
+    ...own,
+    ..._ordered(
+      headword,
+      [
+        for (final s in senses)
+          if (s.source != GlossarySource.shiori) s,
+      ],
+      translation: translation,
+      negated: negated,
+    ),
+  ]);
+}
+
+List<KoreanSense> _ordered(
+  String headword,
+  List<KoreanSense> senses, {
+  String? translation,
+  required bool negated,
 }) {
   final spellings = sinoKoreanReadings(headword);
   final syllables =
@@ -145,4 +180,38 @@ bool _namedIn(String word, String translation) {
   return pieces.any(
     (p) => p.length >= minSpelledSyllables && translation.contains(p),
   );
+}
+
+/// The meanings of a word from the first of [glossaries] that has any under
+/// one of [forms] (each also without an optional prefix in brackets), asked
+/// in turn with [readings] and [pos] by [meaningSensesOf]: the first
+/// spelling with a sense decides. Best first, each once, at most [limit].
+///
+/// The word sheet (`wordFill`) and the built-in decks (`deckDraft`) look
+/// meanings up so; they choose the word's spellings, reading and class.
+Future<List<String>> dictionaryMeanings(
+  List<KoreanGlossary> glossaries,
+  Iterable<String> forms, {
+  required List<String> readings,
+  PartOfSpeech? pos,
+  int limit = maxMeaningCandidates,
+}) async {
+  for (final g in glossaries) {
+    final texts = <String>[];
+    for (final form in forms) {
+      for (final f in [form, ...optionalPrefixForms(form)]) {
+        for (final s in await meaningSensesOf(
+          g,
+          f,
+          readings: readings,
+          pos: pos,
+        )) {
+          if (!texts.contains(s.text)) texts.add(s.text);
+        }
+      }
+      if (texts.isNotEmpty) break;
+    }
+    if (texts.isNotEmpty) return List.unmodifiable(texts.take(limit));
+  }
+  return const [];
 }

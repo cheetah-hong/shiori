@@ -49,15 +49,20 @@ final playlistWordIdsProvider = FutureProvider.autoDispose
     });
 
 /// Looks a typed headword up in the app's dictionaries (empty ones until
-/// they open, or in a build without them).
-final wordFillerProvider = Provider<Future<WordFill> Function(String)>((ref) {
+/// they open, or in a build without them); a saved word's [readings] pick
+/// the dictionary entry read so.
+typedef WordFiller =
+    Future<WordFill> Function(String headword, {List<String> readings});
+
+final wordFillerProvider = Provider<WordFiller>((ref) {
   final lexicon = ref.watch(lexiconProvider);
   final glossary = ref.watch(koreanGlossaryProvider);
   final fallback = ref.watch(wiktionaryGlossaryProvider);
-  return (headword) => wordFill(
+  return (headword, {readings = const []}) => wordFill(
     headword,
     lexicon: lexicon,
     glossary: glossary,
     fallback: fallback,
+    readings: readings,
   );
 });

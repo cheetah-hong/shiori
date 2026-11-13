@@ -1,4 +1,4 @@
-"""B1, F1, F3, F4, F6: build_decks.py on a made-up word list and a made-up JMdict (no network).
+"""B1, F1, F3, F4, F6, F7: build_decks.py on a made-up word list and a made-up JMdict (no network).
 
   python3 -m unittest discover -s tools/decks -p 'test_*.py'
 """
@@ -568,6 +568,117 @@ class LookupOverrideTest(unittest.TestCase):
         code, out = self.build(OVERRIDES_HEAD + "N5\t9000001\t雨傘\t雨傘\t검수자 11/14\n")
         self.assertNotEqual(code, 0)
         self.assertIn("lookup", out)
+
+
+# F7: a list row whose entry number names another word with the same kana.
+ENTRY_JMDICT = JMDICT.replace("</JMdict>", """<entry><ent_seq>9000020</ent_seq>
+ <r_ele><reb>そのこ</reb></r_ele>
+ <sense><pos>&adv;</pos><gloss>(interjection) there you go</gloss></sense></entry>
+<entry><ent_seq>9000021</ent_seq>
+ <k_ele><keb>其の子</keb><ke_pri>ichi1</ke_pri></k_ele>
+ <r_ele><reb>そのこ</reb><re_pri>ichi1</re_pri></r_ele>
+ <sense><pos>&n;</pos><misc>&uk;</misc><gloss>that child</gloss></sense></entry>
+</JMdict>""")
+ENTRY_LISTS = {**LISTS, "n5": [*LISTS["n5"], ("9000020", "そのこ", "", "that child")]}
+ENTRIES_HEAD = "level\tentry\theadword\tfixed\treviewed\n"
+ENTRY_ROW = "N5\t9000020\tそのこ\t9000021\t검수자 11/14\n"
+
+
+class EntryOverrideTest(unittest.TestCase):
+    """F7: a reviewed table gives a list row the entry its word really is."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.inputs = write_inputs(self.tmp / "in", lists=ENTRY_LISTS)
+        with gzip.GzipFile(self.inputs["jmdict"], "wb", mtime=0) as f:
+            f.write(ENTRY_JMDICT.encode("utf-8"))
+        self.table = self.tmp / "in" / "entry-overrides.tsv"
+        self.out = self.tmp / "out"
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def args(self) -> list[str]:
+        return ["--source", str(self.inputs["source"]), "--source-commit", COMMIT,
+                "--jmdict", str(self.inputs["jmdict"]), "--supplement", str(self.inputs["supplement"]),
+                "--entry-overrides", str(self.table), "--out-dir", str(self.out)]
+
+    def build(self, table: str | None) -> tuple[int, str]:
+        if table is not None:
+            self.table.write_text(table, encoding="utf-8")
+        return run([*self.args(), "--built-on", BUILT_ON])
+
+    def word(self, level: str, headword: str) -> dict:
+        doc = json.loads((self.out / build_decks.DECKS_NAME).read_text(encoding="utf-8"))
+        deck = next(d for d in doc["decks"] if d["level"] == level)
+        return next(w for w in deck["words"] if w["h"] == headword)
+
+    def edition(self) -> dict:
+        return json.loads((self.out / build_decks.EDITION_NAME).read_text(encoding="utf-8"))
+
+    def test_a_row_gives_the_word_its_entry(self) -> None:
+        code, out = self.build(ENTRIES_HEAD + ENTRY_ROW)
+        self.assertEqual(code, 0, out)
+        w = self.word("N5", "そのこ")
+        self.assertEqual(w["e"], 9000021)
+        self.assertEqual(w["l"], "其の子")
+
+    def test_without_a_table_the_list_s_entry_stays(self) -> None:
+        code, out = self.build(None)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.word("N5", "そのこ")["e"], 9000020)
+        self.assertEqual(self.edition()["entry_overrides_rows"], 0)
+        self.assertEqual(self.edition()["entry_overrides_sha256"], "")
+
+    def test_the_edition_records_the_table(self) -> None:
+        table = ENTRIES_HEAD + ENTRY_ROW
+        self.build(table)
+        self.assertEqual(self.edition()["entry_overrides_rows"], 1)
+        self.assertEqual(self.edition()["entry_overrides_sha256"],
+                         hashlib.sha256(table.encode("utf-8")).hexdigest())
+
+    def test_check_rebuilds_with_the_table(self) -> None:
+        self.build(ENTRIES_HEAD + ENTRY_ROW)
+        code, out = run(["--check", *self.args()])
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("skipped", out)
+
+    def test_a_row_not_reviewed_stops_the_build(self) -> None:
+        code, out = self.build(ENTRIES_HEAD + "N5\t9000020\tそのこ\t9000021\t\n")
+        self.assertNotEqual(code, 0)
+        self.assertIn("reviewed", out)
+        self.assertFalse((self.out / build_decks.DECKS_NAME).exists())
+
+    def test_a_table_without_the_reviewed_column_stops_the_build(self) -> None:
+        code, out = self.build("level\tentry\theadword\tfixed\nN5\t9000020\tそのこ\t9000021\n")
+        self.assertNotEqual(code, 0)
+        self.assertIn("reviewed", out)
+
+    def test_a_row_without_its_list_row_stops_the_build(self) -> None:
+        code, out = self.build(ENTRIES_HEAD + "N4\t9000020\tそのこ\t9000021\t검수자 11/14\n")
+        self.assertNotEqual(code, 0)
+        self.assertIn("entry overrides", out)
+
+    def test_a_row_twice_stops_the_build(self) -> None:
+        code, out = self.build(ENTRIES_HEAD + ENTRY_ROW + ENTRY_ROW)
+        self.assertNotEqual(code, 0)
+        self.assertIn("twice", out)
+
+    def test_an_entry_not_in_jmdict_stops_the_build(self) -> None:
+        code, out = self.build(ENTRIES_HEAD + "N5\t9000020\tそのこ\t9999998\t검수자 11/14\n")
+        self.assertNotEqual(code, 0)
+        self.assertIn("9999998", out)
+
+    def test_an_entry_without_the_row_s_reading_stops_the_build(self) -> None:
+        code, out = self.build(ENTRIES_HEAD + "N5\t9000020\tそのこ\t9000001\t검수자 11/14\n")
+        self.assertNotEqual(code, 0)
+        self.assertIn("そのこ", out)
+
+    def test_the_same_entry_stops_the_build(self) -> None:
+        code, out = self.build(ENTRIES_HEAD + "N5\t9000020\tそのこ\t9000020\t검수자 11/14\n")
+        self.assertNotEqual(code, 0)
+        self.assertIn("entry overrides", out)
 
 
 if __name__ == "__main__":
